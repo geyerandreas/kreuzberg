@@ -23,10 +23,13 @@ dependencies = [
   "typer>=0.9",
 ]
 
+optional-dependencies.benchmarks = [
+  "kreuzberg-benchmarks",
+]
+
 optional-dependencies.dev = [
   "uv-bump",
 ]
-
 scripts.kreuzberg-bench = "kreuzberg_benchmarks.cli:app"
 
 [tool.ruff]
@@ -35,3 +38,4 @@ lint.extend-ignore = [ "ARG002", "B008", "B904", "BLE001", "E722", "PLR2004", "P
 [tool.uv.sources]
 kreuzberg = { workspace = true }
 uv-bump = { git = "https://github.com/Goldziher/uv-bump" }
+kreuzberg-benchmarks = { workspace = true }
