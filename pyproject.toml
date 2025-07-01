@@ -22,13 +22,17 @@ keywords = [
 ]
 license = { text = "MIT" }
 authors = [ { name = "Na'aman Hirschfeld", email = "nhirschfed@gmail.com" } ]
-requires-python = ">=3.13"
+requires-python = ">=3.9"
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
   "Topic :: Software Development :: Libraries :: Python Modules",
@@ -109,6 +113,9 @@ doc = [
   "mkdocs-minify-plugin>=0.8.0",
   "mkdocstrings[python]>=0.29.0",
 ]
+
+[tool.setuptools]
+packages = [ "kreuzberg" ]
 
 [tool.setuptools.package-data]
 kreuzberg = [ "py.typed" ]

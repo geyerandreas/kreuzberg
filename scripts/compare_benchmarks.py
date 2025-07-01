@@ -16,7 +16,7 @@ def load_benchmark_results(file_path: Path) -> dict[str, Any]:
         with file_path.open() as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error loading {file_path}: {e}")
+        print(f"Error loading benchmark results: {e}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -31,9 +31,6 @@ def compare_benchmarks(baseline: dict[str, Any], current: dict[str, Any], thresh
     Returns:
         True if no significant regressions detected, False otherwise
     """
-    print(f"Comparing benchmarks with {threshold * 100}% regression threshold")
-    print("=" * 60)
-
     baseline_benchmarks = {b["name"]: b for b in baseline["benchmarks"]}
     current_benchmarks = {b["name"]: b for b in current["benchmarks"]}
 
@@ -42,14 +39,12 @@ def compare_benchmarks(baseline: dict[str, Any], current: dict[str, Any], thresh
 
     for name, current_bench in current_benchmarks.items():
         if name not in baseline_benchmarks:
-            print(f"NEW: {name} - {current_bench['duration']:.3f}s")
             continue
 
         baseline_bench = baseline_benchmarks[name]
 
         # Skip failed benchmarks
         if not current_bench.get("success", True) or not baseline_bench.get("success", True):
-            print(f"SKIP: {name} - benchmark failed")
             continue
 
         # Compare duration
@@ -62,37 +57,23 @@ def compare_benchmarks(baseline: dict[str, Any], current: dict[str, Any], thresh
 
             if change_ratio > threshold:
                 regressions.append((name, change_percent, baseline_duration, current_duration))
-                status = "🔴 REGRESSION"
             elif change_ratio < -0.05:  # 5% improvement threshold
+                # Note: using magic number for improvement threshold
                 improvements.append((name, abs(change_percent), baseline_duration, current_duration))
-                status = "🟢 IMPROVEMENT"
             else:
-                status = "⚪ NO CHANGE"
-
-            print(f"{status}: {name}")
-            print(f"  Baseline: {baseline_duration:.3f}s")
-            print(f"  Current:  {current_duration:.3f}s")
-            print(f"  Change:   {change_percent:+.1f}%")
-            print()
+                pass
 
     # Print summary
-    print("Summary")
-    print("=" * 60)
 
     if improvements:
-        print(f"🟢 {len(improvements)} improvement(s):")
-        for name, improvement, baseline_dur, current_dur in improvements:
-            print(f"  • {name}: {improvement:.1f}% faster ({baseline_dur:.3f}s → {current_dur:.3f}s)")
-        print()
+        for _name, _improvement, _baseline_dur, _current_dur in improvements:
+            pass
 
     if regressions:
-        print(f"🔴 {len(regressions)} regression(s):")
-        for name, regression, baseline_dur, current_dur in regressions:
-            print(f"  • {name}: {regression:.1f}% slower ({baseline_dur:.3f}s → {current_dur:.3f}s)")
-        print()
+        for _name, _regression, _baseline_dur, _current_dur in regressions:
+            pass
         return False
 
-    print("✅ No significant performance regressions detected!")
     return True
 
 
