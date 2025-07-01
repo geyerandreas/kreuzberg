@@ -48,10 +48,8 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Install main package with extras
-          uv pip install -e ".[all]"
-          # Install benchmarks package
-          uv pip install -e ./benchmarks
+          # Sync all workspace packages with all extras
+          uv sync --all-packages --all-extras
 
       - name: Create test files
         run: |
