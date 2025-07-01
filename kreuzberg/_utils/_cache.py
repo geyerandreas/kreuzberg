@@ -89,21 +89,18 @@ class KreuzbergCache(Generic[T]):
 
     def _serialize_result(self, result: T) -> dict[str, Any]:
         """Serialize result for caching with metadata."""
-        return {
-            "type": type(result).__name__,
-            "data": result,
-            "cached_at": time.time()
-        }
+        return {"type": type(result).__name__, "data": result, "cached_at": time.time()}
 
     def _deserialize_result(self, cached_data: dict[str, Any]) -> T:
         """Deserialize cached result."""
         data = cached_data["data"]
-        
+
         # Handle ExtractionResult reconstruction
         if cached_data.get("type") == "ExtractionResult" and isinstance(data, dict):
             from kreuzberg._types import ExtractionResult
+
             return ExtractionResult(**data)  # type: ignore
-        
+
         return data
 
     def _cleanup_cache(self) -> None:
