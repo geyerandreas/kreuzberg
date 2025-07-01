@@ -48,8 +48,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          # Sync all workspace packages including benchmarks and install in dev mode
-          uv sync --all-packages --all-extras --dev
+          # Install main package first
+          uv pip install -e . --all-extras
+          # Install benchmarks package
+          uv pip install -e ./benchmarks
 
       - name: Create test files
         run: |

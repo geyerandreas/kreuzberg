@@ -92,7 +92,7 @@ class PDFExtractor(Extractor):
         finally:
             # Clean up temp file
             with contextlib.suppress(OSError):
-                os.unlink(temp_path)
+                Path(temp_path).unlink()
 
     def extract_path_sync(self, path: Path) -> ExtractionResult:
         """Pure sync implementation of PDF extraction from path."""
@@ -237,7 +237,7 @@ class PDFExtractor(Extractor):
                 page.close()
             return "".join(text_parts)
         except Exception as e:
-            raise ParsingError(f"Failed to extract PDF text: {e}")
+            raise ParsingError(f"Failed to extract PDF text: {e}") from e
         finally:
             if pdf:
                 pdf.close()
@@ -252,7 +252,7 @@ class PDFExtractor(Extractor):
             # Render PDF pages to images
             images = []
             pdf = pypdfium2.PdfDocument(str(path))
-            for i, page in enumerate(pdf):
+            for _i, page in enumerate(pdf):
                 # Render at 200 DPI for OCR
                 bitmap = page.render(scale=200 / 72)
                 pil_image = bitmap.to_pil()
@@ -288,12 +288,12 @@ class PDFExtractor(Extractor):
 
             finally:
                 # Clean up temp files
-                for fd, temp_path in temp_files:
+                for _fd, temp_path in temp_files:
                     with contextlib.suppress(OSError):
-                        os.unlink(temp_path)
+                        Path(temp_path).unlink()
 
         except Exception as e:
-            raise ParsingError(f"Failed to OCR PDF: {e}")
+            raise ParsingError(f"Failed to OCR PDF: {e}") from e
         finally:
             if pdf:
                 pdf.close()

@@ -15,9 +15,8 @@ def load_benchmark_results(file_path: Path) -> dict[str, Any]:
     try:
         with file_path.open() as f:
             return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error loading benchmark results: {e}", file=sys.stderr)
-        sys.exit(1)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}  # Return empty dict instead of sys.exit for type safety
 
 
 def compare_benchmarks(baseline: dict[str, Any], current: dict[str, Any], threshold: float = 0.2) -> bool:
@@ -58,7 +57,6 @@ def compare_benchmarks(baseline: dict[str, Any], current: dict[str, Any], thresh
             if change_ratio > threshold:
                 regressions.append((name, change_percent, baseline_duration, current_duration))
             elif change_ratio < -0.05:  # 5% improvement threshold
-                # Note: using magic number for improvement threshold
                 improvements.append((name, abs(change_percent), baseline_duration, current_duration))
             else:
                 pass

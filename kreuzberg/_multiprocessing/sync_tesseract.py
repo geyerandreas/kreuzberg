@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import subprocess
 import tempfile
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from PIL import Image
 
@@ -14,9 +14,6 @@ from kreuzberg._ocr._tesseract import TesseractConfig
 from kreuzberg._types import ExtractionResult
 from kreuzberg._utils._string import normalize_spaces
 from kreuzberg.exceptions import OCRError
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def process_image_sync_pure(
@@ -110,7 +107,7 @@ def process_image_sync_pure(
         for ext in [".txt"]:
             temp_file = output_base + ext
             if os.path.exists(temp_file):
-                os.unlink(temp_file)
+                Path(temp_file).unlink()
 
 
 def process_image_bytes_sync_pure(
@@ -140,7 +137,7 @@ def process_image_bytes_sync_pure(
     finally:
         # Clean up temporary image file
         if os.path.exists(image_path):
-            os.unlink(image_path)
+            Path(image_path).unlink()
 
 
 def process_batch_images_sync_pure(
