@@ -148,6 +148,26 @@ Kreuzberg supports multiple OCR engines:
 
 For comparison and selection guidance, see the [OCR Backends](https://goldziher.github.io/kreuzberg/user-guide/ocr-backends/) documentation.
 
+## Performance
+
+Kreuzberg offers both sync and async APIs. Choose the right one based on your use case:
+
+| Operation              | Sync Time | Async Time | Async Advantage    |
+| ---------------------- | --------- | ---------- | ------------------ |
+| Simple text (Markdown) | 0.4ms     | 17.5ms     | **❌ 41x slower**  |
+| HTML documents         | 1.6ms     | 1.1ms      | **✅ 1.5x faster** |
+| Complex PDFs           | 39.0s     | 8.5s       | **✅ 4.6x faster** |
+| OCR processing         | 0.4s      | 0.7s       | **✅ 1.7x faster** |
+| Batch operations       | 38.6s     | 8.5s       | **✅ 4.5x faster** |
+
+**Rule of thumb:**
+
+- Use **sync** for simple documents and CLI applications
+- Use **async** for complex PDFs, OCR, and batch processing
+- Use **batch operations** for multiple files
+
+For detailed benchmarks and methodology, see our [Performance Documentation](https://goldziher.github.io/kreuzberg/advanced/performance/).
+
 ## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](docs/contributing.md) for details on setting up your development environment and submitting pull requests.

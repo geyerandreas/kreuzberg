@@ -1,102 +1,103 @@
 {
-  "timestamp": "2025-07-01 07:34:26",
+  "timestamp": "2025-07-01 16:04:29",
   "system_info": {
-    "platform": "macOS-15.5-arm64-arm-64bit",
-    "python_version": "3.12.10 (main, Apr  9 2025, 03:49:38) [Clang 20.1.0 ]",
+    "platform": "macOS-15.5-arm64-arm-64bit-Mach-O",
+    "python_version": "3.13.3 (main, Jun  9 2025, 21:26:22) [Clang 17.0.0 (clang-1700.0.13.5)]",
     "cpu_count": 14,
     "cpu_freq_max": 4,
     "memory_total_gb": 48.0,
     "architecture": "64bit",
-    "machine": "arm64"
+    "machine": "arm64",
+    "processor": "arm"
   },
   "summary": {
     "total_benchmarks": 12,
-    "successful_benchmarks": 8,
-    "success_rate_percent": 66.66666666666666
+    "successful_benchmarks": 12,
+    "success_rate_percent": 100.0
   },
   "results": [
     {
       "name": "sync_markdown",
       "success": true,
-      "duration_seconds": 0.00010704099986469373,
-      "memory_mb": 0.015625,
+      "duration_seconds": 0.0004262909969838802,
+      "memory_mb": 0.0,
       "result_size": 12
     },
     {
       "name": "async_markdown",
       "success": true,
-      "duration_seconds": 0.0025246249988413183,
-      "memory_mb": 0.90625,
+      "duration_seconds": 0.017517542000859976,
+      "memory_mb": 2.8125,
       "result_size": 12
     },
     {
       "name": "sync_html",
       "success": true,
-      "duration_seconds": 0.0012023750005027978,
-      "memory_mb": 0.15625,
+      "duration_seconds": 0.001607666999916546,
+      "memory_mb": 0.015625,
       "result_size": 136
     },
     {
       "name": "async_html",
       "success": true,
-      "duration_seconds": 0.000723457998901722,
-      "memory_mb": 0.078125,
+      "duration_seconds": 0.0010602910006127786,
+      "memory_mb": 0.0,
       "result_size": 136
     },
     {
       "name": "sync_non-ascii-text",
-      "success": false,
-      "duration_seconds": 2.3624999812454917e-5,
-      "memory_mb": 0,
-      "error": "Already running asyncio in this thread"
+      "success": true,
+      "duration_seconds": 39.02507937500195,
+      "memory_mb": 324.640625,
+      "result_size": 85130
     },
     {
       "name": "async_non-ascii-text",
       "success": true,
-      "duration_seconds": 7.547884583000268,
-      "memory_mb": 721.140625,
+      "duration_seconds": 8.502333999997063,
+      "memory_mb": 316.09375,
       "result_size": 85496
     },
     {
       "name": "sync_searchable",
-      "success": false,
-      "duration_seconds": 4.6499999371008016e-5,
-      "memory_mb": 0,
-      "error": "Already running asyncio in this thread"
+      "success": true,
+      "duration_seconds": 0.003445291000389261,
+      "memory_mb": 0.203125,
+      "result_size": 2848
     },
     {
       "name": "async_searchable",
       "success": true,
-      "duration_seconds": 0.002538417000323534,
-      "memory_mb": 0.640625,
+      "duration_seconds": 0.0026707090000854805,
+      "memory_mb": 0.0,
       "result_size": 2848
     },
     {
       "name": "sync_non-searchable",
-      "success": false,
-      "duration_seconds": 2.2166999769979157e-5,
-      "memory_mb": 0,
-      "error": "Already running asyncio in this thread"
+      "success": true,
+      "duration_seconds": 0.393583832999866,
+      "memory_mb": 49.078125,
+      "result_size": 348
     },
     {
       "name": "async_non-searchable",
       "success": true,
-      "duration_seconds": 0.5715912079995178,
-      "memory_mb": 47.234375,
+      "duration_seconds": 0.6523270839970792,
+      "memory_mb": 47.671875,
       "result_size": 348
     },
     {
       "name": "sync_batch_sequential",
-      "success": false,
-      "duration_seconds": 0.0007659169987164205,
-      "memory_mb": 0,
-      "error": "Already running asyncio in this thread"
+      "success": true,
+      "duration_seconds": 38.574680166999315,
+      "memory_mb": 236.75,
+      "result_size": 85555
     },
     {
       "name": "async_batch_concurrent",
       "success": true,
-      "duration_seconds": 7.631814458000008,
-      "memory_mb": 96.78125,
+      "duration_seconds": 8.503342125000927,
+      "memory_mb": -101.171875,
       "result_size": 86312
     }
   ]
