@@ -49,6 +49,8 @@ jobs:
       - name: Install dependencies
         run: |
           uv sync --all-packages
+          # Ensure benchmarks CLI is available
+          uv pip install -e ./benchmarks
 
       - name: Create test files
         run: |
