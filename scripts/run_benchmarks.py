@@ -8,6 +8,7 @@ import json
 import platform
 import sys
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +34,7 @@ def collect_system_info() -> dict[str, Any]:
     }
 
 
-def benchmark_sync_function(name: str, func, *args, **kwargs) -> dict[str, Any]:
+def benchmark_sync_function(name: str, func: Callable[..., Any], *args: Any, **kwargs: Any) -> dict[str, Any]:
     """Benchmark a synchronous function."""
     process = psutil.Process()
     start_memory = process.memory_info().rss / (1024 * 1024)
@@ -53,7 +54,7 @@ def benchmark_sync_function(name: str, func, *args, **kwargs) -> dict[str, Any]:
             "memory_mb": memory_used,
             "result_size": len(result.content) if hasattr(result, "content") else len(str(result)),
         }
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         duration = time.perf_counter() - start_time
         return {
             "name": name,
@@ -64,7 +65,7 @@ def benchmark_sync_function(name: str, func, *args, **kwargs) -> dict[str, Any]:
         }
 
 
-async def benchmark_async_function(name: str, func, *args, **kwargs) -> dict[str, Any]:
+async def benchmark_async_function(name: str, func: Callable[..., Any], *args: Any, **kwargs: Any) -> dict[str, Any]:
     """Benchmark an asynchronous function."""
     process = psutil.Process()
     start_memory = process.memory_info().rss / (1024 * 1024)
@@ -87,7 +88,7 @@ async def benchmark_async_function(name: str, func, *args, **kwargs) -> dict[str
             "memory_mb": memory_used,
             "result_size": len(result.content) if hasattr(result, "content") else len(str(result)),
         }
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         duration = time.perf_counter() - start_time
         return {
             "name": name,
@@ -98,19 +99,19 @@ async def benchmark_async_function(name: str, func, *args, **kwargs) -> dict[str
         }
 
 
-async def run_comparison_benchmarks():
+async def run_comparison_benchmarks() -> list[dict[str, Any]]:
     """Run sync vs async comparison benchmarks."""
     test_files_dir = Path("tests/test_source_files")
     if not test_files_dir.exists():
-        return None
+        return []
 
     # Find test files
-    test_files = []
+    test_files: list[Path] = []
     for ext in [".md", ".html", ".pdf", ".docx"]:
         test_files.extend(test_files_dir.glob(f"*{ext}"))
 
     if not test_files:
-        return None
+        return []
 
     test_files = test_files[:5]  # Limit to first 5 files
 
@@ -127,8 +128,9 @@ async def run_comparison_benchmarks():
         results.append(async_result)
 
     # Batch benchmarks
-    if len(test_files) >= 3:
-        batch_files = test_files[:3]
+    min_batch_size = 3
+    if len(test_files) >= min_batch_size:
+        batch_files = test_files[:min_batch_size]
 
         # Sync batch (sequential)
         sync_batch_result = benchmark_sync_function(
@@ -143,7 +145,7 @@ async def run_comparison_benchmarks():
     return results
 
 
-def print_summary(results: list[dict[str, Any]], system_info: dict[str, Any]) -> None:
+def print_summary(results: list[dict[str, Any]], _system_info: dict[str, Any]) -> None:
     """Print benchmark summary."""
     successful_results = [r for r in results if r["success"]]
     sync_results = [r for r in successful_results if r["name"].startswith("sync_")]
@@ -180,7 +182,7 @@ def save_results(
     }
 
     Path(output_file).parent.mkdir(parents=True, exist_ok=True)
-    with open(output_file, "w") as f:
+    with Path(output_file).open("w") as f:
         json.dump(output_data, f, indent=2)
 
 

@@ -14,7 +14,8 @@ def load_benchmark_results(file_path: Path) -> dict[str, Any]:
     """Load benchmark results from JSON file."""
     try:
         with file_path.open() as f:
-            return json.load(f)
+            data: dict[str, Any] = json.load(f)
+            return data
     except (FileNotFoundError, json.JSONDecodeError):
         sys.exit(1)
 
@@ -54,10 +55,10 @@ def compare_benchmarks(baseline: dict[str, Any], current: dict[str, Any], thresh
             change_ratio = (current_duration - baseline_duration) / baseline_duration
             change_percent = change_ratio * 100
 
+            improvement_threshold = -0.05  # 5% improvement threshold
             if change_ratio > threshold:
                 regressions.append((name, change_percent, baseline_duration, current_duration))
-            elif change_ratio < -0.05:  # 5% improvement threshold
-                # Note: using magic number for improvement threshold
+            elif change_ratio < improvement_threshold:
                 improvements.append((name, abs(change_percent), baseline_duration, current_duration))
             else:
                 pass
