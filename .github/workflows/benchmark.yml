@@ -2,7 +2,7 @@ name: Performance Benchmarks
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/smart-multiprocessing]
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
