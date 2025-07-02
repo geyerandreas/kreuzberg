@@ -10,11 +10,11 @@ from kreuzberg._chunker import get_chunker
 from kreuzberg._mime_types import (
     validate_mime_type,
 )
-from kreuzberg.exceptions import ValidationError
 from kreuzberg._registry import ExtractorRegistry
 from kreuzberg._types import ExtractionConfig
 from kreuzberg._utils._string import safe_decode
 from kreuzberg._utils._sync import run_maybe_sync, run_sync_only
+from kreuzberg.exceptions import ValidationError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -133,7 +133,7 @@ async def extract_file(
         path = Path(file_path)
         if not path.exists():
             raise ValidationError("The file does not exist", context={"file_path": str(path)})
-        
+
         mime_type = validate_mime_type(file_path=file_path, mime_type=mime_type)
         if extractor := ExtractorRegistry.get_extractor(mime_type=mime_type, config=config):
             result = await extractor.extract_path_async(Path(file_path))
@@ -337,7 +337,7 @@ def extract_file_sync(
         path = Path(file_path)
         if not path.exists():
             raise ValidationError("The file does not exist", context={"file_path": str(path)})
-        
+
         mime_type = validate_mime_type(file_path=file_path, mime_type=mime_type)
         if extractor := ExtractorRegistry.get_extractor(mime_type=mime_type, config=config):
             result = extractor.extract_path_sync(Path(file_path))

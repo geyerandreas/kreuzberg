@@ -125,6 +125,11 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         import numpy as np
 
         await self._init_paddle_ocr(**kwargs)
+
+        # Convert grayscale images to RGB as PaddleOCR expects 3-channel images
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
         image_np = np.array(image)
         try:
             result = await run_sync(self._paddle_ocr.ocr, image_np, cls=kwargs.get("use_angle_cls", True))
@@ -153,7 +158,7 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
             raise OCRError(f"Failed to load or process image using PaddleOCR: {e}") from e
 
     @staticmethod
-    def _process_paddle_result(result: list[Any], image: Image.Image) -> ExtractionResult:
+    def _process_paddle_result(result: list[Any] | Any, image: Image.Image) -> ExtractionResult:
         """Process PaddleOCR result into an ExtractionResult with metadata.
 
         Args:
@@ -205,7 +210,12 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
 
                 text_content += "\n"
 
-        width, height = image.size
+        # Handle both real images and mocks
+        if hasattr(image, "width") and hasattr(image, "height"):
+            width = image.width
+            height = image.height
+        else:
+            width, height = image.size
         metadata = Metadata(
             width=width,
             height=height,
