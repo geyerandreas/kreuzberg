@@ -123,9 +123,9 @@ def test_shutdown_process_pool() -> None:
     shutdown_process_pool()  # Should not raise
 
 
-def test_extract_pdf_text_worker(pdf_path: Path) -> None:
+def test_extract_pdf_text_worker(searchable_pdf: Path) -> None:
     """Test PDF text extraction worker."""
-    path_str = str(pdf_path)
+    path_str = str(searchable_pdf)
 
     pdf_path_str, text = _extract_pdf_text_worker(path_str)
 
@@ -166,9 +166,9 @@ def test_extract_pdf_text_worker_with_mock() -> None:
         mock_pdf.close.assert_called_once()
 
 
-def test_extract_pdf_images_worker(pdf_path: Path) -> None:
+def test_extract_pdf_images_worker(searchable_pdf: Path) -> None:
     """Test PDF image extraction worker."""
-    path_str = str(pdf_path)
+    path_str = str(searchable_pdf)
 
     pdf_path_str, images = _extract_pdf_images_worker(path_str, scale=2.0)
 

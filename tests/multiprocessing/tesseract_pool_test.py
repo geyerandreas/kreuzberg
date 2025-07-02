@@ -156,14 +156,17 @@ class TestTesseractProcessPool:
         """Test context manager functionality."""
         pool = TesseractProcessPool(max_workers=2)
 
-        with patch("kreuzberg._multiprocessing.process_manager.ProcessPoolManager.__enter__") as mock_enter, patch("kreuzberg._multiprocessing.process_manager.ProcessPoolManager.__exit__") as mock_exit:
-                mock_enter.return_value = pool
+        with (
+            patch("kreuzberg._multiprocessing.process_manager.ProcessPoolManager.__enter__") as mock_enter,
+            patch("kreuzberg._multiprocessing.process_manager.ProcessPoolManager.__exit__") as mock_exit,
+        ):
+            mock_enter.return_value = pool
 
-                with pool as p:
-                    assert p is pool
+            with pool as p:
+                assert p is pool
 
-                mock_enter.assert_called_once()
-                mock_exit.assert_called_once()
+            mock_enter.assert_called_once()
+            mock_exit.assert_called_once()
 
     @pytest.mark.anyio
     async def test_process_image_async(self, test_image_path: Path) -> None:

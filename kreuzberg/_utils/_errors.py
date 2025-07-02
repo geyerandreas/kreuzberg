@@ -89,6 +89,18 @@ def is_transient_error(error: Exception) -> bool:
     Returns:
         True if the error is likely transient
     """
+    # Check for specific exception types first
+    transient_types = (
+        OSError,
+        PermissionError,
+        TimeoutError,
+        ConnectionError,
+        BrokenPipeError,
+    )
+    
+    if isinstance(error, transient_types):
+        return True
+    
     transient_patterns = [
         # File system
         "temporary",

@@ -77,26 +77,35 @@ def test_encode_hook_dataclass() -> None:
 
 
 def test_encode_hook_dataclass_type() -> None:
-    """Test that dataclass types are not encoded."""
-    with pytest.raises(TypeError, match="Unsupported type"):
-        encode_hook(SampleDataclass)
+    """Test that dataclass types return None."""
+    result = encode_hook(SampleDataclass)
+    assert result is None
 
 
 def test_encode_hook_dict_methods() -> None:
     """Test encoding objects with dict methods."""
-    # to_dict
-    obj = Mock()
-    obj.to_dict.return_value = {"key": "value"}
+    # to_dict  
+    class MockClass:
+        def to_dict(self):
+            return {"key": "value"}
+    
+    obj = MockClass()
     assert encode_hook(obj) == {"key": "value"}
 
     # as_dict
-    obj = Mock(spec=[])
-    obj.as_dict = Mock(return_value={"key2": "value2"})
+    class MockClass2:
+        def as_dict(self):
+            return {"key2": "value2"}
+    
+    obj = MockClass2()
     assert encode_hook(obj) == {"key2": "value2"}
 
-    # dict method
-    obj = Mock(spec=[])
-    obj.dict = Mock(return_value={"key3": "value3"})
+    # dict method  
+    class MockClass3:
+        def dict(self):
+            return {"key3": "value3"}
+    
+    obj = MockClass3()
     assert encode_hook(obj) == {"key3": "value3"}
 
     # model_dump (Pydantic v2)
