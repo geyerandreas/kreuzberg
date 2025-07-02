@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import contextlib
 import re
 import sys
 from json import JSONDecodeError, loads
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal, cast
 
-import anyio
 from anyio import Path as AsyncPath
 from anyio import run_process
 
@@ -21,7 +22,7 @@ from kreuzberg.exceptions import MissingDependencyError, ParsingError, Validatio
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Mapping
     from os import PathLike
-    from pathlib import Path
+
 
 if sys.version_info < (3, 11):  # pragma: no cover
     from exceptiongroup import ExceptionGroup  # type: ignore[import-not-found]
@@ -194,7 +195,7 @@ class PandocExtractor(Extractor):
             raise ParsingError("Failed to process file", context={"file": str(path), "errors": eg.exceptions}) from eg
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
-        """Synchronous version of extract_bytes_async.
+        """Pure sync implementation of extract_bytes.
 
         Args:
             content: The content bytes to process.
@@ -202,18 +203,47 @@ class PandocExtractor(Extractor):
         Returns:
             ExtractionResult with the extracted text and metadata.
         """
-        return anyio.run(self.extract_bytes_async, content)
+        import os
+        import tempfile
+        from pathlib import Path
+
+        extension = self._get_pandoc_type_from_mime_type(self.mime_type)
+        fd, temp_path = tempfile.mkstemp(suffix=f".{extension}")
+
+        try:
+            # Write content to temp file
+            with os.fdopen(fd, "wb") as f:
+                f.write(content)
+
+            return self.extract_path_sync(Path(temp_path))
+        finally:
+            with contextlib.suppress(OSError):
+                Path(temp_path).unlink()
 
     def extract_path_sync(self, path: Path) -> ExtractionResult:
-        """Synchronous version of extract_path_async.
+        """Pure sync implementation of extract_path.
 
         Args:
             path: The path to the file to process.
 
         Returns:
             ExtractionResult with the extracted text and metadata.
+
+        Raises:
+            ParsingError: When file processing fails.
         """
-        return anyio.run(self.extract_path_async, path)
+        self._validate_pandoc_version_sync()
+        self._get_pandoc_type_from_mime_type(self.mime_type)
+
+        try:
+            metadata = self._extract_metadata_sync(path)
+            content = self._extract_file_sync(path)
+
+            return ExtractionResult(
+                content=normalize_spaces(content), metadata=metadata, mime_type=MARKDOWN_MIME_TYPE, chunks=[]
+            )
+        except Exception as e:
+            raise ParsingError("Failed to process file", context={"file": str(path), "error": str(e)}) from e
 
     async def _validate_pandoc_version(self) -> None:
         """Validate that the installed Pandoc version meets the minimum requirement.
@@ -559,6 +589,130 @@ class PandocExtractor(Extractor):
                 return None
 
         return None
+
+    def _validate_pandoc_version_sync(self) -> None:
+        """Synchronous version of _validate_pandoc_version."""
+        import subprocess
+
+        try:
+            if self._checked_version:
+                return
+
+            result = subprocess.run(["pandoc", "--version"], capture_output=True, text=True, check=False)  # noqa: S607
+
+            if result.returncode != 0:
+                raise MissingDependencyError(
+                    "Pandoc version 2 or above is a required system dependency. "
+                    "Please install it on your system and make sure its available in $PATH."
+                )
+
+            stdout = result.stdout
+
+            # Use same version detection logic as async version
+            version_match = re.search(
+                r"pandoc(?:\.exe)?(?:\s+|\s+v|\s+version\s+)(\d+)\.(\d+)(?:\.(\d+))?", stdout, re.IGNORECASE
+            )
+
+            if not version_match:
+                version_match = re.search(r"pandoc\s+\(version\s+(\d+)\.(\d+)(?:\.(\d+))?\)", stdout, re.IGNORECASE)
+
+            if not version_match:
+                version_match = re.search(r"pandoc-(\d+)\.(\d+)(?:\.(\d+))?", stdout)
+
+            if not version_match:
+                version_match = re.search(r"^(\d+)\.(\d+)(?:\.(\d+)(?:\.(\d+))?)?", stdout, re.MULTILINE)
+
+            if version_match and int(version_match.group(1)) >= MINIMAL_SUPPORTED_PANDOC_VERSION:
+                self._checked_version = True
+                return
+
+            raise MissingDependencyError(
+                "Pandoc version 2 or above is a required system dependency. "
+                "Please install it on your system and make sure its available in $PATH."
+            )
+
+        except (subprocess.SubprocessError, FileNotFoundError) as e:
+            raise MissingDependencyError(
+                "Pandoc version 2 or above is a required system dependency. "
+                "Please install it on your system and make sure its available in $PATH."
+            ) from e
+
+    def _extract_metadata_sync(self, path: Path) -> Metadata:
+        """Synchronous version of _handle_extract_metadata."""
+        import os
+        import subprocess
+        import tempfile
+
+        pandoc_type = self._get_pandoc_type_from_mime_type(self.mime_type)
+        fd, metadata_file = tempfile.mkstemp(suffix=".json")
+        os.close(fd)
+
+        try:
+            command = [
+                "pandoc",
+                str(path),
+                f"--from={pandoc_type}",
+                "--to=json",
+                "--standalone",
+                "--quiet",
+                "--output",
+                str(metadata_file),
+            ]
+
+            result = subprocess.run(command, capture_output=True, text=True, check=False)  # noqa: S603
+
+            if result.returncode != 0:
+                raise ParsingError("Failed to extract file data", context={"file": str(path), "error": result.stderr})
+
+            with Path(metadata_file).open(encoding="utf-8") as f:
+                json_data = loads(f.read())
+
+            return self._extract_metadata(json_data)
+
+        except (OSError, JSONDecodeError) as e:
+            raise ParsingError("Failed to extract file data", context={"file": str(path)}) from e
+        finally:
+            with contextlib.suppress(OSError):
+                Path(metadata_file).unlink()
+
+    def _extract_file_sync(self, path: Path) -> str:
+        """Synchronous version of _handle_extract_file."""
+        import os
+        import subprocess
+        import tempfile
+
+        pandoc_type = self._get_pandoc_type_from_mime_type(self.mime_type)
+        fd, output_path = tempfile.mkstemp(suffix=".md")
+        os.close(fd)
+
+        try:
+            command = [
+                "pandoc",
+                str(path),
+                f"--from={pandoc_type}",
+                "--to=markdown",
+                "--standalone",
+                "--wrap=preserve",
+                "--quiet",
+                "--output",
+                str(output_path),
+            ]
+
+            result = subprocess.run(command, capture_output=True, text=True, check=False)  # noqa: S603
+
+            if result.returncode != 0:
+                raise ParsingError("Failed to extract file data", context={"file": str(path), "error": result.stderr})
+
+            with Path(output_path).open(encoding="utf-8") as f:
+                text = f.read()
+
+            return normalize_spaces(text)
+
+        except OSError as e:
+            raise ParsingError("Failed to extract file data", context={"file": str(path)}) from e
+        finally:
+            with contextlib.suppress(OSError):
+                Path(output_path).unlink()
 
 
 class MarkdownExtractor(PandocExtractor):

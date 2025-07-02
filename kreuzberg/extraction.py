@@ -13,7 +13,7 @@ from kreuzberg._mime_types import (
 from kreuzberg._registry import ExtractorRegistry
 from kreuzberg._types import ExtractionConfig
 from kreuzberg._utils._string import safe_decode
-from kreuzberg._utils._sync import run_maybe_async, run_maybe_sync
+from kreuzberg._utils._sync import run_maybe_sync, run_sync_only
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -42,7 +42,7 @@ async def _validate_and_post_process_async(result: ExtractionResult, config: Ext
 
 def _validate_and_post_process_sync(result: ExtractionResult, config: ExtractionConfig) -> ExtractionResult:
     for validator in config.validators or []:
-        run_maybe_async(validator, result)
+        run_sync_only(validator, result)
 
     if config.chunk_content:
         result.chunks = _handle_chunk_content(
@@ -52,7 +52,7 @@ def _validate_and_post_process_sync(result: ExtractionResult, config: Extraction
         )
 
     for post_processor in config.post_processing_hooks or []:
-        result = run_maybe_async(post_processor, result)
+        result = run_sync_only(post_processor, result)
 
     return result
 

@@ -47,6 +47,7 @@ dependencies = [
   "exceptiongroup>=1.2.2; python_version<'3.11'",
   "html-to-markdown>=1.4.0",
   "playa-pdf>=0.6.1",                                 # pinned due to breaking changes in 0.5.0
+  "psutil>=7.0.0",
   "pypdfium2==4.30.0",                                # pinned due to bug in 4.30.1, until v5 is stable
   "python-calamine>=0.3.2",
   "python-pptx>=1.0.2",
@@ -113,6 +114,9 @@ doc = [
   "mkdocstrings[python]>=0.29.0",
 ]
 
+[tool.setuptools]
+packages = [ "kreuzberg" ]
+
 [tool.setuptools.package-data]
 kreuzberg = [ "py.typed" ]
 
@@ -167,6 +171,7 @@ keep_full_version = true
 max_supported_python = "3.13"
 
 [tool.pytest.ini_options]
+timeout = 300
 filterwarnings = [
   "ignore:Exception ignored in:pytest.PytestUnraisableExceptionWarning",
   "ignore:pkg_resources is deprecated as an API:DeprecationWarning",
@@ -185,12 +190,27 @@ exclude_lines = [ 'if TYPE_CHECKING:', "except ImportError:" ]
 fail_under = 95
 
 [tool.mypy]
-packages = [ "kreuzberg", "tests" ]
+packages = [ "kreuzberg", "tests", "benchmarks.src.kreuzberg_benchmarks" ]
 python_version = "3.9"
 disable_error_code = 'import-untyped'
 implicit_reexport = false
 show_error_codes = true
 strict = true
 
+[[tool.mypy.overrides]]
+module = [ "rich.*", "typer.*", "matplotlib.*", "memory_profiler.*", "py_spy.*" ]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "benchmarks.src.kreuzberg_benchmarks.*"
+disable_error_code = [ "misc" ]
+
 [tool.uv.sources]
 uv-bump = { git = "https://github.com/Goldziher/uv-bump" }
+kreuzberg-benchmarks = { workspace = true }
+
+[tool.uv.workspace]
+members = [
+  ".",
+  "benchmarks",
+]

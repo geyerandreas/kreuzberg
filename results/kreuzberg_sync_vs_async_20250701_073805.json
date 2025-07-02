@@ -1,0 +1,68 @@
+{
+  "name": "kreuzberg_sync_vs_async",
+  "timestamp": "2025-07-01T09:38:05.827911",
+  "system_info": {
+    "platform": "macOS-15.5-arm64-arm-64bit-Mach-O",
+    "python_version": "3.13.3 (main, Jun  9 2025, 21:26:22) [Clang 17.0.0 (clang-1700.0.13.5)]",
+    "cpu_count": 14,
+    "cpu_freq_max": 4,
+    "memory_total_gb": 48.0,
+    "architecture": "64bit",
+    "machine": "arm64",
+    "processor": "arm"
+  },
+  "summary": {
+    "total_duration_seconds": 0.1276841670005524,
+    "total_benchmarks": 2,
+    "successful_benchmarks": 2,
+    "success_rate_percent": 100.0
+  },
+  "results": [
+    {
+      "name": "comparison_sync_default",
+      "success": true,
+      "timestamp": "2025-07-01T09:38:05.813548",
+      "performance": {
+        "duration_seconds": 0.10984179200022481,
+        "memory_peak_mb": 76.96875,
+        "memory_average_mb": 76.6875,
+        "cpu_percent_average": 26.755555555555556,
+        "cpu_percent_peak": 37.3,
+        "gc_collections": {
+          "0": 71,
+          "1": 0,
+          "2": 0
+        },
+        "exception_info": null
+      },
+      "metadata": {
+        "type": "sync",
+        "operation": "single_file",
+        "file": "test.pdf"
+      }
+    },
+    {
+      "name": "comparison_async_default",
+      "success": true,
+      "timestamp": "2025-07-01T09:38:05.826857",
+      "performance": {
+        "duration_seconds": 0.001186999999845284,
+        "memory_peak_mb": 79.15625,
+        "memory_average_mb": 79.15625,
+        "cpu_percent_average": 0.0,
+        "cpu_percent_peak": 0.0,
+        "gc_collections": {
+          "0": 261,
+          "1": 0,
+          "2": 0
+        },
+        "exception_info": null
+      },
+      "metadata": {
+        "type": "async",
+        "operation": "single_file",
+        "file": "test.pdf"
+      }
+    }
+  ]
+}

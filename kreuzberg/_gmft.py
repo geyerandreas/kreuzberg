@@ -174,3 +174,18 @@ async def extract_tables(file_path: str | PathLike[str], config: GMFTConfig | No
         raise MissingDependencyError.create_for_package(
             dependency_group="gmft", functionality="table extraction", package_name="gmft"
         ) from e
+
+
+def extract_tables_sync(file_path: str | PathLike[str], config: GMFTConfig | None = None) -> list[TableData]:
+    """Synchronous wrapper for extract_tables.
+
+    Args:
+        file_path: The path to the PDF file.
+        config: An optional configuration object.
+
+    Returns:
+        A list of table data dictionaries.
+    """
+    import anyio
+
+    return anyio.run(extract_tables, file_path, config)

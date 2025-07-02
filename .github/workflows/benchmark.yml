@@ -1,0 +1,212 @@
+name: Performance Benchmarks
+
+on:
+  push:
+    branches: [main, feat/smart-multiprocessing]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+  schedule:
+
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      include_stress_tests:
+        description: 'Include stress tests'
+        required: false
+        default: 'false'
+        type: boolean
+      flame_graphs:
+        description: 'Generate flame graphs'
+        required: false
+        default: 'false'
+        type: boolean
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ${{ github.event_name == 'pull_request' && fromJSON('["3.13"]') || fromJSON('["3.9", "3.10", "3.11", "3.12", "3.13"]') }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          version: "latest"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pandoc tesseract-ocr
+
+      - name: Install dependencies
+        run: |
+          # Sync all workspace packages with all extras
+          uv sync --all-packages --all-extras
+          # Install benchmarks package explicitly
+          cd benchmarks && uv pip install -e .
+          # Verify benchmarks CLI is available
+          uv run python -m kreuzberg_benchmarks --help
+
+      - name: Verify test files exist
+        run: |
+          ls -la tests/test_source_files/
+          echo "Using existing test files from tests/test_source_files/"
+
+      - name: Run benchmarks
+        run: |
+          # Run comparison benchmarks (sync vs async)
+          uv run python -m kreuzberg_benchmarks run \
+            --comparison-only \
+            --test-files-dir tests/test_source_files \
+            --output-dir benchmarks/results \
+            --suite-name "ci_sync_vs_async" \
+            ${{ github.event.inputs.flame_graphs == 'true' && '--flame' || '' }}
+
+      - name: Run stress tests (if requested)
+        if: github.event.inputs.include_stress_tests == 'true' || github.event_name == 'schedule'
+        run: |
+          uv run python -m kreuzberg_benchmarks run \
+            --stress \
+            --test-files-dir tests/test_source_files \
+            --output-dir benchmarks/results \
+            --suite-name "ci_stress_tests"
+
+      - name: Archive benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: benchmarks/results/
+          retention-days: 30
+
+      - name: Comment benchmark results on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            // Read the latest benchmark results
+            const resultsPath = 'benchmarks/results/latest.json';
+            if (!fs.existsSync(resultsPath)) {
+              console.log('No benchmark results found');
+              return;
+            }
+
+            const results = JSON.parse(fs.readFileSync(resultsPath, 'utf8'));
+
+            // Format results for PR comment
+            const formatDuration = (seconds) => {
+              if (seconds < 1) return `${(seconds * 1000).toFixed(1)}ms`;
+              return `${seconds.toFixed(3)}s`;
+            };
+
+            const formatMemory = (bytes) => {
+              const mb = bytes / (1024 * 1024);
+              return `${mb.toFixed(1)}MB`;
+            };
+
+            let comment = `## 🚀 Performance Benchmark Results\n\n`;
+            comment += `**Suite:** ${results.suite_name}\n`;
+            comment += `**Total Duration:** ${formatDuration(results.summary.total_time)}\n`;
+            comment += `**Peak Memory:** ${formatMemory(results.summary.peak_memory)}\n`;
+            comment += `**Success Rate:** ${results.summary.success_rate}%\n\n`;
+
+            comment += `### Individual Benchmarks\n\n`;
+            comment += `| Benchmark | Status | Duration | Memory Peak | CPU Avg |\n`;
+            comment += `|-----------|--------|----------|-------------|----------|\n`;
+
+            for (const bench of results.benchmarks) {
+              const status = bench.success ? '✅' : '❌';
+              const duration = formatDuration(bench.duration);
+              const memory = formatMemory(bench.memory_peak);
+              const cpu = bench.cpu_avg ? `${bench.cpu_avg.toFixed(1)}%` : 'N/A';
+
+              comment += `| ${bench.name} | ${status} | ${duration} | ${memory} | ${cpu} |\n`;
+            }
+
+            comment += `\n**System:** ${results.system_info.platform} (${results.system_info.cpu_count} cores)\n`;
+            comment += `**Python:** ${results.system_info.python_version}\n\n`;
+            comment += `<details><summary>View detailed results</summary>\n\n`;
+            comment += `\`\`\`json\n${JSON.stringify(results, null, 2)}\n\`\`\`\n\n</details>`;
+
+            // Post comment to PR
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      - name: Check performance regression
+        if: github.event_name == 'pull_request'
+        run: |
+          # Check if benchmark results exist
+          if [ ! -f "benchmarks/results/latest.json" ]; then
+            echo "❌ Benchmark results not found"
+            exit 1
+          fi
+
+          # Check if any benchmarks failed
+          FAILED_COUNT=$(uv run python -c "
+          import json
+          with open('benchmarks/results/latest.json') as f:
+              data = json.load(f)
+          failed = sum(1 for b in data['benchmarks'] if not b['success'])
+          print(failed)
+          ")
+
+          if [ "$FAILED_COUNT" -gt 0 ]; then
+            echo "❌ $FAILED_COUNT benchmark(s) failed"
+            exit 1
+          fi
+
+          # Download baseline for comparison if it exists
+          echo "Checking for performance regression against baseline..."
+          if [ -f ".github/benchmarks/baseline.json" ]; then
+            uv run python scripts/compare_benchmarks.py \
+              --baseline .github/benchmarks/baseline.json \
+              --current benchmarks/results/latest.json \
+              --threshold 0.2
+          else
+            echo "⚠️ No baseline found, skipping regression check"
+          fi
+
+          echo "✅ All benchmarks passed successfully"
+
+
+  store-baseline:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: benchmark
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download benchmark results
+        uses: actions/download-artifact@v4
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: benchmarks/results/
+
+      - name: Store baseline in repository
+        run: |
+          mkdir -p .github/benchmarks
+          cp benchmarks/results/latest.json .github/benchmarks/baseline.json
+
+      - name: Commit baseline
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add .github/benchmarks/baseline.json
+          git commit -m "chore: update performance baseline [skip ci]" || exit 0
+          git push
