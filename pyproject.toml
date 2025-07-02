@@ -53,7 +53,7 @@ dependencies = [
 
 optional-dependencies.all = [
   # cli
-  "click>=8.1.0",
+  "click>=8.2.1",
   # easyocr
   "easyocr>=1.7.2",
   # gmft
@@ -61,7 +61,7 @@ optional-dependencies.all = [
   # paddle
   "paddleocr>=3.1.0",
   "paddlepaddle>=3.1.0",
-  "rich>=13.0.0",
+  "rich>=14.0.0",
   # chunking
   "semantic-text-splitter>=0.27.0",
   "setuptools>=80.9.0",
@@ -71,8 +71,8 @@ optional-dependencies.chunking = [
   "semantic-text-splitter>=0.27.0",
 ]
 optional-dependencies.cli = [
-  "click>=8.1.0",
-  "rich>=13.0.0",
+  "click>=8.2.1",
+  "rich>=14.0.0",
   "tomli>=2.0.0; python_version<'3.11'",
 ]
 optional-dependencies.easyocr = [
@@ -173,6 +173,9 @@ lint.pylint.max-args = 10
 lint.pylint.max-branches = 15
 lint.pylint.max-returns = 10
 
+[tool.codespell]
+ignore-words-list = "inh,te,tha,vie"
+
 [tool.pyproject-fmt]
 keep_full_version = true
 max_supported_python = "3.13"
@@ -221,6 +224,3 @@ members = [
   ".",
   "benchmarks",
 ]
-
-[tool.codespell]
-ignore-words-list = "inh,te,tha,vie"
