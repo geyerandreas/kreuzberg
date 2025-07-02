@@ -23,6 +23,27 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
+# Module-level functions for process pool tests (must be picklable)
+def _simple_add(x: int, y: int) -> int:
+    """Simple addition function for testing."""
+    return x + y
+
+
+def _process_data(data: dict[str, Any]) -> dict[str, Any]:
+    """Process data for testing."""
+    return {"processed": True, "value": data.get("value", 0) * 2}
+
+
+def _failing_function() -> None:
+    """Function that raises an exception for testing."""
+    raise ValueError("Test error")
+
+
+def _compute_square(n: int) -> int:
+    """Compute square of a number for testing."""
+    return n * n
+
+
 def test_pool_size() -> None:
     """Test that pool size is correctly calculated."""
     expected_size = max(1, mp.cpu_count() - 1)
@@ -88,13 +109,10 @@ def test_submit_to_process_pool() -> None:
     """Test submitting work to process pool."""
     shutdown_process_pool()
 
-    def simple_func(x: int, y: int) -> int:
-        return x + y
-
-    result = submit_to_process_pool(simple_func, 5, 10)
+    result = submit_to_process_pool(_simple_add, 5, 10)
     assert result == 15
 
-    result = submit_to_process_pool(simple_func, x=3, y=7)
+    result = submit_to_process_pool(_simple_add, x=3, y=7)
     assert result == 10
 
     shutdown_process_pool()
@@ -138,12 +156,12 @@ def test_extract_pdf_text_worker_error() -> None:
 def test_extract_pdf_text_worker_with_mock() -> None:
     """Test PDF text extraction worker with mocked pypdfium2."""
     with patch("pypdfium2.PdfDocument") as mock_pdf_class:
-        mock_pdf = Mock()
+        mock_pdf = Mock(spec=["__iter__", "close"])
         mock_page = Mock()
         mock_text_page = Mock()
 
         mock_pdf_class.return_value = mock_pdf
-        mock_pdf.__iter__.return_value = [mock_page]
+        mock_pdf.__iter__.return_value = iter([mock_page])
         mock_page.get_textpage.return_value = mock_text_page
         mock_text_page.get_text_range.return_value = "Test text"
 
@@ -183,13 +201,13 @@ def test_extract_pdf_images_worker_error() -> None:
 def test_extract_pdf_images_worker_with_mock() -> None:
     """Test PDF image extraction worker with mocked pypdfium2."""
     with patch("pypdfium2.PdfDocument") as mock_pdf_class:
-        mock_pdf = Mock()
+        mock_pdf = Mock(spec=["__iter__", "close"])
         mock_page = Mock()
         mock_bitmap = Mock()
         mock_pil_image = Mock(spec=Image.Image)
 
         mock_pdf_class.return_value = mock_pdf
-        mock_pdf.__iter__.return_value = [mock_page]
+        mock_pdf.__iter__.return_value = iter([mock_page])
         mock_page.render.return_value = mock_bitmap
         mock_bitmap.to_pil.return_value = mock_pil_image
 
@@ -217,12 +235,9 @@ def test_process_pool_concurrent_usage() -> None:
     """Test concurrent usage of process pool."""
     shutdown_process_pool()
 
-    def compute(n: int) -> int:
-        return n * n
-
     results = []
     for i in range(5):
-        result = submit_to_process_pool(compute, i)
+        result = submit_to_process_pool(_compute_square, i)
         results.append(result)
 
     assert results == [0, 1, 4, 9, 16]
