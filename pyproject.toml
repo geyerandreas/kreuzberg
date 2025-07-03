@@ -52,22 +52,7 @@ dependencies = [
 ]
 
 optional-dependencies.all = [
-  # cli
-  "click>=8.2.1",
-  # easyocr
-  "easyocr>=1.7.2",
-  # gmft
-  "gmft>=0.4.2",
-  # api
-  "litestar[standard,structlog,opentelemetry]>=2.1.6",
-  # paddle
-  "paddleocr>=3.1.0",
-  "paddlepaddle>=3.1.0",
-  "rich>=14.0.0",
-  # chunking
-  "semantic-text-splitter>=0.27.0",
-  "setuptools>=80.9.0",
-  "tomli>=2.0.0; python_version<'3.11'",
+  "kreuzberg[api,chunking,cli,easyocr,gmft,paddleocr]",
 ]
 optional-dependencies.api = [ "litestar[standard,structlog,opentelemetry]>=2.1.6" ]
 
