@@ -23,78 +23,28 @@ def _get_paddleocr_instance(config: PaddleOCRConfig) -> Any:
         raise MissingDependencyError("PaddleOCR is not installed. Install it with: pip install paddleocr") from e
 
     # Handle device configuration
-    use_gpu = False
     if hasattr(config, "device"):
         if config.device and config.device.lower() != "cpu":
-            use_gpu = True
+            pass
     elif hasattr(config, "use_gpu"):
-        use_gpu = config.use_gpu
+        pass
 
     kwargs = {
-        "use_angle_cls": config.use_angle_cls,
         "lang": config.language,
-        "det_algorithm": config.det_algorithm,
-        "rec_algorithm": config.rec_algorithm,
-        "cls_algorithm": config.rec_algorithm,  # Use rec_algorithm as fallback
-        "use_gpu": use_gpu,
-        "show_log": False,  # Disable logging for sync mode
+        "use_textline_orientation": config.use_angle_cls,
     }
 
-    # Add optional parameters if they exist in config
-    optional_params = [
-        "det_model_dir",
-        "rec_model_dir",
-        "cls_model_dir",
-        "det_db_thresh",
-        "det_db_box_thresh",
-        "det_db_unclip_ratio",
-        "use_dilation",
-        "det_db_score_mode",
-        "det_east_score_thresh",
-        "det_east_cover_thresh",
-        "det_east_nms_thresh",
-        "det_fce_box_thresh",
-        "det_pse_thresh",
-        "det_pse_box_thresh",
-        "det_pse_min_area",
-        "det_pse_box_type",
-        "det_pse_scale",
-        "scales",
-        "alpha",
-        "beta",
-        "fourier_degree",
-        "rec_batch_num",
-        "max_text_length",
-        "rec_char_dict_path",
-        "use_space_char",
-        "vis_font_path",
-        "drop_score",
-        "crop_res_save_dir",
-        "save_crop_res",
-        "cls_batch_num",
-        "cls_thresh",
-        "enable_mkldnn",
-        "cpu_threads",
-        "use_pdserving",
-        "warmup",
-        "use_mp",
-        "total_process_num",
-        "process_id",
-        "benchmark",
-        "save_log_path",
-        "show_log",
-        "use_onnx",
-        "use_tensorrt",
-        "precision",
-        "gpu_id",
-        "gpu_mem",
-    ]
-
-    for param in optional_params:
-        if hasattr(config, param):
-            value = getattr(config, param)
-            if value is not None:
-                kwargs[param] = value
+    # Add parameters based on actual PaddleOCR constructor signature
+    if hasattr(config, "det_db_thresh"):
+        kwargs["text_det_thresh"] = config.det_db_thresh
+    if hasattr(config, "det_db_box_thresh"):
+        kwargs["text_det_box_thresh"] = config.det_db_box_thresh
+    if hasattr(config, "det_db_unclip_ratio"):
+        kwargs["text_det_unclip_ratio"] = config.det_db_unclip_ratio
+    if hasattr(config, "det_max_side_len"):
+        kwargs["text_det_limit_side_len"] = config.det_max_side_len
+    if hasattr(config, "drop_score"):
+        kwargs["text_rec_score_thresh"] = config.drop_score
 
     return paddleocr.PaddleOCR(**kwargs)
 
@@ -119,9 +69,8 @@ def process_image_sync_pure(
     try:
         ocr_instance = _get_paddleocr_instance(cfg)
 
-        # PaddleOCR returns a list of results for each detected text region
-        # Each result is [bbox, (text, confidence)]
-        results = ocr_instance.ocr(str(image_path), cls=cfg.use_angle_cls)
+        # PaddleOCR returns OCRResult objects in the new version
+        results = ocr_instance.ocr(str(image_path))
 
         if not results or not results[0]:
             return ExtractionResult(
@@ -131,24 +80,29 @@ def process_image_sync_pure(
                 chunks=[],
             )
 
-        # Extract text and confidence from results
-        texts = []
-        confidences = []
+        # Handle the new OCRResult format
+        ocr_result = results[0]
+        result_data = ocr_result.json["res"]
 
-        for line in results[0]:
-            if line:
-                bbox, (text, confidence) = line
-                texts.append(text)
-                confidences.append(confidence)
+        texts = result_data.get("rec_texts", [])
+        scores = result_data.get("rec_scores", [])
+
+        if not texts:
+            return ExtractionResult(
+                content="",
+                mime_type=PLAIN_TEXT_MIME_TYPE,
+                metadata={},
+                chunks=[],
+            )
 
         # Join all text with newlines
         content = "\n".join(texts)
         content = normalize_spaces(content)
 
         # Calculate average confidence
-        avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
+        avg_confidence = sum(scores) / len(scores) if scores else 0.0
 
-        metadata = {"confidence": avg_confidence} if confidences else {}
+        metadata = {"confidence": avg_confidence} if scores else {}
 
         return ExtractionResult(
             content=content,
