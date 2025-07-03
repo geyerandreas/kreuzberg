@@ -167,9 +167,9 @@ class ExtractionConfig:
     """Configuration to pass to the OCR backend."""
     gmft_config: GMFTConfig | None = None
     """GMFT configuration."""
-    post_processing_hooks: tuple[PostProcessingHook, ...] | None = None
+    post_processing_hooks: list[PostProcessingHook] | None = None
     """Post processing hooks to call after processing is done and before the final result is returned."""
-    validators: tuple[ValidationHook, ...] | None = None
+    validators: list[ValidationHook] | None = None
     """Validation hooks to call after processing is done and before post-processing and result return."""
     extract_entities: bool = False
     """Whether to extract named entities from the content."""
