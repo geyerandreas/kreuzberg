@@ -8,13 +8,12 @@ from litestar import Litestar, post
 from litestar.contrib.opentelemetry import OpenTelemetryConfig
 from litestar.exceptions import HTTPException
 from litestar.status_codes import HTTP_422_UNPROCESSABLE_ENTITY, HTTP_500_INTERNAL_SERVER_ERROR
-from structlog.contextvars import bind_contextvars, clear_contextvars
 
 from kreuzberg import ExtractionConfig, extract_bytes
 from kreuzberg.exceptions import KreuzbergError
 
 if TYPE_CHECKING:
-    from litestar.datastructures import UploadFile as LitestarUploadFile
+    from litestar.datastructures import UploadFile
 
 # Configure logging
 structlog.configure(
@@ -34,14 +33,14 @@ logger = structlog.get_logger()
 class ExtractionRequest(msgspec.Struct):
     """Represents a request to extract content from a file."""
 
-    file: LitestarUploadFile
+    file: UploadFile
 
 
-@post("/extract")
+@post("/extract", operation_id="extract_file")
 async def extract_from_file(data: ExtractionRequest) -> dict[str, Any]:
     """Extracts text content from an uploaded file."""
-    clear_contextvars()
-    bind_contextvars(filename=data.file.filename, content_type=data.file.content_type)
+    structlog.contextvars.clear_contextvars()
+    structlog.contextvars.bind_contextvars(filename=data.file.filename, content_type=data.file.content_type)
 
     try:
         logger.info("Receiving file")
@@ -63,18 +62,22 @@ async def extract_from_file(data: ExtractionRequest) -> dict[str, Any]:
         ) from e
 
 
-@post("/health")
+@post("/health", operation_id="health_check")
 async def health_check() -> dict[str, str]:
     """A simple health check endpoint."""
     return {"status": "ok"}
 
 
-# Configure OpenTelemetry
-opentelemetry_config = OpenTelemetryConfig(
-    service_name="kreuzberg-api",
-)
+def create_app() -> Litestar:
+    """Create the Litestar application."""
+    opentelemetry_config = OpenTelemetryConfig(
+        service_name="kreuzberg-api",
+    )
 
-app = Litestar(
-    route_handlers=[extract_from_file, health_check],
-    middleware=[opentelemetry_config.middleware],
-)
+    return Litestar(
+        route_handlers=[extract_from_file, health_check],
+        middleware=[opentelemetry_config.middleware],
+    )
+
+
+app = create_app()
