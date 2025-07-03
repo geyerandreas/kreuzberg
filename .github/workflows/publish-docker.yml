@@ -103,6 +103,7 @@ jobs:
       - name: Update Docker Hub README
         uses: peter-evans/dockerhub-description@v4
         if: matrix.name == 'core'
+        continue-on-error: true
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
