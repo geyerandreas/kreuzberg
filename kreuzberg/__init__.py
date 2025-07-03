@@ -18,7 +18,7 @@ from .extraction import (
     extract_file_sync,
 )
 
-__version__ = "3.2.0"
+__version__ = "3.4.0"
 
 __all__ = [
     "EasyOCRConfig",
