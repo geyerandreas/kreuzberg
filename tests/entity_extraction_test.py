@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from typing import Any
 
 import pytest
@@ -30,47 +31,38 @@ def test_custom_entity_patterns(custom_patterns: frozenset[tuple[str, str]] | No
         assert entities == expected
 
 
-def test_extract_entities_with_gliner(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_extract_entities_with_gliner() -> None:
     class DummyModel:
-        def __init__(self) -> None:
-            pass
-
-        @classmethod
-        def from_pretrained(cls, _model_name: str) -> Any:
-            return cls()
-
         def predict_entities(self, _text: str, _types: list[str]) -> list[dict[str, Any]]:
             return [
                 {"label": "PERSON", "text": "John Doe", "start": 0, "end": 8},
                 {"label": "LOCATION", "text": "Berlin", "start": 18, "end": 24},
             ]
 
-    monkeypatch.setattr(ee, "GLiNER", DummyModel)
-    result = ee.extract_entities(SAMPLE_TEXT, entity_types=["PERSON", "LOCATION"])
+    result = ee.extract_entities(SAMPLE_TEXT, entity_types=["PERSON", "LOCATION"], model=DummyModel())
     assert any(e.type == "PERSON" and e.text == "John Doe" for e in result)
     assert any(e.type == "LOCATION" and e.text == "Berlin" for e in result)
     assert all(isinstance(e, Entity) for e in result)
 
 
-def test_extract_keywords_with_keybert(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_extract_keywords_with_keybert() -> None:
     class DummyModel:
         def extract_keywords(self, _text: str, top_n: int = 10) -> list[tuple[str, float]]:
             if top_n == 2:
                 return [("Berlin", 0.9), ("John Doe", 0.8)]
             return [("keyword", 0.5)] * top_n
 
-    monkeypatch.setattr(ee, "KeyBERT", DummyModel)
-    result = ee.extract_keywords(SAMPLE_TEXT, keyword_count=2)
+    result = ee.extract_keywords(SAMPLE_TEXT, keyword_count=2, model=DummyModel())
     assert result == [("Berlin", 0.9), ("John Doe", 0.8)]
 
 
 def test_extract_entities_missing_gliner(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(ee, "GLiNER", None)
+    monkeypatch.setitem(sys.modules, "gliner", None)
     result = ee.extract_entities(SAMPLE_TEXT, entity_types=["PERSON"])
     assert result == []
 
 
 def test_extract_keywords_missing_keybert(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(ee, "KeyBERT", None)
+    monkeypatch.setitem(sys.modules, "keybert", None)
     result = ee.extract_keywords(SAMPLE_TEXT, keyword_count=5)
     assert result == []
