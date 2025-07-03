@@ -247,7 +247,7 @@ async def extract_tables(  # noqa: PLR0915
                         text=data_frame.to_markdown(),
                         df=data_frame,
                     )
-                    for data_frame, cropped_table in zip(dataframes, cropped_tables)
+                    for data_frame, cropped_table in zip(dataframes, cropped_tables, strict=False)
                 ]
 
                 await table_cache.aset(result, **cache_kwargs)
@@ -365,7 +365,7 @@ def extract_tables_sync(
                     text=data_frame.to_markdown(),
                     df=data_frame,
                 )
-                for data_frame, cropped_table in zip(dataframes, cropped_tables)
+                for data_frame, cropped_table in zip(dataframes, cropped_tables, strict=False)
             ]
 
             table_cache.set(result, **cache_kwargs)

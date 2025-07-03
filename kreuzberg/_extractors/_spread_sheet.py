@@ -6,7 +6,7 @@ import sys
 from datetime import date, datetime, time, timedelta
 from io import StringIO
 from pathlib import Path
-from typing import Any, Union
+from typing import Any
 
 from anyio import Path as AsyncPath
 from python_calamine import CalamineWorkbook
@@ -23,7 +23,7 @@ if sys.version_info < (3, 11):  # pragma: no cover
     from exceptiongroup import ExceptionGroup  # type: ignore[import-not-found]
 
 
-CellValue = Union[int, float, str, bool, time, date, datetime, timedelta]
+CellValue = int | float | str | bool | time | date | datetime | timedelta
 
 
 class SpreadSheetExtractor(Extractor):

@@ -124,6 +124,34 @@ Additional dependencies by variant:
 - **gmft**: GMFT for table extraction
 - **all**: All optional dependencies
 
+### Health Check
+
+All Docker images include a health check endpoint:
+
+```bash
+# Check API health
+curl http://localhost:8000/health
+```
+
+Returns a JSON response with service status and version information.
+
+### Observability
+
+The Docker images include built-in OpenTelemetry instrumentation via Litestar:
+
+- **Tracing**: Automatic request/response tracing
+- **Metrics**: Performance and usage metrics
+- **Logging**: Structured JSON logging
+
+Configure via standard OpenTelemetry environment variables:
+
+```bash
+docker run -p 8000:8000 \
+  -e OTEL_SERVICE_NAME=kreuzberg-api \
+  -e OTEL_EXPORTER_OTLP_ENDPOINT=http://your-collector:4317 \
+  goldziher/kreuzberg:latest
+```
+
 ### Environment Variables
 
 - `PYTHONUNBUFFERED=1` - Ensures proper logging output
@@ -150,6 +178,12 @@ server {
         client_max_body_size 100M;
         proxy_read_timeout 300s;
     }
+
+    # Health check endpoint
+    location /health {
+        proxy_pass http://localhost:8000/health;
+        access_log off;
+    }
 }
 ```
 
@@ -175,6 +209,21 @@ spec:
         image: goldziher/kreuzberg:latest
         ports:
         - containerPort: 8000
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        env:
+        - name: OTEL_SERVICE_NAME
+          value: "kreuzberg-api"
         resources:
           requests:
             memory: "512Mi"
