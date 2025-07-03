@@ -141,37 +141,60 @@ result = await extract_file(
 
 ### Default Configuration
 
-Kreuzberg's defaults are optimized based on benchmarking 138+ real-world documents:
+Kreuzberg's defaults are optimized out-of-the-box for modern PDFs and standard documents:
 
 - **PSM Mode**: `AUTO_ONLY` - Faster than `AUTO` without orientation detection overhead
-- **Language Model**: Enabled for quality, can be disabled for speed
+- **Language Model**: Disabled by default for optimal performance on modern documents
 - **Dictionary Correction**: Enabled for accuracy
+
+The default configuration provides excellent extraction quality for:
+
+- Modern PDFs with embedded text
+- Scanned documents with clear printing
+- Office documents (DOCX, PPTX, XLSX)
+- Standard business documents
 
 ### Speed vs Quality Trade-offs
 
 ```python
 from kreuzberg import ExtractionConfig, TesseractConfig, PSMMode
 
+# Default configuration (optimized for modern documents)
+default_config = ExtractionConfig()  # Already optimized for speed and quality
+
 # Maximum speed configuration
 speed_config = ExtractionConfig(
     ocr_backend="tesseract",
     ocr_config=TesseractConfig(
         psm=PSMMode.SINGLE_BLOCK,  # Assume simple layout
-        language_model_ngram_on=False,  # 30x+ speedup, minimal quality impact
-        tessedit_enable_dict_correction=False,  # Faster, good for technical docs
+        tessedit_enable_dict_correction=False,  # Skip dictionary correction
     ),
 )
 
-# Balanced configuration (default)
-balanced_config = ExtractionConfig()  # Uses optimized defaults
-
-# Maximum accuracy configuration
+# Maximum accuracy configuration (for degraded/historical documents)
 accuracy_config = ExtractionConfig(
     ocr_backend="tesseract",
     ocr_config=TesseractConfig(
         psm=PSMMode.AUTO,  # Full analysis with orientation detection
-        language_model_ngram_on=True,  # Better for degraded text
+        language_model_ngram_on=True,  # Enable for degraded/historical text
         tessedit_enable_dict_correction=True,  # Correct OCR errors
+    ),
+)
+```
+
+### Language Model N-gram Settings
+
+The `language_model_ngram_on` parameter controls Tesseract's use of n-gram language models:
+
+- **Default (False)**: Optimized for modern documents with clear text
+- **When to enable**: Historical documents, degraded scans, handwritten text, or noisy images
+
+```python
+# For degraded or historical documents
+historical_config = ExtractionConfig(
+    ocr_backend="tesseract",
+    ocr_config=TesseractConfig(
+        language_model_ngram_on=True,  # Enable for better accuracy on poor quality text
     ),
 )
 ```

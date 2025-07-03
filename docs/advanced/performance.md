@@ -125,27 +125,48 @@ The async API leverages Python's asyncio with intelligent task scheduling:
 1. **Configure OCR appropriately** for your document types
 1. **Profile your specific workload** - results vary by content
 
-### Configuration Examples
+### Optimized Default Configuration
+
+Kreuzberg's default configuration is **optimized out-of-the-box for modern PDFs and standard documents**:
+
+```python
+from kreuzberg import ExtractionConfig
+
+# Default configuration - already optimized for modern documents
+config = ExtractionConfig()  # Uses optimized defaults:
+# - PSM: AUTO_ONLY (fast without orientation detection)
+# - Language model: Disabled for performance
+# - Dictionary correction: Enabled for accuracy
+```
+
+### Advanced Configuration Examples
 
 ```python
 from kreuzberg import ExtractionConfig, extract_file_sync
 from kreuzberg._ocr._tesseract import TesseractConfig, PSMMode
 
-# Optimized for speed
-fast_config = ExtractionConfig(
+# Maximum speed configuration (for high-volume processing)
+speed_config = ExtractionConfig(
     ocr_backend="tesseract",
     ocr_config=TesseractConfig(
-        psm=PSMMode.SINGLE_BLOCK,  # Faster for simple layouts
-        language_model_ngram_on=False,  # Disable for speed
-        tessedit_enable_dict_correction=False,  # Disable for speed
+        psm=PSMMode.SINGLE_BLOCK,  # Assume simple layout
+        language_model_ngram_on=False,  # Already disabled by default
+        tessedit_enable_dict_correction=False,  # Disable for maximum speed
     ),
 )
 
-# Optimized for accuracy (default)
-accurate_config = ExtractionConfig(ocr_backend="tesseract", ocr_config=TesseractConfig())  # Uses optimized defaults
+# Maximum accuracy configuration (for degraded documents)
+accuracy_config = ExtractionConfig(
+    ocr_backend="tesseract",
+    ocr_config=TesseractConfig(
+        psm=PSMMode.AUTO,  # Full analysis with orientation detection
+        language_model_ngram_on=True,  # Enable for historical/degraded text
+        tessedit_enable_dict_correction=True,  # Default - keep enabled
+    ),
+)
 
-# For documents with text layers (no OCR needed)
-text_only_config = ExtractionConfig(ocr_backend=None, force_ocr=False)  # Disable OCR backend entirely
+# No OCR configuration (text documents only)
+text_only_config = ExtractionConfig(ocr_backend=None, force_ocr=False)
 ```
 
 ### Performance Optimization Tips

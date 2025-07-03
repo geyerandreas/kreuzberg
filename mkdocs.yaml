@@ -150,6 +150,7 @@ nav:
       - Exceptions: api-reference/exceptions.md
   - Advanced:
       - advanced/index.md
+      - Performance Guide: advanced/performance.md
       - Error Handling: advanced/error-handling.md
       - Custom Hooks: advanced/custom-hooks.md
       - Custom Extractors: advanced/custom-extractors.md

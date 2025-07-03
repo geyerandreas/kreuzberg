@@ -202,8 +202,10 @@ class TesseractConfig:
             -   'deu' for German
             -    multiple languages combined with '+', e.g. 'eng+deu')
     """
-    language_model_ngram_on: bool = True
-    """Enable or disable the use of n-gram-based language models for improved text recognition."""
+    language_model_ngram_on: bool = False
+    """Enable or disable the use of n-gram-based language models for improved text recognition.
+
+    Default is False for optimal performance on modern documents. Enable for degraded or historical text."""
     psm: PSMMode = PSMMode.AUTO_ONLY
     """Page segmentation mode (PSM) to guide Tesseract on how to segment the image (e.g., single block, single line)."""
     tessedit_dont_blkrej_good_wds: bool = True
