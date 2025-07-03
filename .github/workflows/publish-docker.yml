@@ -23,9 +23,15 @@ jobs:
           - name: core
             extras: ""
             tag_suffix: "" # The base image tag (includes API + tesseract)
+          - name: easyocr
+            extras: "easyocr"
+            tag_suffix: "-easyocr"
           - name: paddle
             extras: "paddleocr"
             tag_suffix: "-paddle"
+          - name: gmft
+            extras: "gmft"
+            tag_suffix: "-gmft"
           - name: all
             extras: "all"
             tag_suffix: "-all"
