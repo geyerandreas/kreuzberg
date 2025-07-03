@@ -26,10 +26,7 @@ DEFAULT_CONFIG: Final[ExtractionConfig] = ExtractionConfig()
 logger = logging.getLogger(__name__)
 
 
-async def _validate_and_post_process_async(result: ExtractionResult, config: ExtractionConfig) -> ExtractionResult:
-    for validator in config.validators or []:
-        await run_maybe_sync(validator, result)
-
+def _validate_and_post_process_helper(result: ExtractionResult, config: ExtractionConfig) -> ExtractionResult:
     if config.chunk_content:
         result.chunks = _handle_chunk_content(
             mime_type=result.mime_type,
@@ -56,6 +53,14 @@ async def _validate_and_post_process_async(result: ExtractionResult, config: Ext
         except RuntimeError as e:
             logger.warning("Keyword extraction failed: %s", e)
             result.keywords = None
+    return result
+
+
+async def _validate_and_post_process_async(result: ExtractionResult, config: ExtractionConfig) -> ExtractionResult:
+    for validator in config.validators or []:
+        await run_maybe_sync(validator, result)
+
+    result = _validate_and_post_process_helper(result, config)
 
     for post_processor in config.post_processing_hooks or []:
         result = await run_maybe_sync(post_processor, result)
@@ -67,32 +72,7 @@ def _validate_and_post_process_sync(result: ExtractionResult, config: Extraction
     for validator in config.validators or []:
         run_maybe_async(validator, result)
 
-    if config.chunk_content:
-        result.chunks = _handle_chunk_content(
-            mime_type=result.mime_type,
-            config=config,
-            content=result.content,
-        )
-
-    if config.extract_entities:
-        try:
-            result.entities = extract_entities(
-                result.content,
-                custom_patterns=config.custom_entity_patterns,
-            )
-        except RuntimeError as e:
-            logger.warning("Entity extraction failed: %s", e)
-            result.entities = None
-
-    if config.extract_keywords:
-        try:
-            result.keywords = extract_keywords(
-                result.content,
-                keyword_count=config.keyword_count,
-            )
-        except RuntimeError as e:
-            logger.warning("Keyword extraction failed: %s", e)
-            result.keywords = None
+    result = _validate_and_post_process_helper(result, config)
 
     for post_processor in config.post_processing_hooks or []:
         result = run_maybe_async(post_processor, result)
