@@ -204,7 +204,7 @@ class TesseractConfig:
     """
     language_model_ngram_on: bool = True
     """Enable or disable the use of n-gram-based language models for improved text recognition."""
-    psm: PSMMode = PSMMode.AUTO
+    psm: PSMMode = PSMMode.AUTO_ONLY
     """Page segmentation mode (PSM) to guide Tesseract on how to segment the image (e.g., single block, single line)."""
     tessedit_dont_blkrej_good_wds: bool = True
     """If True, prevents block rejection of words identified as good, improving text output quality."""
@@ -212,6 +212,8 @@ class TesseractConfig:
     """If True, prevents row rejection of words identified as good, avoiding unnecessary omissions."""
     tessedit_enable_dict_correction: bool = True
     """Enable or disable dictionary-based correction for recognized text to improve word accuracy."""
+    tessedit_char_whitelist: str = ""
+    """Whitelist of characters that Tesseract is allowed to recognize. Empty string means no restriction."""
     tessedit_use_primary_params_model: bool = True
     """If True, forces the use of the primary parameters model for text recognition."""
     textord_space_size_is_variable: bool = True
