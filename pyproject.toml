@@ -67,6 +67,9 @@ optional-dependencies.cli = [
 ]
 optional-dependencies.easyocr = [ "easyocr>=1.7.2" ]
 optional-dependencies.gmft = [ "gmft>=0.4.2" ]
+optional-dependencies.language-detection = [
+  "fast-langdetect>=0.2.0",
+]
 optional-dependencies.paddleocr = [
   "paddleocr>=3.1.0",
   "paddlepaddle>=3.1.0",
@@ -204,6 +207,7 @@ module = [
   "litestar.*",
   "structlog.*",
   "opentelemetry.*",
+  "fast_langdetect.*",
 ]
 ignore_missing_imports = true
 
