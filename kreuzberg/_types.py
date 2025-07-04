@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from PIL.Image import Image
 
     from kreuzberg._gmft import GMFTConfig
+    from kreuzberg._language_detection import LanguageDetectionConfig
     from kreuzberg._ocr._easyocr import EasyOCRConfig
     from kreuzberg._ocr._paddleocr import PaddleOCRConfig
     from kreuzberg._ocr._tesseract import TesseractConfig
@@ -161,6 +162,8 @@ class ExtractionConfig:
     """Validation hooks to call after processing is done and before post-processing and result return."""
     auto_detect_language: bool = False
     """Whether to automatically detect language and configure OCR accordingly."""
+    language_detection_config: LanguageDetectionConfig | None = None
+    """Configuration for language detection. If None, uses default settings."""
 
     def __post_init__(self) -> None:
         from kreuzberg._ocr._easyocr import EasyOCRConfig

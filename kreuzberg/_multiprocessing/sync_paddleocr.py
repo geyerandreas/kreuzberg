@@ -22,7 +22,6 @@ def _get_paddleocr_instance(config: PaddleOCRConfig) -> Any:
     except ImportError as e:
         raise MissingDependencyError("PaddleOCR is not installed. Install it with: pip install paddleocr") from e
 
-    # Handle device configuration
     if hasattr(config, "device"):
         if config.device and config.device.lower() != "cpu":
             pass
@@ -34,7 +33,6 @@ def _get_paddleocr_instance(config: PaddleOCRConfig) -> Any:
         "use_textline_orientation": config.use_angle_cls,
     }
 
-    # Add parameters based on actual PaddleOCR constructor signature
     if hasattr(config, "det_db_thresh"):
         kwargs["text_det_thresh"] = config.det_db_thresh
     if hasattr(config, "det_db_box_thresh"):
@@ -69,7 +67,6 @@ def process_image_sync_pure(
     try:
         ocr_instance = _get_paddleocr_instance(cfg)
 
-        # PaddleOCR returns OCRResult objects in the new version
         results = ocr_instance.ocr(str(image_path))
 
         if not results or not results[0]:
@@ -80,7 +77,6 @@ def process_image_sync_pure(
                 chunks=[],
             )
 
-        # Handle the new OCRResult format
         ocr_result = results[0]
         result_data = ocr_result.json["res"]
 
@@ -95,11 +91,9 @@ def process_image_sync_pure(
                 chunks=[],
             )
 
-        # Join all text with newlines
         content = "\n".join(texts)
         content = normalize_spaces(content)
 
-        # Calculate average confidence
         avg_confidence = sum(scores) / len(scores) if scores else 0.0
 
         metadata = {"confidence": avg_confidence} if scores else {}

@@ -28,6 +28,11 @@ async def _validate_and_post_process_async(result: ExtractionResult, config: Ext
     for validator in config.validators or []:
         await run_maybe_sync(validator, result)
 
+    if config.auto_detect_language and result.content:
+        from kreuzberg._language_detection import detect_languages
+
+        result.detected_languages = detect_languages(result.content, config.language_detection_config)
+
     if config.chunk_content:
         result.chunks = _handle_chunk_content(
             mime_type=result.mime_type,
@@ -44,6 +49,11 @@ async def _validate_and_post_process_async(result: ExtractionResult, config: Ext
 def _validate_and_post_process_sync(result: ExtractionResult, config: ExtractionConfig) -> ExtractionResult:
     for validator in config.validators or []:
         run_sync_only(validator, result)
+
+    if config.auto_detect_language and result.content:
+        from kreuzberg._language_detection import detect_languages
+
+        result.detected_languages = detect_languages(result.content, config.language_detection_config)
 
     if config.chunk_content:
         result.chunks = _handle_chunk_content(
@@ -64,7 +74,7 @@ def _handle_chunk_content(
     content: str,
 ) -> list[str]:
     chunker = get_chunker(mime_type=mime_type, max_characters=config.max_chars, overlap_characters=config.max_overlap)
-    return chunker.chunks(content)
+    return chunker.chunks(content)  # type: ignore[no-any-return]
 
 
 async def extract_bytes(content: bytes, mime_type: str, config: ExtractionConfig = DEFAULT_CONFIG) -> ExtractionResult:

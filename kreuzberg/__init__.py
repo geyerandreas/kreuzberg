@@ -1,6 +1,7 @@
 from importlib.metadata import version
 
 from kreuzberg._gmft import GMFTConfig
+from kreuzberg._language_detection import LanguageDetectionConfig
 from kreuzberg._ocr._easyocr import EasyOCRConfig
 from kreuzberg._ocr._paddleocr import PaddleOCRConfig
 from kreuzberg._ocr._tesseract import TesseractConfig
@@ -29,6 +30,7 @@ __all__ = [
     "ExtractorRegistry",
     "GMFTConfig",
     "KreuzbergError",
+    "LanguageDetectionConfig",
     "Metadata",
     "MissingDependencyError",
     "OCRError",

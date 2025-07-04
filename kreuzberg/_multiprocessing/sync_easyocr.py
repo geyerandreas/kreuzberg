@@ -22,7 +22,6 @@ def _get_easyocr_instance(config: EasyOCRConfig) -> Any:
     except ImportError as e:
         raise MissingDependencyError("EasyOCR is not installed. Install it with: pip install easyocr") from e
 
-    # Handle device configuration
     gpu = False
     if hasattr(config, "device"):
         if config.device and config.device.lower() != "cpu":
@@ -30,7 +29,6 @@ def _get_easyocr_instance(config: EasyOCRConfig) -> Any:
     elif hasattr(config, "use_gpu"):
         gpu = config.use_gpu
 
-    # Convert language to list format (similar to async version)
     language = config.language if hasattr(config, "language") else "en"
     if isinstance(language, str):
         lang_list = [lang.strip().lower() for lang in language.split(",")]
@@ -45,12 +43,11 @@ def _get_easyocr_instance(config: EasyOCRConfig) -> Any:
         "recog_network": getattr(config, "recog_network", None),
         "detector": getattr(config, "detector", None),
         "recognizer": getattr(config, "recognizer", None),
-        "verbose": False,  # Disable verbose output for sync mode
+        "verbose": False,
         "quantize": getattr(config, "quantize", None),
         "cudnn_benchmark": getattr(config, "cudnn_benchmark", None),
     }
 
-    # Remove None values to use EasyOCR defaults
     kwargs = {k: v for k, v in kwargs.items() if v is not None}
 
     return easyocr.Reader(**kwargs)
@@ -76,7 +73,6 @@ def process_image_sync_pure(
     try:
         reader = _get_easyocr_instance(cfg)
 
-        # Prepare readtext kwargs
         readtext_kwargs = {
             "decoder": cfg.decoder,
             "beamWidth": cfg.beam_width,
@@ -102,12 +98,8 @@ def process_image_sync_pure(
             "y_ths": cfg.y_ths,
         }
 
-        # Remove None values to use EasyOCR defaults
         readtext_kwargs = {k: v for k, v in readtext_kwargs.items() if v is not None}
 
-        # EasyOCR returns a list of results
-        # Each result is [bbox, text, confidence] when detail=True (default)
-        # or just text when detail=False
         results = reader.readtext(str(image_path), **readtext_kwargs)
 
         if not results:
@@ -118,13 +110,11 @@ def process_image_sync_pure(
                 chunks=[],
             )
 
-        # Extract text and confidence from results
         texts = []
         confidences = []
 
         detail_value = getattr(cfg, "detail", 1)
         if detail_value:
-            # Results are [bbox, text, confidence]
             for result in results:
                 min_result_length = 2
                 max_confidence_index = 2
@@ -134,15 +124,12 @@ def process_image_sync_pure(
                     texts.append(text)
                     confidences.append(confidence)
         else:
-            # Results are just text strings
             texts = results
-            confidences = [1.0] * len(texts)  # No confidence info when detail=False
+            confidences = [1.0] * len(texts)
 
-        # Join all text with newlines
         content = "\n".join(texts)
         content = normalize_spaces(content)
 
-        # Calculate average confidence
         avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
 
         metadata = {"confidence": avg_confidence} if confidences else {}
