@@ -1,3 +1,5 @@
+from importlib.metadata import version
+
 from kreuzberg._gmft import GMFTConfig
 from kreuzberg._ocr._easyocr import EasyOCRConfig
 from kreuzberg._ocr._paddleocr import PaddleOCRConfig
@@ -18,6 +20,8 @@ from .extraction import (
     extract_file_sync,
 )
 
+__version__ = version("kreuzberg")
+
 __all__ = [
     "EasyOCRConfig",
     "ExtractionConfig",
@@ -34,6 +38,7 @@ __all__ = [
     "TableData",
     "TesseractConfig",
     "ValidationError",
+    "__version__",
     "batch_extract_bytes",
     "batch_extract_bytes_sync",
     "batch_extract_file",

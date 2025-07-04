@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
@@ -103,9 +104,31 @@ class GMFTConfig:
     """
     Force the large table assumption to be applied, regardless of the number of rows and overlap.
     """
+    total_overlap_reject_threshold: float = 0.9
+    """
+    Reject if total overlap is > 90% of table area.
+    """
+    total_overlap_warn_threshold: float = 0.1
+    """
+    Warn if total overlap is > 10% of table area.
+    """
+    nms_warn_threshold: int = 5
+    """
+    Warn if non maxima suppression removes > 5 rows.
+    """
+    iob_reject_threshold: float = 0.05
+    """
+    Reject if iob between textbox and cell is < 5%.
+    """
+    iob_warn_threshold: float = 0.5
+    """
+    Warn if iob between textbox and cell is < 50%.
+    """
 
 
-async def extract_tables(file_path: str | PathLike[str], config: GMFTConfig | None = None) -> list[TableData]:
+async def extract_tables(  # noqa: PLR0915
+    file_path: str | PathLike[str], config: GMFTConfig | None = None, use_isolated_process: bool | None = None
+) -> list[TableData]:
     """Extracts tables from a PDF file.
 
     This function takes a file path to a PDF file, and an optional configuration object.
@@ -114,6 +137,8 @@ async def extract_tables(file_path: str | PathLike[str], config: GMFTConfig | No
     Args:
         file_path: The path to the PDF file.
         config: An optional configuration object.
+        use_isolated_process: Whether to use an isolated process for extraction.
+            If None, uses environment variable KREUZBERG_GMFT_ISOLATED (default: True).
 
     Raises:
         MissingDependencyError: Raised when the required dependencies are not installed.
@@ -121,13 +146,188 @@ async def extract_tables(file_path: str | PathLike[str], config: GMFTConfig | No
     Returns:
         A list of table data dictionaries.
     """
+    from pathlib import Path
+
+    from kreuzberg._utils._cache import get_table_cache
+
+    # Determine if we should use isolated process  # ~keep
+    if use_isolated_process is None:
+        use_isolated_process = os.environ.get("KREUZBERG_GMFT_ISOLATED", "true").lower() in ("true", "1", "yes")
+
+    path = Path(file_path)
+    try:
+        stat = path.stat()
+        file_info = {
+            "path": str(path.resolve()),
+            "size": stat.st_size,
+            "mtime": stat.st_mtime,
+        }
+    except OSError:
+        file_info = {
+            "path": str(path),
+            "size": 0,
+            "mtime": 0,
+        }
+
+    config = config or GMFTConfig()
+    cache_kwargs = {
+        "file_info": str(sorted(file_info.items())),
+        "extractor": "gmft",
+        "config": str(sorted(config.__dict__.items())),
+    }
+
+    table_cache = get_table_cache()
+    cached_result = await table_cache.aget(**cache_kwargs)
+    if cached_result is not None:
+        return cached_result  # type: ignore[no-any-return]
+
+    if table_cache.is_processing(**cache_kwargs):
+        import anyio
+
+        event = table_cache.mark_processing(**cache_kwargs)
+        await anyio.to_thread.run_sync(event.wait)
+
+        # Try cache again after waiting for other process to complete  # ~keep
+        cached_result = await table_cache.aget(**cache_kwargs)
+        if cached_result is not None:
+            return cached_result  # type: ignore[no-any-return]
+
+    table_cache.mark_processing(**cache_kwargs)
+
+    try:
+        if use_isolated_process:
+            from kreuzberg._multiprocessing.gmft_isolated import extract_tables_isolated_async
+
+            result = await extract_tables_isolated_async(file_path, config)
+
+            await table_cache.aset(result, **cache_kwargs)
+
+            return result
+
+        try:
+            from gmft.auto import AutoTableDetector, AutoTableFormatter  # type: ignore[attr-defined]
+            from gmft.detectors.tatr import TATRDetectorConfig  # type: ignore[attr-defined]
+            from gmft.formatters.tatr import TATRFormatConfig
+            from gmft.pdf_bindings.pdfium import PyPDFium2Document
+
+            formatter: Any = AutoTableFormatter(  # type: ignore[no-untyped-call]
+                config=TATRFormatConfig(
+                    verbosity=config.verbosity,
+                    formatter_base_threshold=config.formatter_base_threshold,
+                    cell_required_confidence=config.cell_required_confidence,
+                    remove_null_rows=config.remove_null_rows,
+                    enable_multi_header=config.enable_multi_header,
+                    semantic_spanning_cells=config.semantic_spanning_cells,
+                    semantic_hierarchical_left_fill=config.semantic_hierarchical_left_fill,
+                    large_table_if_n_rows_removed=config.large_table_if_n_rows_removed,
+                    large_table_threshold=config.large_table_threshold,
+                    large_table_row_overlap_threshold=config.large_table_row_overlap_threshold,
+                    large_table_maximum_rows=config.large_table_maximum_rows,
+                    force_large_table_assumption=config.force_large_table_assumption,
+                )
+            )
+            detector: Any = AutoTableDetector(  # type: ignore[no-untyped-call]
+                config=TATRDetectorConfig(detector_base_threshold=config.detector_base_threshold)
+            )
+            doc = await run_sync(PyPDFium2Document, str(file_path))
+            cropped_tables: list[CroppedTable] = []
+            dataframes: list[DataFrame] = []
+            try:
+                for page in doc:
+                    cropped_tables.extend(await run_sync(detector.extract, page))
+
+                for cropped_table in cropped_tables:
+                    formatted_table = await run_sync(formatter.extract, cropped_table)
+                    dataframes.append(await run_sync(formatted_table.df))
+
+                result = [
+                    TableData(
+                        cropped_image=cropped_table.image(),
+                        page_number=cropped_table.page.page_number,
+                        text=data_frame.to_markdown(),
+                        df=data_frame,
+                    )
+                    for data_frame, cropped_table in zip(dataframes, cropped_tables, strict=False)
+                ]
+
+                await table_cache.aset(result, **cache_kwargs)
+
+                return result
+            finally:
+                await run_sync(doc.close)
+
+        except ImportError as e:
+            raise MissingDependencyError.create_for_package(
+                dependency_group="gmft", functionality="table extraction", package_name="gmft"
+            ) from e
+    finally:
+        table_cache.mark_complete(**cache_kwargs)
+
+
+def extract_tables_sync(
+    file_path: str | PathLike[str], config: GMFTConfig | None = None, use_isolated_process: bool | None = None
+) -> list[TableData]:
+    """Synchronous wrapper for extract_tables.
+
+    Args:
+        file_path: The path to the PDF file.
+        config: An optional configuration object.
+        use_isolated_process: Whether to use an isolated process for extraction.
+            If None, uses environment variable KREUZBERG_GMFT_ISOLATED (default: True).
+
+    Returns:
+        A list of table data dictionaries.
+    """
+    from pathlib import Path
+
+    from kreuzberg._utils._cache import get_table_cache
+
+    # Determine if we should use isolated process  # ~keep
+    if use_isolated_process is None:
+        use_isolated_process = os.environ.get("KREUZBERG_GMFT_ISOLATED", "true").lower() in ("true", "1", "yes")
+
+    path = Path(file_path)
+    try:
+        stat = path.stat()
+        file_info = {
+            "path": str(path.resolve()),
+            "size": stat.st_size,
+            "mtime": stat.st_mtime,
+        }
+    except OSError:
+        file_info = {
+            "path": str(path),
+            "size": 0,
+            "mtime": 0,
+        }
+
+    config = config or GMFTConfig()
+    cache_kwargs = {
+        "file_info": str(sorted(file_info.items())),
+        "extractor": "gmft",
+        "config": str(sorted(config.__dict__.items())),
+    }
+
+    table_cache = get_table_cache()
+    cached_result = table_cache.get(**cache_kwargs)
+    if cached_result is not None:
+        return cached_result  # type: ignore[no-any-return]
+
+    if use_isolated_process:
+        from kreuzberg._multiprocessing.gmft_isolated import extract_tables_isolated
+
+        result = extract_tables_isolated(file_path, config)
+
+        table_cache.set(result, **cache_kwargs)
+
+        return result
+
     try:
         from gmft.auto import AutoTableDetector, AutoTableFormatter  # type: ignore[attr-defined]
         from gmft.detectors.tatr import TATRDetectorConfig  # type: ignore[attr-defined]
         from gmft.formatters.tatr import TATRFormatConfig
         from gmft.pdf_bindings.pdfium import PyPDFium2Document
 
-        config = config or GMFTConfig()
         formatter: Any = AutoTableFormatter(  # type: ignore[no-untyped-call]
             config=TATRFormatConfig(
                 verbosity=config.verbosity,
@@ -147,28 +347,32 @@ async def extract_tables(file_path: str | PathLike[str], config: GMFTConfig | No
         detector: Any = AutoTableDetector(  # type: ignore[no-untyped-call]
             config=TATRDetectorConfig(detector_base_threshold=config.detector_base_threshold)
         )
-        doc = await run_sync(PyPDFium2Document, str(file_path))
-        cropped_tables: list[CroppedTable] = []
-        dataframes: list[DataFrame] = []
+        doc = PyPDFium2Document(str(file_path))
+        cropped_tables: list[Any] = []
+        dataframes: list[Any] = []
         try:
             for page in doc:
-                cropped_tables.extend(await run_sync(detector.extract, page))
+                cropped_tables.extend(detector.extract(page))
 
             for cropped_table in cropped_tables:
-                formatted_table = await run_sync(formatter.extract, cropped_table)
-                dataframes.append(await run_sync(formatted_table.df))
+                formatted_table = formatter.extract(cropped_table)
+                dataframes.append(formatted_table.df())
 
-            return [
+            result = [
                 TableData(
                     cropped_image=cropped_table.image(),
                     page_number=cropped_table.page.page_number,
                     text=data_frame.to_markdown(),
                     df=data_frame,
                 )
-                for data_frame, cropped_table in zip(dataframes, cropped_tables)
+                for data_frame, cropped_table in zip(dataframes, cropped_tables, strict=False)
             ]
+
+            table_cache.set(result, **cache_kwargs)
+
+            return result
         finally:
-            await run_sync(doc.close)
+            doc.close()  # type: ignore[no-untyped-call]
 
     except ImportError as e:
         raise MissingDependencyError.create_for_package(

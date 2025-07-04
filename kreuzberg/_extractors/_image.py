@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-import anyio
 from anyio import Path as AsyncPath
 
 from kreuzberg._extractors._base import Extractor
@@ -13,9 +12,11 @@ from kreuzberg.exceptions import ValidationError
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Mapping
-    from pathlib import Path
 
     from kreuzberg._types import ExtractionResult
+
+import contextlib
+from pathlib import Path
 
 
 class ImageExtractor(Extractor):
@@ -58,10 +59,44 @@ class ImageExtractor(Extractor):
         return await get_ocr_backend(self.config.ocr_backend).process_file(path, **self.config.get_config_dict())
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
-        return anyio.run(self.extract_bytes_async, content)
+        """Pure sync implementation of extract_bytes."""
+        import os
+        import tempfile
+
+        extension = self._get_extension_from_mime_type(self.mime_type)
+        fd, temp_path = tempfile.mkstemp(suffix=f".{extension}")
+
+        try:
+            with os.fdopen(fd, "wb") as f:
+                f.write(content)
+
+            return self.extract_path_sync(Path(temp_path))
+        finally:
+            with contextlib.suppress(OSError):
+                Path(temp_path).unlink()
 
     def extract_path_sync(self, path: Path) -> ExtractionResult:
-        return anyio.run(self.extract_path_async, path)
+        """Pure sync implementation of extract_path."""
+        if self.config.ocr_backend is None:
+            raise ValidationError("ocr_backend is None, cannot perform OCR")
+
+        from kreuzberg._ocr._tesseract import TesseractConfig
+        from kreuzberg._types import ExtractionResult
+
+        if self.config.ocr_backend == "tesseract":
+            from kreuzberg._multiprocessing.sync_tesseract import process_batch_images_sync_pure
+
+            if isinstance(self.config.ocr_config, TesseractConfig):
+                config = self.config.ocr_config
+            else:
+                config = TesseractConfig()
+
+            results = process_batch_images_sync_pure([str(path)], config)
+            if results:
+                return results[0]
+            return ExtractionResult(content="", mime_type="text/plain", metadata={}, chunks=[])
+
+        raise NotImplementedError(f"Sync OCR not implemented for {self.config.ocr_backend}")
 
     def _get_extension_from_mime_type(self, mime_type: str) -> str:
         if mime_type in self.IMAGE_MIME_TYPE_EXT_MAP:

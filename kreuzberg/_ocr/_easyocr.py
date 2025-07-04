@@ -57,7 +57,7 @@ EASYOCR_SUPPORTED_LANGUAGE_CODES: Final[set[str]] = {
     "hr",
     "hu",
     "id",
-    "inh",  # codespell:ignore
+    "inh",
     "is",
     "it",
     "ja",
@@ -97,7 +97,7 @@ EASYOCR_SUPPORTED_LANGUAGE_CODES: Final[set[str]] = {
     "sw",
     "ta",
     "tab",
-    "te",  # codespell:ignore
+    "te",
     "th",
     "tjk",
     "tl",
@@ -261,11 +261,12 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
                 content=normalize_spaces(text_content), mime_type=PLAIN_TEXT_MIME_TYPE, metadata=metadata, chunks=[]
             )
 
+        # Group text boxes by lines based on Y coordinate  # ~keep
         sorted_results = sorted(result, key=lambda x: x[0][0][1] + x[0][2][1])
         line_groups: list[list[Any]] = []
         current_line: list[Any] = []
         prev_y_center: float | None = None
-        line_height_threshold = 20
+        line_height_threshold = 20  # Minimum distance to consider as new line  # ~keep
 
         for item in sorted_results:
             box, text, confidence = item
@@ -288,7 +289,7 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
         confidence_count = 0
 
         for line in line_groups:
-            line_sorted = sorted(line, key=lambda x: x[0][0][0])
+            line_sorted = sorted(line, key=lambda x: x[0][0][0])  # Sort boxes by X coordinate within line  # ~keep
 
             for item in line_sorted:
                 _, text, confidence = item
@@ -345,7 +346,6 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
 
         languages = cls._validate_language_code(kwargs.pop("language", "en"))
 
-        # Handle device selection with backward compatibility
         device_info = cls._resolve_device_config(**kwargs)
         use_gpu = device_info.device_type in ("cuda", "mps")
 
@@ -377,13 +377,11 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
         Raises:
             ValidationError: If requested device is not available and fallback is disabled.
         """
-        # Handle deprecated use_gpu parameter
         use_gpu = kwargs.get("use_gpu", False)
         device = kwargs.get("device", "auto")
         memory_limit = kwargs.get("gpu_memory_limit")
         fallback_to_cpu = kwargs.get("fallback_to_cpu", True)
 
-        # Check for deprecated parameter usage
         if use_gpu and device == "auto":
             warnings.warn(
                 "The 'use_gpu' parameter is deprecated and will be removed in a future version. "
@@ -391,7 +389,7 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
                 DeprecationWarning,
                 stacklevel=4,
             )
-            # Convert deprecated use_gpu=True to device="auto"
+
             device = "auto" if use_gpu else "cpu"
         elif use_gpu and device != "auto":
             warnings.warn(
@@ -401,7 +399,6 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
                 stacklevel=4,
             )
 
-        # Validate and get device info
         try:
             return validate_device_request(
                 device,
@@ -410,7 +407,6 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
                 fallback_to_cpu=fallback_to_cpu,
             )
         except ValidationError:
-            # If device validation fails and we're using deprecated use_gpu=False, fallback to CPU
             if not use_gpu and device == "cpu":
                 return DeviceInfo(device_type="cpu", name="CPU")
             raise
@@ -429,10 +425,8 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
             A list with the normalized language codes.
         """
         if isinstance(language_codes, str):
-            # Handle comma-separated language codes
             languages = [lang.strip().lower() for lang in language_codes.split(",")]
         else:
-            # Handle list of language codes
             languages = [lang.lower() for lang in language_codes]
 
         unsupported_langs = [lang for lang in languages if lang not in EASYOCR_SUPPORTED_LANGUAGE_CODES]

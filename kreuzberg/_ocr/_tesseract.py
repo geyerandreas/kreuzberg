@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import re
 import sys
 from dataclasses import dataclass
@@ -144,7 +145,7 @@ TESSERACT_SUPPORTED_LANGUAGE_CODES: Final[set[str]] = {
     "tel",
     "tgk",
     "tgl",
-    "tha",  # codespell:ignore
+    "tha",
     "tir",
     "ton",
     "tur",
@@ -153,7 +154,7 @@ TESSERACT_SUPPORTED_LANGUAGE_CODES: Final[set[str]] = {
     "urd",
     "uzb",
     "uzb_cyrl",
-    "vie",  # codespell:ignore
+    "vie",
     "yid",
     "yor",
 }
@@ -227,62 +228,151 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         image: Image,
         **kwargs: Unpack[TesseractConfig],
     ) -> ExtractionResult:
-        await self._validate_tesseract_version()
-        image_path, unlink = await create_temp_file(".png")
-        await run_sync(image.save, str(image_path), format="PNG")
+        import io
+
+        from kreuzberg._utils._cache import get_ocr_cache
+
+        image_buffer = io.BytesIO()
+        await run_sync(image.save, image_buffer, format="PNG")
+        image_content = image_buffer.getvalue()
+
+        cache_kwargs = {
+            "image_hash": hashlib.sha256(image_content).hexdigest()[:16],
+            "ocr_backend": "tesseract",
+            "ocr_config": str(sorted(kwargs.items())),
+        }
+
+        ocr_cache = get_ocr_cache()
+        cached_result = await ocr_cache.aget(**cache_kwargs)
+        if cached_result is not None:
+            return cached_result
+
+        if ocr_cache.is_processing(**cache_kwargs):
+            import anyio
+
+            event = ocr_cache.mark_processing(**cache_kwargs)
+            await anyio.to_thread.run_sync(event.wait)
+
+            # Try cache again after waiting for other process to complete  # ~keep
+            cached_result = await ocr_cache.aget(**cache_kwargs)
+            if cached_result is not None:
+                return cached_result
+
+        ocr_cache.mark_processing(**cache_kwargs)
+
         try:
-            return await self.process_file(image_path, **kwargs)
+            await self._validate_tesseract_version()
+            image_path, unlink = await create_temp_file(".png")
+            await run_sync(image.save, str(image_path), format="PNG")
+            try:
+                result = await self.process_file(image_path, **kwargs)
+
+                await ocr_cache.aset(result, **cache_kwargs)
+
+                return result
+            finally:
+                await unlink()
         finally:
-            await unlink()
+            ocr_cache.mark_complete(**cache_kwargs)
 
     async def process_file(
         self,
         path: Path,
         **kwargs: Unpack[TesseractConfig],
     ) -> ExtractionResult:
-        await self._validate_tesseract_version()
-        output_path, unlink = await create_temp_file(".txt")
-        language = self._validate_language_code(kwargs.pop("language", "eng"))
-        psm = kwargs.pop("psm", PSMMode.AUTO)
+        from kreuzberg._utils._cache import get_ocr_cache
+
         try:
-            output_base = str(output_path).replace(".txt", "")
-            command = [
-                "tesseract",
-                str(path),
-                output_base,
-                "-l",
-                language,
-                "--psm",
-                str(psm.value),
-                "--oem",
-                "1",
-                "--loglevel",
-                "OFF",
-            ]
-            for kwarg, value in kwargs.items():
-                command.extend(["-c", f"{kwarg}={1 if value else 0}"])
+            stat = path.stat()
+            file_info = {
+                "path": str(path.resolve()),
+                "size": stat.st_size,
+                "mtime": stat.st_mtime,
+            }
+        except OSError:
+            file_info = {
+                "path": str(path),
+                "size": 0,
+                "mtime": 0,
+            }
 
-            env: dict[str, Any] | None = None
-            if sys.platform.startswith("linux"):
-                # we have to prevent multithreading this way otherwise we will get deadlocks
-                env = {"OMP_THREAD_LIMIT": "1"}
+        cache_kwargs = {
+            "file_info": str(sorted(file_info.items())),
+            "ocr_backend": "tesseract",
+            "ocr_config": str(sorted(kwargs.items())),
+        }
 
-            result = await run_process(command, env=env)
+        ocr_cache = get_ocr_cache()
+        cached_result = await ocr_cache.aget(**cache_kwargs)
+        if cached_result is not None:
+            return cached_result
 
-            if not result.returncode == 0:
-                raise OCRError(
-                    "OCR failed with a non-0 return code.",
-                    context={"error": result.stderr.decode() if isinstance(result.stderr, bytes) else result.stderr},
+        if ocr_cache.is_processing(**cache_kwargs):
+            import anyio
+
+            event = ocr_cache.mark_processing(**cache_kwargs)
+            await anyio.to_thread.run_sync(event.wait)
+
+            # Try cache again after waiting for other process to complete  # ~keep
+            cached_result = await ocr_cache.aget(**cache_kwargs)
+            if cached_result is not None:
+                return cached_result
+
+        ocr_cache.mark_processing(**cache_kwargs)
+
+        try:
+            await self._validate_tesseract_version()
+            output_path, unlink = await create_temp_file(".txt")
+            language = self._validate_language_code(kwargs.pop("language", "eng"))
+            psm = kwargs.pop("psm", PSMMode.AUTO)
+            try:
+                output_base = str(output_path).replace(".txt", "")
+                command = [
+                    "tesseract",
+                    str(path),
+                    output_base,
+                    "-l",
+                    language,
+                    "--psm",
+                    str(psm.value),
+                    "--oem",
+                    "1",
+                    "--loglevel",
+                    "OFF",
+                ]
+                for kwarg, value in kwargs.items():
+                    command.extend(["-c", f"{kwarg}={1 if value else 0}"])
+
+                env: dict[str, Any] | None = None
+                if sys.platform.startswith("linux"):
+                    env = {"OMP_THREAD_LIMIT": "1"}
+
+                result = await run_process(command, env=env)
+
+                if not result.returncode == 0:
+                    raise OCRError(
+                        "OCR failed with a non-0 return code.",
+                        context={
+                            "error": result.stderr.decode() if isinstance(result.stderr, bytes) else result.stderr
+                        },
+                    )
+
+                output = await AsyncPath(output_path).read_text("utf-8")
+                extraction_result = ExtractionResult(
+                    content=normalize_spaces(output), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[]
                 )
 
-            output = await AsyncPath(output_path).read_text("utf-8")
-            return ExtractionResult(
-                content=normalize_spaces(output), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[]
-            )
-        except (RuntimeError, OSError) as e:
-            raise OCRError(f"Failed to OCR using tesseract: {e}") from e
+                final_cache_kwargs = cache_kwargs.copy()
+                final_cache_kwargs["ocr_config"] = str(sorted({**kwargs, "language": language, "psm": psm}.items()))
+                await ocr_cache.aset(extraction_result, **final_cache_kwargs)
+
+                return extraction_result
+            except (RuntimeError, OSError) as e:
+                raise OCRError(f"Failed to OCR using tesseract: {e}") from e
+            finally:
+                await unlink()
         finally:
-            await unlink()
+            ocr_cache.mark_complete(**cache_kwargs)
 
     @classmethod
     async def _validate_tesseract_version(cls) -> None:
