@@ -189,6 +189,44 @@ async def process_upload(file_content: bytes, mime_type: str):
             print(f"{key}: {value}")
 ```
 
+## Keywords
+
+Kreuzberg supports keywords and regex extraction as follows:
+
+```python
+from kreuzberg import ExtractionConfig, extract_file
+
+async def extract_keywords():
+    config = ExtractionConfig(
+        extract_keywords=True,
+        keyword_count=5,  # defaults to 10 if not set
+    )
+    result = await extract_file(
+        "document.pdf",
+        config=config,
+    )
+    print(f"Keywords: {result.keywords}")
+```
+
+## Entity and Regex Extraction
+
+Kreuzberg can automatically extract the following entities: PERSON, ORGANIZATION, LOCATION, DATE, EMAIL, PHONE as well as custom entities described by regex patterns
+
+```python
+from kreuzberg import ExtractionConfig, extract_file
+
+async def extract_entities():
+    config = ExtractionConfig(
+        custom_entity_patterns={"INVOICE_ID": r"INV-\d+", "EMAIL": r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"},
+        extract_entities=True,
+    )
+    result = await extract_file(
+        "document.pdf",
+        config=config,
+    )
+    print(f"Entities: {result.entities}")
+```
+
 ## Synchronous API
 
 For cases where async isn't needed or available:

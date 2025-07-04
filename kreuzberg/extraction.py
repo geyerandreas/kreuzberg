@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Final, cast
+from typing import TYPE_CHECKING, Any, Final, cast
 
 import anyio
 
 from kreuzberg import ExtractionResult
 from kreuzberg._chunker import get_chunker
+from kreuzberg._entity_extraction import extract_entities, extract_keywords
 from kreuzberg._mime_types import (
     validate_mime_type,
 )
@@ -24,21 +25,39 @@ if TYPE_CHECKING:
 DEFAULT_CONFIG: Final[ExtractionConfig] = ExtractionConfig()
 
 
-async def _validate_and_post_process_async(result: ExtractionResult, config: ExtractionConfig) -> ExtractionResult:
-    for validator in config.validators or []:
-        await run_maybe_sync(validator, result)
-
-    if config.auto_detect_language and result.content:
-        from kreuzberg._language_detection import detect_languages
-
-        result.detected_languages = detect_languages(result.content, config.language_detection_config)
-
+def _validate_and_post_process_helper(result: ExtractionResult, config: ExtractionConfig) -> ExtractionResult:
     if config.chunk_content:
         result.chunks = _handle_chunk_content(
             mime_type=result.mime_type,
             config=config,
             content=result.content,
         )
+
+    if config.extract_entities:
+        try:
+            result.entities = extract_entities(
+                result.content,
+                custom_patterns=config.custom_entity_patterns,
+            )
+        except RuntimeError:
+            result.entities = None
+
+    if config.extract_keywords:
+        try:
+            result.keywords = extract_keywords(
+                result.content,
+                keyword_count=config.keyword_count,
+            )
+        except RuntimeError:
+            result.keywords = None
+    return result
+
+
+async def _validate_and_post_process_async(result: ExtractionResult, config: ExtractionConfig) -> ExtractionResult:
+    for validator in config.validators or []:
+        await run_maybe_sync(validator, result)
+
+    result = _validate_and_post_process_helper(result, config)
 
     for post_processor in config.post_processing_hooks or []:
         result = await run_maybe_sync(post_processor, result)
@@ -50,17 +69,8 @@ def _validate_and_post_process_sync(result: ExtractionResult, config: Extraction
     for validator in config.validators or []:
         run_sync_only(validator, result)
 
-    if config.auto_detect_language and result.content:
-        from kreuzberg._language_detection import detect_languages
 
-        result.detected_languages = detect_languages(result.content, config.language_detection_config)
-
-    if config.chunk_content:
-        result.chunks = _handle_chunk_content(
-            mime_type=result.mime_type,
-            config=config,
-            content=result.content,
-        )
+    result = _validate_and_post_process_helper(result, config)
 
     for post_processor in config.post_processing_hooks or []:
         result = run_sync_only(post_processor, result)
@@ -72,7 +82,7 @@ def _handle_chunk_content(
     mime_type: str,
     config: ExtractionConfig,
     content: str,
-) -> list[str]:
+) -> Any:
     chunker = get_chunker(mime_type=mime_type, max_characters=config.max_chars, overlap_characters=config.max_overlap)
     return chunker.chunks(content)
 

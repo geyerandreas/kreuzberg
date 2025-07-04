@@ -100,6 +100,20 @@ class Metadata(TypedDict, total=False):
     """Width of the document page/slide/image, if applicable."""
 
 
+@dataclass(frozen=True)
+class Entity:
+    """Represents an extracted entity with type, text, and position."""
+
+    type: str
+    """e.g., PERSON, ORGANIZATION, LOCATION, DATE, EMAIL, PHONE, or custom"""
+    text: str
+    """Extracted text"""
+    start: int
+    """Start character offset in the content"""
+    end: int
+    """End character offset in the content"""
+
+
 @dataclass
 class ExtractionResult:
     """The result of a file extraction."""
@@ -114,6 +128,10 @@ class ExtractionResult:
     """Extracted tables. Is an empty list if 'extract_tables' is not set to True in the ExtractionConfig."""
     chunks: list[str] = field(default_factory=list)
     """The extracted content chunks. This is an empty list if 'chunk_content' is not set to True in the ExtractionConfig."""
+    entities: list[Entity] | None = None
+    """Extracted entities, if entity extraction is enabled."""
+    keywords: list[tuple[str, float]] | None = None
+    """Extracted keywords and their scores, if keyword extraction is enabled."""
     detected_languages: list[str] | None = None
     """Languages detected in the extracted content, if language detection is enabled."""
 
@@ -160,12 +178,26 @@ class ExtractionConfig:
     """Post processing hooks to call after processing is done and before the final result is returned."""
     validators: list[ValidationHook] | None = None
     """Validation hooks to call after processing is done and before post-processing and result return."""
+    extract_entities: bool = False
+    """Whether to extract named entities from the content."""
+    extract_keywords: bool = False
+    """Whether to extract keywords from the content."""
+    keyword_count: int = 10
+    """Number of keywords to extract if extract_keywords is True."""
+    custom_entity_patterns: frozenset[tuple[str, str]] | None = None
+    """Custom entity patterns as a frozenset of (entity_type, regex_pattern) tuples."""
     auto_detect_language: bool = False
     """Whether to automatically detect language and configure OCR accordingly."""
     language_detection_config: LanguageDetectionConfig | None = None
     """Configuration for language detection. If None, uses default settings."""
 
     def __post_init__(self) -> None:
+        if self.custom_entity_patterns is not None and isinstance(self.custom_entity_patterns, dict):
+            object.__setattr__(self, "custom_entity_patterns", frozenset(self.custom_entity_patterns.items()))
+        if self.post_processing_hooks is not None and isinstance(self.post_processing_hooks, list):
+            object.__setattr__(self, "post_processing_hooks", tuple(self.post_processing_hooks))
+        if self.validators is not None and isinstance(self.validators, list):
+            object.__setattr__(self, "validators", tuple(self.validators))
         from kreuzberg._ocr._easyocr import EasyOCRConfig
         from kreuzberg._ocr._paddleocr import PaddleOCRConfig
         from kreuzberg._ocr._tesseract import TesseractConfig
