@@ -30,7 +30,6 @@ from kreuzberg.extraction import (
 )
 from tests.conftest import pdfs_with_tables
 
-# Check if running in CI environment
 IS_CI = os.environ.get("CI", "false").lower() == "true"
 
 if TYPE_CHECKING:

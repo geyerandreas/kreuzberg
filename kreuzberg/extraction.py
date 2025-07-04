@@ -69,7 +69,6 @@ def _validate_and_post_process_sync(result: ExtractionResult, config: Extraction
     for validator in config.validators or []:
         run_sync_only(validator, result)
 
-
     result = _validate_and_post_process_helper(result, config)
 
     for post_processor in config.post_processing_hooks or []:

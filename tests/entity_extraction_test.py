@@ -27,7 +27,7 @@ SAMPLE_TEXT = "John Doe visited Berlin on 2023-01-01. Contact: john@example.com 
 def test_custom_entity_patterns(
     custom_patterns: frozenset[tuple[str, str]] | None, expected: list[Entity], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setitem(sys.modules, "gliner", MagicMock())
+    monkeypatch.setitem(sys.modules, "spacy", MagicMock())
     entities = ee.extract_entities(SAMPLE_TEXT, entity_types=(), custom_patterns=custom_patterns)
     assert all(isinstance(e, Entity) for e in entities)
     if expected:
@@ -36,25 +36,42 @@ def test_custom_entity_patterns(
         assert entities == expected
 
 
-def test_extract_entities_with_gliner(monkeypatch: pytest.MonkeyPatch) -> None:
-    class DummyModel:
-        @classmethod
-        def from_pretrained(cls, _model_name: str) -> DummyModel:
-            return cls()
+def test_extract_entities_with_spacy(monkeypatch: pytest.MonkeyPatch) -> None:
+    class DummyEnt:
+        def __init__(self, label: str, text: str, start_char: int, end_char: int):
+            self.label_ = label
+            self.text = text
+            self.start_char = start_char
+            self.end_char = end_char
 
-        def predict_entities(self, _text: str, _types: list[str]) -> list[dict[str, Any]]:
-            return [
-                {"label": "PERSON", "text": "John Doe", "start": 0, "end": 8},
-                {"label": "LOCATION", "text": "Berlin", "start": 18, "end": 24},
+    class DummyDoc:
+        def __init__(self, text: str):
+            self.ents = [
+                DummyEnt("PERSON", "John Doe", 0, 8),
+                DummyEnt("GPE", "Berlin", 18, 24),
             ]
 
-    mock_gliner = MagicMock()
-    mock_gliner.GLiNER = DummyModel
-    monkeypatch.setitem(sys.modules, "gliner", mock_gliner)
+    class DummyNLP:
+        max_length = 1000000
 
-    result = ee.extract_entities(SAMPLE_TEXT, entity_types=["PERSON", "LOCATION"])
+        def __call__(self, text: str) -> DummyDoc:
+            return DummyDoc(text)
+
+    def mock_load(_model_name: str) -> DummyNLP:
+        return DummyNLP()
+
+    mock_spacy = MagicMock()
+    mock_spacy.load = mock_load
+    monkeypatch.setitem(sys.modules, "spacy", mock_spacy)
+
+    def mock_load_spacy_model(model_name: str, spacy_config: Any) -> DummyNLP:
+        return DummyNLP()
+
+    monkeypatch.setattr(ee, "_load_spacy_model", mock_load_spacy_model)
+
+    result = ee.extract_entities(SAMPLE_TEXT, entity_types=["PERSON", "GPE"], languages=["en"])
     assert any(e.type == "PERSON" and e.text == "John Doe" for e in result)
-    assert any(e.type == "LOCATION" and e.text == "Berlin" for e in result)
+    assert any(e.type == "GPE" and e.text == "Berlin" for e in result)
     assert all(isinstance(e, Entity) for e in result)
 
 
@@ -73,8 +90,8 @@ def test_extract_keywords_with_keybert(monkeypatch: pytest.MonkeyPatch) -> None:
     assert result == [("Berlin", 0.9), ("John Doe", 0.8)]
 
 
-def test_extract_entities_missing_gliner(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setitem(sys.modules, "gliner", None)
+def test_extract_entities_missing_spacy(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setitem(sys.modules, "spacy", None)
     with pytest.raises(MissingDependencyError):
         ee.extract_entities(SAMPLE_TEXT, entity_types=["PERSON"])
 

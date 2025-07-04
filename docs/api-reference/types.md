@@ -40,9 +40,27 @@ Configuration options for the GMFT table extraction engine:
 
 ::: kreuzberg.GMFTConfig
 
+## Entity Extraction Configuration
+
+Configuration options for spaCy-based entity extraction:
+
+::: kreuzberg.SpacyEntityExtractionConfig
+
+## Language Detection Configuration
+
+Configuration options for automatic language detection:
+
+::: kreuzberg.LanguageDetectionConfig
+
 ## PSMMode (Page Segmentation Mode)
 
 ::: kreuzberg.PSMMode
+
+## Entity
+
+Represents an extracted named entity:
+
+::: kreuzberg.Entity
 
 ## Metadata
 

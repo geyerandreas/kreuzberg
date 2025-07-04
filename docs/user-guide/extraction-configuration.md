@@ -153,6 +153,134 @@ The feature requires the `langdetect` dependency:
 pip install "kreuzberg[langdetect]"
 ```
 
+### Entity and Keyword Extraction
+
+Kreuzberg can extract named entities and keywords from documents using spaCy for entity recognition and KeyBERT for keyword extraction:
+
+```python
+from kreuzberg import extract_file, ExtractionConfig, SpacyEntityExtractionConfig
+
+# Basic entity and keyword extraction
+result = await extract_file(
+    "document.pdf",
+    config=ExtractionConfig(
+        extract_entities=True,
+        extract_keywords=True,
+        keyword_count=10,  # Number of keywords to extract (default: 10)
+    ),
+)
+
+# Access extracted entities and keywords
+if result.entities:
+    for entity in result.entities:
+        print(f"{entity.type}: {entity.text} (position {entity.start}-{entity.end})")
+        # Example: "PERSON: John Doe (position 0-8)"
+
+if result.keywords:
+    for keyword, score in result.keywords:
+        print(f"{keyword}: {score:.3f}")
+        # Example: "artificial intelligence: 0.845"
+```
+
+#### Entity Extraction with Language Support
+
+spaCy supports entity extraction in multiple languages. You can configure language-specific models:
+
+```python
+from kreuzberg import extract_file, ExtractionConfig, SpacyEntityExtractionConfig
+
+# Configure spaCy for specific languages
+spacy_config = SpacyEntityExtractionConfig(
+    language_models={
+        "en": "en_core_web_sm",  # English
+        "de": "de_core_news_sm",  # German
+        "fr": "fr_core_news_sm",  # French
+        "es": "es_core_news_sm",  # Spanish
+    },
+    model_cache_dir="/tmp/spacy_models",  # Custom model cache directory
+    fallback_to_multilingual=True,  # Use multilingual model if language-specific model fails
+)
+
+# Extract with language detection to automatically choose the right model
+result = await extract_file(
+    "multilingual_document.pdf",
+    config=ExtractionConfig(
+        auto_detect_language=True,  # Enable language detection
+        extract_entities=True,
+        spacy_entity_extraction_config=spacy_config,
+    ),
+)
+
+# The system will automatically use the appropriate spaCy model based on detected languages
+if result.detected_languages and result.entities:
+    print(f"Detected languages: {result.detected_languages}")
+    print(f"Extracted {len(result.entities)} entities")
+```
+
+#### Custom Entity Patterns
+
+You can define custom entity patterns using regular expressions:
+
+```python
+result = await extract_file(
+    "invoice.pdf",
+    config=ExtractionConfig(
+        extract_entities=True,
+        custom_entity_patterns={
+            "INVOICE_ID": r"INV-\d{4,}",  # Invoice numbers
+            "PHONE": r"\+?\d{1,3}[-.\s]?\d{3,4}[-.\s]?\d{3,4}[-.\s]?\d{3,4}",  # Phone numbers
+            "EMAIL": r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+",  # Email addresses
+        },
+    ),
+)
+
+# Custom patterns are combined with spaCy's standard entity types
+for entity in result.entities:
+    if entity.type in ["INVOICE_ID", "PHONE", "EMAIL"]:
+        print(f"Custom entity - {entity.type}: {entity.text}")
+    else:
+        print(f"Standard entity - {entity.type}: {entity.text}")
+```
+
+#### Supported Entity Types
+
+spaCy automatically detects these standard entity types:
+
+- **PERSON**: People's names
+- **ORG**: Organizations, companies, agencies
+- **GPE**: Countries, cities, states (Geopolitical entities)
+- **MONEY**: Monetary values
+- **DATE**: Date expressions
+- **TIME**: Time expressions
+- **PERCENT**: Percentage values
+- **CARDINAL**: Numerals that do not fall under another type
+
+Language-specific models may support additional entity types relevant to that language.
+
+#### spaCy Configuration Options
+
+- `language_models`: Dict mapping language codes to spaCy model names
+- `model_cache_dir`: Custom directory for caching spaCy models
+- `fallback_to_multilingual`: Whether to use multilingual model (`xx_ent_wiki_sm`) as fallback
+- `max_doc_length`: Maximum document length for spaCy processing (default: 1,000,000 characters)
+- `batch_size`: Batch size for processing multiple texts (default: 1,000)
+
+#### Installation Requirements
+
+Entity and keyword extraction require additional dependencies:
+
+```shell
+# For entity extraction with spaCy
+pip install "kreuzberg[entity-extraction]"
+
+# Install specific spaCy language models as needed
+python -m spacy download en_core_web_sm    # English
+python -m spacy download de_core_news_sm   # German
+python -m spacy download fr_core_news_sm   # French
+```
+
+Available spaCy models include: `en_core_web_sm`, `de_core_news_sm`, `fr_core_news_sm`, `es_core_news_sm`, `pt_core_news_sm`, `it_core_news_sm`, `nl_core_news_sm`, `zh_core_web_sm`, `ja_core_news_sm`, `ko_core_news_sm`, `ru_core_news_sm`, and many others.
+
 ### Batch Processing
 
 ```python

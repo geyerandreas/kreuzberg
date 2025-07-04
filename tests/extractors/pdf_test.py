@@ -16,7 +16,6 @@ from kreuzberg.exceptions import ParsingError
 from kreuzberg.extraction import DEFAULT_CONFIG
 from tests.conftest import pdfs_with_tables
 
-# Check if running in CI environment
 IS_CI = os.environ.get("CI", "false").lower() == "true"
 
 

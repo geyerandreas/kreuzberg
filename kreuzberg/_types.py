@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from pandas import DataFrame
     from PIL.Image import Image
 
+    from kreuzberg._entity_extraction import SpacyEntityExtractionConfig
     from kreuzberg._gmft import GMFTConfig
     from kreuzberg._language_detection import LanguageDetectionConfig
     from kreuzberg._ocr._easyocr import EasyOCRConfig
@@ -190,6 +191,8 @@ class ExtractionConfig:
     """Whether to automatically detect language and configure OCR accordingly."""
     language_detection_config: LanguageDetectionConfig | None = None
     """Configuration for language detection. If None, uses default settings."""
+    spacy_entity_extraction_config: SpacyEntityExtractionConfig | None = None
+    """Configuration for spaCy entity extraction. If None, uses default settings."""
 
     def __post_init__(self) -> None:
         if self.custom_entity_patterns is not None and isinstance(self.custom_entity_patterns, dict):

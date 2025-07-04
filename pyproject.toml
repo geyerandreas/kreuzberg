@@ -5,16 +5,21 @@ requires = [ "hatchling" ]
 
 [project]
 name = "kreuzberg"
-version = "3.5.0"
+version = "3.6.0"
 description = "A text extraction library supporting PDFs, images, office documents and more"
 readme = "README.md"
 keywords = [
   "document-processing",
+  "entity-extraction",
   "image-to-text",
+  "keyword-extraction",
+  "named-entity-recognition",
+  "ner",
   "ocr",
   "pandoc",
   "pdf-extraction",
   "rag",
+  "spacy",
   "table-extraction",
   "tesseract",
   "text-extraction",
@@ -55,9 +60,11 @@ dependencies = [
 ]
 
 optional-dependencies.all = [
-  "kreuzberg[api,chunking,cli,easyocr,gmft,paddleocr]",
+  "kreuzberg[api,chunking,cli,easyocr,entity-extraction,gmft,langdetect,paddleocr]",
 ]
-optional-dependencies.api = [ "litestar[standard,structlog,opentelemetry]>=2.1.6" ]
+optional-dependencies.api = [
+  "litestar[standard,structlog,opentelemetry]>=2.16.0",
+]
 
 optional-dependencies.chunking = [ "semantic-text-splitter>=0.27.0" ]
 optional-dependencies.cli = [
@@ -66,14 +73,9 @@ optional-dependencies.cli = [
   "tomli>=2.0.0; python_version<'3.11'",
 ]
 optional-dependencies.easyocr = [ "easyocr>=1.7.2" ]
-optional-dependencies.entity-extraction = [
-  "gliner>=0.2.0",
-  "keybert>=0.8.0",
-]
+optional-dependencies.entity-extraction = [ "keybert>=0.8.0", "spacy>=3.8.0" ]
 optional-dependencies.gmft = [ "gmft>=0.4.2" ]
-optional-dependencies.langdetect = [
-  "fast-langdetect>=0.2.0",
-]
+optional-dependencies.langdetect = [ "fast-langdetect>=0.3.2" ]
 optional-dependencies.paddleocr = [
   "paddleocr>=3.1.0",
   "paddlepaddle>=3.1.0",
@@ -230,10 +232,7 @@ module = "kreuzberg.docker.main"
 disable_error_code = [ "misc" ]
 
 [[tool.mypy.overrides]]
-module = [
-  "kreuzberg._gmft",
-  "kreuzberg._multiprocessing.gmft_isolated",
-]
+module = [ "kreuzberg._gmft", "kreuzberg._multiprocessing.gmft_isolated" ]
 disable_error_code = [ "unused-ignore" ]
 
 [[tool.mypy.overrides]]

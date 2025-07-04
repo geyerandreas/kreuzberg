@@ -110,6 +110,30 @@ Language detection is an optional feature that automatically detects the languag
 pip install "kreuzberg[langdetect]"
 ```
 
+### Entity and Keyword Extraction
+
+Entity and keyword extraction are optional features that extract named entities and keywords from documents. Entity extraction uses [spaCy](https://spacy.io/) for multilingual named entity recognition, while keyword extraction uses [KeyBERT](https://github.com/MaartenGr/KeyBERT) for semantic keyword extraction:
+
+```shell
+pip install "kreuzberg[entity-extraction]"
+```
+
+After installation, you'll need to download the spaCy language models you plan to use:
+
+```shell
+# Download English model (most common)
+python -m spacy download en_core_web_sm
+
+# Download other language models as needed
+python -m spacy download de_core_news_sm  # German
+python -m spacy download fr_core_news_sm  # French
+python -m spacy download es_core_news_sm  # Spanish
+```
+
+!!! note "Language Model Requirements"
+
+    spaCy language models are large (50-500MB each) and are downloaded separately. Only download the models for languages you actually need to process. See the [spaCy models documentation](https://spacy.io/models) for a complete list of available models.
+
 ### All Optional Dependencies
 
 To install Kreuzberg with all optional dependencies, you can use the `all` extra group:
@@ -121,5 +145,5 @@ pip install "kreuzberg[all]"
 This is equivalent to:
 
 ```shell
-pip install "kreuzberg[chunking,easyocr,gmft,langdetect,paddleocr]"
+pip install "kreuzberg[chunking,easyocr,entity-extraction,gmft,langdetect,paddleocr]"
 ```

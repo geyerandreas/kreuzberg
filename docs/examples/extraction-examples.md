@@ -208,23 +208,62 @@ async def extract_keywords():
     print(f"Keywords: {result.keywords}")
 ```
 
-## Entity and Regex Extraction
+## Entity and Keyword Extraction
 
-Kreuzberg can automatically extract the following entities: PERSON, ORGANIZATION, LOCATION, DATE, EMAIL, PHONE as well as custom entities described by regex patterns
+Kreuzberg can extract named entities using spaCy and keywords using KeyBERT. It automatically detects entities like people, organizations, locations, and more, plus supports custom regex patterns:
 
 ```python
-from kreuzberg import ExtractionConfig, extract_file
+from kreuzberg import ExtractionConfig, extract_file, SpacyEntityExtractionConfig
 
-async def extract_entities():
+async def extract_entities_and_keywords():
+    # Basic extraction
     config = ExtractionConfig(
-        custom_entity_patterns={"INVOICE_ID": r"INV-\d+", "EMAIL": r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"},
         extract_entities=True,
+        extract_keywords=True,
+        keyword_count=5,
+        custom_entity_patterns={
+            "INVOICE_ID": r"INV-\d+",
+            "EMAIL": r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+",
+        },
     )
-    result = await extract_file(
-        "document.pdf",
-        config=config,
+    result = await extract_file("document.pdf", config=config)
+
+    # Print extracted entities
+    if result.entities:
+        for entity in result.entities:
+            print(f"{entity.type}: {entity.text}")
+
+    # Print extracted keywords
+    if result.keywords:
+        for keyword, score in result.keywords:
+            print(f"Keyword: {keyword} (score: {score:.3f})")
+
+async def extract_multilingual_entities():
+    # Configure spaCy for multiple languages
+    spacy_config = SpacyEntityExtractionConfig(
+        language_models={
+            "en": "en_core_web_sm",
+            "de": "de_core_news_sm",
+            "fr": "fr_core_news_sm",
+        },
+        fallback_to_multilingual=True,
     )
-    print(f"Entities: {result.entities}")
+
+    config = ExtractionConfig(
+        auto_detect_language=True,  # Automatically detect document languages
+        extract_entities=True,
+        spacy_entity_extraction_config=spacy_config,
+    )
+
+    result = await extract_file("multilingual_document.pdf", config=config)
+
+    if result.detected_languages:
+        print(f"Detected languages: {result.detected_languages}")
+
+    if result.entities:
+        print(f"Extracted {len(result.entities)} entities")
+        for entity in result.entities:
+            print(f"  {entity.type}: {entity.text}")
 ```
 
 ## Synchronous API

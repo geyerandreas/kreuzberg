@@ -20,7 +20,7 @@ except ImportError:
 
 pytestmark = pytest.mark.skipif(not CLI_AVAILABLE, reason="CLI dependencies not installed")
 
-# Check if running in CI environment
+
 IS_CI = os.environ.get("CI", "false").lower() == "true"
 
 
