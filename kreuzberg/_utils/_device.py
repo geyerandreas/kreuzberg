@@ -153,7 +153,7 @@ def _is_cuda_available() -> bool:
     try:
         import torch  # type: ignore[import-not-found,unused-ignore]
 
-        return torch.cuda.is_available()
+        return bool(torch.cuda.is_available())
     except ImportError:
         return False
 
@@ -163,7 +163,7 @@ def _is_mps_available() -> bool:
     try:
         import torch  # type: ignore[import-not-found,unused-ignore]
 
-        return torch.backends.mps.is_available()
+        return bool(torch.backends.mps.is_available())
     except ImportError:
         return False
 

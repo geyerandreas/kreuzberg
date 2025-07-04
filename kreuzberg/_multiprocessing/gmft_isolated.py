@@ -31,8 +31,8 @@ def _extract_tables_in_process(
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     try:
-        from gmft.auto import AutoTableDetector, AutoTableFormatter  # type: ignore[attr-defined]
-        from gmft.detectors.tatr import TATRDetectorConfig  # type: ignore[attr-defined]
+        from gmft.auto import AutoTableDetector, AutoTableFormatter
+        from gmft.detectors.tatr import TATRDetectorConfig
         from gmft.formatters.tatr import TATRFormatConfig
         from gmft.pdf_bindings.pdfium import PyPDFium2Document
 
@@ -40,7 +40,7 @@ def _extract_tables_in_process(
 
         config = GMFTConfig(**config_dict)
 
-        formatter = AutoTableFormatter(  # type: ignore[no-untyped-call]
+        formatter = AutoTableFormatter(
             config=TATRFormatConfig(
                 verbosity=config.verbosity,
                 formatter_base_threshold=config.formatter_base_threshold,
@@ -56,9 +56,7 @@ def _extract_tables_in_process(
                 force_large_table_assumption=config.force_large_table_assumption,
             )
         )
-        detector = AutoTableDetector(  # type: ignore[no-untyped-call]
-            config=TATRDetectorConfig(detector_base_threshold=config.detector_base_threshold)
-        )
+        detector = AutoTableDetector(config=TATRDetectorConfig(detector_base_threshold=config.detector_base_threshold))
 
         doc = PyPDFium2Document(str(file_path))
         cropped_tables = []
@@ -66,10 +64,10 @@ def _extract_tables_in_process(
 
         try:
             for page in doc:
-                cropped_tables.extend(detector.extract(page))  # type: ignore[attr-defined]
+                cropped_tables.extend(detector.extract(page))
 
             for cropped_table in cropped_tables:
-                formatted_table = formatter.extract(cropped_table)  # type: ignore[attr-defined]
+                formatted_table = formatter.extract(cropped_table)
                 dataframes.append(formatted_table.df())
 
             results = []
@@ -93,7 +91,7 @@ def _extract_tables_in_process(
             result_queue.put((True, results))
 
         finally:
-            doc.close()  # type: ignore[no-untyped-call]
+            doc.close()
 
     except Exception as e:  # noqa: BLE001
         error_info = {"error": str(e), "type": type(e).__name__, "traceback": traceback.format_exc()}

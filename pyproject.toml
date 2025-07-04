@@ -208,6 +208,12 @@ module = [
   "structlog.*",
   "opentelemetry.*",
   "fast_langdetect.*",
+  "numpy.*",
+  "torch.*",
+  "easyocr.*",
+  "paddleocr.*",
+  "gmft.*",
+  "semantic_text_splitter.*",
 ]
 ignore_missing_imports = true
 
