@@ -1,6 +1,6 @@
 metadata:
   name: "Kreuzberg"
-  version: "3.4.0"
+  version: "3.5.0"
   description: "A text extraction library supporting PDFs, images, office documents and more"
 
 outputs:
@@ -115,6 +115,7 @@ rules:
       - **OCR Backends**: Pluggable OCR engines with separate configuration classes
       - **GMFT Integration**: Table extraction using GMFT library for PDFs
       - **Chunking**: Text splitting functionality in `_chunker.py`
+      - **Language Detection**: Automatic language detection using fast-langdetect
       - **Async/Sync**: Primary async implementation with sync wrappers in `_utils/_sync.py`
       - **API Server**: REST API using Litestar framework in `_api/main.py`
       - **CLI**: Command-line interface for batch processing and automation
@@ -144,6 +145,8 @@ rules:
       - Mock OCR responses for predictable testing
       - Both sync and async test variants
       - Comprehensive error case coverage
+      - OCR tests marked as `xfail` in CI environments for resilience
+      - Integration tests use timeouts and retry logic where appropriate
 
   - name: "Important Instructions"
     priority: 10
@@ -160,16 +163,17 @@ rules:
     priority: 6
     content: |
       ### GitHub Actions Workflows
-      - **Release**: Automated PyPI publishing via GitHub releases
-      - **Docker**: Multi-platform Docker builds (linux/amd64, linux/arm64)
+      - **Release**: Automated PyPI publishing via GitHub releases, triggers Docker builds
+      - **Docker**: Multi-platform Docker builds (linux/amd64, linux/arm64), triggered by releases
       - **Documentation**: Auto-deploy to GitHub Pages on docs changes
+      - **CI**: Comprehensive testing across multiple Python versions and platforms
 
       ### Docker Variants
-      - **Core** (`goldziher/kreuzberg:v3.4.0`): API + Tesseract OCR
-      - **EasyOCR** (`goldziher/kreuzberg:v3.4.0-easyocr`): Core + EasyOCR
-      - **PaddleOCR** (`goldziher/kreuzberg:v3.4.0-paddle`): Core + PaddleOCR
-      - **GMFT** (`goldziher/kreuzberg:v3.4.0-gmft`): Core + table extraction
-      - **All** (`goldziher/kreuzberg:v3.4.0-all`): All features included
+      - **Core** (`goldziher/kreuzberg:v3.5.0`): API + Tesseract OCR
+      - **EasyOCR** (`goldziher/kreuzberg:v3.5.0-easyocr`): Core + EasyOCR
+      - **PaddleOCR** (`goldziher/kreuzberg:v3.5.0-paddle`): Core + PaddleOCR
+      - **GMFT** (`goldziher/kreuzberg:v3.5.0-gmft`): Core + table extraction
+      - **All** (`goldziher/kreuzberg:v3.5.0-all`): All features included
 
       ### Manual Triggers
       - Docker builds: `gh workflow run "Publish Docker Images"`
@@ -191,8 +195,9 @@ rules:
       chunking = ["semantic-text-splitter>=0.27.0"]
       easyocr = ["easyocr>=1.7.2"]
       gmft = ["gmft>=0.4.2"]
+      langdetect = ["fast-langdetect>=0.2.0"]
       paddleocr = ["paddleocr>=3.1.0", "paddlepaddle>=3.1.0", "setuptools>=80.9.0"]
-      all = ["kreuzberg[api,chunking,cli,easyocr,gmft,paddleocr]"]
+      all = ["kreuzberg[api,chunking,cli,easyocr,gmft,langdetect,paddleocr]"]
       ```
 
       ### Installation Patterns
@@ -207,6 +212,17 @@ rules:
       - **Development**: Uses dependency groups in pyproject.toml
 
 sections:
+  - title: "Language Detection"
+    content: |
+      ### Automatic Language Detection (v3.5.0+)
+      - **Feature**: Automatically detect languages in extracted text
+      - **Implementation**: Uses fast-langdetect library for high-performance detection
+      - **Configuration**:
+        - Enable with `auto_detect_language=True` in `ExtractionConfig`
+        - Configure via `LanguageDetectionConfig` for confidence thresholds
+      - **Output**: Results available in `ExtractionResult.detected_languages`
+      - **Integration**: Works with all extraction methods and file types
+
   - title: "Planned Features"
     content: |
       ### Structured Extraction (Issue #55)

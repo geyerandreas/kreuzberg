@@ -2,18 +2,12 @@
 name: Publish Docker Images
 
 on:
-  workflow_run:
-    workflows: ["Release"]
-    types:
-      - completed
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     permissions:
       contents: read
       packages: write
@@ -41,27 +35,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_branch || github.ref }}
+          ref: ${{ github.ref }}
 
       - name: Get release version
         id: get_version
         run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            # For manual dispatch, get the latest tag by listing all tags
-            git fetch --tags
-            VERSION=$(git tag --sort=-version:refname | head -n1)
-          else
-            # For workflow_run, use the head branch
-            VERSION="${{ github.event.workflow_run.head_branch }}"
-            # If triggered by a tag, extract version
-            if [[ "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
-              VERSION="$VERSION"
-            else
-              # Get the latest tag by listing all tags
-              git fetch --tags
-              VERSION=$(git tag --sort=-version:refname | head -n1)
-            fi
-          fi
+          # Get the latest tag by listing all tags
+          git fetch --tags
+          VERSION=$(git tag --sort=-version:refname | head -n1)
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
