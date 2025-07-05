@@ -11,8 +11,8 @@
 
 ## Why Kreuzberg?
 
-- **🚀 Fastest Performance**: [Benchmarked](https://github.com/Goldziher/python-text-extraction-libs-benchmarks) as the fastest text extraction library
-- **💾 Memory Efficient**: 14x smaller than alternatives (71MB vs 1GB+)
+- **🚀 Fastest Performance**: [35+ files/second](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) - the fastest text extraction library
+- **💾 Memory Efficient**: 14x smaller than alternatives (71MB vs 1GB+) with lowest memory usage (~530MB)
 - **⚡ Dual APIs**: Only library with both sync and async support
 - **🔧 Zero Configuration**: Works out of the box with sane defaults
 - **🏠 Local Processing**: No cloud dependencies or external API calls
@@ -68,13 +68,13 @@ asyncio.run(main())
 
 ```bash
 # Run API server
-docker run -p 8000:8000 goldziher/kreuzberg:3.4.0
+docker run -p 8000:8000 goldziher/kreuzberg:latest
 
 # Extract files
 curl -X POST http://localhost:8000/extract -F "data=@document.pdf"
 ```
 
-Available variants: `3.4.0`, `3.4.0-easyocr`, `3.4.0-paddle`, `3.4.0-gmft`, `3.4.0-all`
+Available variants: `latest`, `3.6.1`, `3.6.1-easyocr`, `3.6.1-paddle`, `3.6.1-gmft`, `3.6.1-all`
 
 ### 🌐 REST API
 
@@ -119,15 +119,20 @@ kreuzberg extract *.pdf --output-dir ./extracted/
 
 ## Performance
 
-**Fastest extraction speeds** with minimal resource usage:
+**[Comprehensive benchmarks](https://goldziher.github.io/python-text-extraction-libs-benchmarks/)** across 94 real-world documents (~210MB) • [View source](https://github.com/Goldziher/python-text-extraction-libs-benchmarks):
 
-| Library       | Speed          | Memory        | Size        | Success Rate |
-| ------------- | -------------- | ------------- | ----------- | ------------ |
-| **Kreuzberg** | ⚡ **Fastest** | 💾 **Lowest** | 📦 **71MB** | ✅ **100%**  |
-| Unstructured  | 2-3x slower    | 2x higher     | 146MB       | 95%          |
-| MarkItDown    | 3-4x slower    | 3x higher     | 251MB       | 90%          |
-| Docling       | 4-5x slower    | 10x higher    | 1,032MB     | 85%          |
+| Library       | Speed           | Memory    | Install Size | Dependencies | Success Rate |
+| ------------- | --------------- | --------- | ------------ | ------------ | ------------ |
+| **Kreuzberg** | **35+ files/s** | **530MB** | **71MB**     | **20**       | High\*       |
+| Unstructured  | Moderate        | ~1GB      | 146MB        | 54           | 88%+         |
+| MarkItDown    | Good†           | ~1.5GB    | 251MB        | 25           | 80%†         |
+| Docling       | 60+ min/file‡   | ~5GB      | 1,032MB      | 88           | Low‡         |
 
+\*_Can achieve 75% reliability with 15% performance trade-off when configured_
+†_Good on simple documents, struggles with large/complex files (>10MB)_
+‡_Frequently fails/times out on medium files (>1MB)_
+
+> **Benchmark details**: Tested across PDFs, Word docs, HTML, images, spreadsheets in 6 languages (English, Hebrew, German, Chinese, Japanese, Korean)
 > **Rule of thumb**: Use async API for complex documents and batch processing (up to 4.5x faster)
 
 ## Documentation
@@ -161,7 +166,7 @@ ______________________________________________________________________
 
 <div align="center">
 
-**[Documentation](https://goldziher.github.io/kreuzberg/) • [PyPI](https://pypi.org/project/kreuzberg/) • [Docker Hub](https://hub.docker.com/r/goldziher/kreuzberg) • [Discord](https://discord.gg/pXxagNK2zN)**
+**[Documentation](https://goldziher.github.io/kreuzberg/) • [PyPI](https://pypi.org/project/kreuzberg/) • [Docker Hub](https://hub.docker.com/r/goldziher/kreuzberg) • [Benchmarks](https://github.com/Goldziher/python-text-extraction-libs-benchmarks) • [Discord](https://discord.gg/pXxagNK2zN)**
 
 Made with ❤️ by the [Kreuzberg contributors](https://github.com/Goldziher/kreuzberg/graphs/contributors)
 
