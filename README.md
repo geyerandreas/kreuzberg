@@ -70,15 +70,16 @@ asyncio.run(main())
 **Connect directly to Claude Desktop, Cursor, and other AI tools with the Model Context Protocol:**
 
 ```bash
-# Install and run MCP server
-pip install kreuzberg
+# Install and run MCP server with all features (recommended)
+pip install "kreuzberg[all]"
 kreuzberg-mcp
 
 # Or with uvx (recommended for Claude Desktop)
-uvx kreuzberg-mcp
+uvx --with "kreuzberg[all]" kreuzberg-mcp
 
-# With optional features for enhanced functionality
-uvx --with "kreuzberg[chunking,langdetect,entity-extraction]" kreuzberg-mcp
+# Basic installation (core features only)
+pip install kreuzberg
+kreuzberg-mcp
 ```
 
 **Configure in Claude Desktop (`claude_desktop_config.json`):**
@@ -88,7 +89,7 @@ uvx --with "kreuzberg[chunking,langdetect,entity-extraction]" kreuzberg-mcp
   "mcpServers": {
     "kreuzberg": {
       "command": "uvx",
-      "args": ["--with", "kreuzberg[chunking,langdetect]", "kreuzberg-mcp"]
+      "args": ["--with", "kreuzberg[all]", "kreuzberg-mcp"]
     }
   }
 }

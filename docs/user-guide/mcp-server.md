@@ -14,30 +14,30 @@ The Model Context Protocol (MCP) is an open standard developed by Anthropic that
 
 ### Installation
 
-The MCP server is included with the base Kreuzberg installation, but you may want to install optional features:
+The MCP server is included with the base Kreuzberg installation. For the best experience, install with all features:
 
 ```bash
-# Basic installation (includes MCP server)
-pip install kreuzberg
+# Recommended: Install with all features for full functionality
+pip install "kreuzberg[all]"
 
-# With optional features for enhanced functionality
+# Or with specific features for your use case
 pip install "kreuzberg[chunking,langdetect,entity-extraction]"
 
-# With all features
-pip install "kreuzberg[all]"
+# Basic installation (core features only)
+pip install kreuzberg
 ```
 
 ### Running the MCP Server
 
 ```bash
-# Direct execution (after pip install)
+# Recommended: With uvx and all features (for Claude Desktop)
+uvx --with "kreuzberg[all]" kreuzberg-mcp
+
+# With uvx and specific features
+uvx --with "kreuzberg[chunking,langdetect,entity-extraction]" kreuzberg-mcp
+
+# Basic: Direct execution (after pip install)
 kreuzberg-mcp
-
-# With uvx (recommended for Claude Desktop)
-uvx kreuzberg-mcp
-
-# With uvx and optional features
-uvx --with "kreuzberg[chunking,langdetect]" kreuzberg-mcp
 ```
 
 ### Claude Desktop Configuration
@@ -47,7 +47,21 @@ Add Kreuzberg to your Claude Desktop configuration file:
 **On macOS:** `~/Library/Application Support/Claude/claude_desktop_config.json`
 **On Windows:** `%APPDATA%\Claude\claude_desktop_config.json`
 
-#### Basic Configuration
+#### Recommended Configuration (All Features)
+
+```json
+{
+  "mcpServers": {
+    "kreuzberg": {
+      "command": "uvx",
+      "args": ["--with", "kreuzberg[all]", "kreuzberg-mcp"]
+    }
+  }
+}
+```
+
+#### Basic Configuration (Core Features Only)
+
 ```json
 {
   "mcpServers": {
@@ -59,20 +73,10 @@ Add Kreuzberg to your Claude Desktop configuration file:
 }
 ```
 
-#### With Optional Features
-```json
-{
-  "mcpServers": {
-    "kreuzberg": {
-      "command": "uvx",
-      "args": ["--with", "kreuzberg[chunking,langdetect,entity-extraction]", "kreuzberg-mcp"]
-    }
-  }
-}
-```
-
 #### Alternative: Using Pre-installed Kreuzberg
+
 If you have Kreuzberg installed with pip:
+
 ```json
 {
   "mcpServers": {
@@ -89,14 +93,14 @@ Kreuzberg MCP server supports enhanced functionality through optional dependenci
 
 ### Available Feature Sets
 
-| Feature | Package Extra | Description |
-|---------|---------------|-------------|
-| **Content Chunking** | `chunking` | Split documents into chunks for RAG applications |
-| **Language Detection** | `langdetect` | Automatically detect document languages |
-| **Entity Extraction** | `entity-extraction` | Extract named entities and keywords |
-| **Advanced OCR** | `easyocr`, `paddleocr` | Alternative OCR engines |
-| **Table Extraction** | `gmft` | Extract structured tables from PDFs |
-| **All Features** | `all` | Install all optional dependencies |
+| Feature                | Package Extra          | Description                                      |
+| ---------------------- | ---------------------- | ------------------------------------------------ |
+| **Content Chunking**   | `chunking`             | Split documents into chunks for RAG applications |
+| **Language Detection** | `langdetect`           | Automatically detect document languages          |
+| **Entity Extraction**  | `entity-extraction`    | Extract named entities and keywords              |
+| **Advanced OCR**       | `easyocr`, `paddleocr` | Alternative OCR engines                          |
+| **Table Extraction**   | `gmft`                 | Extract structured tables from PDFs              |
+| **All Features**       | `all`                  | Install all optional dependencies                |
 
 ### Installation Examples
 
@@ -117,11 +121,14 @@ pip install "kreuzberg[all]"
 ### Using with uvx
 
 ```bash
-# With specific features
-uvx --with "kreuzberg[chunking,langdetect]" kreuzberg-mcp
-
-# With all features
+# Recommended: With all features for full functionality
 uvx --with "kreuzberg[all]" kreuzberg-mcp
+
+# With specific features for your use case
+uvx --with "kreuzberg[chunking,langdetect,entity-extraction]" kreuzberg-mcp
+
+# Basic: Core features only
+uvx kreuzberg-mcp
 ```
 
 ### Claude Desktop Configuration Examples
@@ -129,6 +136,7 @@ uvx --with "kreuzberg[all]" kreuzberg-mcp
 For different use cases:
 
 #### RAG Application Setup
+
 ```json
 {
   "mcpServers": {
@@ -141,6 +149,7 @@ For different use cases:
 ```
 
 #### Document Analysis Setup
+
 ```json
 {
   "mcpServers": {
@@ -153,6 +162,7 @@ For different use cases:
 ```
 
 #### Advanced OCR Setup
+
 ```json
 {
   "mcpServers": {
@@ -164,7 +174,8 @@ For different use cases:
 }
 ```
 
-#### Multiple MCP Servers
+#### Multiple MCP Servers (Recommended Setup)
+
 ```json
 {
   "mcpServers": {
@@ -287,7 +298,7 @@ Extracts text with structured analysis including entities, keywords, and tables.
 
 ### Basic Text Extraction
 
-```
+```text
 Human: Extract the text from this PDF file: /path/to/document.pdf
 
 Claude: I'll extract the text from your PDF document using the Kreuzberg MCP server.
@@ -297,9 +308,50 @@ Claude: I'll extract the text from your PDF document using the Kreuzberg MCP ser
 The document contains: [extracted text content]
 ```
 
+### Advanced Document Processing (with all features)
+
+```text
+Human: Process this document with full analysis: /path/to/document.pdf
+
+Claude: I'll perform a comprehensive analysis of your document using all of Kreuzberg's features.
+
+[Uses extract_document tool with chunk_content=true, extract_entities=true, extract_keywords=true, extract_tables=true, auto_detect_language=true]
+
+## Document Analysis Results:
+
+**Detected Language:** English
+
+**Content:** [extracted text content]
+
+**Key Entities:**
+- PERSON: John Smith, Mary Johnson
+- ORGANIZATION: Acme Corporation, Tech Solutions Inc.
+- DATE: 2024-01-15, March 2024
+- LOCATION: New York, San Francisco
+
+**Keywords:** [technology: 0.95, innovation: 0.87, strategy: 0.82, development: 0.78, market: 0.74]
+
+**Tables Found:** 3 tables extracted
+| Quarter | Revenue | Growth |
+|---------|---------|---------|
+| Q1 2024 | $2.5M   | 12%    |
+| Q2 2024 | $2.8M   | 15%    |
+
+**Content Chunks:** Split into 8 chunks for RAG processing
+- Chunk 1: [Executive Summary section]
+- Chunk 2: [Market Analysis section]
+- [Additional chunks...]
+
+**Metadata:**
+- Author: John Smith
+- Created: 2024-01-15
+- Pages: 15
+- Format: PDF
+```
+
 ### Comprehensive Document Analysis
 
-```
+```text
 Human: Analyze this document and extract all information including tables and entities: /path/to/report.pdf
 
 Claude: I'll perform a comprehensive analysis of your document using Kreuzberg's advanced extraction features.
@@ -322,7 +374,7 @@ Claude: I'll perform a comprehensive analysis of your document using Kreuzberg's
 
 ### Structured Analysis with Prompts
 
-```
+```text
 Human: Use the structured analysis prompt for this document: /path/to/contract.pdf
 
 Claude: I'll use the structured analysis prompt to extract and analyze your contract document.
@@ -378,7 +430,7 @@ print(result)
 
 The MCP server supports all three OCR backends. You can specify which one to use:
 
-```
+```text
 Human: Extract text from this image using EasyOCR: /path/to/image.png
 
 Claude: I'll extract text from your image using EasyOCR.
@@ -390,7 +442,7 @@ Claude: I'll extract text from your image using EasyOCR.
 
 For RAG (Retrieval-Augmented Generation) applications, you can chunk content:
 
-```
+```text
 Human: Extract and chunk this document for RAG: /path/to/document.pdf
 
 Claude: I'll extract the content and split it into chunks suitable for RAG applications.
@@ -410,7 +462,7 @@ The document has been processed and split into [number] chunks:
 
 The MCP server can automatically detect document languages:
 
-```
+```text
 Human: Extract text and detect the language: /path/to/multilingual.pdf
 
 Claude: I'll extract the text and detect the language of your document.
@@ -425,7 +477,7 @@ Claude: I'll extract the text and detect the language of your document.
 
 Extract structured tables from documents:
 
-```
+```text
 Human: Extract all tables from this financial report: /path/to/report.pdf
 
 Claude: I'll extract all tables from your financial report.
@@ -470,15 +522,15 @@ Claude: I'll extract all tables from your financial report.
 1. **Missing Optional Dependencies**
 
     - **Chunking Error**: `MissingDependencyError: The package 'semantic-text-splitter' is required`
-      - Solution: `uvx --with "kreuzberg[chunking]" kreuzberg-mcp`
+        - Solution: `uvx --with "kreuzberg[chunking]" kreuzberg-mcp`
     - **Language Detection Ignored**: No error, but `auto_detect_language=True` has no effect
-      - Solution: `uvx --with "kreuzberg[langdetect]" kreuzberg-mcp`
+        - Solution: `uvx --with "kreuzberg[langdetect]" kreuzberg-mcp`
     - **Entity/Keyword Extraction Ignored**: No error, but features return None
-      - Solution: `uvx --with "kreuzberg[entity-extraction]" kreuzberg-mcp`
+        - Solution: `uvx --with "kreuzberg[entity-extraction]" kreuzberg-mcp`
     - **Advanced OCR Unavailable**: `easyocr` or `paddleocr` backend not found
-      - Solution: `uvx --with "kreuzberg[easyocr,paddleocr]" kreuzberg-mcp`
+        - Solution: `uvx --with "kreuzberg[easyocr,paddleocr]" kreuzberg-mcp`
     - **Table Extraction Error**: `MissingDependencyError: The package 'gmft' is required`
-      - Solution: `uvx --with "kreuzberg[gmft]" kreuzberg-mcp`
+        - Solution: `uvx --with "kreuzberg[gmft]" kreuzberg-mcp`
 
 1. **uvx Command Not Found**
 
