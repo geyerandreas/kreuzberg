@@ -18,7 +18,8 @@
 - **🏠 Local Processing**: No cloud dependencies or external API calls
 - **📦 Rich Format Support**: PDFs, images, Office docs, HTML, and more
 - **🔍 Multiple OCR Engines**: Tesseract, EasyOCR, and PaddleOCR support
-- **🐳 Production Ready**: CLI, REST API, and Docker images included
+- **🤖 AI Integration**: Native MCP server for Claude and other AI tools
+- **🐳 Production Ready**: CLI, REST API, MCP server, and Docker images included
 
 ## Quick Start
 
@@ -63,6 +64,55 @@ asyncio.run(main())
 ```
 
 ## Deployment Options
+
+### 🤖 MCP Server (AI Integration)
+
+**Connect directly to Claude Desktop, Cursor, and other AI tools with the Model Context Protocol:**
+
+```bash
+# Install and run MCP server with all features (recommended)
+pip install "kreuzberg[all]"
+kreuzberg-mcp
+
+# Or with uvx (recommended for Claude Desktop)
+uvx --with "kreuzberg[all]" kreuzberg-mcp
+
+# Basic installation (core features only)
+pip install kreuzberg
+kreuzberg-mcp
+```
+
+**Configure in Claude Desktop (`claude_desktop_config.json`):**
+
+```json
+{
+  "mcpServers": {
+    "kreuzberg": {
+      "command": "uvx",
+      "args": ["--with", "kreuzberg[all]", "kreuzberg-mcp"]
+    }
+  }
+}
+```
+
+**Basic configuration (core features only):**
+
+```json
+{
+  "mcpServers": {
+    "kreuzberg": {
+      "command": "uvx",
+      "args": ["kreuzberg-mcp"]
+    }
+  }
+}
+```
+
+**Available MCP capabilities:**
+
+- **Tools**: `extract_document`, `extract_bytes`, `extract_simple`
+- **Resources**: Configuration, supported formats, OCR backends
+- **Prompts**: Extract-and-summarize, structured analysis workflows
 
 ### 🐳 Docker (Recommended)
 
@@ -149,6 +199,7 @@ kreuzberg extract *.pdf --output-dir ./extracted/
 
 ## Advanced Features
 
+- **🤖 MCP Server**: Native integration with Claude Desktop and AI tools
 - **📊 Table Extraction**: Extract tables from PDFs with GMFT
 - **🧩 Content Chunking**: Split documents for RAG applications
 - **🎯 Custom Extractors**: Extend with your own document handlers

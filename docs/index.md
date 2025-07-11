@@ -6,6 +6,7 @@ Kreuzberg is a Python library for text extraction from documents. It provides a 
 
 - **Simple and Hassle-Free**: Clean API that just works, without complex configuration
 - **Local Processing**: No external API calls or cloud dependencies required
+- **AI Integration**: Native MCP server for Claude Desktop and other AI tools
 - **Resource Efficient**: Lightweight processing without GPU requirements
 - **Small Package Size**: Has few curated dependencies and a minimal footprint
 - **Format Support**: Comprehensive support for documents, images, and text formats

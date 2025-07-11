@@ -5,7 +5,7 @@ requires = [ "hatchling" ]
 
 [project]
 name = "kreuzberg"
-version = "3.6.2"
+version = "3.7.0"
 description = "A text extraction library supporting PDFs, images, office documents and more"
 readme = "README.md"
 keywords = [
@@ -50,6 +50,7 @@ dependencies = [
   "charset-normalizer>=3.4.2",
   "exceptiongroup>=1.2.2; python_version<'3.11'",
   "html-to-markdown[lxml]>=1.6.0",
+  "mcp>=1.11.0",
   "msgspec>=0.18.0",
   "playa-pdf>=0.6.1",                                 # pinned due to breaking changes in 0.5.0
   "psutil>=7.0.0",
@@ -84,6 +85,7 @@ optional-dependencies.paddleocr = [
 urls.homepage = "https://github.com/Goldziher/kreuzberg"
 
 scripts.kreuzberg = "kreuzberg.cli:cli"
+scripts.kreuzberg-mcp = "kreuzberg._mcp.server:main"
 
 [dependency-groups]
 dev = [
