@@ -876,6 +876,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/c9/23/38e07928c22dd1facd00781758bc4efb5f94c0240aa59e22b9a290fe44a1/html_to_markdown-1.6.0-py3-none-any.whl", hash = "sha256:88848e851ea80719397fc5356018c367d415bbd1ace030f3ad380fafd49fa0ed", size = 31616, upload-time = "2025-07-11T06:14:10.544Z" },
 ]
 
+[package.optional-dependencies]
+lxml = [
+    { name = "lxml" },
+]
+
 [[package]]
 name = "htmlmin2"
 version = "0.1.13"
@@ -1166,12 +1171,12 @@ wheels = [
 
 [[package]]
 name = "kreuzberg"
-version = "3.6.1"
+version = "3.6.2"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
     { name = "charset-normalizer" },
-    { name = "html-to-markdown" },
+    { name = "html-to-markdown", extra = ["lxml"] },
     { name = "msgspec" },
     { name = "playa-pdf" },
     { name = "psutil" },
@@ -1254,7 +1259,7 @@ requires-dist = [
     { name = "exceptiongroup", marker = "python_full_version < '3.11'", specifier = ">=1.2.2" },
     { name = "fast-langdetect", marker = "extra == 'langdetect'", specifier = ">=0.3.2" },
     { name = "gmft", marker = "extra == 'gmft'", specifier = ">=0.4.2" },
-    { name = "html-to-markdown", specifier = ">=1.6.0" },
+    { name = "html-to-markdown", extras = ["lxml"], specifier = ">=1.6.0" },
     { name = "keybert", marker = "extra == 'entity-extraction'", specifier = ">=0.9.0" },
     { name = "kreuzberg", extras = ["api", "chunking", "cli", "easyocr", "entity-extraction", "gmft", "langdetect", "paddleocr"], marker = "extra == 'all'" },
     { name = "litestar", extras = ["standard", "structlog", "opentelemetry"], marker = "extra == 'api'", specifier = ">=2.16.0" },
