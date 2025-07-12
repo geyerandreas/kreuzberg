@@ -100,7 +100,7 @@ async def test_extract_bytes_html(html_document: Path) -> None:
     assert_extraction_result(result, mime_type=MARKDOWN_MIME_TYPE)
     assert (
         result.content
-        == 'Browsers usually insert quotation marks around the q element. WWF\'s goal is to: "Build a future where people live in harmony with nature."'
+        == 'Browsers usually insert quotation marks around the q element.\n\nWWF\'s goal is to: "Build a future where people live in harmony with nature."'
     )
 
 
@@ -169,7 +169,7 @@ async def test_extract_file_html(html_document: Path) -> None:
     assert_extraction_result(result, mime_type=MARKDOWN_MIME_TYPE)
     assert (
         result.content
-        == 'Browsers usually insert quotation marks around the q element. WWF\'s goal is to: "Build a future where people live in harmony with nature."'
+        == 'Browsers usually insert quotation marks around the q element.\n\nWWF\'s goal is to: "Build a future where people live in harmony with nature."'
     )
 
 

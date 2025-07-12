@@ -8,7 +8,7 @@ from functools import lru_cache
 import chardetng_py
 
 # Compile regex patterns once at module level for performance
-_WHITESPACE_PATTERN = re.compile(r"[ \t\f\v\r\xa0]+")
+_WHITESPACE_PATTERN = re.compile(r"[ \t\f\v\r\xa0\u2000-\u200b\u2028\u2029\u3000]+")
 _NEWLINES_PATTERN = re.compile(r"\n+")
 _MOJIBAKE_PATTERNS = {
     # Hebrew as Cyrillic patterns

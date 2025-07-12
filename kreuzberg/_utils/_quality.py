@@ -27,7 +27,7 @@ _COMBINED_OCR_PATTERN = re.compile(
 )
 
 # Pre-compiled patterns for text normalization
-_WHITESPACE_NORMALIZE = re.compile(r"\s+")
+_WHITESPACE_NORMALIZE = re.compile(r"[ \t\f\v\r\xa0\u2000-\u200b\u2028\u2029\u3000]+")
 _NEWLINE_NORMALIZE = re.compile(r"\n\s*\n\s*\n+")
 _SENTENCE_DETECT = re.compile(r"[.!?]\s+[A-Z]")
 _PUNCTUATION_DETECT = re.compile(r"[.!?]")
