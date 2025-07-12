@@ -442,7 +442,9 @@ def test_process_batch_images_threaded_success(mock_paddleocr: Mock) -> None:
         mock_paddleocr.ocr.side_effect = side_effect
 
         config = PaddleOCRConfig()
-        results = process_batch_images_threaded(cast("list[str | Path]", image_paths), config, max_workers=2)
+        results = process_batch_images_threaded(
+            cast("list[str | Path]", image_paths), config, backend="paddleocr", max_workers=2
+        )
 
         assert len(results) == 3
         # Results should be in same order as input
@@ -479,7 +481,9 @@ def test_process_batch_images_threaded_with_errors(mock_paddleocr: Mock) -> None
         mock_paddleocr.ocr.side_effect = side_effect
 
         config = PaddleOCRConfig()
-        results = process_batch_images_threaded(cast("list[str | Path]", image_paths), config, max_workers=2)
+        results = process_batch_images_threaded(
+            cast("list[str | Path]", image_paths), config, backend="paddleocr", max_workers=2
+        )
 
         assert len(results) == 3
         assert isinstance(results[0], ExtractionResult)
