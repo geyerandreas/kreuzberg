@@ -100,6 +100,85 @@ class Metadata(TypedDict, total=False):
     width: NotRequired[int]
     """Width of the document page/slide/image, if applicable."""
 
+    # Email-specific fields
+    email_from: NotRequired[str]
+    """Email sender (from field)."""
+    email_to: NotRequired[str]
+    """Email recipient (to field)."""
+    email_cc: NotRequired[str]
+    """Email carbon copy recipients."""
+    email_bcc: NotRequired[str]
+    """Email blind carbon copy recipients."""
+    date: NotRequired[str]
+    """Email date or document date."""
+    attachments: NotRequired[list[str]]
+    """List of attachment names."""
+
+    # Additional metadata fields for various extractors
+    content: NotRequired[str]
+    """Content metadata field."""
+    parse_error: NotRequired[str]
+    """Parse error information."""
+    warning: NotRequired[str]
+    """Warning messages."""
+
+
+# Cache valid metadata keys at module level for performance
+_VALID_METADATA_KEYS = {
+    "authors",
+    "categories",
+    "citations",
+    "comments",
+    "content",
+    "copyright",
+    "created_at",
+    "created_by",
+    "description",
+    "fonts",
+    "height",
+    "identifier",
+    "keywords",
+    "languages",
+    "license",
+    "modified_at",
+    "modified_by",
+    "organization",
+    "parse_error",
+    "publisher",
+    "references",
+    "status",
+    "subject",
+    "subtitle",
+    "summary",
+    "title",
+    "version",
+    "warning",
+    "width",
+    "email_from",
+    "email_to",
+    "email_cc",
+    "email_bcc",
+    "date",
+    "attachments",
+}
+
+
+def normalize_metadata(data: dict[str, Any] | None) -> Metadata:
+    """Normalize any dict to proper Metadata TypedDict.
+
+    Filters out invalid keys and ensures type safety.
+    """
+    if not data:
+        return {}
+
+    # Filter and return only valid metadata
+    normalized: Metadata = {}
+    for key, value in data.items():
+        if key in _VALID_METADATA_KEYS and value is not None:
+            normalized[key] = value  # type: ignore[literal-required]
+
+    return normalized
+
 
 @dataclass(frozen=True)
 class Entity:

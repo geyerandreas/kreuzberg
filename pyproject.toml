@@ -47,9 +47,9 @@ classifiers = [
 
 dependencies = [
   "anyio>=4.9.0",
-  "charset-normalizer>=3.4.2",
+  "chardetng-py>=0.3.4",
   "exceptiongroup>=1.2.2; python_version<'3.11'",
-  "html-to-markdown[lxml]>=1.6.0",
+  "html-to-markdown[lxml]>=1.8.0",
   "mcp>=1.11.0",
   "msgspec>=0.18.0",
   "playa-pdf>=0.6.1",                                 # pinned due to breaking changes in 0.5.0
@@ -60,9 +60,9 @@ dependencies = [
   "typing-extensions>=4.14.0; python_version<'3.12'",
 ]
 
-optional-dependencies.additional-extensions = [ 
-  "mailparse>=1.0.15", 
-  "tomli>=2.0.0; python_version<'3.11'" 
+optional-dependencies.additional-extensions = [
+  "mailparse>=1.0.15",
+  "tomli>=2.0.0; python_version<'3.11'",
 ]
 optional-dependencies.all = [
   "kreuzberg[additional-extensions,api,chunking,cli,easyocr,entity-extraction,gmft,langdetect,paddleocr]",
