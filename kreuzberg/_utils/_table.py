@@ -20,7 +20,7 @@ def export_table_to_csv(table: TableData, separator: str = ",") -> str:
     Returns:
         String representation in CSV/TSV format
     """
-    if not hasattr(table, "df") or table["df"] is None:
+    if "df" not in table or table["df"] is None:
         return ""
 
     output = StringIO()
@@ -49,7 +49,7 @@ def enhance_table_markdown(table: TableData) -> str:
     Returns:
         Enhanced markdown table string
     """
-    if not hasattr(table, "df") or table["df"] is None:
+    if "df" not in table or table["df"] is None:
         return table.get("text", "")
 
     df = table["df"]
@@ -65,6 +65,21 @@ def enhance_table_markdown(table: TableData) -> str:
     lines.append("| " + " | ".join(headers) + " |")
 
     # Separator row with alignment hints
+    lines.append(_generate_separator_row(df))
+
+    # Analyze float columns to determine formatting strategy
+    float_col_formatting = _analyze_float_columns(df)
+
+    # Data rows with proper formatting
+    for _, row in df.iterrows():
+        formatted_row = _format_table_row(row, df, float_col_formatting)
+        lines.append("| " + " | ".join(formatted_row) + " |")
+
+    return "\n".join(lines)
+
+
+def _generate_separator_row(df: Any) -> str:
+    """Generate separator row with proper alignment hints."""
     separators = []
     for col in df.columns:
         # Check if column contains mostly numbers for right alignment
@@ -72,29 +87,44 @@ def enhance_table_markdown(table: TableData) -> str:
             separators.append("---:")  # Right align numbers
         else:
             separators.append("---")  # Left align text
+    return "| " + " | ".join(separators) + " |"
 
-    lines.append("| " + " | ".join(separators) + " |")
 
-    # Data rows with proper formatting
-    for _, row in df.iterrows():
-        formatted_row = []
-        for value in row.values():
-            if value is None or (isinstance(value, float) and str(value) == "nan"):
-                formatted_row.append("")
-            elif isinstance(value, float):
-                # Format numbers nicely
-                if value.is_integer():
-                    formatted_row.append(str(int(value)))
-                else:
-                    formatted_row.append(f"{value:.2f}")
+def _analyze_float_columns(df: Any) -> dict[str, str]:
+    """Analyze float columns to determine formatting strategy."""
+    float_col_formatting = {}
+    for col in df.columns:
+        if str(df[col].dtype) == "float64":
+            non_null_values = df[col].dropna()
+            if len(non_null_values) > 0:
+                # If all non-null values are whole numbers, format as integers
+                all_integers = all(val.is_integer() for val in non_null_values)
+                float_col_formatting[col] = "int" if all_integers else "float"
             else:
-                # Clean up text values
-                clean_value = str(value).strip().replace("|", "\\|")  # Escape pipes
-                formatted_row.append(clean_value)
+                float_col_formatting[col] = "int"
+    return float_col_formatting
 
-        lines.append("| " + " | ".join(formatted_row) + " |")
 
-    return "\n".join(lines)
+def _format_table_row(row: Any, df: Any, float_col_formatting: dict[str, str]) -> list[str]:
+    """Format a single table row with proper value formatting."""
+    formatted_row = []
+    for col_name, value in row.items():
+        if value is None or (isinstance(value, float) and str(value) == "nan"):
+            formatted_row.append("")
+        elif str(df[col_name].dtype) in ["int64", "int32"]:
+            # For integer columns, format as integers
+            formatted_row.append(str(int(value)))
+        elif isinstance(value, float):
+            # For float columns, use the determined formatting strategy
+            if col_name in float_col_formatting and float_col_formatting[col_name] == "int":
+                formatted_row.append(str(int(value)))
+            else:
+                formatted_row.append(f"{value:.2f}")
+        else:
+            # Clean up text values
+            clean_value = str(value).strip().replace("|", "\\|")  # Escape pipes
+            formatted_row.append(clean_value)
+    return formatted_row
 
 
 def _is_numeric_column(series: Any) -> bool:
@@ -159,7 +189,7 @@ def generate_table_summary(tables: list[TableData]) -> dict[str, Any]:
     tables_by_page = {}
 
     for table in tables:
-        if hasattr(table, "df") and table["df"] is not None:
+        if "df" in table and table["df"] is not None:
             df = table["df"]
             total_rows += len(df)
             total_columns += len(df.columns)
@@ -202,7 +232,7 @@ def extract_table_structure_info(table: TableData) -> dict[str, Any]:
         "data_density": 0.0,
     }
 
-    if not hasattr(table, "df") or table["df"] is None:
+    if "df" not in table or table["df"] is None:
         return info
 
     df = table["df"]
