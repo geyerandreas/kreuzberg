@@ -8,7 +8,7 @@ from anyio import Path as AsyncPath
 from kreuzberg._extractors._base import Extractor
 from kreuzberg._mime_types import HTML_MIME_TYPE, MARKDOWN_MIME_TYPE
 from kreuzberg._types import ExtractionResult
-from kreuzberg._utils._string import normalize_spaces, safe_decode
+from kreuzberg._utils._string import safe_decode
 from kreuzberg._utils._sync import run_sync
 
 if TYPE_CHECKING:
@@ -35,11 +35,10 @@ class HTMLExtractor(Extractor):
             remove_forms=True,
         )
 
-        extraction_result = ExtractionResult(
-            content=normalize_spaces(result), mime_type=MARKDOWN_MIME_TYPE, metadata={}, chunks=[]
-        )
+        # Skip normalize_spaces since quality processing will handle whitespace
+        extraction_result = ExtractionResult(content=result, mime_type=MARKDOWN_MIME_TYPE, metadata={}, chunks=[])
 
-        # Apply quality processing
+        # Apply quality processing which includes normalization
         return self._apply_quality_processing(extraction_result)
 
     def extract_path_sync(self, path: Path) -> ExtractionResult:

@@ -103,23 +103,34 @@ def _is_numeric_column(series: Any) -> bool:
         return False
 
     try:
-        # Try to convert to numeric and see success rate
-        numeric_values = 0
-        total_non_null = 0
+        # Check if already numeric dtype first (fastest path)
+        if str(series.dtype) in {"int64", "float64", "int32", "float32"}:
+            return True
 
-        for val in series.dropna():
-            total_non_null += 1
-            try:
-                float(str(val).replace(",", "").replace("$", "").replace("%", ""))
-                numeric_values += 1
-            except (ValueError, TypeError):
-                pass
+        # Sample-based approach for large series (>1000 rows)
+        sample_size = min(100, len(series))
+        if len(series) > 1000:
+            sample_series = series.dropna().sample(n=sample_size, random_state=42)
+        else:
+            sample_series = series.dropna()
 
-        if total_non_null == 0:
+        if len(sample_series) == 0:
             return False
 
-        # Consider numeric if >70% of non-null values are numeric
-        return (numeric_values / total_non_null) > 0.7
+        # Optimized numeric conversion - avoid exception overhead
+        numeric_count = 0
+        for val in sample_series:
+            val_str = str(val).replace(",", "").replace("$", "").replace("%", "")
+            # Quick check: if it contains only digits, decimal point, minus, plus, or e
+            if val_str and all(c in "0123456789.-+eE" for c in val_str):
+                try:
+                    float(val_str)
+                    numeric_count += 1
+                except (ValueError, TypeError):
+                    pass
+
+        # Consider numeric if >70% of sampled values are numeric
+        return (numeric_count / len(sample_series)) > 0.7
 
     except (ValueError, TypeError, ZeroDivisionError):
         return False

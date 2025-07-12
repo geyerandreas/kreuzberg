@@ -16,6 +16,16 @@ _OCR_ARTIFACTS = {
     "broken_sentences": re.compile(r"[a-z]\s+[A-Z][a-z]"),
 }
 
+# Combined pattern for faster OCR penalty calculation
+_COMBINED_OCR_PATTERN = re.compile(
+    r"(?P<scattered>\b[a-zA-Z]\s+[a-zA-Z]\s+[a-zA-Z]\b)|"
+    r"(?P<repeated>[.]{3,}|[-]{3,}|[_]{3,})|"
+    r"(?P<isolated>\s[.,;:!?]\s)|"
+    r"(?P<malformed>\b[a-zA-Z]*[0-9]+[a-zA-Z]*\b)|"
+    r"(?P<whitespace>\s{3,})|"
+    r"(?P<broken>[a-z]\s+[A-Z][a-z])"
+)
+
 _SCRIPT_PATTERNS = {
     # JavaScript and CSS content
     "js_functions": re.compile(r"function\s+\w+\s*\([^)]*\)\s*\{[^}]*\}", re.IGNORECASE),
@@ -110,11 +120,8 @@ def _calculate_ocr_penalty(text: str, total_chars: int) -> float:
     if total_chars == 0:
         return 0.0
 
-    artifact_chars = 0
-    for pattern in _OCR_ARTIFACTS.values():
-        matches = pattern.findall(text)
-        artifact_chars += sum(len(match) for match in matches)
-
+    # Use combined pattern for single-pass processing
+    artifact_chars = sum(len(match.group()) for match in _COMBINED_OCR_PATTERN.finditer(text))
     return min(1.0, artifact_chars / total_chars)
 
 

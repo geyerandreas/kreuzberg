@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 # Import optional dependencies at module level with proper error handling
 try:
-    import mailparse  # type: ignore[import-not-found]
+    import mailparse
 except ImportError:
     mailparse = None
 
