@@ -10,12 +10,12 @@ from unittest.mock import patch
 import pytest
 from PIL import Image
 
-from kreuzberg._multiprocessing.sync_tesseract import (
+from kreuzberg._ocr._sync import (
     process_batch_images_process_pool,
-    process_batch_images_sync_pure,
+    process_batch_images_sync,
     process_batch_images_threaded,
-    process_image_bytes_sync_pure,
-    process_image_sync_pure,
+    process_image_bytes_tesseract_sync,
+    process_image_tesseract_sync,
 )
 from kreuzberg._ocr._tesseract import TesseractConfig
 from kreuzberg._types import ExtractionResult
@@ -97,7 +97,7 @@ def _mock_process_image_with_exception(path: str, config_dict: dict[str, Any]) -
     return {"success": True, "text": "Success", "mime_type": "text/plain", "metadata": {}}
 
 
-def test_process_image_sync_pure_success(test_image_path: Path, tesseract_config: TesseractConfig) -> None:
+def test_process_image_tesseract_sync_success(test_image_path: Path, tesseract_config: TesseractConfig) -> None:
     """Test successful synchronous image processing."""
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = _MockSubprocessResult(returncode=0, stdout="", stderr="")
@@ -106,25 +106,25 @@ def test_process_image_sync_pure_success(test_image_path: Path, tesseract_config
             mock_file = mock_open.return_value.__enter__.return_value
             mock_file.read.return_value = "Test OCR output"
 
-            result = process_image_sync_pure(test_image_path, tesseract_config)
+            result = process_image_tesseract_sync(test_image_path, tesseract_config)
 
             assert isinstance(result, ExtractionResult)
             assert result.content == "Test OCR output"
             assert result.mime_type == "text/plain"
 
 
-def test_process_image_sync_pure_error(test_image_path: Path, tesseract_config: TesseractConfig) -> None:
+def test_process_image_tesseract_sync_error(test_image_path: Path, tesseract_config: TesseractConfig) -> None:
     """Test synchronous image processing with error."""
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = _MockSubprocessResult(returncode=1, stderr="Tesseract error")
 
         with pytest.raises(OCRError) as exc_info:
-            process_image_sync_pure(test_image_path, tesseract_config)
+            process_image_tesseract_sync(test_image_path, tesseract_config)
 
         assert "Tesseract failed" in str(exc_info.value)
 
 
-def test_process_image_sync_pure_with_options(test_image_path: Path) -> None:
+def test_process_image_tesseract_sync_with_options(test_image_path: Path) -> None:
     """Test synchronous image processing with custom options."""
     config = TesseractConfig(
         language="fra",
@@ -140,7 +140,7 @@ def test_process_image_sync_pure_with_options(test_image_path: Path) -> None:
             mock_file = mock_open.return_value.__enter__.return_value
             mock_file.read.return_value = "French text"
 
-            process_image_sync_pure(test_image_path, config)
+            process_image_tesseract_sync(test_image_path, config)
 
             args = mock_run.call_args[0][0]
             assert "-l" in args
@@ -153,7 +153,7 @@ def test_process_image_sync_pure_with_options(test_image_path: Path) -> None:
             assert "tessedit_use_primary_params_model=0" in args
 
 
-def test_process_image_sync_pure_cleanup(test_image_path: Path, tesseract_config: TesseractConfig) -> None:
+def test_process_image_tesseract_sync_cleanup(test_image_path: Path, tesseract_config: TesseractConfig) -> None:
     """Test that temporary files are cleaned up."""
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = _MockSubprocessResult(returncode=0)
@@ -167,24 +167,24 @@ def test_process_image_sync_pure_cleanup(test_image_path: Path, tesseract_config
             mock_file = mock_open.return_value.__enter__.return_value
             mock_file.read.return_value = "Text"
 
-            process_image_sync_pure(test_image_path, tesseract_config)
+            process_image_tesseract_sync(test_image_path, tesseract_config)
 
         assert any(".txt" in f for f in temp_files)
 
 
-def test_process_image_bytes_sync_pure(test_image: Image.Image, tesseract_config: TesseractConfig) -> None:
+def test_process_image_bytes_tesseract_sync(test_image: Image.Image, tesseract_config: TesseractConfig) -> None:
     """Test processing image bytes."""
 
     img_bytes = io.BytesIO()
     test_image.save(img_bytes, format="PNG")
     img_bytes_value = img_bytes.getvalue()
 
-    with patch("kreuzberg._multiprocessing.sync_tesseract.process_image_sync_pure") as mock_process:
+    with patch("kreuzberg._ocr._sync.process_image_tesseract_sync") as mock_process:
         mock_process.return_value = ExtractionResult(
             content="Bytes OCR output", mime_type="text/plain", metadata={}, chunks=[]
         )
 
-        result = process_image_bytes_sync_pure(img_bytes_value, tesseract_config)
+        result = process_image_bytes_tesseract_sync(img_bytes_value, tesseract_config)
 
         assert result.content == "Bytes OCR output"
         mock_process.assert_called_once()
@@ -193,16 +193,16 @@ def test_process_image_bytes_sync_pure(test_image: Image.Image, tesseract_config
         assert str(call_args[0]).endswith(".png")
 
 
-def test_process_batch_images_sync_pure(test_image_paths: list[Path], tesseract_config: TesseractConfig) -> None:
+def test_process_batch_images_sync(test_image_paths: list[Path], tesseract_config: TesseractConfig) -> None:
     """Test batch processing with pure sync."""
-    with patch("kreuzberg._multiprocessing.sync_tesseract.process_image_sync_pure") as mock_process:
+    with patch("kreuzberg._ocr._sync.process_image_tesseract_sync") as mock_process:
         mock_results = [
             ExtractionResult(content=f"Image {i} text", mime_type="text/plain", metadata={}, chunks=[])
             for i in range(3)
         ]
         mock_process.side_effect = mock_results
 
-        results = process_batch_images_sync_pure(test_image_paths, tesseract_config)  # type: ignore[arg-type]
+        results = process_batch_images_sync(test_image_paths, tesseract_config, backend="tesseract")  # type: ignore[arg-type]
 
         assert len(results) == 3
         for i, result in enumerate(results):
@@ -213,7 +213,7 @@ def test_process_batch_images_sync_pure(test_image_paths: list[Path], tesseract_
 
 def test_process_batch_images_threaded(test_image_paths: list[Path], tesseract_config: TesseractConfig) -> None:
     """Test batch processing with threading."""
-    with patch("kreuzberg._multiprocessing.sync_tesseract.process_image_sync_pure") as mock_process:
+    with patch("kreuzberg._ocr._sync.process_image_tesseract_sync") as mock_process:
         mock_results = [
             ExtractionResult(content=f"Image {i} text", mime_type="text/plain", metadata={}, chunks=[])
             for i in range(3)
@@ -245,7 +245,7 @@ def test_process_batch_images_threaded_error_handling(
             raise RuntimeError("Processing failed")
         return ExtractionResult(content="Success", mime_type="text/plain", metadata={}, chunks=[])
 
-    with patch("kreuzberg._multiprocessing.sync_tesseract.process_image_sync_pure", side_effect=side_effect):
+    with patch("kreuzberg._ocr._sync.process_image_tesseract_sync", side_effect=side_effect):
         results = process_batch_images_threaded(test_image_paths, tesseract_config)  # type: ignore[arg-type]
 
         assert len(results) == 3
@@ -294,7 +294,7 @@ def test_process_batch_images_process_pool_exception_handling(
         assert results[2].content == "Success"
 
 
-def test_process_image_sync_pure_unicode(test_image_path: Path, tesseract_config: TesseractConfig) -> None:
+def test_process_image_tesseract_sync_unicode(test_image_path: Path, tesseract_config: TesseractConfig) -> None:
     """Test processing with unicode text output."""
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = _MockSubprocessResult(returncode=0)
@@ -304,12 +304,12 @@ def test_process_image_sync_pure_unicode(test_image_path: Path, tesseract_config
             mock_file = mock_open.return_value.__enter__.return_value
             mock_file.read.return_value = unicode_text
 
-            result = process_image_sync_pure(test_image_path, tesseract_config)
+            result = process_image_tesseract_sync(test_image_path, tesseract_config)
 
             assert result.content == unicode_text
 
 
-def test_process_image_sync_pure_empty_output(test_image_path: Path, tesseract_config: TesseractConfig) -> None:
+def test_process_image_tesseract_sync_empty_output(test_image_path: Path, tesseract_config: TesseractConfig) -> None:
     """Test processing with empty text output."""
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = _MockSubprocessResult(returncode=0)
@@ -318,13 +318,13 @@ def test_process_image_sync_pure_empty_output(test_image_path: Path, tesseract_c
             mock_file = mock_open.return_value.__enter__.return_value
             mock_file.read.return_value = ""
 
-            result = process_image_sync_pure(test_image_path, tesseract_config)
+            result = process_image_tesseract_sync(test_image_path, tesseract_config)
 
             assert result.content == ""
             assert result.mime_type == "text/plain"
 
 
-def test_process_image_sync_pure_default_config(test_image_path: Path) -> None:
+def test_process_image_tesseract_sync_default_config(test_image_path: Path) -> None:
     """Test processing with default config."""
     with patch("subprocess.run") as mock_run:
         mock_run.return_value = _MockSubprocessResult(returncode=0)
@@ -333,7 +333,7 @@ def test_process_image_sync_pure_default_config(test_image_path: Path) -> None:
             mock_file = mock_open.return_value.__enter__.return_value
             mock_file.read.return_value = "Default config output"
 
-            result = process_image_sync_pure(test_image_path)
+            result = process_image_tesseract_sync(test_image_path)
 
             assert result.content == "Default config output"
 

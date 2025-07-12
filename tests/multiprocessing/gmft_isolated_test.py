@@ -14,10 +14,12 @@ import pytest
 from PIL import Image
 
 from kreuzberg._gmft import GMFTConfig
-from kreuzberg._multiprocessing.gmft_isolated import (
-    _extract_tables_in_process,
+from kreuzberg._multiprocessing import (
     extract_tables_isolated,
     extract_tables_isolated_async,
+)
+from kreuzberg._multiprocessing.gmft_isolated import (
+    _extract_tables_in_process,
 )
 from kreuzberg.exceptions import ParsingError
 

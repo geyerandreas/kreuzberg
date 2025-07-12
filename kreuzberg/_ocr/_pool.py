@@ -1,7 +1,8 @@
-"""Tesseract process pool for parallel OCR processing."""
+"""Process pools for parallel OCR processing."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from PIL import Image
@@ -9,13 +10,10 @@ from typing_extensions import Self
 
 from kreuzberg._ocr._tesseract import TesseractConfig
 from kreuzberg._types import ExtractionResult
-
-from .process_manager import ProcessPoolManager
+from kreuzberg._utils._process_pool import ProcessPoolManager
 
 if TYPE_CHECKING:
     import types
-
-from pathlib import Path
 
 
 def _process_image_with_tesseract(

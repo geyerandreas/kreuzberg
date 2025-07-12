@@ -40,6 +40,21 @@ uvx --with "kreuzberg[chunking,langdetect,entity-extraction]" kreuzberg-mcp
 kreuzberg-mcp
 ```
 
+### Claude Code Configuration
+
+Add Kreuzberg to Claude Code using the CLI:
+
+```bash
+# Recommended: With all features for full functionality
+claude mcp add kreuzberg "uvx --with kreuzberg[all] kreuzberg-mcp"
+
+# With specific features for your use case
+claude mcp add kreuzberg "uvx --with kreuzberg[chunking,langdetect,entity-extraction] kreuzberg-mcp"
+
+# Basic: Core features only
+claude mcp add kreuzberg "uvx kreuzberg-mcp"
+```
+
 ### Claude Desktop Configuration
 
 Add Kreuzberg to your Claude Desktop configuration file:

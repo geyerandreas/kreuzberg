@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 import pytest
 
-from kreuzberg._multiprocessing.process_manager import ProcessPoolManager
+from kreuzberg._utils._process_pool import ProcessPoolManager
 
 
 def simple_function(x: int) -> int:

@@ -11,14 +11,14 @@ import pytest
 from PIL import Image
 
 from kreuzberg._mime_types import PLAIN_TEXT_MIME_TYPE
-from kreuzberg._multiprocessing.sync_paddleocr import (
-    _get_paddleocr_instance,
-    process_batch_images_sync_pure,
-    process_batch_images_threaded,
-    process_image_bytes_sync_pure,
-    process_image_sync_pure,
-)
 from kreuzberg._ocr._paddleocr import PaddleOCRConfig
+from kreuzberg._ocr._sync import (
+    _get_paddleocr_instance,
+    process_batch_images_sync,
+    process_batch_images_threaded,
+    process_image_bytes_paddleocr_sync,
+    process_image_paddleocr_sync,
+)
 from kreuzberg._types import ExtractionResult
 from kreuzberg.exceptions import MissingDependencyError, OCRError
 
@@ -215,10 +215,10 @@ def test_get_paddleocr_instance_with_advanced_config() -> None:
         )
 
 
-def test_process_image_sync_pure_success(sample_image_path: str, mock_paddleocr: Mock) -> None:
+def test_process_image_paddleocr_sync_success(sample_image_path: str, mock_paddleocr: Mock) -> None:
     """Test successful image processing with sync pure implementation."""
     config = PaddleOCRConfig()
-    result = process_image_sync_pure(sample_image_path, config)
+    result = process_image_paddleocr_sync(sample_image_path, config)
 
     assert isinstance(result, ExtractionResult)
     assert result.content == "Hello\nWorld"
@@ -229,12 +229,12 @@ def test_process_image_sync_pure_success(sample_image_path: str, mock_paddleocr:
     mock_paddleocr.ocr.assert_called_once_with(str(sample_image_path))
 
 
-def test_process_image_sync_pure_no_results(sample_image_path: str, mock_paddleocr: Mock) -> None:
+def test_process_image_paddleocr_sync_no_results(sample_image_path: str, mock_paddleocr: Mock) -> None:
     """Test image processing when PaddleOCR returns no results."""
     mock_paddleocr.ocr.return_value = []
 
     config = PaddleOCRConfig()
-    result = process_image_sync_pure(sample_image_path, config)
+    result = process_image_paddleocr_sync(sample_image_path, config)
 
     assert isinstance(result, ExtractionResult)
     assert result.content == ""
@@ -243,12 +243,12 @@ def test_process_image_sync_pure_no_results(sample_image_path: str, mock_paddleo
     assert result.chunks == []
 
 
-def test_process_image_sync_pure_empty_results(sample_image_path: str, mock_paddleocr: Mock) -> None:
+def test_process_image_paddleocr_sync_empty_results(sample_image_path: str, mock_paddleocr: Mock) -> None:
     """Test image processing when PaddleOCR returns empty results."""
     mock_paddleocr.ocr.return_value = [None]
 
     config = PaddleOCRConfig()
-    result = process_image_sync_pure(sample_image_path, config)
+    result = process_image_paddleocr_sync(sample_image_path, config)
 
     assert isinstance(result, ExtractionResult)
     assert result.content == ""
@@ -257,14 +257,14 @@ def test_process_image_sync_pure_empty_results(sample_image_path: str, mock_padd
     assert result.chunks == []
 
 
-def test_process_image_sync_pure_no_texts(sample_image_path: str, mock_paddleocr: Mock) -> None:
+def test_process_image_paddleocr_sync_no_texts(sample_image_path: str, mock_paddleocr: Mock) -> None:
     """Test image processing when OCR result has no texts."""
     mock_result = Mock()
     mock_result.json = {"res": {"rec_texts": [], "rec_scores": []}}
     mock_paddleocr.ocr.return_value = [mock_result]
 
     config = PaddleOCRConfig()
-    result = process_image_sync_pure(sample_image_path, config)
+    result = process_image_paddleocr_sync(sample_image_path, config)
 
     assert isinstance(result, ExtractionResult)
     assert result.content == ""
@@ -273,14 +273,14 @@ def test_process_image_sync_pure_no_texts(sample_image_path: str, mock_paddleocr
     assert result.chunks == []
 
 
-def test_process_image_sync_pure_missing_rec_texts(sample_image_path: str, mock_paddleocr: Mock) -> None:
+def test_process_image_paddleocr_sync_missing_rec_texts(sample_image_path: str, mock_paddleocr: Mock) -> None:
     """Test image processing when OCR result is missing rec_texts."""
     mock_result = Mock()
     mock_result.json = {"res": {"rec_scores": [0.9]}}
     mock_paddleocr.ocr.return_value = [mock_result]
 
     config = PaddleOCRConfig()
-    result = process_image_sync_pure(sample_image_path, config)
+    result = process_image_paddleocr_sync(sample_image_path, config)
 
     assert isinstance(result, ExtractionResult)
     assert result.content == ""
@@ -289,14 +289,14 @@ def test_process_image_sync_pure_missing_rec_texts(sample_image_path: str, mock_
     assert result.chunks == []
 
 
-def test_process_image_sync_pure_no_scores(sample_image_path: str, mock_paddleocr: Mock) -> None:
+def test_process_image_paddleocr_sync_no_scores(sample_image_path: str, mock_paddleocr: Mock) -> None:
     """Test image processing when OCR result has no scores."""
     mock_result = Mock()
     mock_result.json = {"res": {"rec_texts": ["Hello", "World"], "rec_scores": []}}
     mock_paddleocr.ocr.return_value = [mock_result]
 
     config = PaddleOCRConfig()
-    result = process_image_sync_pure(sample_image_path, config)
+    result = process_image_paddleocr_sync(sample_image_path, config)
 
     assert isinstance(result, ExtractionResult)
     assert result.content == "Hello\nWorld"
@@ -305,16 +305,16 @@ def test_process_image_sync_pure_no_scores(sample_image_path: str, mock_paddleoc
     assert result.chunks == []
 
 
-def test_process_image_sync_pure_default_config(sample_image_path: str, mock_paddleocr: Mock) -> None:
+def test_process_image_paddleocr_sync_default_config(sample_image_path: str, mock_paddleocr: Mock) -> None:
     """Test image processing with default config (None)."""
-    result = process_image_sync_pure(sample_image_path, None)
+    result = process_image_paddleocr_sync(sample_image_path, None)
 
     assert isinstance(result, ExtractionResult)
     assert result.content == "Hello\nWorld"
     assert result.metadata == {"confidence": 0.915}
 
 
-def test_process_image_sync_pure_exception(sample_image_path: str) -> None:
+def test_process_image_paddleocr_sync_exception(sample_image_path: str) -> None:
     """Test OCRError is raised when PaddleOCR processing fails."""
     config = PaddleOCRConfig()
 
@@ -322,28 +322,28 @@ def test_process_image_sync_pure_exception(sample_image_path: str) -> None:
         "kreuzberg._multiprocessing.sync_paddleocr._get_paddleocr_instance", side_effect=Exception("PaddleOCR failed")
     ):
         with pytest.raises(OCRError, match="PaddleOCR processing failed"):
-            process_image_sync_pure(sample_image_path, config)
+            process_image_paddleocr_sync(sample_image_path, config)
 
 
-def test_process_image_bytes_sync_pure_success(sample_image_bytes: bytes, mock_paddleocr: Mock) -> None:
+def test_process_image_bytes_paddleocr_sync_success(sample_image_bytes: bytes, mock_paddleocr: Mock) -> None:
     """Test successful image bytes processing."""
     config = PaddleOCRConfig()
-    result = process_image_bytes_sync_pure(sample_image_bytes, config)
+    result = process_image_bytes_paddleocr_sync(sample_image_bytes, config)
 
     assert isinstance(result, ExtractionResult)
     assert result.content == "Hello\nWorld"
     assert result.metadata == {"confidence": 0.915}
 
 
-def test_process_image_bytes_sync_pure_cleanup() -> None:
+def test_process_image_bytes_paddleocr_sync_cleanup() -> None:
     """Test that temporary files are cleaned up after processing."""
     sample_bytes = b"fake image data"
 
-    with patch("kreuzberg._multiprocessing.sync_paddleocr.Image.open") as mock_open:
+    with patch("kreuzberg._ocr._sync.Image.open") as mock_open:
         mock_image = Mock()
         mock_open.return_value.__enter__.return_value = mock_image
 
-        with patch("kreuzberg._multiprocessing.sync_paddleocr.process_image_sync_pure") as mock_process:
+        with patch("kreuzberg._ocr._sync.process_image_paddleocr_sync") as mock_process:
             mock_process.return_value = ExtractionResult(
                 content="test", mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[]
             )
@@ -362,7 +362,7 @@ def test_process_image_bytes_sync_pure_cleanup() -> None:
                 return tf
 
             with patch("tempfile.NamedTemporaryFile", side_effect=track_tempfile):
-                result = process_image_bytes_sync_pure(sample_bytes, None)
+                result = process_image_bytes_paddleocr_sync(sample_bytes, None)
 
                 assert isinstance(result, ExtractionResult)
                 assert result.content == "test"
@@ -372,7 +372,7 @@ def test_process_image_bytes_sync_pure_cleanup() -> None:
                     assert not Path(temp_file).exists()
 
 
-def test_process_batch_images_sync_pure_success(mock_paddleocr: Mock) -> None:
+def test_process_batch_images_sync_success(mock_paddleocr: Mock) -> None:
     """Test successful batch processing with sync pure implementation."""
     # Create temporary image files
     image_paths = []
@@ -393,7 +393,7 @@ def test_process_batch_images_sync_pure_success(mock_paddleocr: Mock) -> None:
         mock_paddleocr.ocr.side_effect = side_effect_results
 
         config = PaddleOCRConfig()
-        results = process_batch_images_sync_pure(cast("list[str | Path]", image_paths), config)
+        results = process_batch_images_sync(cast("list[str | Path]", image_paths), config, backend="paddleocr")
 
         assert len(results) == 3
         for i, result in enumerate(results):
@@ -407,9 +407,9 @@ def test_process_batch_images_sync_pure_success(mock_paddleocr: Mock) -> None:
             Path(path).unlink(missing_ok=True)
 
 
-def test_process_batch_images_sync_pure_empty_list() -> None:
+def test_process_batch_images_sync_empty_list() -> None:
     """Test batch processing with empty image list."""
-    results = process_batch_images_sync_pure([], None)
+    results = process_batch_images_sync([], None, backend="paddleocr")
     assert results == []
 
 
@@ -495,7 +495,7 @@ def test_process_batch_images_threaded_default_workers(mock_paddleocr: Mock) -> 
     """Test threaded batch processing with default worker count."""
     image_paths = ["image1.png", "image2.png"]  # Fake paths for this test
 
-    with patch("kreuzberg._multiprocessing.sync_paddleocr.process_image_sync_pure") as mock_process:
+    with patch("kreuzberg._ocr._sync.process_image_paddleocr_sync") as mock_process:
         mock_process.return_value = ExtractionResult(
             content="test", mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[]
         )

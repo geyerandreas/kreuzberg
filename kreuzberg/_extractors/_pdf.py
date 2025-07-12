@@ -376,19 +376,19 @@ class PDFExtractor(Extractor):
     def _process_pdf_images_with_ocr(self, image_paths: list[str]) -> str:
         """Process PDF images with the configured OCR backend."""
         if self.config.ocr_backend == "tesseract":
-            from kreuzberg._multiprocessing.sync_tesseract import process_batch_images_sync_pure
+            from kreuzberg._ocr._sync import process_batch_images_sync
             from kreuzberg._ocr._tesseract import TesseractConfig
 
             tesseract_config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, TesseractConfig) else TesseractConfig()
             )
-            results = process_batch_images_sync_pure([str(p) for p in image_paths], tesseract_config)
+            results = process_batch_images_sync([str(p) for p in image_paths], tesseract_config, backend="tesseract")
             text_parts = [r.content for r in results]
             return "\n\n".join(text_parts)
 
         if self.config.ocr_backend == "paddleocr":
-            from kreuzberg._multiprocessing.sync_paddleocr import process_image_sync_pure as paddle_process
             from kreuzberg._ocr._paddleocr import PaddleOCRConfig
+            from kreuzberg._ocr._sync import process_image_paddleocr_sync as paddle_process
 
             paddle_config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, PaddleOCRConfig) else PaddleOCRConfig()
@@ -401,8 +401,8 @@ class PDFExtractor(Extractor):
             return "\n\n".join(text_parts)
 
         if self.config.ocr_backend == "easyocr":
-            from kreuzberg._multiprocessing.sync_easyocr import process_image_sync_pure as easy_process
             from kreuzberg._ocr._easyocr import EasyOCRConfig
+            from kreuzberg._ocr._sync import process_image_easyocr_sync as easy_process
 
             easy_config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, EasyOCRConfig) else EasyOCRConfig()

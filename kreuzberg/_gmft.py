@@ -196,7 +196,7 @@ async def extract_tables(  # noqa: PLR0915
 
     try:
         if use_isolated_process:
-            from kreuzberg._multiprocessing.gmft_isolated import extract_tables_isolated_async
+            from kreuzberg._multiprocessing import extract_tables_isolated_async
 
             result = await extract_tables_isolated_async(file_path, config)
 
@@ -314,7 +314,7 @@ def extract_tables_sync(
         return cached_result  # type: ignore[no-any-return]
 
     if use_isolated_process:
-        from kreuzberg._multiprocessing.gmft_isolated import extract_tables_isolated
+        from kreuzberg._multiprocessing import extract_tables_isolated
 
         result = extract_tables_isolated(file_path, config)
 
