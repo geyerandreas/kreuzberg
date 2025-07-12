@@ -8,22 +8,22 @@ from typing import Any
 # Pre-compiled patterns for performance
 _OCR_ARTIFACTS = {
     # Common OCR misreads
-    "scattered_chars": re.compile(r"\b[a-zA-Z]\s+[a-zA-Z]\s+[a-zA-Z]\b"),
+    "scattered_chars": re.compile(r"\b[a-zA-Z]\s{2,}[a-zA-Z]\s{2,}[a-zA-Z]\b"),
     "repeated_punctuation": re.compile(r"[.]{3,}|[-]{3,}|[_]{3,}"),
     "isolated_punctuation": re.compile(r"\s[.,;:!?]\s"),
     "malformed_words": re.compile(r"\b[a-zA-Z]+[0-9]+[a-zA-Z]+[a-zA-Z0-9]*\b"),
     "excessive_whitespace": re.compile(r"\s{3,}"),
-    "broken_sentences": re.compile(r"[a-z]\s+[A-Z][a-z]"),
+    "broken_sentences": re.compile(r"[a-z]\s{3,}[A-Z][a-z]"),
 }
 
 # Combined pattern for faster OCR penalty calculation
 _COMBINED_OCR_PATTERN = re.compile(
-    r"(?P<scattered>\b[a-zA-Z]\s+[a-zA-Z]\s+[a-zA-Z]\b)|"
+    r"(?P<scattered>\b[a-zA-Z]\s{2,}[a-zA-Z]\s{2,}[a-zA-Z]\b)|"
     r"(?P<repeated>[.]{3,}|[-]{3,}|[_]{3,})|"
     r"(?P<isolated>\s[.,;:!?]\s)|"
-    r"(?P<malformed>\b[a-zA-Z]*[0-9]+[a-zA-Z]*\b)|"
+    r"(?P<malformed>\b[a-zA-Z]+[0-9]+[a-zA-Z]+[a-zA-Z0-9]*\b)|"
     r"(?P<whitespace>\s{3,})|"
-    r"(?P<broken>[a-z]\s+[A-Z][a-z])"
+    r"(?P<broken>[a-z]\s{3,}[A-Z][a-z])"
 )
 
 # Pre-compiled patterns for text normalization
@@ -36,16 +36,16 @@ _SCRIPT_PATTERNS = {
     # JavaScript and CSS content
     "js_functions": re.compile(r"function\s+\w+\s*\([^)]*\)\s*\{[^}]*\}", re.IGNORECASE),
     "css_rules": re.compile(r"\.[a-zA-Z][\w-]*\s*\{[^}]*\}", re.IGNORECASE),
-    "style_declarations": re.compile(r"[a-z-]+\s*:\s*[^;]+;", re.IGNORECASE),
     "script_tags": re.compile(r"<script[^>]*>.*?</script>", re.DOTALL | re.IGNORECASE),
     "style_tags": re.compile(r"<style[^>]*>.*?</style>", re.DOTALL | re.IGNORECASE),
 }
 
 _NAVIGATION_PATTERNS = {
-    # Common navigation text - made more specific to avoid false positives
     "nav_words": re.compile(r"\b(?:Skip to main content|Back to top|Main navigation|Site navigation)\b", re.IGNORECASE),
     "breadcrumbs": re.compile(r"(?:Home\s*[>»]\s*|[>»]\s*){2,}"),
-    "pagination": re.compile(r"\b(?:Page \d+ of \d+|First|Last|\d+ of \d+)\b", re.IGNORECASE),
+    "pagination": re.compile(
+        r"\b(?:Page \d+ of \d+|First page|Last page|Previous page|Next page|\d+ of \d+)\b", re.IGNORECASE
+    ),
 }
 
 
