@@ -6,40 +6,49 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Test Coverage](https://img.shields.io/badge/coverage-95%25-green)](https://github.com/Goldziher/kreuzberg)
 
-**The fastest Open Source Document Intelligence framework for Python.** Built by engineers for production workloads - extract text from any document with unmatched performance, minimal footprint, and enterprise-grade reliability.
+**High-performance Open Source Document Intelligence framework for Python.** Built by engineers for production workloads - extract text from any document with excellent performance and minimal complexity.
 
 📖 **[Complete Documentation](https://goldziher.github.io/kreuzberg/)**
 
-## Why Kreuzberg Leads the Pack
+## Why Choose Kreuzberg?
 
-### 🏆 Unmatched Performance
+### 🚀 Performance
 
-- **⚡ Fastest in Class**: [35+ files/second](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) - **2-3x faster** than any competitor
-- **🪶 Minimal Footprint**: **14x smaller** install (71MB vs 1GB+), **lowest memory usage** (~530MB)
-- **🚀 Edge & Serverless Ready**: Deploy anywhere - cloud functions, edge computing, containers
-- **⭐ Only Async Framework**: True async/await support for maximum concurrency
+- [35+ files/second](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) processing speed - 2-3x faster than alternatives
+- Minimal footprint: 71MB install vs 1GB+ for competitors
+- Low memory usage (~530MB average) optimized for production workloads
+- Edge and serverless ready - deploy anywhere without heavy dependencies
 
-### 🛠️ Engineering Excellence
+### 🛠️ Engineering Quality
 
-- **👨‍💻 Built by Engineers**: Clean, optimal Python code with **95%+ test coverage**
-- **🔍 Battle-Tested**: Thoroughly benchmarked and profiled for production workloads
-- **📝 Superior TypeScript-Grade Typing**: Full type safety and IDE support
-- **⚙️ Zero Configuration**: Works perfectly out of the box, scales with your needs
+- Built by software engineers with modern Python best practices
+- 95%+ test coverage with comprehensive test suite
+- Thoroughly benchmarked and profiled for real-world performance
+- Full type safety with excellent IDE support
+- Robust error handling and detailed logging
 
-### 🌍 Universal Deployment & Sustainability
+### 🎯 Developer Experience
 
-- **🐳 Docker-First**: Pre-built images for all architectures (AMD64, ARM64)
-- **☁️ Cloud Native**: Deploy on AWS Lambda, Google Cloud Functions, Azure Functions
-- **🌱 Green Computing**: CPU-only processing, 65% less energy than GPU alternatives
-- **🔌 AI-Ready**: Native MCP server for Claude Desktop, Cursor, and other AI tools
-- **🏠 100% Local**: No external APIs, cloud dependencies, or data privacy concerns
+- Works out of the box with sane defaults, scales with your needs
+- Only framework offering true async/await support alongside sync APIs
+- Native MCP server for AI tool integration (Claude Desktop, Cursor)
+- Extensible architecture for custom document handlers
+- Comprehensive documentation and examples
+
+### 🌍 Deployment Options
+
+- Docker images for all architectures (AMD64, ARM64)
+- Cloud native - AWS Lambda, Google Cloud Functions, Azure Functions
+- CPU-only processing - no GPU requirements, lower energy consumption
+- 100% local processing - no external API dependencies
+- Multiple deployment modes: CLI, REST API, MCP server
 
 ### 🎯 Complete Solution
 
-- **📄 Universal Format Support**: PDFs, images, Office docs, HTML, spreadsheets, presentations
-- **🧠 Multiple OCR Engines**: Tesseract, EasyOCR, PaddleOCR with intelligent fallbacks
-- **📊 Advanced Features**: Table extraction, metadata extraction, content chunking for RAG
-- **🔧 Enterprise Features**: REST API, CLI tools, batch processing, custom extractors
+- Universal format support: PDFs, images, Office docs, HTML, spreadsheets, presentations
+- Multiple OCR engines: Tesseract, EasyOCR, PaddleOCR with intelligent fallbacks
+- Advanced features: Table extraction, metadata extraction, content chunking for RAG
+- Production tools: REST API, CLI tools, batch processing, custom extractors
 
 ## Quick Start
 
@@ -187,30 +196,28 @@ kreuzberg extract *.pdf --output-dir ./extracted/
 | **Web**           | HTML, XML, MHTML               |
 | **Archives**      | Support via extraction         |
 
-## 📊 Industry-Leading Performance
+## 📊 Performance Comparison
 
-**[Comprehensive benchmarks](https://goldziher.github.io/python-text-extraction-libs-benchmarks/)** across 94 real-world documents (~210MB) • [View source](https://github.com/Goldziher/python-text-extraction-libs-benchmarks):
+[Comprehensive benchmarks](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) across 94 real-world documents • [View source](https://github.com/Goldziher/python-text-extraction-libs-benchmarks):
 
-| Framework     | Speed           | Memory    | Install Size | Dependencies | Success Rate | Notes                    |
-| ------------- | --------------- | --------- | ------------ | ------------ | ------------ | ------------------------ |
-| **Kreuzberg** | **35+ files/s** | **530MB** | **71MB**     | **20**       | **High**     | ✅ **Production Ready**  |
-| Unstructured  | ~12 files/s     | ~1GB      | 146MB        | 54           | 88%+         | ⚠️ Memory intensive      |
-| MarkItDown    | ~15 files/s†    | ~1.5GB    | 251MB        | 25           | 80%†         | ⚠️ Fails on complex docs |
-| Docling       | 0.017 files/s‡  | ~5GB      | **1,032MB**  | 88           | **Low**‡     | ❌ Not production viable |
+| Framework     | Speed       | Memory | Install Size | Dependencies | Success Rate |
+| ------------- | ----------- | ------ | ------------ | ------------ | ------------ |
+| **Kreuzberg** | 35+ files/s | 530MB  | 71MB         | 20           | High         |
+| Unstructured  | ~12 files/s | ~1GB   | 146MB        | 54           | 88%+         |
+| MarkItDown    | ~15 files/s | ~1.5GB | 251MB        | 25           | 80%\*        |
+| Docling       | ~1 file/min | ~5GB   | 1,032MB      | 88           | 45%\*        |
 
-**Key Advantages:**
+\*_Performance varies significantly with document complexity and size_
 
-- 🏃‍♂️ **2-3x faster** than closest competitor
-- 🧠 **14x smaller** footprint than alternatives
-- ⚡ **Only framework** with true async support
-- 🌱 **65% less energy** consumption (CPU-only, no GPU required)
-- 🔒 **Highest reliability** when properly configured
-- 🏗️ **Built for production** by software engineers, not data scientists
+**Key strengths:**
 
-†_Good on simple documents, struggles with large/complex files (>10MB)_
-‡_Frequently fails/times out on medium files (>1MB), requires massive resources_
+- 2-3x faster processing than comparable frameworks
+- Smallest installation footprint and memory usage
+- Only framework with built-in async/await support
+- CPU-only processing - no GPU dependencies
+- Built by software engineers for production reliability
 
-> **Benchmark methodology**: Real-world document corpus including PDFs, Word docs, HTML, images, spreadsheets in 6 languages (English, Hebrew, German, Chinese, Japanese, Korean). Performance measured on standardized hardware with consistent methodology.
+> **Benchmark details**: Tests include PDFs, Word docs, HTML, images, and spreadsheets in multiple languages (English, Hebrew, German, Chinese, Japanese, Korean) on standardized hardware.
 
 ## Documentation
 
@@ -224,69 +231,6 @@ kreuzberg extract *.pdf --output-dir ./extracted/
 - [CLI Guide](https://goldziher.github.io/kreuzberg/cli/) - Command-line usage
 - [OCR Configuration](https://goldziher.github.io/kreuzberg/user-guide/ocr-configuration/) - OCR engine setup
 
-## 🚀 Production Deployment Scenarios
-
-### Deployment Ready
-
-- **📈 High-Volume Processing**: Handle thousands of documents per hour with async batching
-- **💰 Cost Optimization**: 14x smaller footprint = significant infrastructure savings
-- **🔒 Data Privacy**: 100% local processing, no external API dependencies
-- **⚖️ Compliance Ready**: GDPR, HIPAA, SOC2 compatible (no data leaves your infrastructure)
-
-### AI & Machine Learning
-
-- **🧠 RAG Applications**: Perfect for document preprocessing in Retrieval Augmented Generation
-- **🤖 AI Workflow Integration**: Native MCP server for seamless Claude Desktop integration
-- **📊 Data Pipeline**: Async-first design for ML data preprocessing workflows
-- **🔗 Vector Database Prep**: Built-in chunking for embedding generation
-
-### Serverless & Edge Computing
-
-- **☁️ AWS Lambda**: Cold start optimized, minimal memory footprint
-- **⚡ Vercel/Netlify Functions**: Edge deployment ready
-- **🌍 Global CDN**: Deploy processing closer to your users
-- **📱 Mobile Backend**: Lightweight enough for mobile app backends
-
-### DevOps & Platform Engineering
-
-- **🐳 Kubernetes Ready**: Horizontal scaling with minimal resource requirements
-- **📊 Observability**: Built-in metrics and health checks
-- **🔄 CI/CD Friendly**: Deterministic builds, comprehensive test coverage
-- **🛡️ Security First**: No external dependencies, minimal attack surface
-
-## 🎯 Advanced Features
-
-### 🧠 Intelligence & Quality
-
-- **📊 Advanced Table Extraction**: Powered by GMFT for complex table structures
-- **🌍 Multi-language OCR**: 100+ languages with intelligent engine selection
-- **📋 Rich Metadata**: Extract creation dates, authors, document properties
-- **✨ Quality Processing**: Automatic text cleanup and normalization
-
-### 🔧 Developer Experience
-
-- **📝 TypeScript-Grade Types**: Full type safety and excellent IDE support
-- **🧩 Modular Architecture**: Use only what you need, extend what you want
-- **🎯 Custom Extractors**: Build domain-specific document handlers
-- **🪝 Lifecycle Hooks**: Pre/post-processing customization points
-
-### ⚡ Performance & Scale
-
-- **🔄 Intelligent Batching**: Automatic optimization for bulk processing
-- **🧵 Thread & Process Pools**: CPU-intensive tasks optimized automatically
-- **💾 Memory Management**: Streaming processing for large documents
-- **📈 Horizontal Scaling**: Stateless design for cloud-native scaling
-
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
-
-______________________________________________________________________
-
-<div align="center">
-
-**[Documentation](https://goldziher.github.io/kreuzberg/) • [PyPI](https://pypi.org/project/kreuzberg/) • [Docker Hub](https://hub.docker.com/r/goldziher/kreuzberg) • [Benchmarks](https://github.com/Goldziher/python-text-extraction-libs-benchmarks) • [Discord](https://discord.gg/pXxagNK2zN)**
-
-Made with ❤️ by the [Kreuzberg contributors](https://github.com/Goldziher/kreuzberg/graphs/contributors)
-
-</div>
