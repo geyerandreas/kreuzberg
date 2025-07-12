@@ -11,7 +11,7 @@ _OCR_ARTIFACTS = {
     "scattered_chars": re.compile(r"\b[a-zA-Z]\s+[a-zA-Z]\s+[a-zA-Z]\b"),
     "repeated_punctuation": re.compile(r"[.]{3,}|[-]{3,}|[_]{3,}"),
     "isolated_punctuation": re.compile(r"\s[.,;:!?]\s"),
-    "malformed_words": re.compile(r"\b[a-zA-Z]*[0-9]+[a-zA-Z]*\b"),
+    "malformed_words": re.compile(r"\b[a-zA-Z]+[0-9]+[a-zA-Z]+[a-zA-Z0-9]*\b"),
     "excessive_whitespace": re.compile(r"\s{3,}"),
     "broken_sentences": re.compile(r"[a-z]\s+[A-Z][a-z]"),
 }

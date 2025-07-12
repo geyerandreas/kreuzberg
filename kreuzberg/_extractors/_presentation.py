@@ -180,15 +180,14 @@ class PresentationExtractor(Extractor):
 
                 md_content = md_content.strip()
 
-        return ExtractionResult(
+        result = ExtractionResult(
             content=normalize_spaces(md_content),
             mime_type=MARKDOWN_MIME_TYPE,
             metadata=self._extract_presentation_metadata(presentation),
             chunks=[],
         )
 
-        # Quality processing causes issues with presentations - skip for now
-        # TODO: Fix quality processing to handle presentations correctly
+        return self._apply_quality_processing(result)
 
     @staticmethod
     def _extract_presentation_metadata(presentation: Presentation) -> Metadata:
