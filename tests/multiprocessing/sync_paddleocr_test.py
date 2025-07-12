@@ -318,9 +318,7 @@ def test_process_image_paddleocr_sync_exception(sample_image_path: str) -> None:
     """Test OCRError is raised when PaddleOCR processing fails."""
     config = PaddleOCRConfig()
 
-    with patch(
-        "kreuzberg._multiprocessing.sync_paddleocr._get_paddleocr_instance", side_effect=Exception("PaddleOCR failed")
-    ):
+    with patch("kreuzberg._ocr._sync._get_paddleocr_instance", side_effect=Exception("PaddleOCR failed")):
         with pytest.raises(OCRError, match="PaddleOCR processing failed"):
             process_image_paddleocr_sync(sample_image_path, config)
 
@@ -383,14 +381,19 @@ def test_process_batch_images_sync_success(mock_paddleocr: Mock) -> None:
             image_paths.append(tmp_file.name)
 
     try:
-        # Mock different results for each image
-        side_effect_results = []
-        for i in range(3):
+        # Mock different results for each image based on path
+        def side_effect(path: Any, **kwargs: Any) -> Any:
+            for i, img_path in enumerate(image_paths):
+                if str(img_path) == str(path):
+                    mock_result = Mock()
+                    mock_result.json = {"res": {"rec_texts": [f"Image {i}"], "rec_scores": [0.9]}}
+                    return [mock_result]
+            # Default fallback
             mock_result = Mock()
-            mock_result.json = {"res": {"rec_texts": [f"Image {i}"], "rec_scores": [0.9]}}
-            side_effect_results.append([mock_result])
+            mock_result.json = {"res": {"rec_texts": ["Default"], "rec_scores": [0.9]}}
+            return [mock_result]
 
-        mock_paddleocr.ocr.side_effect = side_effect_results
+        mock_paddleocr.ocr.side_effect = side_effect
 
         config = PaddleOCRConfig()
         results = process_batch_images_sync(cast("list[str | Path]", image_paths), config, backend="paddleocr")
@@ -424,14 +427,19 @@ def test_process_batch_images_threaded_success(mock_paddleocr: Mock) -> None:
             image_paths.append(tmp_file.name)
 
     try:
-        # Mock results for each image
-        side_effect_results = []
-        for i in range(3):
+        # Mock results based on image path to ensure correct ordering
+        def side_effect(path: Any, **kwargs: Any) -> Any:
+            for i, img_path in enumerate(image_paths):
+                if str(img_path) == str(path):
+                    mock_result = Mock()
+                    mock_result.json = {"res": {"rec_texts": [f"Threaded {i}"], "rec_scores": [0.8]}}
+                    return [mock_result]
+            # Default fallback
             mock_result = Mock()
-            mock_result.json = {"res": {"rec_texts": [f"Threaded {i}"], "rec_scores": [0.8]}}
-            side_effect_results.append([mock_result])
+            mock_result.json = {"res": {"rec_texts": ["Default"], "rec_scores": [0.8]}}
+            return [mock_result]
 
-        mock_paddleocr.ocr.side_effect = side_effect_results
+        mock_paddleocr.ocr.side_effect = side_effect
 
         config = PaddleOCRConfig()
         results = process_batch_images_threaded(cast("list[str | Path]", image_paths), config, max_workers=2)

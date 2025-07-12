@@ -504,9 +504,14 @@ def test_process_batch_images_sync_success(mock_easyocr: Mock) -> None:
             image_paths.append(tmp_file.name)
 
     try:
-        # Mock different results for each image
-        side_effect_results = [[([[0, 0], [100, 0], [100, 20], [0, 20]], f"Image {i}", 0.9)] for i in range(3)]
-        mock_easyocr.readtext.side_effect = side_effect_results
+        # Mock different results for each image based on path
+        def side_effect(path: Any, **kwargs: Any) -> Any:
+            for i, img_path in enumerate(image_paths):
+                if str(img_path) == str(path):
+                    return [([[0, 0], [100, 0], [100, 20], [0, 20]], f"Image {i}", 0.9)]
+            return [([[0, 0], [100, 0], [100, 20], [0, 20]], "Default", 0.9)]
+
+        mock_easyocr.readtext.side_effect = side_effect
 
         config = EasyOCRConfig()
         results = process_batch_images_sync(cast("list[str | Path]", image_paths), config, backend="easyocr")
@@ -540,9 +545,14 @@ def test_process_batch_images_threaded_success(mock_easyocr: Mock) -> None:
             image_paths.append(tmp_file.name)
 
     try:
-        # Mock results for each image
-        side_effect_results = [[([[0, 0], [100, 0], [100, 20], [0, 20]], f"Threaded {i}", 0.8)] for i in range(3)]
-        mock_easyocr.readtext.side_effect = side_effect_results
+        # Mock results based on image path to ensure correct ordering
+        def side_effect(path: Any, **kwargs: Any) -> Any:
+            for i, img_path in enumerate(image_paths):
+                if str(img_path) == str(path):
+                    return [([[0, 0], [100, 0], [100, 20], [0, 20]], f"Threaded {i}", 0.8)]
+            return [([[0, 0], [100, 0], [100, 20], [0, 20]], "Default", 0.8)]
+
+        mock_easyocr.readtext.side_effect = side_effect
 
         config = EasyOCRConfig()
         results = process_batch_images_threaded(

@@ -256,7 +256,7 @@ def test_process_batch_images_threaded_error_handling(
 
 def test_process_batch_images_process_pool(test_image_paths: list[Path], tesseract_config: TesseractConfig) -> None:
     """Test batch processing with process pool."""
-    with patch("kreuzberg._multiprocessing.tesseract_pool._process_image_with_tesseract", _mock_process_image_success):
+    with patch("kreuzberg._ocr._pool._process_image_with_tesseract", _mock_process_image_success):
         results = process_batch_images_process_pool(test_image_paths, tesseract_config, max_workers=2)  # type: ignore[arg-type]
 
         assert len(results) == 3
@@ -268,9 +268,7 @@ def test_process_batch_images_process_pool_error_handling(
     test_image_paths: list[Path], tesseract_config: TesseractConfig
 ) -> None:
     """Test process pool batch processing handles errors."""
-    with patch(
-        "kreuzberg._multiprocessing.tesseract_pool._process_image_with_tesseract", _mock_process_image_with_error
-    ):
+    with patch("kreuzberg._ocr._pool._process_image_with_tesseract", _mock_process_image_with_error):
         results = process_batch_images_process_pool(test_image_paths, tesseract_config)  # type: ignore[arg-type]
 
         assert len(results) == 3
@@ -283,9 +281,7 @@ def test_process_batch_images_process_pool_exception_handling(
     test_image_paths: list[Path], tesseract_config: TesseractConfig
 ) -> None:
     """Test process pool batch processing handles exceptions."""
-    with patch(
-        "kreuzberg._multiprocessing.tesseract_pool._process_image_with_tesseract", _mock_process_image_with_exception
-    ):
+    with patch("kreuzberg._ocr._pool._process_image_with_tesseract", _mock_process_image_with_exception):
         results = process_batch_images_process_pool(test_image_paths, tesseract_config)  # type: ignore[arg-type]
 
         assert len(results) == 3

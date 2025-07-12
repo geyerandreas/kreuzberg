@@ -12,7 +12,7 @@ Docker images are available on [Docker Hub](https://hub.docker.com/r/goldziher/k
 - `goldziher/kreuzberg:latest-gmft` - With GMFT table extraction
 - `goldziher/kreuzberg:latest-all` - With all optional dependencies
 
-> **Note**: Specific version tags are also available (e.g., `v3.4.0`, `v3.4.0-easyocr`)
+> **Note**: Specific version tags are also available (e.g., `v3.8.0`, `v3.8.0-easyocr`)
 
 ## Quick Start
 
