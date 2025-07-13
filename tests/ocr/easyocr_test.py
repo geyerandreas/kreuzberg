@@ -460,3 +460,39 @@ async def test_init_easyocr_already_initialized() -> None:
         assert isinstance(EasyOCRBackend._reader, Mock)
     finally:
         EasyOCRBackend._reader = original_reader
+
+
+def test_process_image_sync(backend: EasyOCRBackend) -> None:
+    """Test sync image processing."""
+    from unittest.mock import Mock, patch
+
+    image = Image.new("RGB", (100, 100))
+
+    mock_reader = Mock()
+    mock_reader.readtext.return_value = [("Sample OCR text", 0.95)]
+
+    with patch.object(backend, "_init_easyocr_sync"), patch.object(backend, "_reader", mock_reader):
+        result = backend.process_image_sync(image, beam_width=5, language="en")
+
+        assert isinstance(result, ExtractionResult)
+        assert result.content.strip() == "Sample OCR text"
+        assert result.metadata["width"] == 100
+        assert result.metadata["height"] == 100
+
+
+def test_process_file_sync(backend: EasyOCRBackend, tmp_path: Path) -> None:
+    """Test sync file processing."""
+    from unittest.mock import Mock, patch
+
+    test_image = Image.new("RGB", (100, 100))
+    image_path = tmp_path / "test_image.png"
+    test_image.save(image_path)
+
+    mock_reader = Mock()
+    mock_reader.readtext.return_value = [("Sample file text", 0.90)]
+
+    with patch.object(backend, "_init_easyocr_sync"), patch.object(backend, "_reader", mock_reader):
+        result = backend.process_file_sync(image_path, beam_width=5, language="en")
+
+        assert isinstance(result, ExtractionResult)
+        assert result.content.strip() == "Sample file text"

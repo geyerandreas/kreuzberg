@@ -431,3 +431,47 @@ async def test_process_file_validation_error(backend: TesseractBackend, tmp_path
     with patch.object(backend, "_validate_language_code", side_effect=ValidationError("Invalid language")):
         with pytest.raises(ValidationError, match="Invalid language"):
             await backend.process_file(test_file, language="invalid")
+
+
+def test_process_image_sync(backend: TesseractBackend) -> None:
+    """Test sync image processing."""
+    from unittest.mock import Mock, mock_open, patch
+
+    image = Image.new("RGB", (100, 100))
+
+    with (
+        patch.object(backend, "_run_tesseract_sync") as mock_run,
+        patch("tempfile.NamedTemporaryFile") as mock_temp,
+        patch("pathlib.Path.open", mock_open(read_data="Sample OCR text")),
+        patch.object(backend, "_validate_tesseract_version_sync"),
+    ):
+        mock_run.return_value = None
+        mock_temp_file = Mock()
+        mock_temp_file.name = "/tmp/test_image"
+        mock_temp.return_value.__enter__.return_value = mock_temp_file
+
+        result = backend.process_image_sync(image, language="eng")
+
+        assert isinstance(result, ExtractionResult)
+        assert result.content.strip() == "Sample OCR text"
+
+
+def test_process_file_sync(backend: TesseractBackend, ocr_image: Path) -> None:
+    """Test sync file processing."""
+    from unittest.mock import Mock, mock_open, patch
+
+    with (
+        patch.object(backend, "_run_tesseract_sync") as mock_run,
+        patch("tempfile.NamedTemporaryFile") as mock_temp,
+        patch("pathlib.Path.open", mock_open(read_data="Sample file text")),
+        patch.object(backend, "_validate_tesseract_version_sync"),
+    ):
+        mock_run.return_value = None
+        mock_temp_file = Mock()
+        mock_temp_file.name = "/tmp/test_output"
+        mock_temp.return_value.__enter__.return_value = mock_temp_file
+
+        result = backend.process_file_sync(ocr_image, language="eng")
+
+        assert isinstance(result, ExtractionResult)
+        assert result.content.strip() == "Sample file text"
