@@ -25,7 +25,7 @@
 
 - **Performance**: Highest throughput among Python document processing frameworks (30+ docs/second)
 - **Resource Efficiency**: 71MB installation, ~360MB runtime memory footprint
-- **Extensibility**: Plugin architecture for custom extractors via BaseExtractor interface
+- **Extensibility**: Plugin architecture for custom extractors via the Extractor base class
 - **API Design**: Synchronous and asynchronous APIs with consistent interfaces
 - **Type Safety**: Complete type annotations throughout the codebase
 

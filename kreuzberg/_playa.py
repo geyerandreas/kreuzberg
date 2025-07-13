@@ -114,9 +114,8 @@ def _extract_keyword_metadata(pdf_info: dict[str, Any], result: Metadata) -> Non
     if keywords := pdf_info.get("keywords"):
         if isinstance(keywords, (str, bytes)):
             kw_str = decode_text(keywords)
-            kw_list = [k.strip() for k in kw_str.split(",")]
-            kw_list = [k.strip() for k in " ".join(kw_list).split(";")]
-            result["keywords"] = [k for k in kw_list if k]
+            # Combine multiple operations into a single comprehension
+            result["keywords"] = [k.strip() for part in kw_str.replace(";", ",").split(",") if (k := part.strip())]
         elif isinstance(keywords, list):
             result["keywords"] = [decode_text(k) for k in keywords]
 

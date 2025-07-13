@@ -6,7 +6,7 @@
 
 Kreuzberg is a document intelligence framework that transforms unstructured documents into structured, machine-readable data. Built on a foundation of established open source technologies—PDFium for PDF processing, Tesseract for optical character recognition, and Pandoc for universal document conversion—Kreuzberg provides a unified interface for extracting text, metadata, and structural information from diverse document formats.
 
-The framework emphasizes extensibility, allowing developers to integrate custom extractors and processors while maintaining consistent APIs and error handling across all document types.
+The framework emphasizes extensibility, allowing developers to integrate custom extractors and processing hooks while maintaining consistent APIs and error handling across all document types.
 
 ## Core Capabilities
 
@@ -49,7 +49,7 @@ Kreuzberg addresses the complete document intelligence pipeline through a modula
 - **OCR Engines**: Tesseract (default), EasyOCR, PaddleOCR with automatic fallback strategies
 - **Data Extraction**: Text content, document metadata, table structures, and embedded resources
 - **Processing Capabilities**: Content chunking for RAG pipelines, language detection, format preservation
-- **Extensibility**: Plugin architecture for custom extractors via BaseExtractor interface
+- **Extensibility**: Plugin architecture for custom extractors and hooks
 
 ## Architecture Philosophy
 
