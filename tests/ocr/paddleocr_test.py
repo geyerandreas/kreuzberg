@@ -855,3 +855,53 @@ async def test_init_paddle_ocr_with_invalid_language(
     assert "supported_languages" in excinfo.value.context
 
     assert "not supported by PaddleOCR" in str(excinfo.value)
+
+
+def test_process_image_sync(backend: PaddleBackend) -> None:
+    """Test sync image processing."""
+    from unittest.mock import Mock, patch
+
+    image = Image.new("RGB", (100, 100))
+
+    mock_paddle = Mock()
+    mock_paddle.ocr.return_value = [
+        [
+            [
+                [[0, 0], [100, 0], [100, 20], [0, 20]],
+                ("Sample OCR text", 0.95),
+            ]
+        ]
+    ]
+
+    with patch.object(backend, "_init_paddle_ocr_sync"), patch.object(backend, "_paddle_ocr", mock_paddle):
+        result = backend.process_image_sync(image)
+
+        assert isinstance(result, ExtractionResult)
+        assert result.content.strip() == "Sample OCR text"
+        assert result.metadata["width"] == 100
+        assert result.metadata["height"] == 100
+
+
+def test_process_file_sync(backend: PaddleBackend, tmp_path: Path) -> None:
+    """Test sync file processing."""
+    from unittest.mock import Mock, patch
+
+    test_image = Image.new("RGB", (100, 100))
+    image_path = tmp_path / "test_image.png"
+    test_image.save(image_path)
+
+    mock_paddle = Mock()
+    mock_paddle.ocr.return_value = [
+        [
+            [
+                [[0, 0], [100, 0], [100, 20], [0, 20]],
+                ("Sample file text", 0.90),
+            ]
+        ]
+    ]
+
+    with patch.object(backend, "_init_paddle_ocr_sync"), patch.object(backend, "_paddle_ocr", mock_paddle):
+        result = backend.process_file_sync(image_path)
+
+        assert isinstance(result, ExtractionResult)
+        assert result.content.strip() == "Sample file text"

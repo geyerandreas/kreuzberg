@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import re
 from dataclasses import dataclass
 from functools import lru_cache
@@ -181,8 +182,6 @@ def _load_spacy_model(model_name: str, spacy_config: SpacyEntityExtractionConfig
         import spacy
 
         if spacy_config.model_cache_dir:
-            import os
-
             os.environ["SPACY_DATA"] = str(spacy_config.model_cache_dir)
 
         nlp = spacy.load(model_name)

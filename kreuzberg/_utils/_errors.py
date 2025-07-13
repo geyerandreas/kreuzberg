@@ -5,12 +5,12 @@ from __future__ import annotations
 import platform
 import traceback
 from datetime import datetime, timezone
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 
 import psutil
 
-if TYPE_CHECKING:
-    from pathlib import Path
+from kreuzberg.exceptions import ValidationError
 
 
 def create_error_context(
@@ -37,8 +37,6 @@ def create_error_context(
     }
 
     if file_path:
-        from pathlib import Path
-
         path = Path(file_path) if isinstance(file_path, str) else file_path
         context["file"] = {
             "path": str(path),
@@ -157,8 +155,6 @@ def should_retry(error: Exception, attempt: int, max_attempts: int = 3) -> bool:
     """
     if attempt >= max_attempts:
         return False
-
-    from kreuzberg.exceptions import ValidationError
 
     if isinstance(error, ValidationError):
         return False

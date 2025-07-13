@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import contextlib
+import os
+import tempfile
 from multiprocessing import cpu_count
 from pathlib import Path
 from re import Pattern
@@ -15,8 +17,12 @@ from playa import parse
 from kreuzberg._extractors._base import Extractor
 from kreuzberg._mime_types import PDF_MIME_TYPE, PLAIN_TEXT_MIME_TYPE
 from kreuzberg._ocr import get_ocr_backend
+from kreuzberg._ocr._easyocr import EasyOCRConfig
+from kreuzberg._ocr._paddleocr import PaddleOCRConfig
+from kreuzberg._ocr._tesseract import TesseractConfig
 from kreuzberg._playa import extract_pdf_metadata, extract_pdf_metadata_sync
 from kreuzberg._types import ExtractionResult, OcrBackendType
+from kreuzberg._utils._errors import create_error_context, should_retry
 from kreuzberg._utils._pdf_lock import pypdfium_file_lock
 from kreuzberg._utils._string import normalize_spaces
 from kreuzberg._utils._sync import run_sync, run_taskgroup_batched
@@ -89,9 +95,6 @@ class PDFExtractor(Extractor):
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
         """Pure sync implementation of PDF extraction from bytes."""
-        import os
-        import tempfile
-
         fd, temp_path = tempfile.mkstemp(suffix=".pdf")
         try:
             with os.fdopen(fd, "wb") as f:
@@ -191,8 +194,6 @@ class PDFExtractor(Extractor):
         Returns:
             A list of Pillow Images.
         """
-        from kreuzberg._utils._errors import create_error_context, should_retry
-
         document: pypdfium2.PdfDocument | None = None
         last_error = None
 
@@ -264,8 +265,6 @@ class PDFExtractor(Extractor):
         Returns:
             The extracted text.
         """
-        from kreuzberg._utils._errors import create_error_context
-
         document: pypdfium2.PdfDocument | None = None
         try:
             with pypdfium_file_lock(input_file):
@@ -345,9 +344,6 @@ class PDFExtractor(Extractor):
                     bitmap.close()
                     page.close()
 
-            import os
-            import tempfile
-
             image_paths = []
             temp_files = []
 
@@ -375,46 +371,29 @@ class PDFExtractor(Extractor):
 
     def _process_pdf_images_with_ocr(self, image_paths: list[str]) -> str:
         """Process PDF images with the configured OCR backend."""
-        if self.config.ocr_backend == "tesseract":
-            from kreuzberg._ocr._sync import process_batch_images_sync
-            from kreuzberg._ocr._tesseract import TesseractConfig
+        backend = get_ocr_backend(self.config.ocr_backend)
+        paths = [Path(p) for p in image_paths]
 
-            tesseract_config = (
+        if self.config.ocr_backend == "tesseract":
+            config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, TesseractConfig) else TesseractConfig()
             )
-            results = process_batch_images_sync([str(p) for p in image_paths], tesseract_config, backend="tesseract")
-            text_parts = [r.content for r in results]
-            return "\n\n".join(text_parts)
-
-        if self.config.ocr_backend == "paddleocr":
-            from kreuzberg._ocr._paddleocr import PaddleOCRConfig
-            from kreuzberg._ocr._sync import process_image_paddleocr_sync as paddle_process
-
+            results = backend.process_batch_sync(paths, **config.__dict__)
+        elif self.config.ocr_backend == "paddleocr":
             paddle_config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, PaddleOCRConfig) else PaddleOCRConfig()
             )
-
-            text_parts = []
-            for image_path in image_paths:
-                result = paddle_process(Path(image_path), paddle_config)
-                text_parts.append(result.content)
-            return "\n\n".join(text_parts)
-
-        if self.config.ocr_backend == "easyocr":
-            from kreuzberg._ocr._easyocr import EasyOCRConfig
-            from kreuzberg._ocr._sync import process_image_easyocr_sync as easy_process
-
+            results = backend.process_batch_sync(paths, **paddle_config.__dict__)
+        elif self.config.ocr_backend == "easyocr":
             easy_config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, EasyOCRConfig) else EasyOCRConfig()
             )
+            results = backend.process_batch_sync(paths, **easy_config.__dict__)
+        else:
+            raise NotImplementedError(f"Sync OCR not implemented for {self.config.ocr_backend}")
 
-            text_parts = []
-            for image_path in image_paths:
-                result = easy_process(Path(image_path), easy_config)
-                text_parts.append(result.content)
-            return "\n\n".join(text_parts)
-
-        raise NotImplementedError(f"Sync OCR not implemented for {self.config.ocr_backend}")
+        text_parts = [r.content for r in results]
+        return "\n\n".join(text_parts)
 
     def _extract_with_playa_sync(self, path: Path, fallback_text: str) -> str:
         """Extract text using playa for better structure preservation."""

@@ -6,49 +6,31 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Test Coverage](https://img.shields.io/badge/coverage-95%25-green)](https://github.com/Goldziher/kreuzberg)
 
-**High-performance Open Source Document Intelligence framework for Python.** Built by engineers for production workloads - extract text from any document with excellent performance and minimal complexity.
+**Advanced Document Intelligence for Modern Python Applications.** Transform PDFs, images, and office documents into structured data with production-grade performance. Built by engineers who understand that speed, reliability, and developer experience matter.
 
 📖 **[Complete Documentation](https://goldziher.github.io/kreuzberg/)**
 
 ## Why Choose Kreuzberg?
 
-### 🚀 Performance
+### ⚡ Proven Performance
 
-- [benchmarked as the fastest framework](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) - 2-3x faster than the nearest alternatives
-- Minimal footprint: 71MB install vs 1GB+ for competitors
-- Lowest memory usage (~530MB average) optimized for production workloads
-- Edge and serverless ready - deploy anywhere without heavy dependencies
+[Benchmarked](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) 6-126x faster than alternatives while using minimal resources. Process up to 14 files per second with 87MB install size and ~360MB memory usage. Optimized for production workloads and resource-constrained environments.
 
-### 🛠️ Engineering Quality
+### 🏗️ Production Engineering
 
-- Built by software engineers with modern Python best practices
-- 95%+ test coverage with comprehensive test suite
-- Thoroughly benchmarked and profiled for real-world performance
-- Only framework offering true async/await support alongside sync APIs
-- Robust error handling and detailed logging
+Comprehensive test coverage (95%+), robust error handling, and true async/await support. Built with modern Python practices for reliability in production environments.
 
-### 🎯 Developer Experience
+### 🔧 Developer Experience
 
-- Works out of the box with sane defaults, scales with your needs
-- Native MCP server for AI tool integration (Claude Desktop, Cursor)
-- Full type safety with excellent IDE support (completions)
-- Comprehensive documentation including full API reference
+Works immediately with smart defaults, scales as you grow. Native MCP integration for AI tools, full type safety, and clear documentation.
 
-### 🌍 Deployment Options
+### 🚀 Flexible Deployment
 
-- Docker images for all architectures (AMD64, ARM64)
-- Cloud native - AWS Lambda, Google Cloud Functions, Azure Functions
-- CPU-only processing - no GPU requirements, lower energy consumption
-- 100% local processing - no external API dependencies
-- Multiple deployment modes: CLI, REST API, MCP server
+Deploy on serverless platforms, containers, or traditional servers. Supports both CPU and GPU processing (via PaddleOCR and EasyOCR). No external API dependencies. Multiple deployment modes: CLI, REST API, MCP server.
 
-### 🎯 Complete Solution
+### 📄 Comprehensive Format Support
 
-- Universal format support: PDFs, images, Office docs, HTML, spreadsheets, presentations
-- Multiple OCR engines: Tesseract, EasyOCR, PaddleOCR with intelligent fallbacks
-- Advanced features: Table extraction, metadata extraction, content chunking for RAG
-- Production tools: REST API, CLI tools, batch processing, custom extractors
-- Fully extensible: Add your own extractors
+Extract from PDFs, images, Office documents, HTML, spreadsheets, and presentations. Multiple OCR engines with intelligent fallbacks, table extraction, and content preparation for RAG workflows.
 
 ## Quick Start
 
@@ -84,7 +66,7 @@ import asyncio
 from kreuzberg import extract_file
 
 async def main():
-    # Extract from any document type
+    # Extract content from files
     result = await extract_file("document.pdf")
     print(result.content)
     print(result.metadata)
@@ -198,23 +180,23 @@ kreuzberg extract *.pdf --output-dir ./extracted/
 
 ## 📊 Performance Comparison
 
-[Comprehensive benchmarks](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) across 94 real-world documents • [View source](https://github.com/Goldziher/python-text-extraction-libs-benchmarks):
+[Comprehensive benchmarks](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) across ~100 real-world documents • [View source](https://github.com/Goldziher/python-text-extraction-libs-benchmarks) • [**Detailed Analysis**](https://goldziher.github.io/kreuzberg/performance-analysis/):
 
-| Framework     | Speed       | Memory | Install Size | Dependencies | Success Rate |
-| ------------- | ----------- | ------ | ------------ | ------------ | ------------ |
-| **Kreuzberg** | 35+ files/s | 530MB  | 71MB         | 20           | High         |
-| Unstructured  | ~12 files/s | ~1GB   | 146MB        | 54           | 88%+         |
-| MarkItDown    | ~15 files/s | ~1.5GB | 251MB        | 25           | 80%\*        |
-| Docling       | ~1 file/min | ~5GB   | 1,032MB      | 88           | 45%\*        |
+| Framework     | Speed        | Memory | Install Size | Dependencies | Success Rate |
+| ------------- | ------------ | ------ | ------------ | ------------ | ------------ |
+| **Kreuzberg** | 14.4 files/s | 360MB  | 87MB         | 43           | 100%         |
+| Unstructured  | ~12 files/s  | ~1GB   | 146MB        | 54           | 88%+         |
+| MarkItDown    | ~15 files/s  | ~1.5GB | 251MB        | 25           | 80%\*        |
+| Docling       | ~1 file/min  | ~5GB   | 1,032MB      | 88           | 45%\*        |
 
 \*_Performance varies significantly with document complexity and size_
 
 **Key strengths:**
 
-- 2-3x faster processing than comparable frameworks
+- 6-126x faster processing than comparable frameworks
 - Smallest installation footprint and memory usage
 - Only framework with built-in async/await support
-- CPU-only processing - no GPU dependencies
+- Supports both CPU and GPU processing
 - Built by software engineers for production reliability
 
 > **Benchmark details**: Tests include PDFs, Word docs, HTML, images, and spreadsheets in multiple languages (English, Hebrew, German, Chinese, Japanese, Korean) on standardized hardware.
@@ -225,6 +207,7 @@ kreuzberg extract *.pdf --output-dir ./extracted/
 
 - [Installation Guide](https://goldziher.github.io/kreuzberg/getting-started/installation/) - Setup and dependencies
 - [User Guide](https://goldziher.github.io/kreuzberg/user-guide/) - Comprehensive usage guide
+- [Performance Analysis](https://goldziher.github.io/kreuzberg/performance-analysis/) - Detailed benchmark results
 - [API Reference](https://goldziher.github.io/kreuzberg/api-reference/) - Complete API documentation
 - [Docker Guide](https://goldziher.github.io/kreuzberg/user-guide/docker/) - Container deployment
 - [REST API](https://goldziher.github.io/kreuzberg/user-guide/api-server/) - HTTP endpoints

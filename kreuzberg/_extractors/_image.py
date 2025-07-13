@@ -11,12 +11,16 @@ from anyio import Path as AsyncPath
 from kreuzberg._extractors._base import Extractor
 from kreuzberg._mime_types import IMAGE_MIME_TYPES
 from kreuzberg._ocr import get_ocr_backend
-from kreuzberg._types import ExtractionResult
+from kreuzberg._ocr._easyocr import EasyOCRConfig
+from kreuzberg._ocr._paddleocr import PaddleOCRConfig
+from kreuzberg._ocr._tesseract import TesseractConfig
 from kreuzberg._utils._tmp import create_temp_file
 from kreuzberg.exceptions import ValidationError
 
 if TYPE_CHECKING:  # pragma: no cover
     from collections.abc import Mapping
+
+    from kreuzberg._types import ExtractionResult
 
 
 class ImageExtractor(Extractor):
@@ -78,44 +82,26 @@ class ImageExtractor(Extractor):
         if self.config.ocr_backend is None:
             raise ValidationError("ocr_backend is None, cannot perform OCR")
 
+        backend = get_ocr_backend(self.config.ocr_backend)
+
         if self.config.ocr_backend == "tesseract":
-            from kreuzberg._ocr._sync import process_batch_images_sync
-            from kreuzberg._ocr._tesseract import TesseractConfig
-
-            if isinstance(self.config.ocr_config, TesseractConfig):
-                config = self.config.ocr_config
-            else:
-                config = TesseractConfig()
-
-            results = process_batch_images_sync([str(path)], config, backend="tesseract")
-            if results:
-                result = results[0]
-                return self._apply_quality_processing(result)
-            return ExtractionResult(content="", mime_type="text/plain", metadata={}, chunks=[])
-
-        if self.config.ocr_backend == "paddleocr":
-            from kreuzberg._ocr._paddleocr import PaddleOCRConfig
-            from kreuzberg._ocr._sync import process_image_paddleocr_sync as paddle_process
-
+            config = (
+                self.config.ocr_config if isinstance(self.config.ocr_config, TesseractConfig) else TesseractConfig()
+            )
+            result = backend.process_file_sync(path, **config.__dict__)
+        elif self.config.ocr_backend == "paddleocr":
             paddle_config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, PaddleOCRConfig) else PaddleOCRConfig()
             )
-
-            result = paddle_process(path, paddle_config)
-            return self._apply_quality_processing(result)
-
-        if self.config.ocr_backend == "easyocr":
-            from kreuzberg._ocr._easyocr import EasyOCRConfig
-            from kreuzberg._ocr._sync import process_image_easyocr_sync as easy_process
-
+            result = backend.process_file_sync(path, **paddle_config.__dict__)
+        elif self.config.ocr_backend == "easyocr":
             easy_config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, EasyOCRConfig) else EasyOCRConfig()
             )
-
-            result = easy_process(path, easy_config)
-            return self._apply_quality_processing(result)
-
-        raise NotImplementedError(f"Sync OCR not implemented for {self.config.ocr_backend}")
+            result = backend.process_file_sync(path, **easy_config.__dict__)
+        else:
+            raise NotImplementedError(f"Sync OCR not implemented for {self.config.ocr_backend}")
+        return self._apply_quality_processing(result)
 
     def _get_extension_from_mime_type(self, mime_type: str) -> str:
         if mime_type in self.IMAGE_MIME_TYPE_EXT_MAP:

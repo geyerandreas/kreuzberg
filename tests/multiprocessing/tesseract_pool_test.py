@@ -9,12 +9,12 @@ from unittest.mock import patch
 import pytest
 from PIL import Image
 
-from kreuzberg._ocr._pool import (
+from kreuzberg._ocr._tesseract import (
+    TesseractConfig,
     TesseractProcessPool,
     _process_image_bytes_with_tesseract,
     _process_image_with_tesseract,
 )
-from kreuzberg._ocr._tesseract import TesseractConfig
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -42,7 +42,7 @@ def test_image_path(tmp_path: Path) -> Path:
 
 
 class _MockSubprocessResult:
-    """Simple mock for subprocess result that can be pickled."""
+    """Simple mock for subprocess result."""
 
     def __init__(self, returncode: int, stdout: str = "", stderr: str = ""):
         self.returncode = returncode
@@ -127,7 +127,7 @@ def test_process_image_bytes_with_tesseract(tesseract_config: dict[str, Any]) ->
     img.save(img_bytes, format="PNG")
     image_bytes = img_bytes.getvalue()
 
-    with patch("kreuzberg._ocr._pool._process_image_with_tesseract") as mock_process:
+    with patch("kreuzberg._ocr._tesseract._process_image_with_tesseract") as mock_process:
         mock_process.return_value = {
             "success": True,
             "text": "Bytes OCR output",

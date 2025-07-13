@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import contextmanager
@@ -9,6 +10,7 @@ from typing import TYPE_CHECKING, Any, TypeVar
 
 import anyio
 import psutil
+import pypdfium2
 from typing_extensions import Self
 
 if TYPE_CHECKING:
@@ -59,8 +61,6 @@ def shutdown_process_pool() -> None:
 
 def _extract_pdf_text_worker(pdf_path: str) -> tuple[str, str]:
     """Worker function for extracting PDF text in a separate process."""
-    import pypdfium2
-
     pdf = None
     try:
         pdf = pypdfium2.PdfDocument(pdf_path)
@@ -81,10 +81,6 @@ def _extract_pdf_text_worker(pdf_path: str) -> tuple[str, str]:
 
 def _extract_pdf_images_worker(pdf_path: str, scale: float = 4.25) -> tuple[str, list[bytes]]:
     """Worker function for converting PDF to images in a separate process."""
-    import io
-
-    import pypdfium2
-
     pdf = None
     try:
         pdf = pypdfium2.PdfDocument(pdf_path)

@@ -1,23 +1,19 @@
 # Kreuzberg
 
-Kreuzberg is a complete Open Source Document Intelligence framework. Its Built by engineers for production workloads -
-its not a data science / research orientated tool, but rather a pragmatic swiss-army knife that is meant to deliver.
-Yes, Python, when coupled with robust technologies such as `pdfium`, `tesseract` and `pandoc` can do quite a lot.
-Kreuzberg was also created (primarily) in Kreuzberg - the famous and beautiful neighborhood of Berlin.
+Kreuzberg is an advanced open source document intelligence framework built for production workloads. Designed by engineers for reliability and performance, it transforms PDFs, images, and office documents into structured data with minimal complexity.
+
+Built on proven technologies including PDFium, Tesseract, and Pandoc, Kreuzberg delivers enterprise-grade document processing capabilities while maintaining simplicity and speed.
 
 ## Why Kreuzberg?
 
-At the danger of over-selling, there are actually quite a lot of reasons why use Kreuzberg. You can read them below.
-BUT - this is not necessarily a mutually exclusive solution. For example.
-many text extraction pipelines can integrate a library such as Kreuzberg with some kind of heuristics on when to use it
-and when use something else.
+Kreuzberg addresses real production needs with measurable benefits. While not exclusively a complete solution, it integrates well with existing pipelines and can be deployed alongside other tools based on specific requirements.
 
 ### 🚀 Performance
 
-- [benchmarked as the fastest framework](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) - 2-3x
-    faster than the nearest alternatives
-- Minimal footprint: 71MB install vs 1GB+ for competitors
-- Lowest memory usage (~530MB average) optimized for production workloads
+- [benchmarked as the fastest framework](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) - 6-126x
+    faster than competitors
+- Minimal footprint: 87MB install vs 1GB+ for competitors
+- Lowest memory usage (~360MB average) optimized for production workloads
 - Edge and serverless ready - deploy anywhere without heavy dependencies
 
 ### 🛠️ Engineering Quality
@@ -39,13 +35,13 @@ and when use something else.
 
 - Docker images for all architectures (AMD64, ARM64)
 - Cloud native - AWS Lambda, Google Cloud Functions, Azure Functions
-- CPU-only processing - no GPU requirements, lower energy consumption
-- 100% local processing - no external API dependencies
+- Supports both CPU and GPU processing (PaddleOCR, EasyOCR)
+- Local processing - no external API dependencies
 - Multiple deployment modes: CLI, REST API, MCP server
 
 ### 🎯 Complete Solution
 
-- Universal format support: PDFs, images, Office docs, HTML, spreadsheets, presentations
+- Comprehensive format support: PDFs, images, Office docs, HTML, spreadsheets, presentations
 - Multiple OCR engines: Tesseract, EasyOCR, PaddleOCR with intelligent fallbacks
 - Advanced features: Table extraction, metadata extraction, content chunking for RAG
 - Production tools: REST API, CLI tools, batch processing, custom extractors

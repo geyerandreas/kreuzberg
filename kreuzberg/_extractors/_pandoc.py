@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import contextlib
+import os
 import re
+import subprocess
 import sys
+import tempfile
 from json import JSONDecodeError, loads
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal, cast
@@ -203,10 +206,6 @@ class PandocExtractor(Extractor):
         Returns:
             ExtractionResult with the extracted text and metadata.
         """
-        import os
-        import tempfile
-        from pathlib import Path
-
         extension = self._get_pandoc_type_from_mime_type(self.mime_type)
         fd, temp_path = tempfile.mkstemp(suffix=f".{extension}")
 
@@ -579,8 +578,6 @@ class PandocExtractor(Extractor):
 
     def _validate_pandoc_version_sync(self) -> None:
         """Synchronous version of _validate_pandoc_version."""
-        import subprocess
-
         try:
             if self._checked_version:
                 return
@@ -625,10 +622,6 @@ class PandocExtractor(Extractor):
 
     def _extract_metadata_sync(self, path: Path) -> Metadata:
         """Synchronous version of _handle_extract_metadata."""
-        import os
-        import subprocess
-        import tempfile
-
         pandoc_type = self._get_pandoc_type_from_mime_type(self.mime_type)
         fd, metadata_file = tempfile.mkstemp(suffix=".json")
         os.close(fd)
@@ -663,10 +656,6 @@ class PandocExtractor(Extractor):
 
     def _extract_file_sync(self, path: Path) -> str:
         """Synchronous version of _handle_extract_file."""
-        import os
-        import subprocess
-        import tempfile
-
         pandoc_type = self._get_pandoc_type_from_mime_type(self.mime_type)
         fd, output_path = tempfile.mkstemp(suffix=".md")
         os.close(fd)

@@ -3,10 +3,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING, ClassVar
 
+from kreuzberg._types import ExtractionResult, normalize_metadata
+from kreuzberg._utils._quality import calculate_quality_score, clean_extracted_text
+
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from kreuzberg import ExtractionResult
     from kreuzberg._types import ExtractionConfig
 
 
@@ -104,8 +106,6 @@ class Extractor(ABC):
         if not self.config.enable_quality_processing:
             return result
 
-        from kreuzberg._utils._quality import calculate_quality_score, clean_extracted_text
-
         if not result.content:
             return result
 
@@ -120,8 +120,6 @@ class Extractor(ABC):
         enhanced_metadata["quality_score"] = quality_score
 
         # Return enhanced result
-        from kreuzberg._types import ExtractionResult, normalize_metadata
-
         return ExtractionResult(
             content=cleaned_content,
             mime_type=result.mime_type,

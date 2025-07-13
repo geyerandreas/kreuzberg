@@ -4,8 +4,10 @@ import platform
 import warnings
 from dataclasses import dataclass
 from importlib.util import find_spec
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal
 
+import numpy as np
 from PIL import Image
 
 from kreuzberg._mime_types import PLAIN_TEXT_MIME_TYPE
@@ -364,3 +366,90 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
                 "supported_languages": ",".join(sorted(PADDLEOCR_SUPPORTED_LANGUAGE_CODES)),
             },
         )
+
+    def process_image_sync(self, image: Image.Image, **kwargs: Unpack[PaddleOCRConfig]) -> ExtractionResult:
+        """Synchronously process an image and extract its text and metadata using PaddleOCR.
+
+        Args:
+            image: An instance of PIL.Image representing the input image.
+            **kwargs: Configuration parameters for PaddleOCR including language, detection thresholds, etc.
+
+        Returns:
+            ExtractionResult: The extraction result containing text content, mime type, and metadata.
+
+        Raises:
+            OCRError: If OCR processing fails.
+        """
+        self._init_paddle_ocr_sync(**kwargs)
+
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
+        image_np = np.array(image)
+        try:
+            result = self._paddle_ocr.ocr(image_np, cls=kwargs.get("use_angle_cls", True))
+            return self._process_paddle_result(result, image)
+        except Exception as e:
+            raise OCRError(f"Failed to OCR using PaddleOCR: {e}") from e
+
+    def process_file_sync(self, path: Path, **kwargs: Unpack[PaddleOCRConfig]) -> ExtractionResult:
+        """Synchronously process a file and extract its text and metadata using PaddleOCR.
+
+        Args:
+            path: A Path object representing the file to be processed.
+            **kwargs: Configuration parameters for PaddleOCR including language, detection thresholds, etc.
+
+        Returns:
+            ExtractionResult: The extraction result containing text content, mime type, and metadata.
+
+        Raises:
+            OCRError: If file loading or OCR processing fails.
+        """
+        self._init_paddle_ocr_sync(**kwargs)
+        try:
+            image = Image.open(path)
+            return self.process_image_sync(image, **kwargs)
+        except Exception as e:
+            raise OCRError(f"Failed to load or process image using PaddleOCR: {e}") from e
+
+    @classmethod
+    def _init_paddle_ocr_sync(cls, **kwargs: Unpack[PaddleOCRConfig]) -> None:
+        """Synchronously initialize PaddleOCR with the provided configuration.
+
+        Args:
+            **kwargs: Configuration parameters for PaddleOCR including language, detection thresholds, etc.
+
+        Raises:
+            MissingDependencyError: If PaddleOCR is not installed.
+            OCRError: If initialization fails.
+        """
+        if cls._paddle_ocr is not None:
+            return
+
+        try:
+            from paddleocr import PaddleOCR
+        except ImportError as e:
+            raise MissingDependencyError.create_for_package(
+                dependency_group="paddleocr", functionality="PaddleOCR as an OCR backend", package_name="paddleocr"
+            ) from e
+
+        language = cls._validate_language_code(kwargs.pop("language", "en"))
+
+        device_info = cls._resolve_device_config(**kwargs)
+        use_gpu = device_info.device_type == "cuda"
+
+        has_gpu_package = bool(find_spec("paddlepaddle_gpu"))
+        kwargs.setdefault("use_angle_cls", True)
+        kwargs["use_gpu"] = use_gpu and has_gpu_package
+        kwargs.setdefault("enable_mkldnn", cls._is_mkldnn_supported() and not (use_gpu and has_gpu_package))
+        kwargs.setdefault("det_db_thresh", 0.3)
+        kwargs.setdefault("det_db_box_thresh", 0.5)
+        kwargs.setdefault("det_db_unclip_ratio", 1.6)
+
+        if device_info.device_type == "cuda" and kwargs.get("gpu_memory_limit"):
+            kwargs["gpu_mem"] = int(kwargs["gpu_memory_limit"] * 1024)
+
+        try:
+            cls._paddle_ocr = PaddleOCR(lang=language, show_log=False, **kwargs)
+        except Exception as e:
+            raise OCRError(f"Failed to initialize PaddleOCR: {e}") from e

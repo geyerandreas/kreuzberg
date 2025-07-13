@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import contextlib
 import multiprocessing as mp
-import pickle
 import queue
 import signal
 from typing import TYPE_CHECKING, Any
@@ -13,13 +12,15 @@ from unittest.mock import MagicMock, patch
 import pytest
 from PIL import Image
 
-from kreuzberg._gmft import GMFTConfig
-from kreuzberg._multiprocessing import (
-    extract_tables_isolated,
-    extract_tables_isolated_async,
-)
-from kreuzberg._multiprocessing.gmft_isolated import (
+from kreuzberg._gmft import (
+    GMFTConfig,
     _extract_tables_in_process,
+)
+from kreuzberg._gmft import (
+    _extract_tables_isolated as extract_tables_isolated,
+)
+from kreuzberg._gmft import (
+    _extract_tables_isolated_async as extract_tables_isolated_async,
 )
 from kreuzberg.exceptions import ParsingError
 
@@ -128,7 +129,7 @@ def test_extract_tables_in_process_success(sample_pdf: Path, mock_gmft_modules: 
                 assert result[0]["page_number"] == 1
                 assert "col1" in result[0]["text"]
                 assert isinstance(result[0]["cropped_image_bytes"], bytes)
-                assert isinstance(result[0]["df_pickle"], bytes)
+                assert isinstance(result[0]["df_csv"], str)
 
 
 def test_extract_tables_in_process_exception(sample_pdf: Path) -> None:
@@ -266,7 +267,7 @@ def test_extract_tables_isolated_success(sample_pdf: Path) -> None:
                 "cropped_image_bytes": img_bytes,
                 "page_number": 1,
                 "text": df.to_markdown(),
-                "df_pickle": pickle.dumps(df),
+                "df_csv": df.to_csv(index=False),
             }
         ]
 
@@ -340,7 +341,7 @@ async def test_extract_tables_isolated_async_success(sample_pdf: Path) -> None:
                 "cropped_image_bytes": img_bytes,
                 "page_number": 1,
                 "text": df.to_markdown(),
-                "df_pickle": pickle.dumps(df),
+                "df_csv": df.to_csv(index=False),
             }
         ]
 
