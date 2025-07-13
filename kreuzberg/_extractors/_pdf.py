@@ -375,46 +375,37 @@ class PDFExtractor(Extractor):
 
     def _process_pdf_images_with_ocr(self, image_paths: list[str]) -> str:
         """Process PDF images with the configured OCR backend."""
+        from kreuzberg._ocr import get_ocr_backend
+
+        backend = get_ocr_backend(self.config.ocr_backend)
+        paths = [Path(p) for p in image_paths]
+
         if self.config.ocr_backend == "tesseract":
-            from kreuzberg._ocr._sync import process_batch_images_sync
             from kreuzberg._ocr._tesseract import TesseractConfig
 
-            tesseract_config = (
+            config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, TesseractConfig) else TesseractConfig()
             )
-            results = process_batch_images_sync([str(p) for p in image_paths], tesseract_config, backend="tesseract")
-            text_parts = [r.content for r in results]
-            return "\n\n".join(text_parts)
-
-        if self.config.ocr_backend == "paddleocr":
+            results = backend.process_batch_sync(paths, **config.__dict__)
+        elif self.config.ocr_backend == "paddleocr":
             from kreuzberg._ocr._paddleocr import PaddleOCRConfig
-            from kreuzberg._ocr._sync import process_image_paddleocr_sync as paddle_process
 
             paddle_config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, PaddleOCRConfig) else PaddleOCRConfig()
             )
-
-            text_parts = []
-            for image_path in image_paths:
-                result = paddle_process(Path(image_path), paddle_config)
-                text_parts.append(result.content)
-            return "\n\n".join(text_parts)
-
-        if self.config.ocr_backend == "easyocr":
+            results = backend.process_batch_sync(paths, **paddle_config.__dict__)
+        elif self.config.ocr_backend == "easyocr":
             from kreuzberg._ocr._easyocr import EasyOCRConfig
-            from kreuzberg._ocr._sync import process_image_easyocr_sync as easy_process
 
             easy_config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, EasyOCRConfig) else EasyOCRConfig()
             )
+            results = backend.process_batch_sync(paths, **easy_config.__dict__)
+        else:
+            raise NotImplementedError(f"Sync OCR not implemented for {self.config.ocr_backend}")
 
-            text_parts = []
-            for image_path in image_paths:
-                result = easy_process(Path(image_path), easy_config)
-                text_parts.append(result.content)
-            return "\n\n".join(text_parts)
-
-        raise NotImplementedError(f"Sync OCR not implemented for {self.config.ocr_backend}")
+        text_parts = [r.content for r in results]
+        return "\n\n".join(text_parts)
 
     def _extract_with_playa_sync(self, path: Path, fallback_text: str) -> str:
         """Extract text using playa for better structure preservation."""

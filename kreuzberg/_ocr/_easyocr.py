@@ -4,6 +4,7 @@ import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal
 
+import numpy as np
 from PIL import Image
 
 from kreuzberg._mime_types import PLAIN_TEXT_MIME_TYPE
@@ -440,3 +441,93 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
             )
 
         return languages
+
+    def process_image_sync(self, image: Image.Image, **kwargs: Unpack[EasyOCRConfig]) -> ExtractionResult:
+        """Synchronously process an image and extract its text and metadata using EasyOCR.
+
+        Args:
+            image: An instance of PIL.Image representing the input image.
+            **kwargs: Configuration parameters for EasyOCR including language, detection thresholds, etc.
+
+        Returns:
+            ExtractionResult: The extraction result containing text content, mime type, and metadata.
+
+        Raises:
+            OCRError: If OCR processing fails.
+        """
+        self._init_easyocr_sync(**kwargs)
+
+        beam_width = kwargs.pop("beam_width")
+        kwargs.pop("language", None)
+        kwargs.pop("use_gpu", None)
+
+        try:
+            result = self._reader.readtext(
+                np.array(image),
+                beamWidth=beam_width,
+                **kwargs,
+            )
+
+            return self._process_easyocr_result(result, image)
+        except Exception as e:
+            raise OCRError(f"Failed to OCR using EasyOCR: {e}") from e
+
+    def process_file_sync(self, path: Path, **kwargs: Unpack[EasyOCRConfig]) -> ExtractionResult:
+        """Synchronously process a file and extract its text and metadata using EasyOCR.
+
+        Args:
+            path: A Path object representing the file to be processed.
+            **kwargs: Configuration parameters for EasyOCR including language, detection thresholds, etc.
+
+        Returns:
+            ExtractionResult: The extraction result containing text content, mime type, and metadata.
+
+        Raises:
+            OCRError: If file loading or OCR processing fails.
+        """
+        self._init_easyocr_sync(**kwargs)
+        try:
+            image = Image.open(path)
+            return self.process_image_sync(image, **kwargs)
+        except Exception as e:
+            raise OCRError(f"Failed to load or process image using EasyOCR: {e}") from e
+
+    @classmethod
+    def _init_easyocr_sync(cls, **kwargs: Unpack[EasyOCRConfig]) -> None:
+        """Synchronously initialize EasyOCR with the provided configuration.
+
+        Args:
+            **kwargs: Configuration parameters for EasyOCR including language, etc.
+
+        Raises:
+            MissingDependencyError: If EasyOCR is not installed.
+            OCRError: If initialization fails.
+        """
+        if cls._reader is not None:
+            return
+
+        try:
+            import easyocr
+        except ImportError as e:
+            raise MissingDependencyError.create_for_package(
+                dependency_group="easyocr", functionality="EasyOCR as an OCR backend", package_name="easyocr"
+            ) from e
+
+        languages = cls._validate_language_code(kwargs.pop("language", "en"))
+
+        device_info = cls._resolve_device_config(**kwargs)
+        use_gpu = device_info.device_type in ("cuda", "mps")
+
+        kwargs.setdefault("detector", True)
+        kwargs.setdefault("recognizer", True)
+        kwargs.setdefault("download_enabled", True)
+        kwargs.setdefault("recog_network", "standard")
+
+        try:
+            cls._reader = easyocr.Reader(
+                languages,
+                gpu=use_gpu,
+                verbose=False,
+            )
+        except Exception as e:
+            raise OCRError(f"Failed to initialize EasyOCR: {e}") from e

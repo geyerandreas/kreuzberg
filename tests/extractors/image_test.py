@@ -8,7 +8,7 @@ import pytest
 
 from kreuzberg._extractors._image import ImageExtractor
 from kreuzberg._types import ExtractionConfig, ExtractionResult
-from kreuzberg.exceptions import OCRError, ValidationError
+from kreuzberg.exceptions import ValidationError
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -22,11 +22,12 @@ def extractor() -> ImageExtractor:
 
 @pytest.fixture
 def mock_ocr_backend() -> Generator[MagicMock, None, None]:
-    with patch("kreuzberg._extractors._image.get_ocr_backend") as mock:
-        backend = MagicMock()
+    backend = MagicMock()
+    backend.process_file = AsyncMock()
+    backend.process_file_sync = MagicMock()
+    backend.process_batch_sync = MagicMock()
 
-        backend.process_file = AsyncMock()
-        mock.return_value = backend
+    with patch("kreuzberg._ocr.get_ocr_backend", return_value=backend):
         yield backend
 
 
@@ -70,14 +71,12 @@ def test_extract_path_sync(mock_ocr_backend: MagicMock, tmp_path: Path) -> None:
     expected_result = ExtractionResult(
         content="extracted text", chunks=[], mime_type="text/plain", metadata={"quality_score": 1.0}
     )
-    mock_ocr_backend.process_file.return_value = expected_result
+    mock_ocr_backend.process_file_sync.return_value = expected_result
 
-    with patch("kreuzberg._ocr._sync.process_batch_images_sync") as mock_process:
-        mock_process.return_value = [expected_result]
-        result = extractor.extract_path_sync(image_path)
+    result = extractor.extract_path_sync(image_path)
 
-        mock_process.assert_called_once()
-        assert result == expected_result
+    mock_ocr_backend.process_file_sync.assert_called_once()
+    assert result == expected_result
 
 
 def test_extract_bytes_sync(mock_ocr_backend: MagicMock) -> None:
@@ -169,7 +168,7 @@ async def test_extract_bytes_async(mock_ocr_backend: MagicMock) -> None:
 
 
 def test_extract_path_sync_no_ocr_backend() -> None:
-    """Test sync path extraction when ocr_backend is None - covers line 82."""
+    """Test sync path extraction when ocr_backend is None."""
     config = ExtractionConfig(ocr_backend=None)
     extractor = ImageExtractor(mime_type="image/png", config=config)
 
@@ -179,8 +178,8 @@ def test_extract_path_sync_no_ocr_backend() -> None:
     assert "ocr_backend is None" in str(excinfo.value)
 
 
-def test_extract_path_sync_with_tesseract_config() -> None:
-    """Test sync path extraction with TesseractConfig - covers line 92."""
+def test_extract_path_sync_with_tesseract_config(mock_ocr_backend: MagicMock) -> None:
+    """Test sync path extraction with TesseractConfig."""
     from kreuzberg._ocr._tesseract import TesseractConfig
 
     tesseract_config = TesseractConfig()
@@ -189,77 +188,54 @@ def test_extract_path_sync_with_tesseract_config() -> None:
 
     image_path = Path("test.png")
 
-    with patch("kreuzberg._ocr._sync.process_batch_images_sync") as mock_process:
-        expected_result = ExtractionResult(
-            content="extracted text", chunks=[], mime_type="text/plain", metadata={"quality_score": 1.0}
-        )
-        mock_process.return_value = [expected_result]
+    expected_result = ExtractionResult(
+        content="extracted text", chunks=[], mime_type="text/plain", metadata={"quality_score": 1.0}
+    )
+    mock_ocr_backend.process_file_sync.return_value = expected_result
 
-        result = extractor.extract_path_sync(image_path)
+    result = extractor.extract_path_sync(image_path)
 
-        mock_process.assert_called_once_with([str(image_path)], tesseract_config)
-        assert result == expected_result
+    mock_ocr_backend.process_file_sync.assert_called_once()
+    assert result == expected_result
 
 
-def test_extract_path_sync_no_ocr_config() -> None:
-    """Test sync path extraction when ocr_config is None - covers line 94."""
-    config = ExtractionConfig(ocr_backend="tesseract", ocr_config=None)
+def test_extract_path_sync_with_paddleocr_config(mock_ocr_backend: MagicMock) -> None:
+    """Test sync path extraction with PaddleOCRConfig."""
+    from kreuzberg._ocr._paddleocr import PaddleOCRConfig
+
+    paddle_config = PaddleOCRConfig()
+    config = ExtractionConfig(ocr_backend="paddleocr", ocr_config=paddle_config)
     extractor = ImageExtractor(mime_type="image/png", config=config)
 
     image_path = Path("test.png")
 
-    with patch("kreuzberg._ocr._sync.process_batch_images_sync") as mock_process:
-        expected_result = ExtractionResult(
-            content="extracted text", chunks=[], mime_type="text/plain", metadata={"quality_score": 1.0}
-        )
-        mock_process.return_value = [expected_result]
+    expected_result = ExtractionResult(
+        content="extracted text", chunks=[], mime_type="text/plain", metadata={"quality_score": 1.0}
+    )
+    mock_ocr_backend.process_file_sync.return_value = expected_result
 
-        result = extractor.extract_path_sync(image_path)
+    result = extractor.extract_path_sync(image_path)
 
-        mock_process.assert_called_once()
-        assert result == expected_result
+    mock_ocr_backend.process_file_sync.assert_called_once()
+    assert result == expected_result
 
 
-def test_extract_path_sync_empty_results() -> None:
-    """Test sync path extraction when no results returned - covers line 100."""
-    config = ExtractionConfig(ocr_backend="tesseract")
+def test_extract_path_sync_with_easyocr_config(mock_ocr_backend: MagicMock) -> None:
+    """Test sync path extraction with EasyOCRConfig."""
+    from kreuzberg._ocr._easyocr import EasyOCRConfig
+
+    easy_config = EasyOCRConfig()
+    config = ExtractionConfig(ocr_backend="easyocr", ocr_config=easy_config)
     extractor = ImageExtractor(mime_type="image/png", config=config)
 
     image_path = Path("test.png")
 
-    with patch("kreuzberg._ocr._sync.process_batch_images_sync") as mock_process:
-        mock_process.return_value = []
+    expected_result = ExtractionResult(
+        content="extracted text", chunks=[], mime_type="text/plain", metadata={"quality_score": 1.0}
+    )
+    mock_ocr_backend.process_file_sync.return_value = expected_result
 
-        result = extractor.extract_path_sync(image_path)
+    result = extractor.extract_path_sync(image_path)
 
-        mock_process.assert_called_once()
-        assert result.content == ""
-        assert result.mime_type == "text/plain"
-        assert result.metadata == {}
-        assert result.chunks == []
-
-
-def test_extract_path_sync_non_tesseract_backend() -> None:
-    """Test sync path extraction with non-tesseract backend works now."""
-    config = ExtractionConfig(ocr_backend="easyocr")
-    extractor = ImageExtractor(mime_type="image/png", config=config)
-
-    image_path = Path("test.png")
-
-    with pytest.raises(OCRError) as excinfo:
-        extractor.extract_path_sync(image_path)
-
-    assert "EasyOCR processing failed" in str(excinfo.value)
-
-
-def test_extract_path_sync_paddleocr_backend() -> None:
-    """Test sync path extraction with PaddleOCR backend works now."""
-    config = ExtractionConfig(ocr_backend="paddleocr")
-    extractor = ImageExtractor(mime_type="image/png", config=config)
-
-    image_path = Path("test.png")
-
-    with pytest.raises(OCRError) as excinfo:
-        extractor.extract_path_sync(image_path)
-
-    assert "PaddleOCR processing failed" in str(excinfo.value)
+    mock_ocr_backend.process_file_sync.assert_called_once()
+    assert result == expected_result

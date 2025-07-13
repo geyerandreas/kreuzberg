@@ -26,6 +26,14 @@ class TestOCRBackend(OCRBackend[dict[str, object]]):
         """Test implementation of process_file."""
         return ExtractionResult(content="Test file OCR result", mime_type="text/plain", metadata={}, chunks=[])
 
+    def process_image_sync(self, image: Image.Image, **kwargs: dict[str, object]) -> ExtractionResult:
+        """Test implementation of process_image_sync."""
+        return ExtractionResult(content="Test OCR result", mime_type="text/plain", metadata={}, chunks=[])
+
+    def process_file_sync(self, path: Path, **kwargs: dict[str, object]) -> ExtractionResult:
+        """Test implementation of process_file_sync."""
+        return ExtractionResult(content="Test file OCR result", mime_type="text/plain", metadata={}, chunks=[])
+
 
 def test_ocr_backend_hash() -> None:
     """Test OCR backend hash method."""
@@ -44,6 +52,12 @@ def test_ocr_backend_different_types_different_hash() -> None:
             return ExtractionResult(content="", mime_type="text/plain", metadata={}, chunks=[])
 
         async def process_file(self, path: Path, **kwargs: dict[str, object]) -> ExtractionResult:
+            return ExtractionResult(content="", mime_type="text/plain", metadata={}, chunks=[])
+
+        def process_image_sync(self, image: Image.Image, **kwargs: dict[str, object]) -> ExtractionResult:
+            return ExtractionResult(content="", mime_type="text/plain", metadata={}, chunks=[])
+
+        def process_file_sync(self, path: Path, **kwargs: dict[str, object]) -> ExtractionResult:
             return ExtractionResult(content="", mime_type="text/plain", metadata={}, chunks=[])
 
     backend1 = TestOCRBackend()
