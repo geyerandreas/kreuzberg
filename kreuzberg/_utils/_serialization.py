@@ -2,14 +2,26 @@
 
 from __future__ import annotations
 
-from dataclasses import asdict, is_dataclass
-from enum import Enum
+from dataclasses import is_dataclass
 from typing import Any, TypeVar, cast
 
+import msgspec
 from msgspec import MsgspecError
 from msgspec.msgpack import decode, encode
 
 T = TypeVar("T")
+
+
+# Define dict method names in priority order
+_DICT_METHOD_NAMES = (
+    "to_dict",
+    "as_dict",
+    "dict",
+    "model_dump",
+    "json",
+    "to_list",
+    "tolist",
+)
 
 
 def encode_hook(obj: Any) -> Any:
@@ -20,22 +32,18 @@ def encode_hook(obj: Any) -> Any:
     if isinstance(obj, Exception):
         return {"message": str(obj), "type": type(obj).__name__}
 
-    for key in (
-        "to_dict",
-        "as_dict",
-        "dict",
-        "model_dump",
-        "json",
-        "to_list",
-        "tolist",
-    ):
-        if hasattr(obj, key):
-            method = getattr(obj, key)  # Cache the attribute lookup
-            if callable(method):
+    # Check for dict-like methods more efficiently
+    for attr_name in _DICT_METHOD_NAMES:
+        try:
+            method = getattr(obj, attr_name, None)
+            if method is not None and callable(method):
                 return method()
+        except AttributeError:  # noqa: PERF203
+            continue
 
     if is_dataclass(obj) and not isinstance(obj, type):
-        return {k: v if not isinstance(v, Enum) else v.value for (k, v) in asdict(obj).items()}
+        # Use msgspec.to_builtins for more efficient conversion
+        return msgspec.to_builtins(obj)
 
     if hasattr(obj, "save") and hasattr(obj, "format"):
         return None

@@ -1,5 +1,9 @@
 # Kreuzberg
 
+[![Benchmarks](https://img.shields.io/badge/benchmarks-fastest%20CPU-orange)](https://benchmarks.kreuzberg.dev/)
+[![PyPI version](https://badge.fury.io/py/kreuzberg.svg)](https://badge.fury.io/py/kreuzberg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Kreuzberg is a document intelligence framework that transforms unstructured documents into structured, machine-readable data. Built on a foundation of established open source technologies—PDFium for PDF processing, Tesseract for optical character recognition, and Pandoc for universal document conversion—Kreuzberg provides a unified interface for extracting text, metadata, and structural information from diverse document formats.
 
 The framework emphasizes extensibility, allowing developers to integrate custom extractors and processors while maintaining consistent APIs and error handling across all document types.

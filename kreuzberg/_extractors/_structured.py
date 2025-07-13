@@ -14,6 +14,9 @@ from kreuzberg._utils._sync import run_sync
 if TYPE_CHECKING:
     from pathlib import Path
 
+# Define text field keywords as a set for O(1) membership testing
+_TEXT_FIELD_KEYWORDS = frozenset({"title", "name", "subject", "description", "content", "body", "text", "message"})
+
 
 class StructuredDataExtractor(Extractor):
     SUPPORTED_MIME_TYPES: ClassVar[set[str]] = {
@@ -107,10 +110,9 @@ class StructuredDataExtractor(Extractor):
             if isinstance(value, str) and value.strip():
                 text_parts.append(f"{full_key}: {value}")
 
-                if any(
-                    text_field in key.lower()
-                    for text_field in ["title", "name", "subject", "description", "content", "body", "text", "message"]
-                ):
+                # Use set for O(1) membership testing
+                key_lower = key.lower()
+                if any(text_field in key_lower for text_field in _TEXT_FIELD_KEYWORDS):
                     metadata[full_key] = value
 
             elif isinstance(value, (int, float, bool)):

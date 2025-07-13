@@ -12,6 +12,42 @@ import psutil
 
 from kreuzberg.exceptions import ValidationError
 
+# Define error keywords as frozensets for O(1) membership testing
+_SYSTEM_ERROR_KEYWORDS = frozenset({"memory", "resource", "process", "thread"})
+_TRANSIENT_ERROR_PATTERNS = frozenset(
+    {
+        "temporary",
+        "locked",
+        "in use",
+        "access denied",
+        "permission",
+        "timeout",
+        "connection",
+        "network",
+        "too many open files",
+        "cannot allocate memory",
+        "resource temporarily unavailable",
+        "broken pipe",
+        "subprocess",
+        "signal",
+    }
+)
+_RESOURCE_ERROR_PATTERNS = frozenset(
+    {
+        "memory",
+        "out of memory",
+        "cannot allocate",
+        "too many open files",
+        "file descriptor",
+        "resource",
+        "exhausted",
+        "limit",
+        "cpu",
+        "thread",
+        "process",
+    }
+)
+
 
 def create_error_context(
     *,
@@ -52,11 +88,7 @@ def create_error_context(
             "traceback": traceback.format_exception_only(type(error), error),
         }
 
-    if (
-        any(keyword in str(error).lower() for keyword in ["memory", "resource", "process", "thread"])
-        if error
-        else False
-    ):
+    if error and any(keyword in str(error).lower() for keyword in _SYSTEM_ERROR_KEYWORDS):
         try:
             mem = psutil.virtual_memory()
             context["system"] = {
@@ -94,25 +126,8 @@ def is_transient_error(error: Exception) -> bool:
     if isinstance(error, transient_types):
         return True
 
-    transient_patterns = [
-        "temporary",
-        "locked",
-        "in use",
-        "access denied",
-        "permission",
-        "timeout",
-        "connection",
-        "network",
-        "too many open files",
-        "cannot allocate memory",
-        "resource temporarily unavailable",
-        "broken pipe",
-        "subprocess",
-        "signal",
-    ]
-
     error_str = str(error).lower()
-    return any(pattern in error_str for pattern in transient_patterns)
+    return any(pattern in error_str for pattern in _TRANSIENT_ERROR_PATTERNS)
 
 
 def is_resource_error(error: Exception) -> bool:
@@ -124,22 +139,8 @@ def is_resource_error(error: Exception) -> bool:
     Returns:
         True if the error is resource-related
     """
-    resource_patterns = [
-        "memory",
-        "out of memory",
-        "cannot allocate",
-        "too many open files",
-        "file descriptor",
-        "resource",
-        "exhausted",
-        "limit",
-        "cpu",
-        "thread",
-        "process",
-    ]
-
     error_str = str(error).lower()
-    return any(pattern in error_str for pattern in resource_patterns)
+    return any(pattern in error_str for pattern in _RESOURCE_ERROR_PATTERNS)
 
 
 def should_retry(error: Exception, attempt: int, max_attempts: int = 3) -> bool:

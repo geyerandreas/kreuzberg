@@ -5,6 +5,8 @@ from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
+import msgspec
+
 from kreuzberg._constants import DEFAULT_MAX_CHARACTERS, DEFAULT_MAX_OVERLAP
 from kreuzberg.exceptions import ValidationError
 
@@ -228,7 +230,16 @@ class ExtractionResult:
 
     def to_dict(self) -> dict[str, Any]:
         """Converts the ExtractionResult to a dictionary."""
-        return asdict(self)
+        # Use msgspec.to_builtins for efficient conversion
+        # The builtin_types parameter allows DataFrames to pass through
+        result = msgspec.to_builtins(
+            self,
+            builtin_types=(type(None),),  # Allow None to pass through
+            order="deterministic",  # Ensure consistent output
+        )
+
+        # Remove None values to match expected behavior
+        return {k: v for k, v in result.items() if v is not None}
 
     def export_tables_to_csv(self) -> list[str]:
         """Export all tables to CSV format.
@@ -355,18 +366,23 @@ class ExtractionConfig:
         Returns:
             A dict of the OCR configuration or an empty dict if no backend is provided.
         """
-        if self.ocr_backend is not None:
-            if self.ocr_config is not None:
-                return asdict(self.ocr_config)
-            if self.ocr_backend == "tesseract":
-                from kreuzberg._ocr._tesseract import TesseractConfig
+        if self.ocr_backend is None:
+            return {}
 
-                return asdict(TesseractConfig())
-            if self.ocr_backend == "easyocr":
-                from kreuzberg._ocr._easyocr import EasyOCRConfig
+        if self.ocr_config is not None:
+            # Use asdict for OCR configs to preserve enum objects correctly
+            return asdict(self.ocr_config)
 
-                return asdict(EasyOCRConfig())
-            from kreuzberg._ocr._paddleocr import PaddleOCRConfig
+        # Lazy load and cache default configs instead of creating new instances
+        if self.ocr_backend == "tesseract":
+            from kreuzberg._ocr._tesseract import TesseractConfig
 
-            return asdict(PaddleOCRConfig())
-        return {}
+            return asdict(TesseractConfig())
+        if self.ocr_backend == "easyocr":
+            from kreuzberg._ocr._easyocr import EasyOCRConfig
+
+            return asdict(EasyOCRConfig())
+        # paddleocr
+        from kreuzberg._ocr._paddleocr import PaddleOCRConfig
+
+        return asdict(PaddleOCRConfig())

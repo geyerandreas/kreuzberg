@@ -7,7 +7,7 @@ import pytest
 from kreuzberg._ocr._easyocr import EasyOCRConfig
 from kreuzberg._ocr._paddleocr import PaddleOCRConfig
 from kreuzberg._ocr._tesseract import TesseractConfig
-from kreuzberg._types import ExtractionConfig
+from kreuzberg._types import Entity, ExtractionConfig, ExtractionResult
 from kreuzberg.exceptions import ValidationError
 
 
@@ -130,3 +130,62 @@ def test_extraction_config_valid_combinations() -> None:
     config4 = ExtractionConfig(ocr_backend=None, ocr_config=None)
     assert config4.ocr_backend is None
     assert config4.ocr_config is None
+
+
+def test_extraction_result_to_dict() -> None:
+    """Test ExtractionResult.to_dict() method with all fields."""
+    # Create test entities
+    entities = [
+        Entity(type="PERSON", text="John Doe", start=0, end=8),
+        Entity(type="LOCATION", text="New York", start=10, end=18),
+    ]
+
+    # Create extraction result with all fields
+    result = ExtractionResult(
+        content="John Doe in New York",
+        mime_type="text/plain",
+        metadata={"title": "Test Document", "authors": ["Test Author"]},
+        tables=[],  # Empty list for simplicity
+        chunks=["chunk1", "chunk2"],
+        entities=entities,
+        keywords=[("test", 0.9), ("document", 0.8)],
+        detected_languages=["en", "es"],
+    )
+
+    # Convert to dict
+    result_dict = result.to_dict()
+
+    # Verify structure
+    assert result_dict["content"] == "John Doe in New York"
+    assert result_dict["mime_type"] == "text/plain"
+    assert result_dict["metadata"] == {"title": "Test Document", "author": "Test Author"}
+    assert result_dict["tables"] == []
+    assert result_dict["chunks"] == ["chunk1", "chunk2"]
+    assert len(result_dict["entities"]) == 2
+    assert result_dict["entities"][0]["type"] == "PERSON"
+    assert result_dict["entities"][0]["text"] == "John Doe"
+    assert result_dict["keywords"] == [("test", 0.9), ("document", 0.8)]
+    assert result_dict["detected_languages"] == ["en", "es"]
+
+
+def test_extraction_result_to_dict_minimal() -> None:
+    """Test ExtractionResult.to_dict() with minimal fields."""
+    # Create extraction result with only required fields
+    result = ExtractionResult(
+        content="Simple content",
+        mime_type="text/plain",
+        metadata={},
+    )
+
+    # Convert to dict
+    result_dict = result.to_dict()
+
+    # Verify structure - optional fields should not be present
+    assert result_dict["content"] == "Simple content"
+    assert result_dict["mime_type"] == "text/plain"
+    assert result_dict["metadata"] == {}
+    assert result_dict["tables"] == []
+    assert result_dict["chunks"] == []
+    assert "entities" not in result_dict
+    assert "keywords" not in result_dict
+    assert "detected_languages" not in result_dict

@@ -68,19 +68,28 @@ class KreuzbergCache(Generic[T]):
         if not kwargs:
             return "empty"
 
-        # Build key string efficiently
-        parts = []
+        # Use StringIO for efficient string building
+        from io import StringIO
+
+        buffer = StringIO()
+        first = True
+
         for key in sorted(kwargs):
+            if not first:
+                buffer.write("&")
+            first = False
+
             value = kwargs[key]
             # Convert common types efficiently
             if isinstance(value, (str, int, float, bool)):
-                parts.append(f"{key}={value}")
+                buffer.write(f"{key}={value}")
             elif isinstance(value, bytes):
-                parts.append(f"{key}=bytes:{len(value)}")
+                buffer.write(f"{key}=bytes:{len(value)}")
             else:
-                parts.append(f"{key}={type(value).__name__}:{value!s}")
+                buffer.write(f"{key}={type(value).__name__}:{value!s}")
 
-        cache_str = "&".join(parts)
+        cache_str = buffer.getvalue()
+        # SHA256 is secure and fast enough for cache keys
         return hashlib.sha256(cache_str.encode()).hexdigest()[:16]
 
     def _get_cache_path(self, cache_key: str) -> Path:
@@ -107,15 +116,14 @@ class KreuzbergCache(Generic[T]):
             serialized_data = []
             for item in result:
                 if isinstance(item, dict) and "df" in item:
-                    # Create a copy and serialize the DataFrame as CSV
-                    item_copy = item.copy()
+                    # Build new dict without unnecessary copy
+                    serialized_item = {k: v for k, v in item.items() if k != "df"}
                     if hasattr(item["df"], "to_csv"):
-                        item_copy["df_csv"] = item["df"].to_csv(index=False)
+                        serialized_item["df_csv"] = item["df"].to_csv(index=False)
                     else:
                         # Fallback for non-DataFrame objects
-                        item_copy["df_csv"] = str(item["df"])
-                    del item_copy["df"]
-                    serialized_data.append(item_copy)
+                        serialized_item["df_csv"] = str(item["df"])
+                    serialized_data.append(serialized_item)
                 else:
                     serialized_data.append(item)
             return {"type": "TableDataList", "data": serialized_data, "cached_at": time.time()}
@@ -127,18 +135,17 @@ class KreuzbergCache(Generic[T]):
         data = cached_data["data"]
 
         if cached_data.get("type") == "TableDataList" and isinstance(data, list):
+            from io import StringIO
+
+            import pandas as pd
+
             deserialized_data = []
             for item in data:
                 if isinstance(item, dict) and "df_csv" in item:
-                    # Restore the DataFrame from CSV
-                    item_copy = item.copy()
-                    from io import StringIO
-
-                    import pandas as pd
-
-                    item_copy["df"] = pd.read_csv(StringIO(item["df_csv"]))
-                    del item_copy["df_csv"]
-                    deserialized_data.append(item_copy)
+                    # Build new dict without unnecessary copy
+                    deserialized_item = {k: v for k, v in item.items() if k != "df_csv"}
+                    deserialized_item["df"] = pd.read_csv(StringIO(item["df_csv"]))
+                    deserialized_data.append(deserialized_item)
                 else:
                     deserialized_data.append(item)
             return deserialized_data  # type: ignore[return-value]
