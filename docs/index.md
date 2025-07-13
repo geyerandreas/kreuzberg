@@ -10,10 +10,10 @@ Kreuzberg addresses real production needs with measurable benefits. While not ex
 
 ### 🚀 Performance
 
-- [benchmarked as the fastest framework](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) - 2-3x
-    faster than the nearest alternatives
-- Minimal footprint: 71MB install vs 1GB+ for competitors
-- Lowest memory usage (~530MB average) optimized for production workloads
+- [benchmarked as the fastest framework](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) - 6-126x
+    faster than competitors
+- Minimal footprint: 87MB install vs 1GB+ for competitors
+- Lowest memory usage (~360MB average) optimized for production workloads
 - Edge and serverless ready - deploy anywhere without heavy dependencies
 
 ### 🛠️ Engineering Quality

@@ -14,7 +14,7 @@
 
 ### ⚡ Proven Performance
 
-[Benchmarked](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) 2-3x faster than alternatives while using minimal resources. Process 35+ files per second with just 71MB install size and ~530MB memory usage. Optimized for production workloads and resource-constrained environments.
+[Benchmarked](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) 6-126x faster than alternatives while using minimal resources. Process up to 14 files per second with 87MB install size and ~360MB memory usage. Optimized for production workloads and resource-constrained environments.
 
 ### 🏗️ Production Engineering
 
@@ -180,20 +180,20 @@ kreuzberg extract *.pdf --output-dir ./extracted/
 
 ## 📊 Performance Comparison
 
-[Comprehensive benchmarks](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) across 94 real-world documents • [View source](https://github.com/Goldziher/python-text-extraction-libs-benchmarks):
+[Comprehensive benchmarks](https://goldziher.github.io/python-text-extraction-libs-benchmarks/) across ~100 real-world documents • [View source](https://github.com/Goldziher/python-text-extraction-libs-benchmarks) • [**Detailed Analysis**](https://goldziher.github.io/kreuzberg/performance-analysis/):
 
-| Framework     | Speed       | Memory | Install Size | Dependencies | Success Rate |
-| ------------- | ----------- | ------ | ------------ | ------------ | ------------ |
-| **Kreuzberg** | 35+ files/s | 530MB  | 71MB         | 20           | High         |
-| Unstructured  | ~12 files/s | ~1GB   | 146MB        | 54           | 88%+         |
-| MarkItDown    | ~15 files/s | ~1.5GB | 251MB        | 25           | 80%\*        |
-| Docling       | ~1 file/min | ~5GB   | 1,032MB      | 88           | 45%\*        |
+| Framework     | Speed        | Memory | Install Size | Dependencies | Success Rate |
+| ------------- | ------------ | ------ | ------------ | ------------ | ------------ |
+| **Kreuzberg** | 14.4 files/s | 360MB  | 87MB         | 43           | 100%         |
+| Unstructured  | ~12 files/s  | ~1GB   | 146MB        | 54           | 88%+         |
+| MarkItDown    | ~15 files/s  | ~1.5GB | 251MB        | 25           | 80%\*        |
+| Docling       | ~1 file/min  | ~5GB   | 1,032MB      | 88           | 45%\*        |
 
 \*_Performance varies significantly with document complexity and size_
 
 **Key strengths:**
 
-- 2-3x faster processing than comparable frameworks
+- 6-126x faster processing than comparable frameworks
 - Smallest installation footprint and memory usage
 - Only framework with built-in async/await support
 - Supports both CPU and GPU processing
@@ -207,6 +207,7 @@ kreuzberg extract *.pdf --output-dir ./extracted/
 
 - [Installation Guide](https://goldziher.github.io/kreuzberg/getting-started/installation/) - Setup and dependencies
 - [User Guide](https://goldziher.github.io/kreuzberg/user-guide/) - Comprehensive usage guide
+- [Performance Analysis](https://goldziher.github.io/kreuzberg/performance-analysis/) - Detailed benchmark results
 - [API Reference](https://goldziher.github.io/kreuzberg/api-reference/) - Complete API documentation
 - [Docker Guide](https://goldziher.github.io/kreuzberg/user-guide/docker/) - Container deployment
 - [REST API](https://goldziher.github.io/kreuzberg/user-guide/api-server/) - HTTP endpoints
