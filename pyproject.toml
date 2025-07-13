@@ -5,25 +5,25 @@ requires = [ "hatchling" ]
 
 [project]
 name = "kreuzberg"
-version = "3.8.0"
-description = "A text extraction library supporting PDFs, images, office documents and more"
+version = "3.8.1"
+description = "Advanced document intelligence framework for extracting structured content from PDFs, images, and office documents"
 readme = "README.md"
 keywords = [
+  "automation",
+  "content-extraction",
+  "data-processing",
+  "document-analysis",
+  "document-intelligence",
   "document-processing",
   "entity-extraction",
   "image-to-text",
-  "keyword-extraction",
-  "named-entity-recognition",
-  "ner",
+  "information-extraction",
   "ocr",
-  "pandoc",
   "pdf-extraction",
   "rag",
-  "spacy",
+  "structured-data",
   "table-extraction",
-  "tesseract",
   "text-extraction",
-  "text-processing",
 ]
 license = { text = "MIT" }
 authors = [ { name = "Na'aman Hirschfeld", email = "nhirschfed@gmail.com" } ]
@@ -31,6 +31,8 @@ requires-python = ">=3.10"
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: Science/Research",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3 :: Only",
@@ -38,10 +40,13 @@ classifiers = [
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
+  "Topic :: Database",
+  "Topic :: Multimedia :: Graphics :: Capture :: Scanners",
+  "Topic :: Office/Business :: Office Suites",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Information Analysis",
   "Topic :: Software Development :: Libraries :: Python Modules",
   "Topic :: Text Processing :: General",
-  "Topic :: Utilities",
   "Typing :: Typed",
 ]
 
