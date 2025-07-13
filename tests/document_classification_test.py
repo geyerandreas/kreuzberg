@@ -38,7 +38,7 @@ def test_classify_document_low_confidence() -> None:
     """Test that no document type is returned for low confidence."""
     content = "This is a generic document with no clear keywords."
     result = ExtractionResult(content=content, mime_type="text/plain", metadata={})
-    config = ExtractionConfig(type_confidence_threshold=0.9)
+    config = ExtractionConfig(document_type_confidence_threshold=0.9)
     doc_type, confidence = classify_document(result, config)
     assert doc_type is None
     assert confidence is None

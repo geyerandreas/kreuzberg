@@ -62,7 +62,7 @@ def classify_document(result: ExtractionResult, config: ExtractionConfig) -> tup
 
     best_type, best_confidence = max(confidences.items(), key=lambda item: item[1])
 
-    if best_confidence >= config.type_confidence_threshold:
+    if best_confidence >= config.document_type_confidence_threshold:
         return best_type, best_confidence
 
     return None, None
@@ -108,7 +108,7 @@ def classify_document_from_layout(
 
     best_type, best_confidence = max(confidences.items(), key=lambda item: item[1])
 
-    if best_confidence >= config.type_confidence_threshold:
+    if best_confidence >= config.document_type_confidence_threshold:
         return best_type, best_confidence
 
     return None, None
