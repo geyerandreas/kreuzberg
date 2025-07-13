@@ -66,15 +66,10 @@ def _validate_and_post_process_helper(
 
     if config.auto_detect_document_type:
         if config.document_classification_mode == "vision" and file_path:
-            import anyio
-
             from kreuzberg._document_classification import classify_document_from_layout
             from kreuzberg._ocr import get_ocr_backend
 
-            async def _get_layout() -> ExtractionResult:
-                return await get_ocr_backend("tesseract").process_file(file_path, **config.get_config_dict())
-
-            layout_result = anyio.run(_get_layout)
+            layout_result = get_ocr_backend("tesseract").process_file_sync(file_path, **config.get_config_dict())
             result.document_type, result.type_confidence = classify_document_from_layout(layout_result, config)
         else:
             from kreuzberg._document_classification import classify_document
