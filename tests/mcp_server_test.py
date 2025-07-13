@@ -137,9 +137,9 @@ def test_extract_bytes_basic(searchable_pdf: Path) -> None:
     assert "Sample PDF" in result["content"]
 
 
-@pytest.mark.xfail(
-    sys.platform == "darwin" and sys.version_info[:2] in [(3, 12), (3, 13)] and os.environ.get("CI") == "true",
-    reason="Segmentation fault in CI on macOS Python 3.12 and 3.13",
+@pytest.mark.skipif(
+    sys.platform == "darwin" and os.environ.get("CI") == "true",
+    reason="Segmentation fault in CI on macOS with heavy extraction workloads",
 )
 def test_extract_bytes_with_options(searchable_pdf: Path) -> None:
     """Test bytes extraction with various options."""
