@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import multiprocessing as mp
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Final, cast
 
@@ -14,6 +16,8 @@ from kreuzberg._mime_types import (
 )
 from kreuzberg._registry import ExtractorRegistry
 from kreuzberg._types import ExtractionConfig
+from kreuzberg._utils._document_cache import get_document_cache
+from kreuzberg._utils._errors import create_error_context
 from kreuzberg._utils._string import safe_decode
 from kreuzberg._utils._sync import run_maybe_sync, run_sync_only
 from kreuzberg.exceptions import ValidationError
@@ -136,8 +140,6 @@ async def extract_file(
     Raises:
         ValidationError: If the file path or configuration is invalid.
     """
-    from kreuzberg._utils._document_cache import get_document_cache
-
     cache = get_document_cache()
     path = Path(file_path)
     cached_result = cache.get(path, config)
@@ -194,8 +196,6 @@ async def batch_extract_file(
     if not file_paths:
         return []
 
-    import multiprocessing as mp
-
     max_concurrency = min(len(file_paths), mp.cpu_count() * 2)
     semaphore = anyio.Semaphore(max_concurrency)
 
@@ -211,8 +211,6 @@ async def batch_extract_file(
                 )
                 results[index] = result
             except Exception as e:  # noqa: BLE001
-                from kreuzberg._utils._errors import create_error_context
-
                 error_result = ExtractionResult(
                     content=f"Error: {type(e).__name__}: {e!s}",
                     mime_type="text/plain",
@@ -251,8 +249,6 @@ async def batch_extract_bytes(
     if not contents:
         return []
 
-    import multiprocessing as mp
-
     max_concurrency = min(len(contents), mp.cpu_count() * 2)
     semaphore = anyio.Semaphore(max_concurrency)
 
@@ -264,8 +260,6 @@ async def batch_extract_bytes(
                 result = await extract_bytes(content, mime_type, config)
                 results[index] = result
             except Exception as e:  # noqa: BLE001
-                from kreuzberg._utils._errors import create_error_context
-
                 error_result = ExtractionResult(
                     content=f"Error: {type(e).__name__}: {e!s}",
                     mime_type="text/plain",
@@ -331,8 +325,6 @@ def extract_file_sync(
     Raises:
         ValidationError: If the file path or configuration is invalid.
     """
-    from kreuzberg._utils._document_cache import get_document_cache
-
     cache = get_document_cache()
     path = Path(file_path)
     cached_result = cache.get(path, config)
@@ -389,9 +381,6 @@ def batch_extract_file_sync(
     if len(file_paths) <= 1:
         return [extract_file_sync(file_path=Path(file_path), mime_type=None, config=config) for file_path in file_paths]
 
-    import multiprocessing as mp
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
     max_workers = min(len(file_paths), mp.cpu_count())
 
     def extract_single(file_path: PathLike[str] | str) -> tuple[int, ExtractionResult]:
@@ -402,8 +391,6 @@ def batch_extract_file_sync(
                 extract_file_sync(file_path=Path(file_path), mime_type=None, config=config),
             )
         except Exception as e:  # noqa: BLE001
-            from kreuzberg._utils._errors import create_error_context
-
             error_result = ExtractionResult(
                 content=f"Error: {type(e).__name__}: {e!s}",
                 mime_type="text/plain",
@@ -447,9 +434,6 @@ def batch_extract_bytes_sync(
             extract_bytes_sync(content=content, mime_type=mime_type, config=config) for content, mime_type in contents
         ]
 
-    import multiprocessing as mp
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-
     max_workers = min(len(contents), mp.cpu_count())
 
     def extract_single(index_and_content: tuple[int, tuple[bytes, str]]) -> tuple[int, ExtractionResult]:
@@ -458,8 +442,6 @@ def batch_extract_bytes_sync(
         try:
             return (index, extract_bytes_sync(content=content, mime_type=mime_type, config=config))
         except Exception as e:  # noqa: BLE001
-            from kreuzberg._utils._errors import create_error_context
-
             error_result = ExtractionResult(
                 content=f"Error: {type(e).__name__}: {e!s}",
                 mime_type="text/plain",

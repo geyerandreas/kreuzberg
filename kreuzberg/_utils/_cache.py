@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import pickle
 import threading
 import time
 from contextlib import suppress
@@ -102,15 +103,40 @@ class KreuzbergCache(Generic[T]):
 
     def _serialize_result(self, result: T) -> dict[str, Any]:
         """Serialize result for caching with metadata."""
+        # Handle TableData objects that contain DataFrames
+        if isinstance(result, list) and result and isinstance(result[0], dict) and "df" in result[0]:
+            serialized_data = []
+            for item in result:
+                if isinstance(item, dict) and "df" in item:
+                    # Create a copy and serialize the DataFrame separately
+                    item_copy = item.copy()
+                    item_copy["df_pickle"] = pickle.dumps(item["df"])
+                    del item_copy["df"]
+                    serialized_data.append(item_copy)
+                else:
+                    serialized_data.append(item)
+            return {"type": "TableDataList", "data": serialized_data, "cached_at": time.time()}
+
         return {"type": type(result).__name__, "data": result, "cached_at": time.time()}
 
     def _deserialize_result(self, cached_data: dict[str, Any]) -> T:
         """Deserialize cached result."""
         data = cached_data["data"]
 
-        if cached_data.get("type") == "ExtractionResult" and isinstance(data, dict):
-            from kreuzberg._types import ExtractionResult
+        if cached_data.get("type") == "TableDataList" and isinstance(data, list):
+            deserialized_data = []
+            for item in data:
+                if isinstance(item, dict) and "df_pickle" in item:
+                    # Restore the DataFrame from pickle
+                    item_copy = item.copy()
+                    item_copy["df"] = pickle.loads(item["df_pickle"])  # noqa: S301
+                    del item_copy["df_pickle"]
+                    deserialized_data.append(item_copy)
+                else:
+                    deserialized_data.append(item)
+            return deserialized_data  # type: ignore[return-value]
 
+        if cached_data.get("type") == "ExtractionResult" and isinstance(data, dict):
             return ExtractionResult(**data)  # type: ignore[return-value]
 
         return data  # type: ignore[no-any-return]

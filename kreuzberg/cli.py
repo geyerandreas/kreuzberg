@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sys
+import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -211,8 +212,6 @@ def handle_error(error: Exception, verbose: bool) -> None:
     else:
         console.print(f"[red]Unexpected error:[/red] {type(error).__name__}: {error}", style="bold")
         if verbose:
-            import traceback
-
             console.print("\n[dim]Traceback:[/dim]")
             traceback.print_exc()
         sys.exit(1)

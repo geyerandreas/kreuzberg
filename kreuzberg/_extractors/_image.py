@@ -10,6 +10,10 @@ from anyio import Path as AsyncPath
 
 from kreuzberg._extractors._base import Extractor
 from kreuzberg._mime_types import IMAGE_MIME_TYPES
+from kreuzberg._ocr import get_ocr_backend
+from kreuzberg._ocr._easyocr import EasyOCRConfig
+from kreuzberg._ocr._paddleocr import PaddleOCRConfig
+from kreuzberg._ocr._tesseract import TesseractConfig
 from kreuzberg._utils._tmp import create_temp_file
 from kreuzberg.exceptions import ValidationError
 
@@ -56,8 +60,6 @@ class ImageExtractor(Extractor):
         if self.config.ocr_backend is None:
             raise ValidationError("ocr_backend is None, cannot perform OCR")
 
-        from kreuzberg._ocr import get_ocr_backend
-
         result = await get_ocr_backend(self.config.ocr_backend).process_file(path, **self.config.get_config_dict())
         return self._apply_quality_processing(result)
 
@@ -80,27 +82,19 @@ class ImageExtractor(Extractor):
         if self.config.ocr_backend is None:
             raise ValidationError("ocr_backend is None, cannot perform OCR")
 
-        from kreuzberg._ocr import get_ocr_backend
-
         backend = get_ocr_backend(self.config.ocr_backend)
 
         if self.config.ocr_backend == "tesseract":
-            from kreuzberg._ocr._tesseract import TesseractConfig
-
             config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, TesseractConfig) else TesseractConfig()
             )
             result = backend.process_file_sync(path, **config.__dict__)
         elif self.config.ocr_backend == "paddleocr":
-            from kreuzberg._ocr._paddleocr import PaddleOCRConfig
-
             paddle_config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, PaddleOCRConfig) else PaddleOCRConfig()
             )
             result = backend.process_file_sync(path, **paddle_config.__dict__)
         elif self.config.ocr_backend == "easyocr":
-            from kreuzberg._ocr._easyocr import EasyOCRConfig
-
             easy_config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, EasyOCRConfig) else EasyOCRConfig()
             )
