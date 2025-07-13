@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -28,7 +27,7 @@ def mock_ocr_backend() -> Generator[MagicMock, None, None]:
     backend.process_file_sync = MagicMock()
     backend.process_batch_sync = MagicMock()
 
-    with patch("kreuzberg._ocr.get_ocr_backend", return_value=backend):
+    with patch("kreuzberg._extractors._image.get_ocr_backend", return_value=backend):
         yield backend
 
 
@@ -44,7 +43,6 @@ async def test_extract_path_async_no_ocr_backend() -> None:
 
 
 @pytest.mark.anyio
-@pytest.mark.skipif(os.environ.get("CI", "false").lower() == "true", reason="OCR tests fail in CI environment")
 async def test_extract_path_async(mock_ocr_backend: MagicMock, tmp_path: Path) -> None:
     config = ExtractionConfig(ocr_backend="tesseract")
     extractor = ImageExtractor(mime_type="image/png", config=config)
@@ -63,7 +61,6 @@ async def test_extract_path_async(mock_ocr_backend: MagicMock, tmp_path: Path) -
     assert result == expected_result
 
 
-@pytest.mark.skipif(os.environ.get("CI", "false").lower() == "true", reason="OCR tests fail in CI environment")
 def test_extract_path_sync(mock_ocr_backend: MagicMock, tmp_path: Path) -> None:
     config = ExtractionConfig(ocr_backend="tesseract")
     extractor = ImageExtractor(mime_type="image/png", config=config)
@@ -137,7 +134,6 @@ def test_get_extension_from_unsupported_mime_type() -> None:
 
 
 @pytest.mark.anyio
-@pytest.mark.skipif(os.environ.get("CI", "false").lower() == "true", reason="OCR tests fail in CI environment")
 async def test_extract_bytes_async(mock_ocr_backend: MagicMock) -> None:
     config = ExtractionConfig(ocr_backend="tesseract")
     extractor = ImageExtractor(mime_type="image/png", config=config)
@@ -182,7 +178,6 @@ def test_extract_path_sync_no_ocr_backend() -> None:
     assert "ocr_backend is None" in str(excinfo.value)
 
 
-@pytest.mark.skipif(os.environ.get("CI", "false").lower() == "true", reason="OCR tests fail in CI environment")
 def test_extract_path_sync_with_tesseract_config(mock_ocr_backend: MagicMock) -> None:
     """Test sync path extraction with TesseractConfig."""
     from kreuzberg._ocr._tesseract import TesseractConfig
@@ -204,7 +199,6 @@ def test_extract_path_sync_with_tesseract_config(mock_ocr_backend: MagicMock) ->
     assert result == expected_result
 
 
-@pytest.mark.skipif(os.environ.get("CI", "false").lower() == "true", reason="OCR tests fail in CI environment")
 def test_extract_path_sync_with_paddleocr_config(mock_ocr_backend: MagicMock) -> None:
     """Test sync path extraction with PaddleOCRConfig."""
     from kreuzberg._ocr._paddleocr import PaddleOCRConfig
@@ -226,7 +220,6 @@ def test_extract_path_sync_with_paddleocr_config(mock_ocr_backend: MagicMock) ->
     assert result == expected_result
 
 
-@pytest.mark.skipif(os.environ.get("CI", "false").lower() == "true", reason="OCR tests fail in CI environment")
 def test_extract_path_sync_with_easyocr_config(mock_ocr_backend: MagicMock) -> None:
     """Test sync path extraction with EasyOCRConfig."""
     from kreuzberg._ocr._easyocr import EasyOCRConfig
@@ -246,3 +239,37 @@ def test_extract_path_sync_with_easyocr_config(mock_ocr_backend: MagicMock) -> N
 
     mock_ocr_backend.process_file_sync.assert_called_once()
     assert result == expected_result
+
+
+# Integration Tests - These test with real images and OCR
+@pytest.mark.anyio
+async def test_extract_real_image_integration() -> None:
+    """Integration test with real image and OCR."""
+    test_image_path = Path(__file__).parent.parent / "test_source_files" / "images" / "test_hello_world.png"
+    if not test_image_path.exists():
+        pytest.skip("Test image not found")
+
+    config = ExtractionConfig(ocr_backend="tesseract")
+    extractor = ImageExtractor(mime_type="image/png", config=config)
+
+    result = await extractor.extract_path_async(test_image_path)
+
+    assert isinstance(result, ExtractionResult)
+    assert result.mime_type == "text/plain"
+    assert len(result.content) > 0  # Should extract some text
+
+
+def test_extract_real_image_sync_integration() -> None:
+    """Integration test with real image and OCR (sync)."""
+    test_image_path = Path(__file__).parent.parent / "test_source_files" / "images" / "test_hello_world.png"
+    if not test_image_path.exists():
+        pytest.skip("Test image not found")
+
+    config = ExtractionConfig(ocr_backend="tesseract")
+    extractor = ImageExtractor(mime_type="image/png", config=config)
+
+    result = extractor.extract_path_sync(test_image_path)
+
+    assert isinstance(result, ExtractionResult)
+    assert result.mime_type == "text/plain"
+    assert len(result.content) > 0  # Should extract some text
