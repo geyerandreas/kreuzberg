@@ -43,6 +43,7 @@ pip install kreuzberg
 # With optional features
 pip install "kreuzberg[cli,api]"        # CLI + REST API
 pip install "kreuzberg[easyocr,gmft]"   # EasyOCR + table extraction
+pip install "kreuzberg[auto-classify-document-type]"   # Automatic document type classification
 pip install "kreuzberg[all]"            # Everything
 ```
 
