@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import os
-import pickle
 import threading
 import time
 from contextlib import suppress
@@ -108,9 +107,13 @@ class KreuzbergCache(Generic[T]):
             serialized_data = []
             for item in result:
                 if isinstance(item, dict) and "df" in item:
-                    # Create a copy and serialize the DataFrame separately
+                    # Create a copy and serialize the DataFrame as CSV
                     item_copy = item.copy()
-                    item_copy["df_pickle"] = pickle.dumps(item["df"])
+                    if hasattr(item["df"], "to_csv"):
+                        item_copy["df_csv"] = item["df"].to_csv(index=False)
+                    else:
+                        # Fallback for non-DataFrame objects
+                        item_copy["df_csv"] = str(item["df"])
                     del item_copy["df"]
                     serialized_data.append(item_copy)
                 else:
@@ -126,11 +129,15 @@ class KreuzbergCache(Generic[T]):
         if cached_data.get("type") == "TableDataList" and isinstance(data, list):
             deserialized_data = []
             for item in data:
-                if isinstance(item, dict) and "df_pickle" in item:
-                    # Restore the DataFrame from pickle
+                if isinstance(item, dict) and "df_csv" in item:
+                    # Restore the DataFrame from CSV
                     item_copy = item.copy()
-                    item_copy["df"] = pickle.loads(item["df_pickle"])  # noqa: S301
-                    del item_copy["df_pickle"]
+                    from io import StringIO
+
+                    import pandas as pd
+
+                    item_copy["df"] = pd.read_csv(StringIO(item["df_csv"]))
+                    del item_copy["df_csv"]
                     deserialized_data.append(item_copy)
                 else:
                     deserialized_data.append(item)

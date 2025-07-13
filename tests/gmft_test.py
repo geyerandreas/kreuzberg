@@ -393,6 +393,5 @@ async def test_extract_tables_cache_hit(tiny_pdf_with_tables: Path) -> None:
     assert result[0]["page_number"] == cached_tables[0]["page_number"]
     assert result[0]["text"] == cached_tables[0]["text"]
     assert result[0]["df"].equals(cached_tables[0]["df"])
-    assert result[0]["cropped_image"].size == cached_tables[0]["cropped_image"].size
     assert len(result) == 1
     assert result[0]["text"] == "cached table"

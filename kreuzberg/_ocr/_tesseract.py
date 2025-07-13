@@ -668,7 +668,7 @@ def _process_image_with_tesseract(
 ) -> dict[str, Any]:
     """Process a single image with Tesseract in a separate process.
 
-    This function is designed to be pickled and executed in a subprocess.
+    This function is designed to be executed in a subprocess.
     It uses direct tesseract command execution to avoid async complications.
 
     Args:

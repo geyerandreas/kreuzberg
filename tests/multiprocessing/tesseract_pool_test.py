@@ -42,7 +42,7 @@ def test_image_path(tmp_path: Path) -> Path:
 
 
 class _MockSubprocessResult:
-    """Simple mock for subprocess result that can be pickled."""
+    """Simple mock for subprocess result."""
 
     def __init__(self, returncode: int, stdout: str = "", stderr: str = ""):
         self.returncode = returncode

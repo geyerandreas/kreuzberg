@@ -203,7 +203,7 @@ def test_batch_extract_bytes_sync_with_error() -> None:
 
 def test_batch_extract_file_sync_parallel_processing(test_files: list[Path]) -> None:
     """Test that sync batch extraction uses parallel processing."""
-    with patch("concurrent.futures.ThreadPoolExecutor") as mock_executor_class:
+    with patch("kreuzberg.extraction.ThreadPoolExecutor") as mock_executor_class:
         mock_executor = Mock()
         mock_executor_class.return_value.__enter__.return_value = mock_executor
 
@@ -218,7 +218,7 @@ def test_batch_extract_file_sync_parallel_processing(test_files: list[Path]) -> 
 
         mock_executor.submit.side_effect = mock_futures
 
-        with patch("concurrent.futures.as_completed", return_value=mock_futures):
+        with patch("kreuzberg.extraction.as_completed", return_value=mock_futures):
             results = batch_extract_file_sync(test_files)
 
         assert len(results) == 3
@@ -229,7 +229,7 @@ def test_batch_extract_file_sync_parallel_processing(test_files: list[Path]) -> 
 
 def test_batch_extract_bytes_sync_parallel_processing(test_bytes: list[tuple[bytes, str]]) -> None:
     """Test that sync batch byte extraction uses parallel processing."""
-    with patch("concurrent.futures.ThreadPoolExecutor") as mock_executor_class:
+    with patch("kreuzberg.extraction.ThreadPoolExecutor") as mock_executor_class:
         mock_executor = Mock()
         mock_executor_class.return_value.__enter__.return_value = mock_executor
 
@@ -244,7 +244,7 @@ def test_batch_extract_bytes_sync_parallel_processing(test_bytes: list[tuple[byt
 
         mock_executor.submit.side_effect = mock_futures
 
-        with patch("concurrent.futures.as_completed", return_value=mock_futures):
+        with patch("kreuzberg.extraction.as_completed", return_value=mock_futures):
             results = batch_extract_bytes_sync(test_bytes)
 
         assert len(results) == 3

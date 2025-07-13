@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import multiprocessing as mp
 import os
-import pickle
 import queue
 import signal
 import traceback
 from dataclasses import dataclass, field
+from io import StringIO
 from typing import TYPE_CHECKING, Any, Literal
 
 from kreuzberg._types import TableData
@@ -447,7 +447,7 @@ def _extract_tables_in_process(
                         "cropped_image_bytes": img_bytes.getvalue(),
                         "page_number": cropped_table.page.page_number,
                         "text": data_frame.to_markdown(),
-                        "df_pickle": pickle.dumps(data_frame),
+                        "df_csv": data_frame.to_csv(index=False),
                     }
                 )
 
@@ -533,7 +533,9 @@ def _extract_tables_isolated(
                 from PIL import Image
 
                 img = Image.open(io.BytesIO(table_dict["cropped_image_bytes"]))
-                df = pickle.loads(table_dict["df_pickle"])  # noqa: S301
+                import pandas as pd
+
+                df = pd.read_csv(StringIO(table_dict["df_csv"]))
 
                 tables.append(
                     TableData(
@@ -643,7 +645,9 @@ async def _extract_tables_isolated_async(
                 from PIL import Image
 
                 img = Image.open(io.BytesIO(table_dict["cropped_image_bytes"]))
-                df = pickle.loads(table_dict["df_pickle"])  # noqa: S301
+                import pandas as pd
+
+                df = pd.read_csv(StringIO(table_dict["df_csv"]))
 
                 tables.append(
                     TableData(
