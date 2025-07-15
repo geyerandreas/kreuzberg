@@ -96,9 +96,6 @@ def _validate_and_post_process_sync(
     for post_processor in config.post_processing_hooks or []:
         result = run_sync_only(post_processor, result)
 
-    if hasattr(result, "layout"):
-        result.layout = None
-
     return result
 
 

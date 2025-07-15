@@ -234,9 +234,7 @@ class ExtractionResult:
 
     def to_dict(self) -> dict[str, Any]:
         """Converts the ExtractionResult to a dictionary."""
-        data = asdict(self)
-        data.pop("layout", None)  # Exclude layout from the dictionary representation
-        return data
+        return asdict(self)
 
     def export_tables_to_csv(self) -> list[str]:
         """Export all tables to CSV format.
