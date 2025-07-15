@@ -9,6 +9,7 @@ import anyio
 
 from kreuzberg import ExtractionResult
 from kreuzberg._chunker import get_chunker
+from kreuzberg._document_classification import auto_detect_document_type
 from kreuzberg._entity_extraction import extract_entities, extract_keywords
 from kreuzberg._language_detection import detect_languages
 from kreuzberg._mime_types import (
@@ -30,7 +31,9 @@ if TYPE_CHECKING:
 DEFAULT_CONFIG: Final[ExtractionConfig] = ExtractionConfig()
 
 
-def _validate_and_post_process_helper(result: ExtractionResult, config: ExtractionConfig) -> ExtractionResult:
+def _validate_and_post_process_helper(
+    result: ExtractionResult, config: ExtractionConfig, file_path: Path | None = None
+) -> ExtractionResult:
     if config.chunk_content:
         result.chunks = _handle_chunk_content(
             mime_type=result.mime_type,
@@ -62,14 +65,19 @@ def _validate_and_post_process_helper(result: ExtractionResult, config: Extracti
             config=config.language_detection_config,
         )
 
+    if config.auto_detect_document_type:
+        result = auto_detect_document_type(result, config, file_path=file_path)
+
     return result
 
 
-async def _validate_and_post_process_async(result: ExtractionResult, config: ExtractionConfig) -> ExtractionResult:
+async def _validate_and_post_process_async(
+    result: ExtractionResult, config: ExtractionConfig, file_path: Path | None = None
+) -> ExtractionResult:
     for validator in config.validators or []:
         await run_maybe_sync(validator, result)
 
-    result = _validate_and_post_process_helper(result, config)
+    result = _validate_and_post_process_helper(result, config, file_path)
 
     for post_processor in config.post_processing_hooks or []:
         result = await run_maybe_sync(post_processor, result)
@@ -77,11 +85,13 @@ async def _validate_and_post_process_async(result: ExtractionResult, config: Ext
     return result
 
 
-def _validate_and_post_process_sync(result: ExtractionResult, config: ExtractionConfig) -> ExtractionResult:
+def _validate_and_post_process_sync(
+    result: ExtractionResult, config: ExtractionConfig, file_path: Path | None = None
+) -> ExtractionResult:
     for validator in config.validators or []:
         run_sync_only(validator, result)
 
-    result = _validate_and_post_process_helper(result, config)
+    result = _validate_and_post_process_helper(result, config, file_path)
 
     for post_processor in config.post_processing_hooks or []:
         result = run_sync_only(post_processor, result)
@@ -172,7 +182,7 @@ async def extract_file(
                 metadata={},
             )
 
-        result = await _validate_and_post_process_async(result=result, config=config)
+        result = await _validate_and_post_process_async(result=result, config=config, file_path=path)
 
         cache.set(path, config, result)
 
@@ -357,7 +367,7 @@ def extract_file_sync(
                 metadata={},
             )
 
-        result = _validate_and_post_process_sync(result=result, config=config)
+        result = _validate_and_post_process_sync(result=result, config=config, file_path=path)
 
         cache.set(path, config, result)
 
