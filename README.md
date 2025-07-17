@@ -20,6 +20,7 @@
 - **Format Support**: 18 document types including PDF, Microsoft Office, images, HTML, and structured data formats
 - **OCR Integration**: Multiple OCR engines (Tesseract, EasyOCR, PaddleOCR) with automatic fallback
 - **Table Detection**: Structured table extraction with cell-level precision via GMFT integration
+- **Document Classification**: Automatic document type detection (contracts, forms, invoices, receipts, reports)
 
 ### Technical Architecture
 
