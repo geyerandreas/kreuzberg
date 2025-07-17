@@ -17,9 +17,9 @@ SAMPLE_TEXT = "John Doe visited Berlin on 2023-01-01. Contact: john@example.com 
     "custom_patterns,expected",
     [
         (None, []),
-        ({"INVOICE_ID": r"INV-\d+"}, []),
+        (frozenset([("INVOICE_ID", r"INV-\d+")]), []),
         (
-            {"EMAIL": r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+"},
+            frozenset([("EMAIL", r"[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+")]),
             [Entity(type="EMAIL", text="john@example.com", start=48, end=64)],
         ),
     ],
