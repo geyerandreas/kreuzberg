@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import os
 import tempfile
+from dataclasses import asdict
 from multiprocessing import cpu_count
 from pathlib import Path
 from re import Pattern
@@ -381,17 +382,17 @@ class PDFExtractor(Extractor):
             config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, TesseractConfig) else TesseractConfig()
             )
-            results = backend.process_batch_sync(paths, **config.__dict__)
+            results = backend.process_batch_sync(paths, **asdict(config))
         elif self.config.ocr_backend == "paddleocr":
             paddle_config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, PaddleOCRConfig) else PaddleOCRConfig()
             )
-            results = backend.process_batch_sync(paths, **paddle_config.__dict__)
+            results = backend.process_batch_sync(paths, **asdict(paddle_config))
         elif self.config.ocr_backend == "easyocr":
             easy_config = (
                 self.config.ocr_config if isinstance(self.config.ocr_config, EasyOCRConfig) else EasyOCRConfig()
             )
-            results = backend.process_batch_sync(paths, **easy_config.__dict__)
+            results = backend.process_batch_sync(paths, **asdict(easy_config))
         else:
             raise NotImplementedError(f"Sync OCR not implemented for {self.config.ocr_backend}")
 

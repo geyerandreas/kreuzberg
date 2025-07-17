@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -315,7 +316,7 @@ async def test_extract_tables_cache_processing_coordination(tiny_pdf_with_tables
             }.items()
         )
     )
-    config_str = str(sorted(GMFTConfig().__dict__.items()))
+    config_str = str(sorted(asdict(GMFTConfig()).items()))
 
     cache.mark_processing(
         file_info=file_info,
@@ -381,7 +382,7 @@ async def test_extract_tables_cache_hit(tiny_pdf_with_tables: Path) -> None:
             )
         ),
         "extractor": "gmft",
-        "config": str(sorted(GMFTConfig().__dict__.items())),
+        "config": str(sorted(asdict(GMFTConfig()).items())),
     }
 
     await cache.aset(cached_tables, **cache_kwargs)

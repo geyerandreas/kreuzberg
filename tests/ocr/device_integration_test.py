@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from unittest.mock import Mock, patch
 
 import pytest
@@ -17,7 +18,7 @@ def test_easyocr_resolve_device_config_auto_default() -> None:
     with patch.object(EasyOCRBackend, "_resolve_device_config") as mock_resolve:
         mock_resolve.return_value = DeviceInfo(device_type="cpu", name="CPU")
 
-        EasyOCRBackend._resolve_device_config(**config.__dict__)
+        EasyOCRBackend._resolve_device_config(**asdict(config))
         mock_resolve.assert_called_once()
 
 
@@ -26,7 +27,7 @@ def test_easyocr_resolve_device_config_explicit_cuda(mock_validate: Mock) -> Non
     mock_validate.return_value = DeviceInfo(device_type="cuda", device_id=0, name="NVIDIA RTX 3080")
 
     config = EasyOCRConfig(device="cuda", gpu_memory_limit=4.0)
-    device_info = EasyOCRBackend._resolve_device_config(**config.__dict__)
+    device_info = EasyOCRBackend._resolve_device_config(**asdict(config))
 
     mock_validate.assert_called_once_with("cuda", "EasyOCR", memory_limit=4.0, fallback_to_cpu=True)
     assert device_info.device_type == "cuda"
@@ -39,7 +40,7 @@ def test_easyocr_resolve_device_config_deprecated_use_gpu_true(mock_validate: Mo
     config = EasyOCRConfig(use_gpu=True)
 
     with pytest.warns(DeprecationWarning, match="'use_gpu' parameter is deprecated"):
-        EasyOCRBackend._resolve_device_config(**config.__dict__)
+        EasyOCRBackend._resolve_device_config(**asdict(config))
 
     mock_validate.assert_called_once_with("auto", "EasyOCR", memory_limit=None, fallback_to_cpu=True)
 
@@ -51,7 +52,7 @@ def test_easyocr_resolve_device_config_deprecated_use_gpu_with_device(mock_valid
     config = EasyOCRConfig(use_gpu=True, device="cuda")
 
     with pytest.warns(DeprecationWarning, match="Both 'use_gpu' and 'device' parameters specified"):
-        EasyOCRBackend._resolve_device_config(**config.__dict__)
+        EasyOCRBackend._resolve_device_config(**asdict(config))
 
     mock_validate.assert_called_once_with("cuda", "EasyOCR", memory_limit=None, fallback_to_cpu=True)
 
@@ -61,7 +62,7 @@ def test_easyocr_resolve_device_config_validation_error_fallback(mock_validate: 
     mock_validate.side_effect = ValidationError("Device not available", context={})
 
     config = EasyOCRConfig(use_gpu=False, device="cpu")
-    device_info = EasyOCRBackend._resolve_device_config(**config.__dict__)
+    device_info = EasyOCRBackend._resolve_device_config(**asdict(config))
 
     assert device_info.device_type == "cpu"
     assert device_info.name == "CPU"
@@ -74,7 +75,7 @@ def test_easyocr_resolve_device_config_validation_error_no_fallback(mock_validat
     config = EasyOCRConfig(use_gpu=True, device="cuda")
 
     with pytest.raises(ValidationError):
-        EasyOCRBackend._resolve_device_config(**config.__dict__)
+        EasyOCRBackend._resolve_device_config(**asdict(config))
 
 
 @patch("kreuzberg._ocr._paddleocr.validate_device_request")
@@ -85,7 +86,7 @@ def test_paddleocr_resolve_device_config_mps_warning(mock_validate: Mock) -> Non
     config = PaddleOCRConfig(device="mps")
 
     with pytest.warns(UserWarning, match="PaddlePaddle does not support MPS"):
-        PaddleBackend._resolve_device_config(**config.__dict__)
+        PaddleBackend._resolve_device_config(**asdict(config))
 
     # Should call validate with "cpu" instead of "mps"  # ~keep
     mock_validate.assert_called_once_with("cpu", "PaddleOCR", memory_limit=None, fallback_to_cpu=True)
@@ -98,7 +99,7 @@ def test_paddleocr_resolve_device_config_deprecated_use_gpu_true(mock_validate: 
     config = PaddleOCRConfig(use_gpu=True)
 
     with pytest.warns(DeprecationWarning, match="'use_gpu' parameter is deprecated"):
-        PaddleBackend._resolve_device_config(**config.__dict__)
+        PaddleBackend._resolve_device_config(**asdict(config))
 
     mock_validate.assert_called_once_with("auto", "PaddleOCR", memory_limit=None, fallback_to_cpu=True)
 
@@ -108,7 +109,7 @@ def test_paddleocr_resolve_device_config_with_memory_limit(mock_validate: Mock) 
     mock_validate.return_value = DeviceInfo(device_type="cuda", device_id=0, name="NVIDIA RTX 3080")
 
     config = PaddleOCRConfig(device="cuda", gpu_memory_limit=8.0, fallback_to_cpu=False)
-    PaddleBackend._resolve_device_config(**config.__dict__)
+    PaddleBackend._resolve_device_config(**asdict(config))
 
     mock_validate.assert_called_once_with("cuda", "PaddleOCR", memory_limit=8.0, fallback_to_cpu=False)
 
@@ -131,7 +132,7 @@ async def test_easyocr_init_with_gpu_device(mock_resolve: Mock, mock_validate_la
         "builtins.__import__",
         side_effect=lambda name, *args, **kwargs: Mock() if name == "easyocr" else __import__(name, *args, **kwargs),
     ):
-        await EasyOCRBackend._init_easyocr(**config.__dict__)
+        await EasyOCRBackend._init_easyocr(**asdict(config))
 
     mock_run_sync.assert_called_once()
     args, kwargs = mock_run_sync.call_args
@@ -158,7 +159,7 @@ async def test_easyocr_init_with_cpu_device(mock_resolve: Mock, mock_validate_la
         "builtins.__import__",
         side_effect=lambda name, *args, **kwargs: Mock() if name == "easyocr" else __import__(name, *args, **kwargs),
     ):
-        await EasyOCRBackend._init_easyocr(**config.__dict__)
+        await EasyOCRBackend._init_easyocr(**asdict(config))
 
     mock_run_sync.assert_called_once()
     args, kwargs = mock_run_sync.call_args
@@ -190,7 +191,7 @@ async def test_paddleocr_init_with_gpu_device_and_memory_limit(
     mock_run_sync.return_value = mock_paddle_instance
 
     config = PaddleOCRConfig(device="cuda", gpu_memory_limit=4.0)
-    await PaddleBackend._init_paddle_ocr(**config.__dict__)
+    await PaddleBackend._init_paddle_ocr(**asdict(config))
 
     mock_run_sync.assert_called_once()
     args, kwargs = mock_run_sync.call_args
@@ -223,7 +224,7 @@ async def test_paddleocr_init_cpu_device_no_gpu_package(
     mock_run_sync.return_value = mock_paddle_instance
 
     config = PaddleOCRConfig(device="cpu")
-    await PaddleBackend._init_paddle_ocr(**config.__dict__)
+    await PaddleBackend._init_paddle_ocr(**asdict(config))
 
     mock_run_sync.assert_called_once()
     args, kwargs = mock_run_sync.call_args

@@ -1,6 +1,7 @@
 """Integration tests for GMFT isolated process execution."""
 
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 import pytest
@@ -96,7 +97,7 @@ def test_gmft_config_serialization() -> None:
         remove_null_rows=False,
     )
 
-    config_dict = config.__dict__.copy()
+    config_dict = asdict(config).copy()
     new_config = GMFTConfig(**config_dict)
 
     assert new_config.verbosity == 2

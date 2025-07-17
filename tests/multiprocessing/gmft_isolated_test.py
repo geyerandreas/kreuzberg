@@ -9,6 +9,7 @@ import os
 import queue
 import signal
 import sys
+from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
@@ -88,7 +89,7 @@ def mock_gmft_modules() -> Generator[None, None, None]:
 def test_extract_tables_in_process_success(sample_pdf: Path, mock_gmft_modules: None) -> None:
     """Test successful table extraction in isolated process."""
     config = GMFTConfig()
-    config_dict = config.__dict__.copy()
+    config_dict = asdict(config).copy()
     result_queue: Any = mp.Queue()
 
     # Create mock dataframe
@@ -145,7 +146,7 @@ def test_extract_tables_in_process_success(sample_pdf: Path, mock_gmft_modules: 
 def test_extract_tables_in_process_exception(sample_pdf: Path) -> None:
     """Test exception handling in isolated process."""
     config = GMFTConfig()
-    config_dict = config.__dict__.copy()
+    config_dict = asdict(config).copy()
     result_queue: Any = mp.Queue()
 
     # Mock import error
@@ -484,7 +485,7 @@ def test_signal_handling() -> None:
     # Test that SIGINT is ignored
     with patch("signal.signal") as mock_signal:
         config = GMFTConfig()
-        config_dict = config.__dict__.copy()
+        config_dict = asdict(config).copy()
         result_queue: Any = mp.Queue()
 
         with patch("gmft.auto.AutoTableDetector", side_effect=ImportError("Test")):
