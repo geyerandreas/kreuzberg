@@ -59,9 +59,13 @@ class PDFExtractor(Extractor):
         result: ExtractionResult | None = None
 
         if not self.config.force_ocr:
-            content = await self._extract_pdf_searchable_text(path)
-            if self._validate_extracted_text(content):
-                result = ExtractionResult(content=content, mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[])
+            try:
+                content = await self._extract_pdf_searchable_text(path)
+                if self._validate_extracted_text(content):
+                    result = ExtractionResult(content=content, mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[])
+            except ParsingError:
+                # If searchable text extraction fails, continue to OCR or empty result
+                pass
 
         if not result and self.config.ocr_backend is not None:
             result = await self._extract_pdf_text_with_ocr(path, self.config.ocr_backend)
@@ -113,9 +117,12 @@ class PDFExtractor(Extractor):
 
     def extract_path_sync(self, path: Path) -> ExtractionResult:
         """Pure sync implementation of PDF extraction from path."""
-        text = self._extract_pdf_searchable_text_sync(path)
+        try:
+            text = self._extract_pdf_searchable_text_sync(path)
+        except ParsingError:
+            text = ""
 
-        if self.config.force_ocr or not self._validate_extracted_text(text):
+        if (self.config.force_ocr or not self._validate_extracted_text(text)) and self.config.ocr_backend is not None:
             text = self._extract_pdf_with_ocr_sync(path)
 
         tables = []
