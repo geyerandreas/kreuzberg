@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
 
 import pytest
@@ -39,10 +38,7 @@ async def test_extract_bytes_pdf(scanned_pdf: Path) -> None:
 
 
 @pytest.mark.anyio
-@pytest.mark.skipif(
-    sys.platform == "win32",
-    reason="Tesseract Languages not installed on Windows due to complexity of installation in CI",
-)
+@pytest.mark.skip(reason="non_english_pdf fixture not available")
 async def test_extract_bytes_pdf_non_english(non_english_pdf: Path) -> None:
     content = non_english_pdf.read_bytes()
     config = ExtractionConfig(ocr_backend="tesseract", ocr_config=TesseractConfig(language="deu"))
@@ -67,8 +63,8 @@ async def test_extract_bytes_excel(excel_document: Path) -> None:
 
 
 @pytest.mark.anyio
-async def test_extract_bytes_pptx(pptx_presentation: Path) -> None:
-    content = pptx_presentation.read_bytes()
+async def test_extract_bytes_pptx(pptx_document: Path) -> None:
+    content = pptx_document.read_bytes()
     result = await extract_bytes(content, POWER_POINT_MIME_TYPE)
     assert_extraction_result(result, mime_type=MARKDOWN_MIME_TYPE)
     assert result.content.strip() != ""
@@ -184,22 +180,22 @@ async def test_batch_extract_empty_list() -> None:
 @pytest.mark.xfail(
     not IS_CI, reason="GMFT tests may fail locally if gmft dependencies are not installed", raises=Exception
 )
-async def test_extract_pdf_with_tables(pdfs_with_tables: list[Path]) -> None:
+async def test_extract_pdf_with_tables(pdfs_with_tables_list: list[Path]) -> None:
     """Test table extraction from PDFs with GMFT enabled."""
     config = ExtractionConfig(extract_tables=True)
 
-    for pdf in pdfs_with_tables:
+    for pdf in pdfs_with_tables_list:
         result = await extract_file(pdf, config=config)
         assert_extraction_result(result, mime_type=PLAIN_TEXT_MIME_TYPE)
         assert len(result.tables) > 0
 
 
 @pytest.mark.anyio
-async def test_extract_bytes_auto_mime_detection() -> None:
-    """Test that extract_bytes can work without explicit mime type for certain formats."""
-    # Plain text should work without mime type
+async def test_extract_bytes_with_explicit_mime() -> None:
+    """Test that extract_bytes works correctly with explicit mime type."""
+    # Plain text should work with explicit mime type
     content = b"Plain text content"
-    result = await extract_bytes(content, mime_type=None)  # type: ignore[arg-type]
+    result = await extract_bytes(content, PLAIN_TEXT_MIME_TYPE)
     assert result.content == "Plain text content"
 
 

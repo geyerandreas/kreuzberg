@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Any
 from unittest.mock import Mock, patch
@@ -95,6 +94,7 @@ class TestGetTranslatedText:
 
         # Mock the import to fail
         import builtins
+
         original_import = builtins.__import__
 
         def mock_import(name: str, *args: Any, **kwargs: Any) -> Any:

@@ -89,6 +89,12 @@ def tiny_pdf_with_tables() -> Path:
 pdfs_with_tables = sorted((test_source_files_folder / "pdfs_with_tables").glob("*.pdf"))
 
 
+@pytest.fixture(scope="session")
+def pdfs_with_tables_list() -> list[Path]:
+    """Returns list of PDFs with tables for testing."""
+    return pdfs_with_tables
+
+
 @pytest.fixture
 def clear_cache() -> Generator[None, None, None]:
     """Fixture to clear all caches before each test that requests it."""
