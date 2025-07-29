@@ -143,7 +143,9 @@ def _parse_date_string(date_str: str) -> str:
             minute = date_str[10:12]
             second = date_str[12:14]
             time_part = f"T{hour}:{minute}:{second}"
-        return datetime.strptime(f"{year}-{month}-{day}{time_part}", "%Y%m%d%H%M%S").isoformat()  # noqa: DTZ007
+        if time_part:
+            return datetime.strptime(f"{year}-{month}-{day}{time_part}", "%Y-%m-%dT%H:%M:%S").isoformat()  # noqa: DTZ007
+        return datetime.strptime(f"{year}-{month}-{day}", "%Y-%m-%d").isoformat()  # noqa: DTZ007
     return date_str
 
 

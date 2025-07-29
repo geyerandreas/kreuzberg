@@ -237,6 +237,13 @@ def test_extract_date_metadata() -> None:
     _extract_date_metadata(pdf_info, result)
     assert result["created_at"] == "Invalid Date"
 
+    # Test with short date (date only, no time)
+    pdf_info = {"creationdate": b"D:20240101"}
+    result = {}
+    _extract_date_metadata(pdf_info, result)
+    # Should parse successfully now
+    assert result["created_at"] == "2024-01-01T00:00:00"
+
 
 def test_extract_creator_metadata() -> None:
     """Test creator metadata extraction."""
@@ -342,6 +349,11 @@ def test_generate_document_summary() -> None:
     document.is_printable = True
     document.is_modifiable = False
     document.is_extractable = True
+    # Set default attributes to avoid AttributeError
+    # Use spec to prevent hasattr from returning True for non-existent attributes
+    document.configure_mock(
+        pdf_version=None, is_encrypted=False, status=None, is_pdf_a=False, encryption_method=None, pdf_a_level=None
+    )
 
     summary = _generate_document_summary(document)
     assert "PDF document with 3 pages" in summary
@@ -474,15 +486,32 @@ def test_extract_pdf_metadata_sync() -> None:
     """Test synchronous version of extract_pdf_metadata."""
     # Test successful extraction
     mock_document = Mock()
-    mock_document.info = [{"Title": b"Test Title", "Author": b"Test Author"}]
-    mock_document.pages = [Mock(width=595, height=842)]
+    # Make info iterable with proper mock info objects
+    mock_info = Mock()
+    mock_info.items.return_value = [("Title", b"Test Title"), ("Author", b"Test Author")]
+    mock_document.info = [mock_info]
+
+    # Create mock page
+    mock_page = Mock()
+    mock_page.width = 595
+    mock_page.height = 842
+    mock_document.pages = [mock_page]
+
     mock_document.outline = []
     mock_document.structure = []
     mock_document.is_printable = True
     mock_document.is_modifiable = False
     mock_document.is_extractable = True
 
-    with patch("kreuzberg._playa.parse", return_value=mock_document):
+    # Mock hasattr to return False for problematic attributes
+    def mock_hasattr(obj: object, name: str) -> bool:
+        return name not in ("status", "pdf_version", "is_encrypted", "encryption_method", "is_pdf_a", "pdf_a_level")
+
+    with (
+        patch("kreuzberg._playa.parse", return_value=mock_document),
+        patch("kreuzberg._playa.asobj", return_value={"title": b"Test Title", "author": b"Test Author"}),
+        patch("builtins.hasattr", side_effect=mock_hasattr),
+    ):
         metadata = extract_pdf_metadata_sync(b"test pdf content")
         assert metadata["title"] == "Test Title"
         assert metadata["authors"] == ["Test Author"]
@@ -507,7 +536,14 @@ def test_extract_pdf_metadata_sync_with_password() -> None:
     mock_document.is_modifiable = True
     mock_document.is_extractable = True
 
-    with patch("kreuzberg._playa.parse", return_value=mock_document) as mock_parse:
+    # Mock hasattr to return False for problematic attributes
+    def mock_hasattr(obj: object, name: str) -> bool:
+        return name not in ("status", "pdf_version", "is_encrypted", "encryption_method", "is_pdf_a", "pdf_a_level")
+
+    with (
+        patch("kreuzberg._playa.parse", return_value=mock_document) as mock_parse,
+        patch("builtins.hasattr", side_effect=mock_hasattr),
+    ):
         metadata = extract_pdf_metadata_sync(b"test pdf", password="secret")
         mock_parse.assert_called_once_with(b"test pdf", max_workers=1, password="secret")
         assert "summary" in metadata
