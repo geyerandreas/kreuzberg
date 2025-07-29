@@ -110,7 +110,7 @@ jobs:
           uv run coverage report --precision=2
 
       - name: Upload Coverage to DeepSource
-        if: always()
+        if: always() && github.event_name == 'push'
         env:
           DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
         run: |
