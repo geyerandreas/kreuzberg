@@ -347,6 +347,162 @@ class TestConfigParsing:
 class TestExtractionConfigBuilder:
     """Test ExtractionConfig building functionality."""
 
+
+# Additional functional tests for better coverage
+def test_merge_configs_deep_merge() -> None:
+    """Test deep merging of configuration dictionaries."""
+    base = {
+        "force_ocr": False,
+        "tesseract": {"language": "eng", "psm": 6},
+        "nested": {"deep": {"value": "base"}},
+    }
+    override = {
+        "force_ocr": True,
+        "tesseract": {"psm": 3},
+        "nested": {"deep": {"value": "override", "new": "added"}},
+        "new_key": "new_value",
+    }
+    
+    result = merge_configs(base, override)
+    
+    assert result["force_ocr"] is True
+    assert result["tesseract"]["language"] == "eng"  # Preserved from base
+    assert result["tesseract"]["psm"] == 3  # Overridden
+    assert result["nested"]["deep"]["value"] == "override"
+    assert result["nested"]["deep"]["new"] == "added"
+    assert result["new_key"] == "new_value"
+
+
+def test_build_extraction_config_from_dict_with_all_options() -> None:
+    """Test building ExtractionConfig with all available options."""
+    config_dict = {
+        "force_ocr": True,
+        "chunk_content": True,
+        "max_chars": 500,
+        "max_overlap": 50,
+        "extract_tables": True,
+        "extract_entities": True,
+        "extract_keywords": True,
+        "keyword_count": 15,
+        "auto_detect_document_type": True,
+        "document_type_confidence_threshold": 0.8,
+        "auto_detect_language": True,
+        "ocr_backend": "tesseract",
+        "tesseract": {"language": "fra", "psm": 6},
+        "gmft": {"batch_size": 5, "confidence_threshold": 0.9},
+    }
+    
+    config = build_extraction_config_from_dict(config_dict)
+    
+    assert config.force_ocr is True
+    assert config.chunk_content is True
+    assert config.max_chars == 500
+    assert config.max_overlap == 50
+    assert config.extract_tables is True
+    assert config.extract_entities is True
+    assert config.extract_keywords is True
+    assert config.keyword_count == 15
+    assert config.auto_detect_document_type is True
+    assert config.document_type_confidence_threshold == 0.8
+    assert config.auto_detect_language is True
+    assert config.ocr_backend == "tesseract"
+
+
+def test_build_extraction_config_from_dict_invalid_ocr_backend() -> None:
+    """Test handling of invalid OCR backend in config."""
+    config_dict = {
+        "ocr_backend": "invalid_backend",
+    }
+    
+    with pytest.raises(ValidationError, match="Invalid OCR backend"):
+        build_extraction_config_from_dict(config_dict)
+
+
+def test_find_config_file_with_pyproject_toml(tmp_path: Path) -> None:
+    """Test finding config in pyproject.toml file."""
+    pyproject_file = tmp_path / "pyproject.toml"
+    pyproject_file.write_text("""
+[tool.kreuzberg]
+force_ocr = true
+chunk_content = false
+""")
+    
+    result = find_config_file(tmp_path)
+    assert result == pyproject_file
+
+
+def test_find_config_file_no_config(tmp_path: Path) -> None:
+    """Test when no config file exists."""
+    result = find_config_file(tmp_path)
+    assert result is None
+
+
+def test_load_config_from_path_string() -> None:
+    """Test loading config from string path."""
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.toml', delete=False) as f:
+        f.write("force_ocr = true\nchunk_content = false\n")
+        f.flush()
+        
+        config = load_config_from_path(f.name)
+        assert config.force_ocr is True
+        assert config.chunk_content is False
+
+
+def test_discover_and_load_config_with_default(tmp_path: Path) -> None:
+    """Test discovery that falls back to defaults."""
+    config = discover_and_load_config(str(tmp_path))
+    
+    # Should return default config
+    assert isinstance(config, ExtractionConfig)
+    assert config.force_ocr is False  # Default value
+
+
+def test_try_discover_config_returns_none(tmp_path: Path) -> None:
+    """Test try_discover_config returns None when no config found."""
+    result = try_discover_config(str(tmp_path))
+    assert result is None
+
+
+def test_configure_ocr_backend_with_none() -> None:
+    """Test OCR backend configuration with None."""
+    result = _configure_ocr_backend({}, None)
+    assert result is None
+
+
+def test_configure_gmft_with_none() -> None:
+    """Test GMFT configuration with None."""
+    result = _configure_gmft({}, None)
+    assert result is None
+
+
+def test_build_ocr_config_from_cli_empty() -> None:
+    """Test building OCR config from empty CLI args."""
+    result = _build_ocr_config_from_cli({})
+    assert result == {}
+
+
+def test_merge_cli_args_with_boolean_flags() -> None:
+    """Test merging CLI args with boolean flags."""
+    base_config = {"force_ocr": False, "chunk_content": True}
+    cli_args = {"force_ocr": True, "extract_tables": True}
+    
+    result = _merge_cli_args(base_config, cli_args)
+    
+    assert result["force_ocr"] is True
+    assert result["chunk_content"] is True  # Preserved
+    assert result["extract_tables"] is True  # Added
+
+
+def test_merge_file_config_with_missing_keys() -> None:
+    """Test merging file config when some keys are missing."""
+    base_config = {"force_ocr": False, "chunk_content": True}
+    file_config = {"chunk_content": False}  # Missing force_ocr
+    
+    result = _merge_file_config(base_config, file_config)
+    
+    assert result["force_ocr"] is False  # Preserved from base
+    assert result["chunk_content"] is False  # Overridden
+
     def test_build_from_dict_basic(self) -> None:
         """Test building ExtractionConfig from basic dictionary."""
         config_dict = {
