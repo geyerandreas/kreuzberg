@@ -574,7 +574,7 @@ class TestLegacyFunctions:
 
         assert isinstance(result, TesseractConfig)
         assert result.language == "eng"
-        assert result.psm.value == 6  # PSM value is not converted to enum in _build_ocr_config_from_cli
+        assert result.psm == 6  # type: ignore[comparison-overlap]  # PSM value is not converted to enum in _build_ocr_config_from_cli
 
     def test_build_ocr_config_from_cli_easyocr(self) -> None:
         """Test _build_ocr_config_from_cli with EasyOCR config."""

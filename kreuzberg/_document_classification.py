@@ -59,7 +59,11 @@ def _get_translated_text(result: ExtractionResult) -> str:
             "The 'deep-translator' library is not installed. Please install it with: pip install 'kreuzberg[auto-classify-document-type]'"
         ) from e
 
-    return str(GoogleTranslator(source="auto", target="en").translate(result.content).lower())
+    try:
+        return str(GoogleTranslator(source="auto", target="en").translate(result.content).lower())
+    except Exception:  # noqa: BLE001
+        # Fall back to original content in lowercase if translation fails
+        return result.content.lower()
 
 
 def classify_document(result: ExtractionResult, config: ExtractionConfig) -> tuple[str | None, float | None]:
