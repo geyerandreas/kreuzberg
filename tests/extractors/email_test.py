@@ -35,7 +35,7 @@ This is a test email body.
 def test_mime_types() -> None:
     """Test that email MIME types are properly defined."""
     from kreuzberg._extractors._email import EmailExtractor
-    
+
     # Test that the extractor supports the expected MIME types
     assert EML_MIME_TYPE in EmailExtractor.SUPPORTED_MIME_TYPES
     assert MSG_MIME_TYPE not in EmailExtractor.SUPPORTED_MIME_TYPES  # MSG is handled by a different extractor
