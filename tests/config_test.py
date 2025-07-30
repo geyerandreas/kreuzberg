@@ -509,11 +509,11 @@ def test_merge_cli_args_with_boolean_flags() -> None:
     base_config = {"force_ocr": False, "chunk_content": True}
     cli_args = {"force_ocr": True, "extract_tables": True}
 
-    result = _merge_cli_args(base_config, cli_args)
+    _merge_cli_args(base_config, cli_args)
 
-    assert result["force_ocr"] is True
-    assert result["chunk_content"] is True  # Preserved
-    assert result["extract_tables"] is True  # Added
+    assert base_config["force_ocr"] is True
+    assert base_config["chunk_content"] is True  # Preserved
+    assert base_config["extract_tables"] is True  # Added
 
 
 def test_merge_file_config_with_missing_keys() -> None:
@@ -521,10 +521,10 @@ def test_merge_file_config_with_missing_keys() -> None:
     base_config = {"force_ocr": False, "chunk_content": True}
     file_config = {"chunk_content": False}  # Missing force_ocr
 
-    result = _merge_file_config(base_config, file_config)
+    _merge_file_config(base_config, file_config)
 
-    assert result["force_ocr"] is False  # Preserved from base
-    assert result["chunk_content"] is False  # Overridden
+    assert base_config["force_ocr"] is False  # Preserved from base
+    assert base_config["chunk_content"] is False  # Overridden
 
 
 def test_build_from_dict_with_gmft_config() -> None:
