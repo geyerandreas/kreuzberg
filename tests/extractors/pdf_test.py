@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import NoReturn
+from typing import TYPE_CHECKING, NoReturn
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
@@ -15,6 +16,9 @@ from kreuzberg._types import ExtractionConfig
 from kreuzberg.exceptions import ParsingError
 from kreuzberg.extraction import DEFAULT_CONFIG
 from tests.conftest import pdfs_with_tables
+
+if TYPE_CHECKING:
+    from pytest_mock import MockerFixture
 
 IS_CI = os.environ.get("CI", "false").lower() == "true"
 
@@ -442,19 +446,16 @@ def test_pdf_password_attempts_with_parse_with_password_attempts(test_article: P
 # COMPREHENSIVE TESTS (merged from pdf_comprehensive_test.py)
 # =============================================================================
 
-import tempfile
-from unittest.mock import Mock, patch
-
 
 @pytest.fixture
-def pdf_extractor():
+def pdf_extractor() -> PDFExtractor:
     """Create a PDFExtractor instance for testing."""
     config = ExtractionConfig()
     return PDFExtractor("application/pdf", config)
 
 
 @pytest.fixture
-def sample_pdf_content():
+def sample_pdf_content() -> bytes:
     """Sample PDF content for testing."""
     # This is a minimal PDF structure
     return b"""%PDF-1.4
@@ -497,11 +498,11 @@ endobj
 
 xref
 0 5
-0000000000 65535 f 
-0000000009 00000 n 
-0000000058 00000 n 
-0000000115 00000 n 
-0000000201 00000 n 
+0000000000 65535 f
+0000000009 00000 n
+0000000058 00000 n
+0000000115 00000 n
+0000000201 00000 n
 trailer
 <<
 /Size 5
@@ -927,9 +928,9 @@ class TestPDFExtractor:
         for char, should_match in test_cases:
             matches = pdf_extractor.CORRUPTED_PATTERN.findall(char)
             if should_match:
-                assert len(matches) > 0, f"Character {repr(char)} should match corrupted pattern"
+                assert len(matches) > 0, f"Character {char!r} should match corrupted pattern"
             else:
-                assert len(matches) == 0, f"Character {repr(char)} should not match corrupted pattern"
+                assert len(matches) == 0, f"Character {char!r} should not match corrupted pattern"
 
     def test_class_constants_values(self, pdf_extractor: PDFExtractor) -> None:
         """Test that class constants have expected values."""
