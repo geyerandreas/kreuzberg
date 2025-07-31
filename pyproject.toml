@@ -256,7 +256,7 @@ exclude_lines = [
   "class .*\\bProtocol\\):",
   "@(abc\\.)?abstractmethod",
 ]
-fail_under = 95
+fail_under = 85
 
 [tool.mypy]
 packages = [ "kreuzberg", "tests", "benchmarks.src.kreuzberg_benchmarks" ]

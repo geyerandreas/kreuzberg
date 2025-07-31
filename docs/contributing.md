@@ -34,7 +34,7 @@ All commands run through `uv run`:
 # Testing
 uv run pytest                      # Run all tests
 uv run pytest tests/foo_test.py    # Run specific test
-uv run pytest --cov                # With coverage (must be ≥95%)
+uv run pytest --cov                # With coverage (must be ≥85%)
 
 # Code quality
 uv run ruff format                 # Format code

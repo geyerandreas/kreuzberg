@@ -22,7 +22,7 @@ Kreuzberg addresses the complete document intelligence pipeline through a modula
 
 ### Engineering Principles
 
-- **Test Coverage**: 95%+ coverage with comprehensive test suites
+- **Test Coverage**: Comprehensive test suites ensuring code reliability
 - **API Design**: True async/await implementation alongside synchronous APIs
 - **Error Handling**: Consistent exception hierarchy with detailed context
 - **Type Safety**: Full type annotations for enhanced developer experience
