@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import base64
+import json
 import os
 import sys
-from typing import TYPE_CHECKING
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from mcp.types import TextContent
 
 from kreuzberg._mcp.server import (
     extract_and_summarize,
@@ -25,9 +28,6 @@ pytestmark = pytest.mark.skipif(
     sys.platform == "darwin" and os.environ.get("CI") == "true",
     reason="MCP tests cause segmentation faults on macOS CI",
 )
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 def test_mcp_server_initialization() -> None:
@@ -173,13 +173,9 @@ def test_extract_document_different_backends(searchable_pdf: Path) -> None:
     backends = ["tesseract", "easyocr", "paddleocr"]
 
     for backend in backends:
-        try:
-            result = extract_document(file_path=str(searchable_pdf), ocr_backend=backend)
-            assert isinstance(result, dict)
-            assert "content" in result
-        except Exception:  # noqa: PERF203
-            # Backend might not be available, skip
-            continue
+        result = extract_document(file_path=str(searchable_pdf), ocr_backend=backend)
+        assert isinstance(result, dict)
+        assert "content" in result
 
 
 def test_extract_document_invalid_file() -> None:
@@ -380,3 +376,508 @@ def test_error_handling() -> None:
     # Just verify our functions work
     assert callable(extract_and_summarize)
     assert callable(extract_structured)
+
+
+# =============================================================================
+# COMPREHENSIVE TESTS FOR MCP SERVER MODULE
+# =============================================================================
+
+
+def test_create_config_with_overrides_no_discovered_config(tmp_path: Path) -> None:
+    """Test config creation when no config file is discovered."""
+    from kreuzberg._mcp.server import _create_config_with_overrides
+
+    with patch("kreuzberg._mcp.server.try_discover_config", return_value=None):
+        config = _create_config_with_overrides(force_ocr=True, chunk_content=True, max_chars=500, ocr_backend="easyocr")
+
+    assert config.force_ocr is True
+    assert config.chunk_content is True
+    assert config.max_chars == 500
+    assert config.ocr_backend == "easyocr"
+    # Other values should be defaults
+    assert config.extract_tables is False
+    assert config.extract_entities is False
+
+
+def test_create_config_with_overrides_discovered_config(tmp_path: Path) -> None:
+    """Test config creation with discovered config as base."""
+    from kreuzberg import ExtractionConfig
+    from kreuzberg._mcp.server import _create_config_with_overrides
+
+    # Create a mock discovered config
+    discovered_config = ExtractionConfig(
+        force_ocr=False, chunk_content=False, extract_tables=True, max_chars=1000, ocr_backend="tesseract"
+    )
+
+    with patch("kreuzberg._mcp.server.try_discover_config", return_value=discovered_config):
+        config = _create_config_with_overrides(
+            force_ocr=True,  # Override
+            max_chars=2000,  # Override
+            # chunk_content not provided, should use discovered value
+        )
+
+    # Overridden values
+    assert config.force_ocr is True
+    assert config.max_chars == 2000
+
+    # Values from discovered config (not overridden)
+    assert config.chunk_content is False  # From discovered
+    assert config.extract_tables is True  # From discovered
+    assert config.ocr_backend == "tesseract"  # From discovered
+
+
+def test_extract_document_with_tables(tmp_path: Path) -> None:
+    """Test document extraction with table extraction enabled."""
+    # Use simple text file to avoid complex PDF processing
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("Simple test content")
+
+    # Mock table extraction completely to avoid serialization issues
+    with (
+        patch("kreuzberg._gmft.extract_tables", return_value=[]),
+        patch("kreuzberg.extraction.extract_file_sync") as mock_extract,
+    ):
+        from kreuzberg._types import ExtractionResult
+
+        mock_result = ExtractionResult(
+            content="Simple test content",
+            mime_type="text/plain",
+            metadata={},
+            chunks=[],
+            tables=[],
+            entities=None,
+            keywords=None,
+        )
+        mock_extract.return_value = mock_result
+
+        result = extract_document(file_path=str(test_file), extract_tables=True)
+
+    assert isinstance(result, dict)
+    assert "tables" in result
+    assert isinstance(result["tables"], list) or result["tables"] is None
+
+
+def test_extract_document_all_parameters(tmp_path: Path) -> None:
+    """Test document extraction with all possible parameters."""
+    # Use a simple text file to avoid complex PDF processing issues
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("Test content for comprehensive parameter testing.")
+
+    # Mock problematic dependencies to avoid serialization issues
+    with (
+        patch("kreuzberg._entity_extraction.extract_entities", return_value=[]),
+        patch("kreuzberg._entity_extraction.extract_keywords", return_value=[]),
+        patch("kreuzberg._gmft.extract_tables", return_value=[]),
+    ):
+        result = extract_document(
+            file_path=str(test_file),
+            mime_type="text/plain",
+            force_ocr=False,
+            chunk_content=True,
+            extract_tables=True,
+            extract_entities=True,
+            extract_keywords=True,
+            ocr_backend="tesseract",
+            max_chars=800,
+            max_overlap=100,
+            keyword_count=5,
+            auto_detect_language=True,
+        )
+
+    assert isinstance(result, dict)
+
+    # Check all expected keys exist
+    expected_keys = [
+        "content",
+        "mime_type",
+        "metadata",
+        "chunks",
+        "tables",
+        "entities",
+        "keywords",
+        "detected_languages",
+    ]
+    for key in expected_keys:
+        assert key in result
+
+    # Check basic content
+    assert isinstance(result["content"], str)
+    assert "Test content" in result["content"]
+    assert result["mime_type"] in ["text/plain", "text/markdown"]
+
+
+def test_extract_bytes_all_parameters() -> None:
+    """Test bytes extraction with all possible parameters."""
+    # Use simple text content to avoid complex PDF processing issues
+    test_content = "Test content for comprehensive bytes parameter testing."
+    content_bytes = test_content.encode("utf-8")
+    content_base64 = base64.b64encode(content_bytes).decode()
+
+    # Mock problematic dependencies to avoid serialization issues
+    with (
+        patch("kreuzberg._entity_extraction.extract_entities", return_value=[]),
+        patch("kreuzberg._entity_extraction.extract_keywords", return_value=[]),
+        patch("kreuzberg._gmft.extract_tables", return_value=[]),
+    ):
+        result = extract_bytes(
+            content_base64=content_base64,
+            mime_type="text/plain",
+            force_ocr=False,
+            chunk_content=True,
+            extract_tables=True,
+            extract_entities=True,
+            extract_keywords=True,
+            ocr_backend="tesseract",
+            max_chars=600,
+            max_overlap=80,
+            keyword_count=8,
+            auto_detect_language=True,
+        )
+
+    assert isinstance(result, dict)
+
+    # Check all expected keys exist
+    expected_keys = [
+        "content",
+        "mime_type",
+        "metadata",
+        "chunks",
+        "tables",
+        "entities",
+        "keywords",
+        "detected_languages",
+    ]
+    for key in expected_keys:
+        assert key in result
+
+    # Check basic content
+    assert isinstance(result["content"], str)
+    assert "Test content" in result["content"]
+
+
+def test_extract_bytes_base64_edge_cases() -> None:
+    """Test bytes extraction with edge case base64 inputs."""
+    # Empty content
+    empty_base64 = base64.b64encode(b"").decode()
+    result = extract_bytes(content_base64=empty_base64, mime_type="text/plain")
+    assert isinstance(result, dict)
+    assert "content" in result
+
+    # Very small content
+    small_content = base64.b64encode(b"a").decode()
+    result = extract_bytes(content_base64=small_content, mime_type="text/plain")
+    assert isinstance(result, dict)
+    assert "content" in result
+
+
+def test_extract_simple_with_mime_type_override(tmp_path: Path) -> None:
+    """Test simple extraction with explicit MIME type."""
+    test_file = tmp_path / "test.bin"
+    test_content = "This is actually text content"
+    test_file.write_text(test_content)
+
+    # Force treatment as text even with .bin extension
+    result = extract_simple(file_path=str(test_file), mime_type="text/plain")
+    assert isinstance(result, str)
+    assert test_content in result
+
+
+def test_get_discovered_config_with_config() -> None:
+    """Test getting discovered config when config exists."""
+    from kreuzberg import ExtractionConfig
+    from kreuzberg._mcp.server import get_discovered_config
+
+    mock_config = ExtractionConfig(chunk_content=True, max_chars=1500)
+
+    with patch("kreuzberg._mcp.server.try_discover_config", return_value=mock_config):
+        result = get_discovered_config()
+
+    assert isinstance(result, str)
+    assert "chunk_content" in result
+    assert "true" in result.lower()  # JSON boolean
+    assert "1500" in result
+
+
+def test_get_discovered_config_no_config() -> None:
+    """Test getting discovered config when no config exists."""
+    from kreuzberg._mcp.server import get_discovered_config
+
+    with patch("kreuzberg._mcp.server.try_discover_config", return_value=None):
+        result = get_discovered_config()
+
+    assert result == "No configuration file found"
+
+
+def test_extract_structured_with_entities_and_keywords(searchable_pdf: Path) -> None:
+    """Test structured extraction with mocked entities and keywords."""
+    from kreuzberg._types import Entity
+
+    mock_entities = [
+        Entity(text="John Doe", type="PERSON", start=0, end=8),
+        Entity(text="New York", type="GPE", start=15, end=23),
+    ]
+    mock_keywords = [("document", 0.85), ("sample", 0.75), ("test", 0.65)]
+
+    with (
+        patch("kreuzberg._entity_extraction.extract_entities", return_value=mock_entities),
+        patch("kreuzberg._entity_extraction.extract_keywords", return_value=mock_keywords),
+        patch("kreuzberg._gmft.extract_tables", return_value=[]),
+    ):
+        result = extract_structured(file_path=str(searchable_pdf))
+
+    assert isinstance(result, list)
+    assert len(result) > 0
+
+    text_content = result[0]
+    assert hasattr(text_content, "text")
+
+    # Check that entities and keywords are mentioned - but be flexible since content can vary
+    assert "Entities:" in text_content.text or "Keywords:" in text_content.text
+
+
+def test_extract_structured_with_tables(tmp_path: Path) -> None:
+    """Test structured extraction when tables are found."""
+    # Use simple text file
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("Simple test content")
+
+    # Mock the extraction to include table results
+    with patch("kreuzberg._mcp.server.extract_file_sync") as mock_extract:
+        import pandas as pd
+        from PIL import Image
+
+        from kreuzberg._types import ExtractionResult, TableData
+
+        # Create proper mock table data
+        mock_image = Image.new("RGB", (100, 100), "white")
+        mock_df = pd.DataFrame([["A", "B"], ["1", "2"]])
+        mock_table = TableData(cropped_image=mock_image, df=mock_df, page_number=1, text="| A | B |\n| 1 | 2 |")
+
+        mock_result = ExtractionResult(
+            content="Sample content",
+            mime_type="text/plain",
+            metadata={},
+            chunks=[],
+            tables=[mock_table, mock_table],  # Two tables to test count
+            entities=[],
+            keywords=[],
+        )
+        mock_extract.return_value = mock_result
+
+        result = extract_structured(file_path=str(test_file))
+
+    assert isinstance(result, list)
+    assert len(result) > 0
+
+    text_content = result[0]
+    # Should show "Tables found: 2"
+    assert "Tables found: 2" in text_content.text
+
+
+def test_extract_and_summarize_content_length(tmp_path: Path) -> None:
+    """Test extract and summarize with different content lengths."""
+    # Very short content
+    short_file = tmp_path / "short.txt"
+    short_file.write_text("Short.")
+
+    result = extract_and_summarize(file_path=str(short_file))
+    assert isinstance(result, list)
+    assert len(result) > 0
+    assert "Short." in result[0].text
+
+    # Long content
+    long_file = tmp_path / "long.txt"
+    long_content = "Very long content. " * 1000
+    long_file.write_text(long_content)
+
+    result = extract_and_summarize(file_path=str(long_file))
+    assert isinstance(result, list)
+    assert len(result) > 0
+    assert "Very long content" in result[0].text
+
+
+def test_extract_document_with_special_characters(tmp_path: Path) -> None:
+    """Test document extraction with special characters."""
+    test_file = tmp_path / "special.txt"
+    special_content = "Special chars: àáâãäåæçèéêë ñ ü ß 中文 🚀"
+    test_file.write_text(special_content, encoding="utf-8")
+
+    result = extract_document(file_path=str(test_file))
+
+    assert isinstance(result, dict)
+    assert "content" in result
+    # Content should preserve special characters
+    content = result["content"]
+    assert "àáâãäåæçèéêë" in content or "Special chars" in content
+
+
+def test_extract_bytes_with_special_mime_types() -> None:
+    """Test bytes extraction with various MIME types."""
+    test_content = "Test content with special handling"
+    test_bytes = test_content.encode("utf-8")
+    content_base64 = base64.b64encode(test_bytes).decode()
+
+    mime_types = ["text/plain", "text/markdown", "text/csv", "text/html", "application/json"]
+
+    for mime_type in mime_types:
+        result = extract_bytes(content_base64=content_base64, mime_type=mime_type)
+        assert isinstance(result, dict)
+        assert "content" in result
+        assert "Test content" in result["content"]
+
+
+def test_extract_document_ocr_backend_switching(tmp_path: Path) -> None:
+    """Test switching between different OCR backends."""
+    test_file = tmp_path / "test.txt"
+    test_file.write_text("OCR backend test content")
+
+    backends = ["tesseract", "easyocr", "paddleocr"]
+
+    for backend in backends:
+        result = extract_document(
+            file_path=str(test_file),
+            ocr_backend=backend,
+            force_ocr=True,  # Force OCR even for text files
+        )
+        assert isinstance(result, dict)
+        assert "content" in result
+
+
+def test_mcp_server_tool_parameter_validation() -> None:
+    """Test parameter validation for MCP server tools."""
+    # Test with extreme parameter values
+    with pytest.raises(Exception):  # noqa: B017, PT011
+        extract_document(
+            file_path="/nonexistent",
+            max_chars=-1,  # Invalid negative value
+        )
+
+
+def test_configuration_resource_json_validity() -> None:
+    """Test that configuration resources return valid JSON."""
+    from kreuzberg._mcp.server import get_discovered_config
+
+    # Test default config JSON is valid
+    default_config = get_default_config()
+    parsed_default = json.loads(default_config)
+    assert isinstance(parsed_default, dict)
+    assert "force_ocr" in parsed_default
+
+    # Test discovered config JSON when config exists
+    from kreuzberg import ExtractionConfig
+
+    mock_config = ExtractionConfig(chunk_content=True)
+    with patch("kreuzberg._mcp.server.try_discover_config", return_value=mock_config):
+        discovered_config = get_discovered_config()
+        parsed_discovered = json.loads(discovered_config)
+        assert isinstance(parsed_discovered, dict)
+        assert "chunk_content" in parsed_discovered
+
+
+def test_extract_multiple_files_consistency(tmp_path: Path) -> None:
+    """Test extraction consistency across multiple files."""
+    # Create multiple similar files
+    files = []
+    for i in range(3):
+        test_file = tmp_path / f"test_{i}.txt"
+        test_file.write_text(f"Test content number {i}")
+        files.append(test_file)
+
+    results = []
+    for file_path in files:
+        result = extract_simple(file_path=str(file_path))
+        results.append(result)
+
+    # Each result should be different but follow same format
+    assert len(set(results)) == 3  # All different
+    for i, result in enumerate(results):
+        assert f"number {i}" in result
+
+
+def test_resource_availability_consistency() -> None:
+    """Test that resource functions are consistently available."""
+    from kreuzberg._mcp.server import (
+        get_available_backends,
+        get_default_config,
+        get_discovered_config,
+        get_supported_formats,
+    )
+
+    # All resource functions should be callable multiple times
+    for _ in range(3):
+        backends = get_available_backends()
+        default_config = get_default_config()
+        discovered = get_discovered_config()
+        formats = get_supported_formats()
+
+        assert isinstance(backends, str)
+        assert isinstance(default_config, str)
+        assert isinstance(discovered, str)
+        assert isinstance(formats, str)
+
+        # Content should be consistent
+        assert "tesseract" in backends
+        assert "force_ocr" in default_config
+        assert "PDF" in formats
+
+
+def test_prompt_functions_text_content_structure() -> None:
+    """Test that prompt functions return properly structured TextContent."""
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+        f.write("Test content for prompt functions")
+        temp_file = f.name
+
+    try:
+        # Test extract_and_summarize
+        summarize_result = extract_and_summarize(file_path=temp_file)
+        assert isinstance(summarize_result, list)
+        assert len(summarize_result) > 0
+        assert isinstance(summarize_result[0], TextContent)
+        assert summarize_result[0].type == "text"
+        assert isinstance(summarize_result[0].text, str)
+
+        # Test extract_structured
+        with (
+            patch("kreuzberg._entity_extraction.extract_entities", return_value=[]),
+            patch("kreuzberg._entity_extraction.extract_keywords", return_value=[]),
+        ):
+            structured_result = extract_structured(file_path=temp_file)
+            assert isinstance(structured_result, list)
+            assert len(structured_result) > 0
+            assert isinstance(structured_result[0], TextContent)
+            assert structured_result[0].type == "text"
+            assert isinstance(structured_result[0].text, str)
+
+    finally:
+        Path(temp_file).unlink()
+
+
+def test_config_merging_priority() -> None:
+    """Test that tool parameters take priority over discovered config."""
+    from kreuzberg import ExtractionConfig
+    from kreuzberg._mcp.server import _create_config_with_overrides
+
+    # Create discovered config with specific values
+    discovered_config = ExtractionConfig(
+        force_ocr=False, chunk_content=False, max_chars=1000, max_overlap=100, keyword_count=5
+    )
+
+    with patch("kreuzberg._mcp.server.try_discover_config", return_value=discovered_config):
+        # Override some values
+        config = _create_config_with_overrides(
+            force_ocr=True,  # Override to True
+            max_chars=2000,  # Override to 2000
+            # chunk_content not specified, should use discovered value (False)
+            # max_overlap not specified, should use discovered value (100)
+            keyword_count=10,  # Override to 10
+        )
+
+    # Check overridden values
+    assert config.force_ocr is True  # Overridden
+    assert config.max_chars == 2000  # Overridden
+    assert config.keyword_count == 10  # Overridden
+
+    # Check values from discovered config
+    assert config.chunk_content is False  # From discovered
+    assert config.max_overlap == 100  # From discovered

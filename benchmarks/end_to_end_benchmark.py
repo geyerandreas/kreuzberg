@@ -195,7 +195,7 @@ async def run_end_to_end_benchmark(trials: int = 20) -> dict[str, Any]:
     }
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     print("🧪 REPRODUCIBLE CACHE BENCHMARK")
     print("Testing msgpack implementation with statistical rigor...")
     print()

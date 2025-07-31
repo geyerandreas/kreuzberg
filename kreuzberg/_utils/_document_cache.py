@@ -58,6 +58,7 @@ class DocumentCache:
                 "chunk_content": config.chunk_content,
                 "max_chars": config.max_chars,
                 "max_overlap": config.max_overlap,
+                "auto_detect_document_type": config.auto_detect_document_type,
             }
 
         cache_data = {**file_info, **config_info}

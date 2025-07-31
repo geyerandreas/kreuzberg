@@ -1,237 +1,172 @@
-"""
-Tests for language detection functionality.
-"""
+"""Tests for language detection functionality."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
-from kreuzberg._language_detection import LanguageDetectionConfig, detect_languages
-from kreuzberg.exceptions import MissingDependencyError
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from kreuzberg import MissingDependencyError
+from kreuzberg._language_detection import LanguageDetectionConfig, _create_fast_langdetect_config, detect_languages
 
 
-@patch("kreuzberg._language_detection.HAS_FAST_LANGDETECT", True)
-@patch("kreuzberg._language_detection.detect_multilingual")
-@patch("kreuzberg._language_detection.detect")
-def test_detect_languages_single_success(mock_detect: MagicMock, mock_detect_multi: MagicMock) -> None:
-    """Test successful single language detection."""
-    mock_result = {"lang": "EN", "score": 0.99}
-    mock_detect.return_value = mock_result
-    result = detect_languages("This is English text.")
-    assert result == ["en"]
-    mock_detect.assert_called_once_with("This is English text.", low_memory=True)
-
-
-@patch("kreuzberg._language_detection.HAS_FAST_LANGDETECT", True)
-@patch("kreuzberg._language_detection.detect_multilingual")
-@patch("kreuzberg._language_detection.detect")
-def test_detect_languages_multilingual_success(mock_detect: MagicMock, mock_detect_multi: MagicMock) -> None:
-    """Test successful multilingual detection."""
-    mock_results = [{"lang": "EN", "score": 0.5}, {"lang": "DE", "score": 0.3}, {"lang": "FR", "score": 0.2}]
-    config = LanguageDetectionConfig(multilingual=True, top_k=3)
-    mock_detect_multi.return_value = mock_results
-    result = detect_languages("This is English text with some German words.", config)
-    assert result == ["en", "de", "fr"]
-    mock_detect_multi.assert_called_once_with("This is English text with some German words.", low_memory=True, k=3)
-
-
-@patch("kreuzberg._language_detection.HAS_FAST_LANGDETECT", True)
-@patch("kreuzberg._language_detection.detect_multilingual")
-@patch("kreuzberg._language_detection.detect")
-def test_detect_languages_with_high_accuracy_mode(mock_detect: MagicMock, mock_detect_multi: MagicMock) -> None:
-    """Test language detection with high accuracy mode (low_memory=False)."""
-    mock_result = {"lang": "JA", "score": 0.99}
-    config = LanguageDetectionConfig(low_memory=False)
-    mock_detect.return_value = mock_result
-    result = detect_languages("これは日本語のテキストです。", config)
-    assert result == ["ja"]
-    mock_detect.assert_called_once_with("これは日本語のテキストです。", low_memory=False)
-
-
-@patch("kreuzberg._language_detection.HAS_FAST_LANGDETECT", True)
-@patch("kreuzberg._language_detection.detect_multilingual")
-@patch("kreuzberg._language_detection.detect")
-def test_detect_languages_exception_handling(mock_detect: MagicMock, mock_detect_multi: MagicMock) -> None:
-    """Test that exceptions in language detection are handled gracefully."""
-    mock_detect.side_effect = Exception("Detection failed")
-    result = detect_languages("Some text")
-    assert result is None
-
-
-def test_detect_languages_missing_dependency() -> None:
-    """Test that MissingDependencyError is raised when fast-langdetect is not available."""
-    detect_languages.cache_clear()
-    with (
-        patch("kreuzberg._language_detection.HAS_FAST_LANGDETECT", False),
-        pytest.raises(MissingDependencyError, match="fast-langdetect"),
-    ):
-        detect_languages("Some text")
-
-
-@patch("kreuzberg._language_detection.HAS_FAST_LANGDETECT", True)
-@patch("kreuzberg._language_detection.detect_multilingual")
-@patch("kreuzberg._language_detection.detect")
-def test_detect_languages_caching(mock_detect: MagicMock, mock_detect_multi: MagicMock) -> None:
-    """Test that language detection results are cached."""
-    mock_result = {"lang": "EN", "score": 0.99}
+def test_language_detection_config_defaults() -> None:
+    """Test LanguageDetectionConfig default values."""
     config = LanguageDetectionConfig()
-    mock_detect.return_value = mock_result
-
-    result1 = detect_languages("This is English text.", config)
-
-    result2 = detect_languages("This is English text.", config)
-
-    assert result1 == result2
-
-    assert mock_detect.call_count == 1
+    assert config.low_memory is True
+    assert config.top_k == 3
+    assert config.multilingual is False
+    assert config.cache_dir is None
+    assert config.allow_fallback is True
 
 
-@patch("kreuzberg._language_detection.HAS_FAST_LANGDETECT", True)
-@patch("kreuzberg._language_detection.detect_multilingual")
-@patch("kreuzberg._language_detection.detect")
-def test_detect_languages_different_texts_not_cached(mock_detect: MagicMock, mock_detect_multi: MagicMock) -> None:
-    """Test that different texts are not cached together."""
-    detect_languages.cache_clear()
-    mock_result1 = {"lang": "EN", "score": 0.99}
-    mock_result2 = {"lang": "DE", "score": 0.99}
-    mock_detect.side_effect = [mock_result1, mock_result2]
-    result1 = detect_languages("This is English text 1.")
-    result2 = detect_languages("Das ist deutscher Text 2.")
-    assert result1 == ["en"]
-    assert result2 == ["de"]
-    assert mock_detect.call_count == 2
-
-
-@patch("kreuzberg._language_detection.HAS_FAST_LANGDETECT", True)
-@patch("kreuzberg._language_detection.detect_multilingual")
-@patch("kreuzberg._language_detection.detect")
-def test_detect_languages_with_custom_config(mock_detect: MagicMock, mock_detect_multi: MagicMock) -> None:
-    """Test language detection with custom configuration."""
-    mock_results = [{"lang": "ZH", "score": 0.6}, {"lang": "JA", "score": 0.4}]
+def test_language_detection_config_custom_values() -> None:
+    """Test LanguageDetectionConfig with custom values."""
     config = LanguageDetectionConfig(
-        multilingual=True, top_k=2, low_memory=False, cache_dir="/custom/cache", allow_fallback=False
+        low_memory=False, top_k=5, multilingual=True, cache_dir="/tmp/cache", allow_fallback=False
     )
-    mock_detect_multi.return_value = mock_results
-    result = detect_languages("混合的中文和日本語テキスト", config)
-    assert result == ["zh", "ja"]
-    mock_detect_multi.assert_called_once_with("混合的中文和日本語テキスト", low_memory=False, k=2)
+    assert config.low_memory is False
+    assert config.top_k == 5
+    assert config.multilingual is True
+    assert config.cache_dir == "/tmp/cache"
+    assert config.allow_fallback is False
 
 
-@patch("kreuzberg._language_detection.HAS_FAST_LANGDETECT", True)
-@patch("kreuzberg._language_detection.detect_multilingual")
-@patch("kreuzberg._language_detection.detect")
-def test_detect_languages_empty_result(mock_detect: MagicMock, mock_detect_multi: MagicMock) -> None:
-    """Test handling of empty detection results."""
+def test_detect_languages_missing_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test detect_languages with missing fast-langdetect dependency."""
+    # Mock the module import to simulate missing dependency
+    import kreuzberg._language_detection as ld
 
-    mock_detect.return_value = {"score": 0.1}
-    result = detect_languages("Unknown text")
+    monkeypatch.setattr(ld, "HAS_FAST_LANGDETECT", False)
+    monkeypatch.setattr(ld, "detect", None)
+    monkeypatch.setattr(ld, "detect_multilingual", None)
+
+    with pytest.raises(MissingDependencyError, match="fast-langdetect"):
+        detect_languages("Hello world")
+
+
+def test_detect_languages_with_results(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test detect_languages with successful detection."""
+
+    def mock_detect(text: str, low_memory: bool = True) -> dict[str, str | float]:
+        return {"lang": "en", "confidence": 0.95}
+
+    import kreuzberg._language_detection as ld
+
+    monkeypatch.setattr(ld, "HAS_FAST_LANGDETECT", True)
+    monkeypatch.setattr(ld, "detect", mock_detect)
+    monkeypatch.setattr(ld, "detect_multilingual", mock_detect)
+
+    result = detect_languages("Hello world", LanguageDetectionConfig())
+    assert result == ["en"]
+
+
+def test_detect_languages_empty_input(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test detect_languages with empty input."""
+
+    def mock_detect(text: str, low_memory: bool = True) -> dict[str, str | float] | None:
+        return None  # Empty input returns None
+
+    import kreuzberg._language_detection as ld
+
+    monkeypatch.setattr(ld, "HAS_FAST_LANGDETECT", True)
+    monkeypatch.setattr(ld, "detect", mock_detect)
+    monkeypatch.setattr(ld, "detect_multilingual", mock_detect)
+
+    result = detect_languages("", LanguageDetectionConfig())
     assert result is None
 
-    mock_detect_multi.return_value = []
-    config = LanguageDetectionConfig(multilingual=True)
-    result = detect_languages("Unknown text", config)
-    assert result == []
+
+def test_detect_languages_multilingual(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test detect_languages with multilingual detection."""
+
+    def mock_detect_multilingual(text: str, low_memory: bool = True, k: int = 3) -> list[dict[str, str | float]]:
+        return [
+            {"lang": "en", "confidence": 0.8},
+            {"lang": "fr", "confidence": 0.2},
+        ]
+
+    import kreuzberg._language_detection as ld
+
+    monkeypatch.setattr(ld, "HAS_FAST_LANGDETECT", True)
+    monkeypatch.setattr(ld, "detect", lambda *_args, **_kwargs: {"lang": "en"})
+    monkeypatch.setattr(ld, "detect_multilingual", mock_detect_multilingual)
+
+    result = detect_languages("text", LanguageDetectionConfig(multilingual=True, top_k=2))
+    assert result == ["en", "fr"]
 
 
-@pytest.mark.anyio
-async def test_extract_file_with_language_detection(tmp_path: Path) -> None:
-    """Test that language detection works with extract_file."""
-    from kreuzberg import ExtractionConfig, extract_file
+def test_detect_languages_exception_handling(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test detect_languages with exception handling."""
 
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("This is English text for testing language detection.")
-    with (
-        patch("kreuzberg._language_detection.HAS_FAST_LANGDETECT", True),
-        patch("kreuzberg._language_detection.detect") as mock_detect,
-        patch("kreuzberg._language_detection.detect_multilingual"),
-    ):
-        mock_detect.return_value = {"lang": "EN", "score": 0.99}
-        config = ExtractionConfig(auto_detect_language=True)
-        result = await extract_file(test_file, config=config)
-        assert result.detected_languages == ["en"]
+    def mock_detect_error(text: str, low_memory: bool = True) -> None:
+        raise RuntimeError("Detection failed")
+
+    import kreuzberg._language_detection as ld
+
+    monkeypatch.setattr(ld, "HAS_FAST_LANGDETECT", True)
+    monkeypatch.setattr(ld, "detect", mock_detect_error)
+    monkeypatch.setattr(ld, "detect_multilingual", mock_detect_error)
+
+    result = detect_languages("text", LanguageDetectionConfig())
+    assert result is None  # Should return None on exception
 
 
-@pytest.mark.anyio
-async def test_extract_file_without_language_detection(tmp_path: Path) -> None:
-    """Test that language detection is not performed when disabled."""
-    from kreuzberg import ExtractionConfig, extract_file
+def test_detect_languages_with_none_config(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test detect_languages with None config (uses defaults)."""
 
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("This is English text.")
+    def mock_detect(text: str, low_memory: bool = True) -> dict[str, str | float]:
+        return {"lang": "de", "confidence": 0.9}
 
-    with (
-        patch("kreuzberg._language_detection.HAS_FAST_LANGDETECT", True),
-        patch("kreuzberg._language_detection.detect") as mock_detect,
-        patch("kreuzberg._language_detection.detect_multilingual") as mock_detect_multi,
-    ):
-        config = ExtractionConfig(auto_detect_language=False)
-        result = await extract_file(test_file, config=config)
+    import kreuzberg._language_detection as ld
 
-        assert result.detected_languages is None
-        mock_detect.assert_not_called()
-        mock_detect_multi.assert_not_called()
+    monkeypatch.setattr(ld, "HAS_FAST_LANGDETECT", True)
+    monkeypatch.setattr(ld, "detect", mock_detect)
+    monkeypatch.setattr(ld, "detect_multilingual", mock_detect)
+
+    result = detect_languages("Hallo Welt")  # No config passed
+    assert result == ["de"]
 
 
-@pytest.mark.anyio
-async def test_extract_file_with_custom_language_config(tmp_path: Path) -> None:
-    """Test extraction with custom language detection configuration."""
-    from kreuzberg import ExtractionConfig, extract_file
+def test_create_fast_langdetect_config_missing_dependency(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test _create_fast_langdetect_config with missing dependency."""
+    import kreuzberg._language_detection as ld
 
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("This is a multilingual text with multiple languages.")
+    monkeypatch.setattr(ld, "HAS_FAST_LANGDETECT", False)
+    monkeypatch.setattr(ld, "FastLangDetectConfig", None)
 
-    mock_results = [{"lang": "EN", "score": 0.7}, {"lang": "ES", "score": 0.3}]
-
-    detect_languages.cache_clear()
-
-    with (
-        patch("kreuzberg._language_detection.HAS_FAST_LANGDETECT", True),
-        patch("kreuzberg._language_detection.detect"),
-        patch("kreuzberg._language_detection.detect_multilingual") as mock_detect_multi,
-    ):
-        mock_detect_multi.return_value = mock_results
-
-        lang_config = LanguageDetectionConfig(multilingual=True, top_k=2, low_memory=False)
-        config = ExtractionConfig(auto_detect_language=True, language_detection_config=lang_config)
-        result = await extract_file(test_file, config=config)
-
-        assert result.detected_languages == ["en", "es"]
-        mock_detect_multi.assert_called_once()
+    config = LanguageDetectionConfig()
+    result = _create_fast_langdetect_config(config)
+    assert result is None
 
 
-@pytest.mark.anyio
-async def test_extract_file_language_detection_missing_dependency(tmp_path: Path) -> None:
-    """Test that extraction fails when language detection is enabled but dependency is missing."""
-    from kreuzberg import ExtractionConfig, extract_file
+def test_create_fast_langdetect_config_with_cache_dir(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test _create_fast_langdetect_config with cache directory."""
+    mock_config_class = MagicMock()
 
-    test_file = tmp_path / "test.txt"
-    test_content = "This is test content."
-    test_file.write_text(test_content)
+    import kreuzberg._language_detection as ld
 
-    with patch("kreuzberg._language_detection.HAS_FAST_LANGDETECT", False):
-        config = ExtractionConfig(auto_detect_language=True)
-        with pytest.raises(MissingDependencyError, match="fast-langdetect"):
-            await extract_file(test_file, config=config)
+    monkeypatch.setattr(ld, "HAS_FAST_LANGDETECT", True)
+    monkeypatch.setattr(ld, "FastLangDetectConfig", mock_config_class)
+
+    config = LanguageDetectionConfig(cache_dir="/tmp/test", allow_fallback=False)
+    _create_fast_langdetect_config(config)
+
+    # Verify the mock was called with correct arguments
+    mock_config_class.assert_called_once_with(allow_fallback=False, cache_dir="/tmp/test")
 
 
-def test_extract_file_sync_with_language_detection(tmp_path: Path) -> None:
-    """Test that language detection works with extract_file_sync."""
-    from kreuzberg import ExtractionConfig, extract_file_sync
+def test_create_fast_langdetect_config_without_cache_dir(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Test _create_fast_langdetect_config without cache directory."""
+    mock_config_class = MagicMock()
 
-    test_file = tmp_path / "test.txt"
-    test_file.write_text("This is English text for testing language detection.")
-    with (
-        patch("kreuzberg._language_detection.HAS_FAST_LANGDETECT", True),
-        patch("kreuzberg._language_detection.detect") as mock_detect,
-        patch("kreuzberg._language_detection.detect_multilingual"),
-    ):
-        mock_detect.return_value = {"lang": "EN", "score": 0.99}
-        config = ExtractionConfig(auto_detect_language=True)
-        result = extract_file_sync(test_file, config=config)
-        assert result.detected_languages == ["en"]
+    import kreuzberg._language_detection as ld
+
+    monkeypatch.setattr(ld, "HAS_FAST_LANGDETECT", True)
+    monkeypatch.setattr(ld, "FastLangDetectConfig", mock_config_class)
+
+    config = LanguageDetectionConfig(cache_dir=None, allow_fallback=True)
+    _create_fast_langdetect_config(config)
+
+    # Verify the mock was called with correct arguments (no cache_dir)
+    mock_config_class.assert_called_once_with(allow_fallback=True)

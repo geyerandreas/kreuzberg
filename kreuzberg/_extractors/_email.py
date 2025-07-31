@@ -59,14 +59,19 @@ class EmailExtractor(Extractor):
 
         to_info = parsed_email.get("to")
         if to_info:
+            # Store the raw value in metadata (could be string, dict, or list)
             if isinstance(to_info, list) and to_info:
+                # For metadata, use first recipient's email if it's a list
                 to_email = to_info[0].get("email", "") if isinstance(to_info[0], dict) else str(to_info[0])
+                metadata["email_to"] = to_email
             elif isinstance(to_info, dict):
-                to_email = to_info.get("email", "")
+                metadata["email_to"] = to_info.get("email", "")
             else:
-                to_email = str(to_info)
-            metadata["email_to"] = to_email
-            text_parts.append(f"To: {to_email}")
+                metadata["email_to"] = str(to_info)
+
+            # For display, format all recipients
+            to_formatted = self._format_email_field(to_info)
+            text_parts.append(f"To: {to_formatted}")
 
         date = parsed_email.get("date")
         if date:
@@ -76,12 +81,30 @@ class EmailExtractor(Extractor):
         cc = parsed_email.get("cc")
         if cc:
             metadata["email_cc"] = cc
-            text_parts.append(f"CC: {cc}")
+            cc_formatted = self._format_email_field(cc)
+            text_parts.append(f"CC: {cc_formatted}")
 
         bcc = parsed_email.get("bcc")
         if bcc:
             metadata["email_bcc"] = bcc
-            text_parts.append(f"BCC: {bcc}")
+            bcc_formatted = self._format_email_field(bcc)
+            text_parts.append(f"BCC: {bcc_formatted}")
+
+    def _format_email_field(self, field: Any) -> str:
+        """Format email field (to, cc, bcc) for display."""
+        if isinstance(field, list):
+            emails = []
+            for item in field:
+                if isinstance(item, dict):
+                    email = item.get("email", "")
+                    if email:
+                        emails.append(email)
+                else:
+                    emails.append(str(item))
+            return ", ".join(emails)
+        if isinstance(field, dict):
+            return str(field.get("email", ""))
+        return str(field)
 
     def _extract_email_body(self, parsed_email: dict[str, Any], text_parts: list[str]) -> None:
         """Extract and process email body content."""

@@ -187,7 +187,7 @@ async def run_statistical_benchmark() -> dict[str, Any]:
     }
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     print("🧪 STATISTICAL CACHE BENCHMARK")
     print("Testing msgpack implementation with proper error analysis...")
     print()

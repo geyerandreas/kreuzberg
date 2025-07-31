@@ -19,13 +19,13 @@ class KreuzbergError(Exception):
     def _serialize_context(self, obj: Any) -> Any:
         """Recursively serialize context objects to ensure JSON compatibility."""
         if isinstance(obj, bytes):
-            return obj.decode("utf-8", errors="replace")  # pragma: no cover
+            return obj.decode("utf-8", errors="replace")
         if isinstance(obj, dict):
             return {k: self._serialize_context(v) for k, v in obj.items()}
         if isinstance(obj, (list, tuple)):
-            return [self._serialize_context(x) for x in obj]  # pragma: no cover
+            return [self._serialize_context(x) for x in obj]
         if isinstance(obj, Exception):
-            return {  # pragma: no cover
+            return {
                 "type": obj.__class__.__name__,
                 "message": str(obj),
             }

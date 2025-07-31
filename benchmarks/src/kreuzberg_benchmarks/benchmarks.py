@@ -1,4 +1,5 @@
 """Core benchmark implementations comparing sync vs async performance."""
+# mypy: disable-error-code=unused-ignore
 
 from __future__ import annotations
 

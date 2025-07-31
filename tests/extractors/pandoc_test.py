@@ -1535,3 +1535,589 @@ class TestPandocExtractorSubclasses:
             # Test that they can be instantiated
             instance = subclass("text/x-markdown", test_config)
             assert isinstance(instance, PandocExtractor)
+
+
+# =============================================================================
+# COMPREHENSIVE TESTS (merged from pandoc_comprehensive_test.py)
+# =============================================================================
+
+
+class TestPandocExtractorSyncMethods:
+    """Test sync methods for comprehensive coverage."""
+
+    def test_extract_metadata_sync_json_decode_error(self, test_config: ExtractionConfig) -> None:
+        """Test sync metadata extraction with JSON decode error."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        test_path = Path("/test/file.md")
+
+        with (
+            patch.object(extractor, "_get_pandoc_type_from_mime_type", return_value="markdown"),
+            patch("tempfile.mkstemp") as mock_mkstemp,
+            patch("os.close") as mock_close,
+            patch("subprocess.run") as mock_run,
+            patch("pathlib.Path.open") as mock_open,
+            patch("pathlib.Path.unlink") as mock_unlink,
+        ):
+            # Mock temp file
+            mock_fd = 3
+            temp_path = "/tmp/metadata.json"
+            mock_mkstemp.return_value = (mock_fd, temp_path)
+
+            # Mock subprocess success
+            mock_result = Mock()
+            mock_result.returncode = 0
+            mock_run.return_value = mock_result
+
+            # Mock file reading with invalid JSON
+            mock_file = Mock()
+            mock_file.read.return_value = "invalid json"
+            mock_open.return_value.__enter__.return_value = mock_file
+
+            with pytest.raises(ParsingError, match="Failed to extract file data"):
+                extractor._extract_metadata_sync(test_path)
+
+            mock_close.assert_called_once_with(mock_fd)
+            mock_unlink.assert_called_once()
+
+    def test_extract_metadata_sync_os_error(self, test_config: ExtractionConfig) -> None:
+        """Test sync metadata extraction with OS error."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        test_path = Path("/test/file.md")
+
+        with (
+            patch.object(extractor, "_get_pandoc_type_from_mime_type", return_value="markdown"),
+            patch("tempfile.mkstemp") as mock_mkstemp,
+            patch("os.close") as mock_close,
+            patch("subprocess.run", side_effect=OSError("Subprocess error")),
+            patch("pathlib.Path.unlink") as mock_unlink,
+        ):
+            # Mock temp file
+            mock_fd = 3
+            temp_path = "/tmp/metadata.json"
+            mock_mkstemp.return_value = (mock_fd, temp_path)
+
+            with pytest.raises(ParsingError, match="Failed to extract file data"):
+                extractor._extract_metadata_sync(test_path)
+
+            mock_close.assert_called_once_with(mock_fd)
+            mock_unlink.assert_called_once()
+
+    def test_extract_file_sync_os_error(self, test_config: ExtractionConfig) -> None:
+        """Test sync file extraction with OS error."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        test_path = Path("/test/file.md")
+
+        with (
+            patch.object(extractor, "_get_pandoc_type_from_mime_type", return_value="markdown"),
+            patch("tempfile.mkstemp") as mock_mkstemp,
+            patch("os.close") as mock_close,
+            patch("subprocess.run", side_effect=OSError("File error")),
+            patch("pathlib.Path.unlink") as mock_unlink,
+        ):
+            # Mock temp file
+            mock_fd = 3
+            temp_path = "/tmp/output.md"
+            mock_mkstemp.return_value = (mock_fd, temp_path)
+
+            with pytest.raises(ParsingError, match="Failed to extract file data"):
+                extractor._extract_file_sync(test_path)
+
+            mock_close.assert_called_once_with(mock_fd)
+            mock_unlink.assert_called_once()
+
+    def test_extract_file_sync_subprocess_error(self, test_config: ExtractionConfig) -> None:
+        """Test sync file extraction with subprocess error."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        test_path = Path("/test/file.md")
+
+        with (
+            patch.object(extractor, "_get_pandoc_type_from_mime_type", return_value="markdown"),
+            patch("tempfile.mkstemp") as mock_mkstemp,
+            patch("os.close") as mock_close,
+            patch("subprocess.run") as mock_run,
+            patch("pathlib.Path.unlink") as mock_unlink,
+        ):
+            # Mock temp file
+            mock_fd = 3
+            temp_path = "/tmp/output.md"
+            mock_mkstemp.return_value = (mock_fd, temp_path)
+
+            # Mock subprocess failure
+            mock_result = Mock()
+            mock_result.returncode = 1
+            mock_result.stderr = "Pandoc error"
+            mock_run.return_value = mock_result
+
+            with pytest.raises(ParsingError, match="Failed to extract file data"):
+                extractor._extract_file_sync(test_path)
+
+            mock_close.assert_called_once_with(mock_fd)
+            mock_unlink.assert_called_once()
+
+
+class TestPandocExtractorAsyncErrorsComprehensive:
+    """Test async methods error scenarios for comprehensive coverage."""
+
+    @pytest.mark.anyio
+    async def test_handle_extract_metadata_json_decode_error(self, test_config: ExtractionConfig) -> None:
+        """Test async metadata extraction with JSON decode error."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        test_file = Path("/test/file.md")
+
+        with (
+            patch.object(extractor, "_get_pandoc_type_from_mime_type", return_value="markdown"),
+            patch("kreuzberg._extractors._pandoc.create_temp_file") as mock_temp_file,
+            patch("kreuzberg._extractors._pandoc.run_process") as mock_run_process,
+        ):
+            # Mock temp file
+            mock_unlink = AsyncMock()
+            temp_path = "/tmp/metadata.json"
+            mock_temp_file.return_value = (temp_path, mock_unlink)
+
+            # Mock pandoc process success
+            mock_result = Mock()
+            mock_result.returncode = 0
+            mock_run_process.return_value = mock_result
+
+            # Mock file reading with invalid JSON
+            mock_path = AsyncMock()
+            mock_path.read_text.return_value = "invalid json"
+
+            with patch("kreuzberg._extractors._pandoc.AsyncPath", return_value=mock_path):
+                with pytest.raises(ParsingError, match="Failed to extract file data"):
+                    await extractor._handle_extract_metadata(test_file)
+
+            mock_unlink.assert_called_once()
+
+    @pytest.mark.anyio
+    async def test_handle_extract_metadata_os_error(self, test_config: ExtractionConfig) -> None:
+        """Test async metadata extraction with OS error."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        test_file = Path("/test/file.md")
+
+        with (
+            patch.object(extractor, "_get_pandoc_type_from_mime_type", return_value="markdown"),
+            patch("kreuzberg._extractors._pandoc.create_temp_file") as mock_temp_file,
+            patch("kreuzberg._extractors._pandoc.run_process", side_effect=OSError("Async OS error")),
+        ):
+            # Mock temp file
+            mock_unlink = AsyncMock()
+            temp_path = "/tmp/metadata.json"
+            mock_temp_file.return_value = (temp_path, mock_unlink)
+
+            with pytest.raises(ParsingError, match="Failed to extract file data"):
+                await extractor._handle_extract_metadata(test_file)
+
+            mock_unlink.assert_called_once()
+
+    @pytest.mark.anyio
+    async def test_handle_extract_file_os_error(self, test_config: ExtractionConfig) -> None:
+        """Test async file extraction with OS error."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        test_file = Path("/test/file.md")
+
+        with (
+            patch.object(extractor, "_get_pandoc_type_from_mime_type", return_value="markdown"),
+            patch("kreuzberg._extractors._pandoc.create_temp_file") as mock_temp_file,
+            patch("kreuzberg._extractors._pandoc.run_process", side_effect=OSError("File OS error")),
+        ):
+            # Mock temp file
+            mock_unlink = AsyncMock()
+            temp_path = "/tmp/output.md"
+            mock_temp_file.return_value = (temp_path, mock_unlink)
+
+            with pytest.raises(ParsingError, match="Failed to extract file data"):
+                await extractor._handle_extract_file(test_file)
+
+            mock_unlink.assert_called_once()
+
+
+class TestPandocExtractorMetadataEdgeCasesComprehensive:
+    """Test metadata extraction edge cases."""
+
+    def test_extract_meta_value_meta_blocks_no_para(self, test_config: ExtractionConfig) -> None:
+        """Test extracting MetaBlocks with no Para blocks."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        node = {
+            "t": "MetaBlocks",
+            "c": [
+                {"t": "Header", "c": [1, [], []]},  # Not a Para block
+                {"t": "CodeBlock", "c": ["", "code"]},  # Not a Para block
+            ],
+        }
+
+        result = extractor._extract_meta_value(node)
+        assert result is None
+
+    def test_extract_meta_value_meta_blocks_empty_para(self, test_config: ExtractionConfig) -> None:
+        """Test extracting MetaBlocks with empty Para blocks."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        node = {
+            "t": "MetaBlocks",
+            "c": [
+                {"t": "Para", "c": []},  # Empty Para
+                {"t": "Para", "c": None},  # Invalid content
+            ],
+        }
+
+        result = extractor._extract_meta_value(node)
+        assert result is None
+
+    def test_extract_meta_value_empty_content(self, test_config: ExtractionConfig) -> None:
+        """Test extracting meta value with empty content."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+
+        # Test empty list
+        node = {"t": "MetaList", "c": []}
+        result = extractor._extract_meta_value(node)
+        assert result is None
+
+        # Test None content
+        node_none: dict[str, Any] = {"t": "MetaString", "c": None}
+        result = extractor._extract_meta_value(node_none)
+        assert result is None
+
+    def test_extract_meta_value_non_dict_content(self, test_config: ExtractionConfig) -> None:
+        """Test extracting meta value with non-dict items in list."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        node = {
+            "t": "MetaList",
+            "c": [
+                "string_item",  # Not a dict
+                {"t": "MetaString", "c": "valid_item"},
+                123,  # Not a dict
+            ],
+        }
+
+        result = extractor._extract_meta_value(node)
+        assert result == ["valid_item"]
+
+    def test_extract_inline_text_empty_content(self, test_config: ExtractionConfig) -> None:
+        """Test extracting inline text with empty content."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+
+        # Test Emph with empty content
+        node = {"t": "Emph", "c": []}
+        result = extractor._extract_inline_text(node)
+        assert result is None
+
+        # Test Strong with None content
+        node_strong: dict[str, Any] = {"t": "Strong", "c": None}
+        result = extractor._extract_inline_text(node_strong)
+        assert result is None
+
+    def test_extract_inlines_with_empty_results(self, test_config: ExtractionConfig) -> None:
+        """Test extracting inlines that result in empty strings."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        nodes: list[dict[str, Any]] = [
+            {"t": "Unknown", "c": "content"},  # Returns None
+            {"t": "Str", "c": ""},  # Returns empty string
+            {"t": "Space", "c": None},  # Returns space
+        ]
+
+        result = extractor._extract_inlines(nodes)
+        assert result == " "  # Only the space remains after stripping
+
+    def test_extract_metadata_contributors_field(self, test_config: ExtractionConfig) -> None:
+        """Test metadata extraction with contributors field."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        raw_meta = {
+            "contributors": {"t": "MetaString", "c": "Contributor Name"},
+        }
+
+        result = extractor._extract_metadata(raw_meta)
+        assert result["authors"] == ["Contributor Name"]  # Mapped to authors and wrapped in list
+
+    def test_extract_metadata_languages_field(self, test_config: ExtractionConfig) -> None:
+        """Test metadata extraction with languages field (direct mapping)."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        raw_meta = {
+            "languages": {"t": "MetaString", "c": "en"},
+        }
+
+        result = extractor._extract_metadata(raw_meta)
+        assert result["languages"] == ["en"]  # Wrapped in list
+
+    def test_extract_metadata_invalid_citations_structure(self, test_config: ExtractionConfig) -> None:
+        """Test metadata extraction with invalid citations structure."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        raw_meta = {
+            "citations": "not_a_list",  # Invalid structure
+        }
+
+        result = extractor._extract_metadata(raw_meta)
+        assert "citations" not in result
+
+    def test_extract_metadata_blocks_invalid_citation_structure(self, test_config: ExtractionConfig) -> None:
+        """Test metadata extraction with invalid citation structure in blocks."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        raw_meta = {
+            "blocks": [
+                {"t": "Cite", "c": []},  # Empty content
+                {"t": "Cite", "c": [["not_a_dict"], []]},  # Invalid citation structure
+                {"t": "Cite"},  # Missing content field
+            ]
+        }
+
+        result = extractor._extract_metadata(raw_meta)
+        assert "citations" not in result
+
+
+class TestPandocExtractorVersionValidationEdgeCasesComprehensive:
+    """Test version validation edge cases."""
+
+    def test_validate_pandoc_version_sync_file_not_found(self, test_config: ExtractionConfig) -> None:
+        """Test sync version validation when pandoc is not found."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        extractor._checked_version = False
+
+        with patch("subprocess.run", side_effect=FileNotFoundError):
+            with pytest.raises(MissingDependencyError, match="Pandoc version 2 or above"):
+                extractor._validate_pandoc_version_sync()
+
+    def test_validate_pandoc_version_sync_already_checked(self, test_config: ExtractionConfig) -> None:
+        """Test sync version validation when already checked."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        extractor._checked_version = True
+
+        with patch("subprocess.run") as mock_run:
+            extractor._validate_pandoc_version_sync()
+            mock_run.assert_not_called()
+
+    def test_validate_pandoc_version_sync_complex_patterns(self, test_config: ExtractionConfig) -> None:
+        """Test sync version validation with complex version patterns."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+
+        version_strings = [
+            "pandoc version 3.1.2",
+            "pandoc (version 3.1.2)",
+            "pandoc-3.1.2",
+            "3.1.2\nSome other text",
+        ]
+
+        for version_string in version_strings:
+            extractor._checked_version = False
+            mock_result = Mock()
+            mock_result.returncode = 0
+            mock_result.stdout = version_string
+
+            with patch("subprocess.run", return_value=mock_result):
+                extractor._validate_pandoc_version_sync()
+                assert extractor._checked_version is True
+
+    def test_validate_pandoc_version_sync_no_match_found(self, test_config: ExtractionConfig) -> None:
+        """Test sync version validation when no version pattern matches."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        extractor._checked_version = False
+
+        mock_result = Mock()
+        mock_result.returncode = 0
+        mock_result.stdout = "Some output without recognizable version"
+
+        with patch("subprocess.run", return_value=mock_result):
+            with pytest.raises(MissingDependencyError, match="Pandoc version 2 or above"):
+                extractor._validate_pandoc_version_sync()
+
+
+class TestPandocExtractorMIMETypeHandlingComprehensive:
+    """Test MIME type handling edge cases."""
+
+    def test_get_pandoc_type_fallback_to_markdown(self, test_config: ExtractionConfig) -> None:
+        """Test fallback to markdown for text/markdown MIME type."""
+        extractor = PandocExtractor("text/markdown", test_config)
+        result = extractor._get_pandoc_type_from_mime_type("text/markdown")
+        assert result == "markdown"
+
+    def test_get_pandoc_type_prefix_matching(self, test_config: ExtractionConfig) -> None:
+        """Test prefix matching for MIME types."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+
+        # Should match by prefix
+        result = extractor._get_pandoc_type_from_mime_type("text/x-markdown; charset=utf-8")
+        assert result == "markdown"
+
+    def test_get_pandoc_key_all_mappings(self) -> None:
+        """Test all key mappings comprehensively."""
+        # Test all mapped keys
+        assert PandocExtractor._get_pandoc_key("abstract") == "summary"
+        assert PandocExtractor._get_pandoc_key("date") == "created_at"
+        assert PandocExtractor._get_pandoc_key("author") == "authors"
+        assert PandocExtractor._get_pandoc_key("contributors") == "authors"
+        assert PandocExtractor._get_pandoc_key("institute") == "organization"
+
+        # Test direct mappings (keys that exist in Metadata)
+        assert PandocExtractor._get_pandoc_key("title") == "title"
+        assert PandocExtractor._get_pandoc_key("subject") == "subject"
+        assert PandocExtractor._get_pandoc_key("keywords") == "keywords"
+
+        # Test unmapped keys
+        assert PandocExtractor._get_pandoc_key("unknown_field") is None
+        assert PandocExtractor._get_pandoc_key("random_key") is None
+
+
+class TestPandocExtractorComplexMetadataComprehensive:
+    """Test complex metadata scenarios."""
+
+    def test_extract_metadata_complex_nested_structure(self, test_config: ExtractionConfig) -> None:
+        """Test metadata extraction with complex nested structures."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        raw_meta = {
+            "title": {
+                "t": "MetaInlines",
+                "c": [
+                    {"t": "Str", "c": "Complex"},
+                    {"t": "Space", "c": None},
+                    {"t": "Emph", "c": [{"t": "Str", "c": "Title"}]},
+                ],
+            },
+            "authors": {
+                "t": "MetaList",
+                "c": [
+                    {
+                        "t": "MetaInlines",
+                        "c": [
+                            {"t": "Str", "c": "Author"},
+                            {"t": "Space", "c": None},
+                            {"t": "Str", "c": "One"},
+                        ],
+                    },
+                    {
+                        "t": "MetaInlines",
+                        "c": [{"t": "Str", "c": "Author"}, {"t": "Space", "c": None}, {"t": "Str", "c": "Two"}],
+                    },
+                ],
+            },
+            "abstract": {
+                "t": "MetaBlocks",
+                "c": [
+                    {
+                        "t": "Para",
+                        "c": [
+                            {"t": "Str", "c": "This"},
+                            {"t": "Space", "c": None},
+                            {"t": "Str", "c": "is"},
+                            {"t": "Space", "c": None},
+                            {"t": "Str", "c": "abstract."},
+                        ],
+                    },
+                    {
+                        "t": "Para",
+                        "c": [
+                            {"t": "Str", "c": "Second"},
+                            {"t": "Space", "c": None},
+                            {"t": "Str", "c": "paragraph."},
+                        ],
+                    },
+                ],
+            },
+        }
+
+        result = extractor._extract_metadata(raw_meta)
+        assert result["title"] == "Complex Title"
+        assert result["authors"] == ["Author One", "Author Two"]
+        assert result["summary"] == "This is abstract. Second paragraph."
+
+
+class TestPandocConstantsAndTypesComprehensive:
+    """Test constants and type definitions."""
+
+    def test_block_constants(self) -> None:
+        """Test that block constants are properly defined."""
+        from kreuzberg._extractors._pandoc import (
+            BLOCK_CODE,
+            BLOCK_HEADER,
+            BLOCK_LIST,
+            BLOCK_ORDERED,
+            BLOCK_PARA,
+            BLOCK_QUOTE,
+        )
+
+        assert BLOCK_HEADER == "Header"
+        assert BLOCK_PARA == "Para"
+        assert BLOCK_CODE == "CodeBlock"
+        assert BLOCK_QUOTE == "BlockQuote"
+        assert BLOCK_LIST == "BulletList"
+        assert BLOCK_ORDERED == "OrderedList"
+
+    def test_inline_constants(self) -> None:
+        """Test that inline constants are properly defined."""
+        from kreuzberg._extractors._pandoc import (
+            INLINE_CODE,
+            INLINE_EMPH,
+            INLINE_IMAGE,
+            INLINE_LINK,
+            INLINE_MATH,
+            INLINE_SPACE,
+            INLINE_STR,
+            INLINE_STRONG,
+        )
+
+        assert INLINE_STR == "Str"
+        assert INLINE_SPACE == "Space"
+        assert INLINE_EMPH == "Emph"
+        assert INLINE_STRONG == "Strong"
+        assert INLINE_LINK == "Link"
+        assert INLINE_IMAGE == "Image"
+        assert INLINE_CODE == "Code"
+        assert INLINE_MATH == "Math"
+
+    def test_meta_constants(self) -> None:
+        """Test that meta constants are properly defined."""
+        from kreuzberg._extractors._pandoc import (
+            META_BLOCKS,
+            META_INLINES,
+            META_LIST,
+            META_MAP,
+            META_STRING,
+        )
+
+        assert META_MAP == "MetaMap"
+        assert META_LIST == "MetaList"
+        assert META_INLINES == "MetaInlines"
+        assert META_STRING == "MetaString"
+        assert META_BLOCKS == "MetaBlocks"
+
+    def test_field_constants(self) -> None:
+        """Test that field constants are properly defined."""
+        from kreuzberg._extractors._pandoc import CONTENT_FIELD, TYPE_FIELD
+
+        assert CONTENT_FIELD == "c"
+        assert TYPE_FIELD == "t"
+
+    def test_mime_type_mappings_complete(self, test_config: ExtractionConfig) -> None:
+        """Test that all MIME type mappings are complete."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+
+        pandoc_types = extractor.MIMETYPE_TO_PANDOC_TYPE_MAPPING
+        extensions = extractor.MIMETYPE_TO_FILE_EXTENSION_MAPPING
+
+        # Every MIME type in pandoc mapping should have a file extension
+        for mime_type in pandoc_types:
+            assert mime_type in extensions, f"Missing file extension for MIME type: {mime_type}"
+
+    def test_file_cleanup_on_exception(self, test_config: ExtractionConfig) -> None:
+        """Test that temp files are cleaned up even when extraction fails."""
+        extractor = PandocExtractor("text/x-markdown", test_config)
+        content = b"# Test Content"
+
+        with (
+            patch.object(extractor, "_get_pandoc_type_from_mime_type", return_value="markdown"),
+            patch("tempfile.mkstemp") as mock_mkstemp,
+            patch("os.fdopen") as mock_fdopen,
+            patch.object(extractor, "extract_path_sync", side_effect=Exception("Test error")),
+            patch("pathlib.Path.unlink") as mock_unlink,
+        ):
+            # Mock temp file creation
+            mock_fd = 3
+            temp_path = "/tmp/test.md"
+            mock_mkstemp.return_value = (mock_fd, temp_path)
+
+            # Mock file writing
+            mock_file = Mock()
+            mock_fdopen.return_value.__enter__.return_value = mock_file
+
+            with pytest.raises(Exception, match="Test error"):
+                extractor.extract_bytes_sync(content)
+
+            # Ensure cleanup happened
+            mock_unlink.assert_called_once()

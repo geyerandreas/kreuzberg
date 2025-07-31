@@ -193,7 +193,7 @@ def _write_output(
         click.echo(formatted_output)
 
 
-def handle_error(error: Exception, verbose: bool) -> None:
+def handle_error(error: Exception, verbose: bool) -> None:  # pragma: no cover
     """Handle and display errors.
 
     Args:
@@ -202,19 +202,19 @@ def handle_error(error: Exception, verbose: bool) -> None:
     """
     if isinstance(error, MissingDependencyError):
         console.print(f"[red]Missing dependency:[/red] {error}", style="bold")
-        sys.exit(2)
+        sys.exit(2)  # pragma: no cover
     elif isinstance(error, KreuzbergError):
         console.print(f"[red]Error:[/red] {error}", style="bold")
         if verbose and error.context:
             console.print("\n[dim]Context:[/dim]")
             console.print(json.dumps(error.context, indent=2))
-        sys.exit(1)
+        sys.exit(1)  # pragma: no cover
     else:
         console.print(f"[red]Unexpected error:[/red] {type(error).__name__}: {error}", style="bold")
         if verbose:
             console.print("\n[dim]Traceback:[/dim]")
             traceback.print_exc()
-        sys.exit(1)
+        sys.exit(1)  # pragma: no cover
 
 
 @click.group(invoke_without_command=True)

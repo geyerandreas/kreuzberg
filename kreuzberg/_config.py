@@ -50,7 +50,13 @@ def load_config_from_file(config_path: Path) -> dict[str, Any]:
     # Handle both kreuzberg.toml (root level) and pyproject.toml ([tool.kreuzberg])
     if config_path.name == "kreuzberg.toml":
         return data  # type: ignore[no-any-return]
-    return data.get("tool", {}).get("kreuzberg", {})  # type: ignore[no-any-return]
+
+    # For other files, check if they have [tool.kreuzberg] section
+    if config_path.name == "pyproject.toml" or ("tool" in data and "kreuzberg" in data.get("tool", {})):
+        return data.get("tool", {}).get("kreuzberg", {})  # type: ignore[no-any-return]
+
+    # Otherwise assume root-level configuration
+    return data  # type: ignore[no-any-return]
 
 
 def merge_configs(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
@@ -129,12 +135,23 @@ def build_extraction_config_from_dict(config_dict: dict[str, Any]) -> Extraction
         "extract_keywords",
         "auto_detect_language",
         "enable_quality_processing",
+        "auto_detect_document_type",
+        "document_type_confidence_threshold",
+        "document_classification_mode",
+        "keyword_count",
     }
     extraction_config.update({field: config_dict[field] for field in basic_fields if field in config_dict})
 
     # Handle OCR backend configuration
     ocr_backend = extraction_config.get("ocr_backend")
     if ocr_backend and ocr_backend != "none":
+        # Validate OCR backend
+        valid_backends = {"tesseract", "easyocr", "paddleocr"}
+        if ocr_backend not in valid_backends:
+            raise ValidationError(
+                f"Invalid OCR backend: {ocr_backend}. Must be one of: {', '.join(sorted(valid_backends))} or 'none'",
+                context={"provided": ocr_backend, "valid": sorted(valid_backends)},
+            )
         ocr_config = parse_ocr_backend_config(config_dict, ocr_backend)
         if ocr_config:
             extraction_config["ocr_config"] = ocr_config
@@ -286,6 +303,10 @@ _CONFIG_FIELDS = [
     "extract_keywords",
     "auto_detect_language",
     "enable_quality_processing",
+    "auto_detect_document_type",
+    "document_type_confidence_threshold",
+    "document_classification_mode",
+    "keyword_count",
 ]
 
 

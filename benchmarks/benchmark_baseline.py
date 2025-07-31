@@ -108,7 +108,7 @@ async def run_baseline_benchmark() -> dict[str, object] | None:
     return results  # type: ignore[return-value]
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     baseline_results = asyncio.run(run_baseline_benchmark())
 
     baseline_file = Path("baseline_results.json")

@@ -268,7 +268,7 @@ def extract_structured(file_path: str) -> list[TextContent]:
     return [TextContent(type="text", text=content)]
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover
     """Main entry point for the MCP server."""
     mcp.run()
 

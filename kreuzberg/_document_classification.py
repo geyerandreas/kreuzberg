@@ -4,12 +4,11 @@ import re
 from typing import TYPE_CHECKING
 
 from kreuzberg._ocr import get_ocr_backend
+from kreuzberg._types import ExtractionConfig, ExtractionResult  # noqa: TC001
 from kreuzberg.exceptions import MissingDependencyError
 
 if TYPE_CHECKING:
     from pathlib import Path
-
-    from kreuzberg._types import ExtractionConfig, ExtractionResult
 
 
 DOCUMENT_CLASSIFIERS = {
@@ -52,6 +51,13 @@ def _get_translated_text(result: ExtractionResult) -> str:
     Raises:
         MissingDependencyError: If the deep-translator package is not installed
     """
+    # Combine content with metadata for classification
+    text_to_classify = result.content
+    if result.metadata:
+        # Add metadata values to the text for classification
+        metadata_text = " ".join(str(value) for value in result.metadata.values() if value)
+        text_to_classify = f"{text_to_classify} {metadata_text}"
+
     try:
         from deep_translator import GoogleTranslator  # noqa: PLC0415
     except ImportError as e:  # pragma: no cover
@@ -60,10 +66,10 @@ def _get_translated_text(result: ExtractionResult) -> str:
         ) from e
 
     try:
-        return str(GoogleTranslator(source="auto", target="en").translate(result.content).lower())
+        return str(GoogleTranslator(source="auto", target="en").translate(text_to_classify).lower())
     except Exception:  # noqa: BLE001
         # Fall back to original content in lowercase if translation fails
-        return result.content.lower()
+        return text_to_classify.lower()
 
 
 def classify_document(result: ExtractionResult, config: ExtractionConfig) -> tuple[str | None, float | None]:
@@ -77,6 +83,9 @@ def classify_document(result: ExtractionResult, config: ExtractionConfig) -> tup
         A tuple containing the detected document type and the confidence score,
         or (None, None) if no type is detected with sufficient confidence.
     """
+    if not config.auto_detect_document_type:
+        return None, None
+
     translated_text = _get_translated_text(result)
     scores = dict.fromkeys(DOCUMENT_CLASSIFIERS, 0)
 
@@ -112,7 +121,8 @@ def classify_document_from_layout(
         A tuple containing the detected document type and the confidence score,
         or (None, None) if no type is detected with sufficient confidence.
     """
-    translated_text = _get_translated_text(result)
+    if not config.auto_detect_document_type:
+        return None, None
 
     if result.layout is None or result.layout.empty:
         return None, None
@@ -120,6 +130,24 @@ def classify_document_from_layout(
     layout_df = result.layout
     if not all(col in layout_df.columns for col in ["text", "top", "height"]):
         return None, None
+
+    # Use layout text for classification, not the content
+    layout_text = " ".join(layout_df["text"].astype(str).tolist())
+
+    # Translate layout text directly for classification
+    text_to_classify = layout_text
+    if result.metadata:
+        # Add metadata values to the text for classification
+        metadata_text = " ".join(str(value) for value in result.metadata.values() if value)
+        text_to_classify = f"{text_to_classify} {metadata_text}"
+
+    try:
+        from deep_translator import GoogleTranslator  # noqa: PLC0415
+
+        translated_text = str(GoogleTranslator(source="auto", target="en").translate(text_to_classify).lower())
+    except Exception:  # noqa: BLE001
+        # Fall back to original content in lowercase if translation fails
+        translated_text = text_to_classify.lower()
 
     layout_df["translated_text"] = translated_text
 
@@ -155,6 +183,9 @@ def auto_detect_document_type(
     if config.document_classification_mode == "vision" and file_path:
         layout_result = get_ocr_backend("tesseract").process_file_sync(file_path, **config.get_config_dict())
         result.document_type, result.document_type_confidence = classify_document_from_layout(layout_result, config)
+    elif result.layout is not None and not result.layout.empty:
+        # Use layout-based classification if layout data is available
+        result.document_type, result.document_type_confidence = classify_document_from_layout(result, config)
     else:
         result.document_type, result.document_type_confidence = classify_document(result, config)
     return result
