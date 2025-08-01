@@ -88,14 +88,12 @@ class PDFExtractor(Extractor):
             # Enhance metadata with table information
             if result.tables:
                 table_summary = generate_table_summary(result.tables)
-                result.metadata.update(
-                    {
-                        "table_count": table_summary["table_count"],
-                        "tables_summary": f"Document contains {table_summary['table_count']} tables "
-                        f"across {table_summary['pages_with_tables']} pages with "
-                        f"{table_summary['total_rows']} total rows",
-                    }
-                )
+                result.metadata = result.metadata | {
+                    "table_count": table_summary["table_count"],
+                    "tables_summary": f"Document contains {table_summary['table_count']} tables "
+                    f"across {table_summary['pages_with_tables']} pages with "
+                    f"{table_summary['total_rows']} total rows",
+                }
 
         return self._apply_quality_processing(result)
 
@@ -153,14 +151,12 @@ class PDFExtractor(Extractor):
         # Enhance metadata with table information
         if tables:
             table_summary = generate_table_summary(tables)
-            result.metadata.update(
-                {
-                    "table_count": table_summary["table_count"],
-                    "tables_summary": f"Document contains {table_summary['table_count']} tables "
-                    f"across {table_summary['pages_with_tables']} pages with "
-                    f"{table_summary['total_rows']} total rows",
-                }
-            )
+            result.metadata = result.metadata | {
+                "table_count": table_summary["table_count"],
+                "tables_summary": f"Document contains {table_summary['table_count']} tables "
+                f"across {table_summary['pages_with_tables']} pages with "
+                f"{table_summary['total_rows']} total rows",
+            }
 
         # Apply quality processing
         return self._apply_quality_processing(result)
@@ -386,23 +382,24 @@ class PDFExtractor(Extractor):
         backend = get_ocr_backend(self.config.ocr_backend)
         paths = [Path(p) for p in image_paths]
 
-        if self.config.ocr_backend == "tesseract":
-            config = (
-                self.config.ocr_config if isinstance(self.config.ocr_config, TesseractConfig) else TesseractConfig()
-            )
-            results = backend.process_batch_sync(paths, **asdict(config))
-        elif self.config.ocr_backend == "paddleocr":
-            paddle_config = (
-                self.config.ocr_config if isinstance(self.config.ocr_config, PaddleOCRConfig) else PaddleOCRConfig()
-            )
-            results = backend.process_batch_sync(paths, **asdict(paddle_config))
-        elif self.config.ocr_backend == "easyocr":
-            easy_config = (
-                self.config.ocr_config if isinstance(self.config.ocr_config, EasyOCRConfig) else EasyOCRConfig()
-            )
-            results = backend.process_batch_sync(paths, **asdict(easy_config))
-        else:
-            raise NotImplementedError(f"Sync OCR not implemented for {self.config.ocr_backend}")
+        match self.config.ocr_backend:
+            case "tesseract":
+                config = (
+                    self.config.ocr_config if isinstance(self.config.ocr_config, TesseractConfig) else TesseractConfig()
+                )
+                results = backend.process_batch_sync(paths, **asdict(config))
+            case "paddleocr":
+                paddle_config = (
+                    self.config.ocr_config if isinstance(self.config.ocr_config, PaddleOCRConfig) else PaddleOCRConfig()
+                )
+                results = backend.process_batch_sync(paths, **asdict(paddle_config))
+            case "easyocr":
+                easy_config = (
+                    self.config.ocr_config if isinstance(self.config.ocr_config, EasyOCRConfig) else EasyOCRConfig()
+                )
+                results = backend.process_batch_sync(paths, **asdict(easy_config))
+            case _:
+                raise NotImplementedError(f"Sync OCR not implemented for {self.config.ocr_backend}")
 
         # Use list comprehension and join for efficient string building
         return "\n\n".join(result.content for result in results)

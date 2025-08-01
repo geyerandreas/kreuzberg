@@ -85,23 +85,24 @@ class ImageExtractor(Extractor):
 
         backend = get_ocr_backend(self.config.ocr_backend)
 
-        if self.config.ocr_backend == "tesseract":
-            config = (
-                self.config.ocr_config if isinstance(self.config.ocr_config, TesseractConfig) else TesseractConfig()
-            )
-            result = backend.process_file_sync(path, **asdict(config))
-        elif self.config.ocr_backend == "paddleocr":
-            paddle_config = (
-                self.config.ocr_config if isinstance(self.config.ocr_config, PaddleOCRConfig) else PaddleOCRConfig()
-            )
-            result = backend.process_file_sync(path, **asdict(paddle_config))
-        elif self.config.ocr_backend == "easyocr":
-            easy_config = (
-                self.config.ocr_config if isinstance(self.config.ocr_config, EasyOCRConfig) else EasyOCRConfig()
-            )
-            result = backend.process_file_sync(path, **asdict(easy_config))
-        else:
-            raise NotImplementedError(f"Sync OCR not implemented for {self.config.ocr_backend}")
+        match self.config.ocr_backend:
+            case "tesseract":
+                config = (
+                    self.config.ocr_config if isinstance(self.config.ocr_config, TesseractConfig) else TesseractConfig()
+                )
+                result = backend.process_file_sync(path, **asdict(config))
+            case "paddleocr":
+                paddle_config = (
+                    self.config.ocr_config if isinstance(self.config.ocr_config, PaddleOCRConfig) else PaddleOCRConfig()
+                )
+                result = backend.process_file_sync(path, **asdict(paddle_config))
+            case "easyocr":
+                easy_config = (
+                    self.config.ocr_config if isinstance(self.config.ocr_config, EasyOCRConfig) else EasyOCRConfig()
+                )
+                result = backend.process_file_sync(path, **asdict(easy_config))
+            case _:
+                raise NotImplementedError(f"Sync OCR not implemented for {self.config.ocr_backend}")
         return self._apply_quality_processing(result)
 
     def _get_extension_from_mime_type(self, mime_type: str) -> str:

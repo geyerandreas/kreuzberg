@@ -116,8 +116,7 @@ class Extractor(ABC):
         quality_score = calculate_quality_score(cleaned_content, dict(result.metadata) if result.metadata else None)
 
         # Add quality metadata
-        enhanced_metadata = dict(result.metadata) if result.metadata else {}
-        enhanced_metadata["quality_score"] = quality_score
+        enhanced_metadata = (dict(result.metadata) if result.metadata else {}) | {"quality_score": quality_score}
 
         # Return enhanced result
         return ExtractionResult(

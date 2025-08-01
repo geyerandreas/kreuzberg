@@ -349,7 +349,7 @@ class ExtractionConfig:
     """Configuration for language detection. If None, uses default settings."""
     spacy_entity_extraction_config: SpacyEntityExtractionConfig | None = None
     """Configuration for spaCy entity extraction. If None, uses default settings."""
-    auto_detect_document_type: bool = True
+    auto_detect_document_type: bool = False
     """Whether to automatically detect the document type."""
     document_type_confidence_threshold: float = 0.5
     """Confidence threshold for document type detection."""
@@ -398,15 +398,16 @@ class ExtractionConfig:
             return asdict(self.ocr_config)
 
         # Lazy load and cache default configs instead of creating new instances
-        if self.ocr_backend == "tesseract":
-            from kreuzberg._ocr._tesseract import TesseractConfig  # noqa: PLC0415
+        match self.ocr_backend:
+            case "tesseract":
+                from kreuzberg._ocr._tesseract import TesseractConfig  # noqa: PLC0415
 
-            return asdict(TesseractConfig())
-        if self.ocr_backend == "easyocr":
-            from kreuzberg._ocr._easyocr import EasyOCRConfig  # noqa: PLC0415
+                return asdict(TesseractConfig())
+            case "easyocr":
+                from kreuzberg._ocr._easyocr import EasyOCRConfig  # noqa: PLC0415
 
-            return asdict(EasyOCRConfig())
-        # paddleocr
-        from kreuzberg._ocr._paddleocr import PaddleOCRConfig  # noqa: PLC0415
+                return asdict(EasyOCRConfig())
+            case _:  # paddleocr or any other backend
+                from kreuzberg._ocr._paddleocr import PaddleOCRConfig  # noqa: PLC0415
 
-        return asdict(PaddleOCRConfig())
+                return asdict(PaddleOCRConfig())

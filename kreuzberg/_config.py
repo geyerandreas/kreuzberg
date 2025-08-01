@@ -97,19 +97,21 @@ def parse_ocr_backend_config(
     if not isinstance(backend_config, dict):
         return None
 
-    if backend == "tesseract":
-        # Convert psm integer to PSMMode enum if needed
-        processed_config = backend_config.copy()
-        if "psm" in processed_config and isinstance(processed_config["psm"], int):
-            from kreuzberg._ocr._tesseract import PSMMode  # noqa: PLC0415
+    match backend:
+        case "tesseract":
+            # Convert psm integer to PSMMode enum if needed
+            processed_config = backend_config.copy()
+            if "psm" in processed_config and isinstance(processed_config["psm"], int):
+                from kreuzberg._ocr._tesseract import PSMMode  # noqa: PLC0415
 
-            processed_config["psm"] = PSMMode(processed_config["psm"])
-        return TesseractConfig(**processed_config)
-    if backend == "easyocr":
-        return EasyOCRConfig(**backend_config)
-    if backend == "paddleocr":
-        return PaddleOCRConfig(**backend_config)
-    return None
+                processed_config["psm"] = PSMMode(processed_config["psm"])
+            return TesseractConfig(**processed_config)
+        case "easyocr":
+            return EasyOCRConfig(**backend_config)
+        case "paddleocr":
+            return PaddleOCRConfig(**backend_config)
+        case _:
+            return None
 
 
 def build_extraction_config_from_dict(config_dict: dict[str, Any]) -> ExtractionConfig:
@@ -140,7 +142,9 @@ def build_extraction_config_from_dict(config_dict: dict[str, Any]) -> Extraction
         "document_classification_mode",
         "keyword_count",
     }
-    extraction_config.update({field: config_dict[field] for field in basic_fields if field in config_dict})
+    extraction_config = extraction_config | {
+        field: config_dict[field] for field in basic_fields if field in config_dict
+    }
 
     # Handle OCR backend configuration
     ocr_backend = extraction_config.get("ocr_backend")

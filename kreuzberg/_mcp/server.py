@@ -51,7 +51,7 @@ def _create_config_with_overrides(**kwargs: Any) -> ExtractionConfig:
     }
 
     # Override with provided parameters
-    config_dict.update(kwargs)
+    config_dict = config_dict | kwargs
 
     return ExtractionConfig(**config_dict)
 
