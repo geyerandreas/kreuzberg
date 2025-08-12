@@ -7,7 +7,6 @@ from importlib.util import find_spec
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal
 
-import numpy as np
 from PIL import Image
 
 from kreuzberg._mime_types import PLAIN_TEXT_MIME_TYPE
@@ -380,6 +379,8 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         Raises:
             OCRError: If OCR processing fails.
         """
+        import numpy as np  # noqa: PLC0415
+
         self._init_paddle_ocr_sync(**kwargs)
 
         if image.mode != "RGB":
