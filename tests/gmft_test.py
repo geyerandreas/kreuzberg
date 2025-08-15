@@ -669,6 +669,125 @@ class TestGMFTInlineExtractionEdgeCases:
             pytest.skip("GMFT dependency not available for inline testing")
 
 
+class TestGMFTWithoutTables:
+    """Test GMFT behavior with PDFs that have no tables - issue #104."""
+
+    @pytest.mark.anyio
+    async def test_extract_tables_pdf_without_tables_async(self) -> None:
+        """Test that extract_tables handles PDFs without tables gracefully (async)."""
+        pdf_path = Path("tests/test_source_files/searchable.pdf")
+
+        try:
+            tables = await extract_tables(pdf_path)
+
+            assert isinstance(tables, list)
+
+            for table in tables:
+                assert "page_number" in table
+                assert "text" in table
+                assert "df" in table
+                assert "cropped_image" in table
+
+                import pandas as pd
+
+                assert isinstance(table["df"], pd.DataFrame)
+        except MissingDependencyError:
+            pytest.skip("GMFT dependency not installed")
+
+    def test_extract_tables_pdf_without_tables_sync(self) -> None:
+        """Test that extract_tables_sync handles PDFs without tables gracefully (sync)."""
+        # Using searchable.pdf which is a simple text PDF without tables
+        pdf_path = Path("tests/test_source_files/searchable.pdf")
+
+        try:
+            tables = extract_tables_sync(pdf_path)
+
+            assert isinstance(tables, list)
+
+            for table in tables:
+                assert "page_number" in table
+                assert "text" in table
+                assert "df" in table
+                assert "cropped_image" in table
+
+                import pandas as pd
+
+                assert isinstance(table["df"], pd.DataFrame)
+        except MissingDependencyError:
+            pytest.skip("GMFT dependency not installed")
+
+    @pytest.mark.anyio
+    async def test_extract_file_with_gmft_pdf_without_tables(self) -> None:
+        """Test that extract_file with extract_tables=True handles PDFs without tables gracefully."""
+        pdf_path = Path("tests/test_source_files/searchable.pdf")
+
+        config = ExtractionConfig(
+            extract_tables=True,
+            gmft_config=GMFTConfig(
+                detector_base_threshold=0.85,
+                remove_null_rows=True,
+                enable_multi_header=True,
+            ),
+        )
+
+        try:
+            result = await extract_file(pdf_path, config=config)
+
+            assert result.content
+            assert "Sample PDF" in result.content
+
+            assert hasattr(result, "tables")
+            assert isinstance(result.tables, list)
+
+            for table in result.tables:
+                assert "page_number" in table
+                assert "text" in table
+                assert "df" in table
+                assert "cropped_image" in table
+
+                import pandas as pd
+
+                assert isinstance(table["df"], pd.DataFrame)
+        except MissingDependencyError:
+            pytest.skip("GMFT dependency not installed")
+
+    def test_extract_file_sync_with_gmft_pdf_without_tables(self) -> None:
+        """Test that extract_file_sync with extract_tables=True handles PDFs without tables gracefully."""
+        pdf_path = Path("tests/test_source_files/searchable.pdf")
+
+        from kreuzberg.extraction import extract_file_sync
+
+        config = ExtractionConfig(
+            extract_tables=True,
+            gmft_config=GMFTConfig(
+                detector_base_threshold=0.85,
+                remove_null_rows=True,
+                enable_multi_header=True,
+            ),
+        )
+
+        try:
+            result = extract_file_sync(pdf_path, config=config)
+
+            assert result.content
+            assert "Sample PDF" in result.content
+
+            assert hasattr(result, "tables")
+            assert isinstance(result.tables, list)
+
+            for table in result.tables:
+                assert "page_number" in table
+                assert "text" in table
+                assert "df" in table
+                assert "cropped_image" in table
+
+                import pandas as pd
+
+                assert isinstance(table["df"], pd.DataFrame)
+        except MissingDependencyError:
+            pytest.skip("GMFT dependency not installed")
+
+
 class TestGMFTConfigSerialization:
     """Test GMFTConfig serialization for multiprocessing."""
 

@@ -444,14 +444,26 @@ def _extract_tables_in_process(
                 cropped_image.save(img_bytes, format="PNG")
                 img_bytes.seek(0)
 
-                results.append(
-                    {
-                        "cropped_image_bytes": img_bytes.getvalue(),
-                        "page_number": cropped_table.page.page_number,
-                        "text": data_frame.to_markdown(),
-                        "df_csv": data_frame.to_csv(index=False),
-                    }
-                )
+                if data_frame.empty:
+                    results.append(
+                        {
+                            "cropped_image_bytes": img_bytes.getvalue(),
+                            "page_number": cropped_table.page.page_number,
+                            "text": data_frame.to_markdown(),
+                            "df_columns": data_frame.columns.tolist(),
+                            "df_csv": None,
+                        }
+                    )
+                else:
+                    results.append(
+                        {
+                            "cropped_image_bytes": img_bytes.getvalue(),
+                            "page_number": cropped_table.page.page_number,
+                            "text": data_frame.to_markdown(),
+                            "df_columns": None,
+                            "df_csv": data_frame.to_csv(index=False),
+                        }
+                    )
 
             result_queue.put((True, results))
 
@@ -532,7 +544,10 @@ def _extract_tables_isolated(
                 img = Image.open(io.BytesIO(table_dict["cropped_image_bytes"]))
                 import pandas as pd  # noqa: PLC0415
 
-                df = pd.read_csv(StringIO(table_dict["df_csv"]))
+                if table_dict["df_csv"] is None:
+                    df = pd.DataFrame(columns=table_dict["df_columns"])
+                else:
+                    df = pd.read_csv(StringIO(table_dict["df_csv"]))
 
                 tables.append(
                     TableData(
@@ -638,7 +653,10 @@ async def _extract_tables_isolated_async(
                 img = Image.open(io.BytesIO(table_dict["cropped_image_bytes"]))
                 import pandas as pd  # noqa: PLC0415
 
-                df = pd.read_csv(StringIO(table_dict["df_csv"]))
+                if table_dict["df_csv"] is None:
+                    df = pd.DataFrame(columns=table_dict["df_columns"])
+                else:
+                    df = pd.read_csv(StringIO(table_dict["df_csv"]))
 
                 tables.append(
                     TableData(
