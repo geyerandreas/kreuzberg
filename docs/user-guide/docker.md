@@ -6,39 +6,71 @@ Kreuzberg provides official Docker images for easy deployment and containerized 
 
 Docker images are available on [Docker Hub](https://hub.docker.com/r/goldziher/kreuzberg):
 
+### Image Sizes Overview
+
+| Image            | Compressed Size | Uncompressed | What's Included                 |
+| ---------------- | --------------- | ------------ | ------------------------------- |
+| `latest`         | 258MB           | 1.2GB        | Core + Tesseract OCR            |
+| `latest-paddle`  | 837MB           | ~3GB         | Core + PaddleOCR models         |
+| `latest-gmft`    | 8.0GB           | ~15GB        | Core + Table Transformer models |
+| `latest-easyocr` | 8.2GB           | ~15GB        | Core + EasyOCR language models  |
+| `latest-all`     | 9.0GB           | ~18GB        | Everything (testing only)       |
+
+> **Note**: Large images (GMFT, EasyOCR) include pre-trained deep learning models which account for most of the size. These models are necessary for their advanced capabilities.
+
 ### Core Image
 
 - **Image**: `goldziher/kreuzberg:latest`
-- **Size**: 258MB compressed (1.2GB uncompressed)
+- **Size**: 258MB compressed (1.2GB when pulled)
 - **Includes**: Base library + API server + Tesseract OCR
-- **Use Case**: Basic text extraction from documents
+- **Use Case**: Basic text extraction, simple OCR tasks
 - **Limitations**: No chunking, language detection, entity extraction, or alternative OCR backends
 
 ### OCR Backend Variants
 
-- **EasyOCR**: `goldziher/kreuzberg:latest-easyocr` (8.2GB compressed)
+- **PaddleOCR**: `goldziher/kreuzberg:latest-paddle`
 
-    - Deep learning-based OCR with support for 80+ languages
-    - Better accuracy for complex layouts and handwriting
-
-- **PaddleOCR**: `goldziher/kreuzberg:latest-paddle` (837MB compressed)
-
+    - **Size**: 837MB compressed
     - Lightweight deep learning OCR
     - Good balance between size and accuracy
+    - Supports multiple languages with smaller models
+
+- **EasyOCR**: `goldziher/kreuzberg:latest-easyocr`
+
+    - **Size**: 8.2GB compressed
+    - Includes models for 80+ languages
+    - Better accuracy for complex layouts and handwriting
+    - Size is due to comprehensive language model collection
 
 ### Table Extraction
 
-- **GMFT**: `goldziher/kreuzberg:latest-gmft` (8.0GB compressed)
+- **GMFT**: `goldziher/kreuzberg:latest-gmft`
+    - **Size**: 8.0GB compressed
     - Advanced table detection and extraction from PDFs
     - Uses Microsoft's Table Transformer models
+    - Large size due to transformer-based deep learning models
 
 ### All-in-One (Testing Only)
 
 - **Image**: `goldziher/kreuzberg:latest-all`
 - **Size**: 9.0GB compressed
 - **⚠️ WARNING**: For testing only, NOT for production use
-- **Includes**: All OCR backends and features
-- **Why not production?**: Unnecessarily large, includes conflicting dependencies, slower startup
+- **Includes ALL features**:
+    - ✅ API server with OpenTelemetry instrumentation
+    - ✅ Text chunking (semantic-text-splitter)
+    - ✅ CLI with rich output
+    - ✅ PDF encryption/decryption support
+    - ✅ Document classification (deep-translator, pandas)
+    - ✅ Language detection (fast-langdetect)
+    - ✅ Entity extraction (KeyBERT, spaCy)
+    - ✅ Table extraction (GMFT with Table Transformer)
+    - ✅ ALL OCR backends (Tesseract, EasyOCR, PaddleOCR)
+    - ✅ Email parsing support (mailparse)
+- **Why not production?**:
+    - Unnecessarily large for most use cases
+    - Includes redundant models (both EasyOCR and PaddleOCR)
+    - Slower container startup time
+    - Higher memory footprint (~4GB+ RAM needed)
 
 ## Quick Start
 
