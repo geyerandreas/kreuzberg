@@ -84,11 +84,11 @@ def format_extraction_result(result: ExtractionResult, show_metadata: bool, outp
     return "\n".join(output_parts)
 
 
-def _load_config(config: Path | None, verbose: bool) -> dict[str, Any]:
+def _load_config(config_path: Path | None, verbose: bool) -> dict[str, Any]:
     """Load configuration from file or find default."""
     file_config = {}
-    if config:
-        file_config = load_config_from_file(config)
+    if config_path:
+        file_config = load_config_from_file(config_path)
     else:
         default_config = find_config_file()
         if default_config:
@@ -248,7 +248,7 @@ def cli(ctx: click.Context) -> None:
 @click.option(
     "--ocr-backend", type=OcrBackendParamType(), help="OCR backend to use (tesseract, easyocr, paddleocr, none)"
 )
-@click.option("--config", type=click.Path(exists=True, path_type=Path), help="Configuration file path")
+@click.option("--config", "config_file", type=click.Path(exists=True, path_type=Path), help="Configuration file path")
 @click.option("--show-metadata", is_flag=True, help="Include metadata in output")
 @click.option("--output-format", type=click.Choice(["text", "json"]), default="text", help="Output format")
 @click.option("-v", "--verbose", is_flag=True, help="Verbose output for debugging")
@@ -267,7 +267,7 @@ def extract(  # noqa: PLR0913
     max_chars: int,
     max_overlap: int,
     ocr_backend: str | None,
-    config: Path | None,
+    config_file: Path | None,
     show_metadata: bool,
     output_format: str,
     verbose: bool,
@@ -282,7 +282,7 @@ def extract(  # noqa: PLR0913
     If FILE is omitted, reads from stdin.
     """
     try:
-        file_config = _load_config(config, verbose)
+        file_config = _load_config(config_file, verbose)
 
         cli_args = _build_cli_args(
             force_ocr,
@@ -308,11 +308,11 @@ def extract(  # noqa: PLR0913
 
 
 @cli.command()
-@click.option("--config", type=click.Path(exists=True, path_type=Path), help="Configuration file path")
-def config(config: Path | None) -> None:
+@click.option("--config", "config_file", type=click.Path(exists=True, path_type=Path), help="Configuration file path")
+def config(config_file: Path | None) -> None:
     """Show current configuration."""
     try:
-        config_path = config or find_config_file()
+        config_path = config_file or find_config_file()
 
         if config_path:
             file_config = load_config_from_file(config_path)
