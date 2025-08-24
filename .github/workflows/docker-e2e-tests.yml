@@ -78,46 +78,44 @@ jobs:
           export DOCKER_BUILDKIT=1
           export BUILDKIT_PROGRESS=plain
 
-          # Build all test images in parallel
+          # Build all test images sequentially for reliability
           echo "Building Docker images for E2E tests..."
 
-          # Core and EasyOCR in parallel
+          echo "Building core image..."
           docker build -f .docker/Dockerfile \
             --build-arg EXTRAS="" \
             -t kreuzberg:core \
             --cache-from type=gha \
             --cache-to type=gha,mode=max \
             --load \
-            . &
+            .
 
+          echo "Building easyocr image..."
           docker build -f .docker/Dockerfile \
             --build-arg EXTRAS="easyocr" \
             -t kreuzberg:easyocr \
             --cache-from type=gha \
             --cache-to type=gha,mode=max \
             --load \
-            . &
+            .
 
-          wait
-
-          # PaddleOCR and GMFT in parallel
+          echo "Building paddle image..."
           docker build -f .docker/Dockerfile \
             --build-arg EXTRAS="paddleocr" \
             -t kreuzberg:paddle \
             --cache-from type=gha \
             --cache-to type=gha,mode=max \
             --load \
-            . &
+            .
 
+          echo "Building gmft image..."
           docker build -f .docker/Dockerfile \
             --build-arg EXTRAS="gmft" \
             -t kreuzberg:gmft \
             --cache-from type=gha \
             --cache-to type=gha,mode=max \
             --load \
-            . &
-
-          wait
+            .
 
           # List built images
           echo "Built images:"

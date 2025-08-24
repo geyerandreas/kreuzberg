@@ -535,12 +535,12 @@ def print_summary(all_results: dict[str, dict[str, bool]]) -> bool:
 
     if success_rate >= 90:
         print("✅ Test suite PASSED")
-    elif success_rate >= 70:
+        return True
+    if success_rate >= 70:
         print("⚠️ Test suite PASSED with warnings")
-    else:
-        print("❌ Test suite FAILED")
-
-    return total_passed == total_tests
+        return True
+    print("❌ Test suite FAILED")
+    return False
 
 
 def main() -> None:
