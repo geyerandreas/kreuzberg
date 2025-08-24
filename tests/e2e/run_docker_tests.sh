@@ -1,8 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-# Enhanced Kreuzberg Docker E2E Test Runner with security and error handling
-# This script builds and tests all Docker images with comprehensive validation
+# Kreuzberg Docker E2E Test Runner
+# Builds and tests all Docker images
 
 echo "=============================================="
 echo "Kreuzberg Docker E2E Test Suite"
@@ -14,16 +14,16 @@ DOCKERFILE="${DOCKER_DIR}/Dockerfile"
 BUILD_ARGS="${BUILD_ARGS:-}"
 SKIP_BUILD="${SKIP_BUILD:-false}"
 CLEANUP="${CLEANUP:-false}"
-TEST_MODE="${TEST_MODE:-standard}"  # standard or comprehensive
+TEST_MODE="${TEST_MODE:-standard}"
 LOG_DIR="${LOG_DIR:-tests/e2e/logs}"
 MAX_PARALLEL_BUILDS="${MAX_PARALLEL_BUILDS:-2}"
 
-# Color codes for output
+# Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 # Create log directory
 mkdir -p "$LOG_DIR"
@@ -299,7 +299,7 @@ show_help() {
     cat << EOF
 Usage: $0 [OPTIONS]
 
-Enhanced Docker E2E Test Runner for Kreuzberg
+Docker E2E Test Runner for Kreuzberg
 
 OPTIONS:
     --skip-build        Skip building Docker images

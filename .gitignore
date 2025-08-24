@@ -40,3 +40,5 @@ site/
 .cache/
 dist/
 .task/
+tests/e2e/test_report.json
+tests/e2e/logs/
