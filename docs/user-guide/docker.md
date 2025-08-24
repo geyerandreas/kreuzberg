@@ -9,33 +9,33 @@ Docker images are available on [Docker Hub](https://hub.docker.com/r/goldziher/k
 ### Core Image
 
 - **Image**: `goldziher/kreuzberg:latest`
-- **Size**: ~270MB
+- **Size**: 258MB compressed (1.2GB uncompressed)
 - **Includes**: Base library + API server + Tesseract OCR
 - **Use Case**: Basic text extraction from documents
 - **Limitations**: No chunking, language detection, entity extraction, or alternative OCR backends
 
 ### OCR Backend Variants
 
-- **EasyOCR**: `goldziher/kreuzberg:latest-easyocr` (~8.7GB)
+- **EasyOCR**: `goldziher/kreuzberg:latest-easyocr` (8.2GB compressed)
 
     - Deep learning-based OCR with support for 80+ languages
     - Better accuracy for complex layouts and handwriting
 
-- **PaddleOCR**: `goldziher/kreuzberg:latest-paddle` (~878MB)
+- **PaddleOCR**: `goldziher/kreuzberg:latest-paddle` (837MB compressed)
 
     - Lightweight deep learning OCR
     - Good balance between size and accuracy
 
 ### Table Extraction
 
-- **GMFT**: `goldziher/kreuzberg:latest-gmft` (~8.6GB)
+- **GMFT**: `goldziher/kreuzberg:latest-gmft` (8.0GB compressed)
     - Advanced table detection and extraction from PDFs
     - Uses Microsoft's Table Transformer models
 
 ### All-in-One (Testing Only)
 
 - **Image**: `goldziher/kreuzberg:latest-all`
-- **Size**: ~9.6GB
+- **Size**: 9.0GB compressed
 - **⚠️ WARNING**: For testing only, NOT for production use
 - **Includes**: All OCR backends and features
 - **Why not production?**: Unnecessarily large, includes conflicting dependencies, slower startup
