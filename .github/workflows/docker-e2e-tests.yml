@@ -15,6 +15,7 @@ jobs:
           - { name: "easyocr", extras: "easyocr" }
           - { name: "paddle", extras: "paddleocr" }
           - { name: "gmft", extras: "gmft" }
+          - { name: "all", extras: "all" }
       fail-fast: false
 
     steps:

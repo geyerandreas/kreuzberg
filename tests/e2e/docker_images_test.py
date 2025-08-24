@@ -31,10 +31,11 @@ DOCKER_IMAGES = {
     "easyocr": "kreuzberg:easyocr",
     "paddle": "kreuzberg:paddle",
     "gmft": "kreuzberg:gmft",
+    "all": "kreuzberg:all",
 }
 
 # Images that are optional (may not be built due to space constraints)
-OPTIONAL_IMAGES = {"paddle", "gmft"}
+OPTIONAL_IMAGES = {"paddle", "gmft", "all"}
 
 # Security configuration
 SECURITY_CONFIG = {
