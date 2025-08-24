@@ -1632,7 +1632,7 @@ wheels = [
 
 [[package]]
 name = "kreuzberg"
-version = "3.11.3"
+version = "3.11.4"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },

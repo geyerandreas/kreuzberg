@@ -46,9 +46,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/kreuzberg /app/kreuzberg
 
-# Create non-root user
+# Create non-root user and cache directory
 RUN groupadd -r appuser && useradd -r -g appuser -d /app -s /sbin/nologin appuser && \
+    mkdir -p /app/.kreuzberg && \
     chown -R appuser:appuser /app
+
+# Set default cache directory to prevent permission issues
+ENV KREUZBERG_CACHE_DIR=/app/.kreuzberg
 
 USER appuser
 CMD ["litestar", "--app", "kreuzberg._api.main:app", "run", "--host", "0.0.0.0"]
