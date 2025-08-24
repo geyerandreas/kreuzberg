@@ -19,10 +19,8 @@ except ImportError as e:  # pragma: no cover
 
 from kreuzberg import __version__, extract_bytes_sync, extract_file_sync
 from kreuzberg._config import build_extraction_config, find_config_file, load_config_from_file
+from kreuzberg._constants import DEFAULT_MAX_CHARACTERS, DEFAULT_MAX_OVERLAP
 from kreuzberg.exceptions import KreuzbergError, MissingDependencyError
-
-DEFAULT_MAX_CHARACTERS = 4000
-DEFAULT_MAX_OVERLAP = 200
 
 if TYPE_CHECKING:
     from kreuzberg._types import ExtractionConfig, ExtractionResult
