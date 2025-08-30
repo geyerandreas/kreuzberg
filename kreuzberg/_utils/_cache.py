@@ -14,6 +14,7 @@ from typing import Any, Generic, TypeVar
 from anyio import Path as AsyncPath
 
 from kreuzberg._types import ExtractionResult
+from kreuzberg._utils._ref import Ref
 from kreuzberg._utils._serialization import deserialize, serialize
 from kreuzberg._utils._sync import run_sync
 
@@ -324,87 +325,111 @@ class KreuzbergCache(Generic[T]):
             }
 
 
-_ocr_cache: KreuzbergCache[ExtractionResult] | None = None
-_document_cache: KreuzbergCache[ExtractionResult] | None = None
-_table_cache: KreuzbergCache[Any] | None = None
-_mime_cache: KreuzbergCache[str] | None = None
+def _create_ocr_cache() -> KreuzbergCache[ExtractionResult]:
+    """Factory function to create OCR cache instance."""
+    cache_dir_str = os.environ.get("KREUZBERG_CACHE_DIR")
+    cache_dir: Path | None = None
+    if cache_dir_str:
+        cache_dir = Path(cache_dir_str) / "ocr"
+
+    return KreuzbergCache[ExtractionResult](
+        cache_type="ocr",
+        cache_dir=cache_dir,
+        max_cache_size_mb=float(os.environ.get("KREUZBERG_OCR_CACHE_SIZE_MB", "500")),
+        max_age_days=int(os.environ.get("KREUZBERG_OCR_CACHE_AGE_DAYS", "30")),
+    )
+
+
+_ocr_cache_ref = Ref("ocr_cache", _create_ocr_cache)
 
 
 def get_ocr_cache() -> KreuzbergCache[ExtractionResult]:
-    """Get the global OCR cache instance."""
-    global _ocr_cache
-    if _ocr_cache is None:
-        cache_dir_str = os.environ.get("KREUZBERG_CACHE_DIR")
-        cache_dir: Path | None = None
-        if cache_dir_str:
-            cache_dir = Path(cache_dir_str) / "ocr"
+    """Get the OCR cache instance."""
+    return _ocr_cache_ref.get()
 
-        _ocr_cache = KreuzbergCache[ExtractionResult](
-            cache_type="ocr",
-            cache_dir=cache_dir,
-            max_cache_size_mb=float(os.environ.get("KREUZBERG_OCR_CACHE_SIZE_MB", "500")),
-            max_age_days=int(os.environ.get("KREUZBERG_OCR_CACHE_AGE_DAYS", "30")),
-        )
-    return _ocr_cache
+
+def _create_document_cache() -> KreuzbergCache[ExtractionResult]:
+    """Factory function to create document cache instance."""
+    cache_dir_str = os.environ.get("KREUZBERG_CACHE_DIR")
+    cache_dir: Path | None = None
+    if cache_dir_str:
+        cache_dir = Path(cache_dir_str) / "documents"
+
+    return KreuzbergCache[ExtractionResult](
+        cache_type="documents",
+        cache_dir=cache_dir,
+        max_cache_size_mb=float(os.environ.get("KREUZBERG_DOCUMENT_CACHE_SIZE_MB", "1000")),
+        max_age_days=int(os.environ.get("KREUZBERG_DOCUMENT_CACHE_AGE_DAYS", "7")),
+    )
+
+
+_document_cache_ref = Ref("document_cache", _create_document_cache)
 
 
 def get_document_cache() -> KreuzbergCache[ExtractionResult]:
-    """Get the global document cache instance."""
-    global _document_cache
-    if _document_cache is None:
-        cache_dir_str = os.environ.get("KREUZBERG_CACHE_DIR")
-        cache_dir: Path | None = None
-        if cache_dir_str:
-            cache_dir = Path(cache_dir_str) / "documents"
+    """Get the document cache instance."""
+    return _document_cache_ref.get()
 
-        _document_cache = KreuzbergCache[ExtractionResult](
-            cache_type="documents",
-            cache_dir=cache_dir,
-            max_cache_size_mb=float(os.environ.get("KREUZBERG_DOCUMENT_CACHE_SIZE_MB", "1000")),
-            max_age_days=int(os.environ.get("KREUZBERG_DOCUMENT_CACHE_AGE_DAYS", "7")),
-        )
-    return _document_cache
+
+def _create_table_cache() -> KreuzbergCache[Any]:
+    """Factory function to create table cache instance."""
+    cache_dir_str = os.environ.get("KREUZBERG_CACHE_DIR")
+    cache_dir: Path | None = None
+    if cache_dir_str:
+        cache_dir = Path(cache_dir_str) / "tables"
+
+    return KreuzbergCache[Any](
+        cache_type="tables",
+        cache_dir=cache_dir,
+        max_cache_size_mb=float(os.environ.get("KREUZBERG_TABLE_CACHE_SIZE_MB", "200")),
+        max_age_days=int(os.environ.get("KREUZBERG_TABLE_CACHE_AGE_DAYS", "30")),
+    )
+
+
+_table_cache_ref = Ref("table_cache", _create_table_cache)
 
 
 def get_table_cache() -> KreuzbergCache[Any]:
-    """Get the global table cache instance."""
-    global _table_cache
-    if _table_cache is None:
-        cache_dir_str = os.environ.get("KREUZBERG_CACHE_DIR")
-        cache_dir: Path | None = None
-        if cache_dir_str:
-            cache_dir = Path(cache_dir_str) / "tables"
+    """Get the table cache instance."""
+    return _table_cache_ref.get()
 
-        _table_cache = KreuzbergCache[Any](
-            cache_type="tables",
-            cache_dir=cache_dir,
-            max_cache_size_mb=float(os.environ.get("KREUZBERG_TABLE_CACHE_SIZE_MB", "200")),
-            max_age_days=int(os.environ.get("KREUZBERG_TABLE_CACHE_AGE_DAYS", "30")),
-        )
-    return _table_cache
+
+def _create_mime_cache() -> KreuzbergCache[str]:
+    """Factory function to create MIME type cache instance."""
+    cache_dir_str = os.environ.get("KREUZBERG_CACHE_DIR")
+    cache_dir: Path | None = None
+    if cache_dir_str:
+        cache_dir = Path(cache_dir_str) / "mime"
+
+    return KreuzbergCache[str](
+        cache_type="mime",
+        cache_dir=cache_dir,
+        max_cache_size_mb=float(os.environ.get("KREUZBERG_MIME_CACHE_SIZE_MB", "50")),
+        max_age_days=int(os.environ.get("KREUZBERG_MIME_CACHE_AGE_DAYS", "60")),
+    )
+
+
+_mime_cache_ref = Ref("mime_cache", _create_mime_cache)
 
 
 def get_mime_cache() -> KreuzbergCache[str]:
-    """Get the global MIME type cache instance."""
-    global _mime_cache
-    if _mime_cache is None:
-        cache_dir_str = os.environ.get("KREUZBERG_CACHE_DIR")
-        cache_dir: Path | None = None
-        if cache_dir_str:
-            cache_dir = Path(cache_dir_str) / "mime"
-
-        _mime_cache = KreuzbergCache[str](
-            cache_type="mime",
-            cache_dir=cache_dir,
-            max_cache_size_mb=float(os.environ.get("KREUZBERG_MIME_CACHE_SIZE_MB", "50")),
-            max_age_days=int(os.environ.get("KREUZBERG_MIME_CACHE_AGE_DAYS", "60")),
-        )
-    return _mime_cache
+    """Get the MIME type cache instance."""
+    return _mime_cache_ref.get()
 
 
 def clear_all_caches() -> None:
     """Clear all caches."""
-    get_ocr_cache().clear()
-    get_document_cache().clear()
-    get_table_cache().clear()
-    get_mime_cache().clear()
+    if _ocr_cache_ref.is_initialized():
+        get_ocr_cache().clear()
+    if _document_cache_ref.is_initialized():
+        get_document_cache().clear()
+    if _table_cache_ref.is_initialized():
+        get_table_cache().clear()
+    if _mime_cache_ref.is_initialized():
+        get_mime_cache().clear()
+
+    # Clear the ref instances
+    _ocr_cache_ref.clear()
+    _document_cache_ref.clear()
+    _table_cache_ref.clear()
+    _mime_cache_ref.clear()

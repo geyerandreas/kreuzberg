@@ -94,7 +94,7 @@ class StructuredDataExtractor(Extractor):
                 chunks=[],
             )
 
-        except (json.JSONDecodeError, ValueError, TypeError) as e:
+        except (ValueError, TypeError) as e:
             return ExtractionResult(
                 content=normalize_spaces(text_content),
                 mime_type=PLAIN_TEXT_MIME_TYPE,

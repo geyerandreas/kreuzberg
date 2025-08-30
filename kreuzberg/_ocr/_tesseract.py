@@ -766,9 +766,11 @@ def _process_image_bytes_with_tesseract(
         OCR result as dictionary.
     """
     try:
-        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_image:
-            with Image.open(io.BytesIO(image_bytes)) as image:
-                image.save(tmp_image.name, format="PNG")
+        with (
+            tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_image,
+            Image.open(io.BytesIO(image_bytes)) as image,
+        ):
+            image.save(tmp_image.name, format="PNG")
             image_path = tmp_image.name
 
         try:
