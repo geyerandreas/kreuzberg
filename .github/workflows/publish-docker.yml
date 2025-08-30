@@ -25,10 +25,10 @@ jobs:
         include:
           - name: base
             extras: "cli"
-            tag_suffix: ""
+            image_name: "goldziher/kreuzberg"
           - name: core
             extras: "cli,chunking,crypto,document-classification,langdetect,additional-extensions"
-            tag_suffix: "-core"
+            image_name: "goldziher/kreuzberg-core"
 
     steps:
       - name: Free up disk space
@@ -95,10 +95,10 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: goldziher/kreuzberg
+          images: ${{ matrix.image_name }}
           tags: |
-            type=raw,value=${{ steps.get_version.outputs.VERSION }}${{ matrix.tag_suffix }}
-            type=raw,value=latest${{ matrix.tag_suffix }}
+            type=raw,value=${{ steps.get_version.outputs.VERSION }}
+            type=raw,value=latest
 
       - name: Build and push Docker image to Docker Hub
         uses: docker/build-push-action@v6
@@ -133,10 +133,9 @@ jobs:
 
       - name: Update Docker Hub README
         uses: peter-evans/dockerhub-description@v4
-        if: matrix.name == 'core'
         continue-on-error: true
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-          repository: goldziher/kreuzberg
+          repository: ${{ matrix.image_name }}
           readme-filepath: ./.docker/README.md

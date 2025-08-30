@@ -28,7 +28,7 @@ Docker images are available on [Docker Hub](https://hub.docker.com/r/goldziher/k
 
 ### Core Image (`core`)
 
-- **Image**: `goldziher/kreuzberg:core`
+- **Image**: `goldziher/kreuzberg-core:latest`
 - **Size**: ~700MB compressed
 - **Includes**: Everything from base plus:
     - ✅ Text chunking (semantic-text-splitter)
@@ -64,7 +64,7 @@ curl -X POST http://localhost:8000/extract \
 
 ```bash
 # Run core image with all features
-docker run -p 8000:8000 goldziher/kreuzberg:core
+docker run -p 8000:8000 goldziher/kreuzberg-core:latest
 
 # Extract with chunking for RAG
 curl -X POST http://localhost:8000/extract \
@@ -92,7 +92,7 @@ mkdir -p kreuzberg-cache
 # Run with persistent cache (recommended for production)
 docker run -p 8000:8000 \
   -v "$(pwd)/kreuzberg-cache:/app/.kreuzberg" \
-  goldziher/kreuzberg:core
+  goldziher/kreuzberg-core:latest
 ```
 
 ## Custom Docker Images
@@ -183,7 +183,7 @@ version: '3.8'
 
 services:
   kreuzberg:
-    image: goldziher/kreuzberg:core
+    image: goldziher/kreuzberg-core:latest
     ports:
       - "8000:8000"
     volumes:
@@ -221,7 +221,7 @@ version: '3.8'
 
 services:
   kreuzberg-dev:
-    image: goldziher/kreuzberg:core
+    image: goldziher/kreuzberg-core:latest
     ports:
       - "8000:8000"
     volumes:
@@ -268,7 +268,7 @@ Mount the configuration:
 docker run -p 8000:8000 \
   -v "$(pwd)/kreuzberg.toml:/app/kreuzberg.toml:ro" \
   -v "$(pwd)/cache:/app/.kreuzberg" \
-  goldziher/kreuzberg:core
+  goldziher/kreuzberg-core:latest
 ```
 
 ### Environment Variables
@@ -314,7 +314,7 @@ spec:
     spec:
       containers:
       - name: kreuzberg
-        image: goldziher/kreuzberg:core
+        image: goldziher/kreuzberg-core:latest
         ports:
         - containerPort: 8000
         volumeMounts:
@@ -470,13 +470,13 @@ docker run --rm -v "$(pwd)/cache:/app/.kreuzberg" --user root \
 
 ```bash
 # Solution 1: Increase Docker memory limits
-docker run -p 8000:8000 -m 2g goldziher/kreuzberg:core
+docker run -p 8000:8000 -m 2g goldziher/kreuzberg-core:latest
 
 # Solution 2: Reduce cache sizes
 docker run -p 8000:8000 \
   -e KREUZBERG_OCR_CACHE_SIZE_MB=200 \
   -e KREUZBERG_DOCUMENT_CACHE_SIZE_MB=300 \
-  goldziher/kreuzberg:core
+  goldziher/kreuzberg-core:latest
 ```
 
 #### Feature Not Available Errors

@@ -94,7 +94,7 @@ Two optimized images available:
 docker run -p 8000:8000 goldziher/kreuzberg
 
 # Core image (+ chunking + crypto + document classification + language detection)
-docker run -p 8000:8000 goldziher/kreuzberg:core
+docker run -p 8000:8000 goldziher/kreuzberg-core:latest
 
 # Extract via API
 curl -X POST -F "file=@document.pdf" http://localhost:8000/extract

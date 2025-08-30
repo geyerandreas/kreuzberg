@@ -27,7 +27,7 @@ docker run -p 8000:8000 goldziher/kreuzberg:latest
 
 ### Core Image (`core`)
 
-- **Image**: `goldziher/kreuzberg:core`
+- **Image**: `goldziher/kreuzberg-core:latest`
 - **Size**: ~700MB compressed
 - **Includes**: Everything from base plus:
     - Text chunking (semantic-text-splitter)
@@ -48,7 +48,7 @@ curl -X POST http://localhost:8000/extract \
   -F "data=@document.pdf"
 
 # With core image - chunking for RAG
-docker run -p 8000:8000 goldziher/kreuzberg:core
+docker run -p 8000:8000 goldziher/kreuzberg-core:latest
 curl -X POST http://localhost:8000/extract \
   -F "data=@document.pdf" \
   -F "chunk_content=true" \
@@ -72,7 +72,7 @@ version: '3.8'
 
 services:
   kreuzberg:
-    image: goldziher/kreuzberg:core
+    image: goldziher/kreuzberg-core:latest
     ports:
       - "8000:8000"
     volumes:
@@ -153,7 +153,7 @@ psm = 6
 ```bash
 docker run -p 8000:8000 \
   -v "$(pwd)/kreuzberg.toml:/app/kreuzberg.toml:ro" \
-  goldziher/kreuzberg:core
+  goldziher/kreuzberg-core:latest
 ```
 
 ## Features
