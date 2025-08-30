@@ -10,6 +10,9 @@ This script tests all Docker images to ensure they work correctly with various f
 - Configuration handling
 - Security best practices
 - Resource limits
+
+Note: This is a standalone script, not a pytest test module.
+It should be run directly: python tests/e2e/docker_e2e_test.py
 """
 
 import argparse
@@ -23,6 +26,11 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Any
+
+import pytest
+
+# Skip this file when running pytest
+pytestmark = pytest.mark.skip(reason="This is a standalone E2E script, not a pytest test")
 
 DOCKER_IMAGES = {
     "core": "kreuzberg:core",
@@ -478,9 +486,8 @@ def print_summary(all_results: dict[str, dict[str, bool]]) -> bool:
     total_tests = 0
     total_passed = 0
 
-    for variant, results in all_results.items():
+    for results in all_results.values():
         if not results.get("exists", False):
-            print(f"\n❌ {variant}: Image not found")
             continue
 
         passed = sum(1 for v in results.values() if v)
@@ -488,23 +495,13 @@ def print_summary(all_results: dict[str, dict[str, bool]]) -> bool:
         total_tests += total
         total_passed += passed
 
-        print(f"\n{'✅' if passed == total else '⚠️'} {variant}: {passed}/{total} tests passed")
-
         failed_tests = [test for test, result in results.items() if not result]
         if failed_tests:
-            print(f"   Failed tests: {', '.join(failed_tests)}")
-
-    print(f"\n{'=' * 50}")
-    print(f"Overall: {total_passed}/{total_tests} tests passed")
+            pass
 
     success_rate = (total_passed / total_tests * 100) if total_tests > 0 else 0
-    print(f"Success rate: {success_rate:.1f}%")
 
-    if success_rate == 100:
-        print("✅ Test suite PASSED")
-        return True
-    print("❌ Test suite FAILED - all tests must pass")
-    return False
+    return success_rate == 100
 
 
 def main() -> None:
@@ -516,7 +513,6 @@ def main() -> None:
 
     exit_code, _, _ = run_command(["docker", "--version"])
     if exit_code != 0:
-        print("❌ Docker is not available")
         sys.exit(1)
 
     all_results = {}
@@ -525,24 +521,19 @@ def main() -> None:
         if args.image in DOCKER_IMAGES:
             variant = args.image
             image_name = DOCKER_IMAGES[variant]
-            print(f"Testing {variant} image: {image_name}")
             all_results[variant] = run_tests_for_image(variant, image_name)
         else:
             image_name = args.image
             variant = image_name.split(":")[-1] if ":" in image_name else "custom"
-            print(f"Testing custom image: {image_name}")
             all_results[variant] = run_tests_for_image(variant, image_name)
     else:
-        print("Testing all Docker images...")
         for image_variant, image_name in DOCKER_IMAGES.items():
-            print(f"\nTesting {image_variant}: {image_name}")
             all_results[image_variant] = run_tests_for_image(image_variant, image_name)
 
     report_file = TEST_DIR / "e2e" / "test_report.json"
     report_file.parent.mkdir(parents=True, exist_ok=True)
     with report_file.open("w") as f:
         json.dump(all_results, f, indent=2, default=str)
-    print(f"\nTest report saved to: {report_file}")
 
     success = print_summary(all_results)
     sys.exit(0 if success else 1)

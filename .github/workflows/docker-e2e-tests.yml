@@ -100,7 +100,7 @@ jobs:
         run: |
           mkdir -p tests/e2e/logs
           echo "Running E2E tests for ${{ matrix.image.name }}..."
-          python3 tests/e2e/docker_images_test.py --image ${{ matrix.image.name }}
+          python3 tests/e2e/docker_e2e_test.py --image ${{ matrix.image.name }}
 
       - name: Generate test report - ${{ matrix.image.name }}
         if: always()

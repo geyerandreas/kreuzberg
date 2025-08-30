@@ -16,7 +16,7 @@ tasks:
     deps:
       - docker:build
     cmds:
-      - uv run python {{.TEST_DIR}}/docker_images_test.py
+      - uv run python {{.TEST_DIR}}/docker_e2e_test.py
 
   docker:build:
     desc: "Build all Docker images for testing"
@@ -67,7 +67,7 @@ tasks:
   docker:test:
     desc: "Run Docker E2E tests (images must be built)"
     cmds:
-      - uv run python {{.TEST_DIR}}/docker_images_test.py
+      - uv run python {{.TEST_DIR}}/docker_e2e_test.py
 
   docker:clean:
     desc: "Clean up Docker test images and containers"

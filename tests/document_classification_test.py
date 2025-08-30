@@ -68,7 +68,7 @@ def test_classify_document_high_confidence() -> None:
         mime_type="text/plain",
         metadata={},
     )
-    config = ExtractionConfig(document_type_confidence_threshold=0.1)
+    config = ExtractionConfig(auto_detect_document_type=True, document_type_confidence_threshold=0.1)
 
     doc_type, confidence = classify_document(result, config)
 
