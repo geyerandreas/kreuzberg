@@ -6,11 +6,9 @@ on:
     types: [published]
 
 jobs:
-  # Run E2E tests first
   test-images:
     uses: ./.github/workflows/docker-e2e-tests.yml
 
-  # Build and publish images after tests pass
   build-and-publish:
     needs: test-images
     runs-on: ubuntu-latest
@@ -22,7 +20,7 @@ jobs:
       version: ${{ steps.get_version.outputs.VERSION }}
 
     strategy:
-      max-parallel: 1  # Build one at a time to save disk space
+      max-parallel: 1  # Build one at a time to save disk space ~keep
       matrix:
         include:
           - name: core
@@ -47,7 +45,7 @@ jobs:
           echo "Initial disk space:"
           df -h /
 
-          # Remove unnecessary large directories (saves ~30GB)
+          # Remove unnecessary large directories (saves ~30GB) ~keep
           sudo rm -rf /usr/share/dotnet
           sudo rm -rf /usr/local/lib/android
           sudo rm -rf /opt/ghc

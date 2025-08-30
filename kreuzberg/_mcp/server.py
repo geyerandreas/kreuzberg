@@ -14,7 +14,6 @@ from kreuzberg._config import try_discover_config
 from kreuzberg._types import ExtractionConfig, OcrBackendType
 from kreuzberg.extraction import extract_bytes_sync, extract_file_sync
 
-# Create the MCP server
 mcp = FastMCP("Kreuzberg Text Extraction")
 
 
@@ -27,14 +26,11 @@ def _create_config_with_overrides(**kwargs: Any) -> ExtractionConfig:
     Returns:
         ExtractionConfig instance.
     """
-    # Try to discover configuration from files
     base_config = try_discover_config()
 
     if base_config is None:
-        # No config file found, use defaults
         return ExtractionConfig(**kwargs)
 
-    # Merge discovered config with tool parameters (tool params take precedence)
     config_dict: dict[str, Any] = {
         "force_ocr": base_config.force_ocr,
         "chunk_content": base_config.chunk_content,
@@ -50,7 +46,6 @@ def _create_config_with_overrides(**kwargs: Any) -> ExtractionConfig:
         "gmft_config": base_config.gmft_config,
     }
 
-    # Override with provided parameters
     config_dict = config_dict | kwargs
 
     return ExtractionConfig(**config_dict)

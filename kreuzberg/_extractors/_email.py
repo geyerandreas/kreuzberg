@@ -16,7 +16,6 @@ from kreuzberg.exceptions import MissingDependencyError
 if TYPE_CHECKING:
     from pathlib import Path
 
-# Import optional dependencies at module level with proper error handling
 try:
     import mailparse
 except ImportError:  # pragma: no cover
@@ -27,7 +26,6 @@ try:
 except ImportError:  # pragma: no cover
     html2text = None
 
-# Compile regex pattern once at module level
 _HTML_TAG_PATTERN = re.compile(r"<[^>]+>")
 
 
@@ -45,7 +43,6 @@ class EmailExtractor(Extractor):
         self, parsed_email: dict[str, Any], text_parts: list[str], metadata: dict[str, Any]
     ) -> None:
         """Extract and process email headers."""
-        # Use single dict access where possible to avoid repeated lookups
         subject = parsed_email.get("subject")
         if subject:
             metadata["subject"] = subject
@@ -59,9 +56,7 @@ class EmailExtractor(Extractor):
 
         to_info = parsed_email.get("to")
         if to_info:
-            # Store the raw value in metadata (could be string, dict, or list)
             if isinstance(to_info, list) and to_info:
-                # For metadata, use first recipient's email if it's a list
                 to_email = to_info[0].get("email", "") if isinstance(to_info[0], dict) else str(to_info[0])
                 metadata["email_to"] = to_email
             elif isinstance(to_info, dict):
@@ -69,7 +64,6 @@ class EmailExtractor(Extractor):
             else:
                 metadata["email_to"] = str(to_info)
 
-            # For display, format all recipients
             to_formatted = self._format_email_field(to_info)
             text_parts.append(f"To: {to_formatted}")
 
@@ -111,19 +105,17 @@ class EmailExtractor(Extractor):
         text_content = parsed_email.get("text")
         if text_content:
             text_parts.append(f"\n{text_content}")
-            return  # If we have text, prefer it over HTML
+            return
 
         html_content = parsed_email.get("html")
         if html_content:
             if html2text is not None:
-                # Use html2text if available (faster path)
                 h = html2text.HTML2Text()
                 h.ignore_links = True
                 h.ignore_images = True
                 converted_text = h.handle(html_content)
                 text_parts.append(f"\n{converted_text}")
             else:
-                # Fallback: strip HTML tags and unescape entities
                 clean_html = _HTML_TAG_PATTERN.sub("", html_content)
                 clean_html = unescape(clean_html)
                 text_parts.append(f"\n{clean_html}")
@@ -148,12 +140,10 @@ class EmailExtractor(Extractor):
             text_parts: list[str] = []
             metadata: dict[str, Any] = {}
 
-            # Extract headers, body, and attachments
             self._extract_email_headers(parsed_email, text_parts, metadata)
             self._extract_email_body(parsed_email, text_parts)
             self._extract_email_attachments(parsed_email, text_parts, metadata)
 
-            # Join efficiently
             combined_text = "\n".join(text_parts)
 
             return ExtractionResult(

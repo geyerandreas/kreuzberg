@@ -22,7 +22,6 @@ def export_table_to_csv(table: TableData, separator: str = ",") -> str:
     if "df" not in table or table["df"] is None:
         return ""
 
-    # Use pandas to_csv() direct string return instead of StringIO
     csv_output = table["df"].to_csv(sep=separator, index=False, quoting=csv.QUOTE_MINIMAL, lineterminator="\n")
     return str(csv_output).strip()
 
@@ -56,20 +55,15 @@ def enhance_table_markdown(table: TableData) -> str:
     if df.empty:
         return table.get("text", "")
 
-    # Create enhanced markdown with proper alignment
     lines = []
 
-    # Header row
     headers = [str(col).strip() for col in df.columns]
     lines.append("| " + " | ".join(headers) + " |")
 
-    # Separator row with alignment hints
     lines.append(_generate_separator_row(df))
 
-    # Analyze float columns to determine formatting strategy
     float_col_formatting = _analyze_float_columns(df)
 
-    # Data rows with proper formatting
     for _, row in df.iterrows():
         formatted_row = _format_table_row(row, df, float_col_formatting)
         lines.append("| " + " | ".join(formatted_row) + " |")
@@ -81,11 +75,10 @@ def _generate_separator_row(df: Any) -> str:
     """Generate separator row with proper alignment hints."""
     separators = []
     for col in df.columns:
-        # Check if column contains mostly numbers for right alignment
         if df[col].dtype in ["int64", "float64"] or _is_numeric_column(df[col]):
-            separators.append("---:")  # Right align numbers
+            separators.append("---:")
         else:
-            separators.append("---")  # Left align text
+            separators.append("---")
     return "| " + " | ".join(separators) + " |"
 
 
@@ -96,7 +89,6 @@ def _analyze_float_columns(df: Any) -> dict[str, str]:
         if str(df[col].dtype) == "float64":
             non_null_values = df[col].dropna()
             if len(non_null_values) > 0:
-                # If all non-null values are whole numbers, format as integers
                 all_integers = all(val.is_integer() for val in non_null_values)
                 float_col_formatting[col] = "int" if all_integers else "float"
             else:
@@ -111,17 +103,14 @@ def _format_table_row(row: Any, df: Any, float_col_formatting: dict[str, str]) -
         if value is None or (isinstance(value, float) and str(value) == "nan"):
             formatted_row.append("")
         elif str(df[col_name].dtype) in ["int64", "int32"]:
-            # For integer columns, format as integers
             formatted_row.append(str(int(value)))
         elif isinstance(value, float):
-            # For float columns, use the determined formatting strategy
             if col_name in float_col_formatting and float_col_formatting[col_name] == "int":
                 formatted_row.append(str(int(value)))
             else:
                 formatted_row.append(f"{value:.2f}")
         else:
-            # Clean up text values
-            clean_value = str(value).strip().replace("|", "\\|")  # Escape pipes
+            clean_value = str(value).strip().replace("|", "\\|")
             formatted_row.append(clean_value)
     return formatted_row
 
@@ -132,11 +121,9 @@ def _is_numeric_column(series: Any) -> bool:
         return False
 
     try:
-        # Check if already numeric dtype first (fastest path)
         if str(series.dtype) in {"int64", "float64", "int32", "float32"}:
             return True
 
-        # Sample-based approach for large series (>1000 rows)
         sample_size = min(100, len(series))
         if len(series) > 1000:
             sample_series = series.dropna().sample(n=sample_size, random_state=42)
@@ -146,11 +133,9 @@ def _is_numeric_column(series: Any) -> bool:
         if len(sample_series) == 0:
             return False
 
-        # Optimized numeric conversion - avoid exception overhead
         numeric_count = 0
         for val in sample_series:
             val_str = str(val).replace(",", "").replace("$", "").replace("%", "")
-            # Quick check: if it contains only digits, decimal point, minus, plus, or e
             if val_str and all(c in "0123456789.-+eE" for c in val_str):
                 try:
                     float(val_str)
@@ -158,7 +143,6 @@ def _is_numeric_column(series: Any) -> bool:
                 except (ValueError, TypeError):
                     pass
 
-        # Consider numeric if >70% of sampled values are numeric
         return (numeric_count / len(sample_series)) > 0.7
 
     except (ValueError, TypeError, ZeroDivisionError):
@@ -243,14 +227,12 @@ def extract_table_structure_info(table: TableData) -> dict[str, Any]:
     info["column_count"] = len(df.columns)
     info["has_headers"] = len(df.columns) > 0
 
-    # Analyze column types
     for col in df.columns:
         if _is_numeric_column(df[col]):
             info["numeric_columns"] += 1
         else:
             info["text_columns"] += 1
 
-    # Calculate data density
     total_cells = len(df) * len(df.columns)
     if total_cells > 0:
         empty_cells = df.isnull().sum().sum()

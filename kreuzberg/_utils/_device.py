@@ -35,7 +35,6 @@ def detect_available_devices() -> list[DeviceInfo]:
     Returns:
         List of available devices, with the most preferred device first.
     """
-    # Build device lists efficiently using generators
     cpu_device = DeviceInfo(device_type="cpu", name="CPU")
 
     cuda_devices = _get_cuda_devices() if _is_cuda_available() else []
@@ -43,7 +42,6 @@ def detect_available_devices() -> list[DeviceInfo]:
     mps_device = _get_mps_device() if _is_mps_available() else None
     mps_devices = [mps_device] if mps_device else []
 
-    # Return GPU devices first, then CPU using itertools.chain
     gpu_devices = list(chain(cuda_devices, mps_devices))
     return [*gpu_devices, cpu_device]
 

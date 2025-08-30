@@ -107,7 +107,6 @@ class Metadata(TypedDict, total=False):
     width: NotRequired[int]
     """Width of the document page/slide/image, if applicable."""
 
-    # Email-specific fields
     email_from: NotRequired[str]
     """Email sender (from field)."""
     email_to: NotRequired[str]
@@ -121,7 +120,6 @@ class Metadata(TypedDict, total=False):
     attachments: NotRequired[list[str]]
     """List of attachment names."""
 
-    # Additional metadata fields for various extractors
     content: NotRequired[str]
     """Content metadata field."""
     parse_error: NotRequired[str]
@@ -129,7 +127,6 @@ class Metadata(TypedDict, total=False):
     warning: NotRequired[str]
     """Warning messages."""
 
-    # Table extraction metadata
     table_count: NotRequired[int]
     """Number of tables extracted from the document."""
     tables_summary: NotRequired[str]
@@ -138,7 +135,6 @@ class Metadata(TypedDict, total=False):
     """Quality score for extracted content (0.0-1.0)."""
 
 
-# Cache valid metadata keys at module level for performance
 _VALID_METADATA_KEYS = {
     "authors",
     "categories",
@@ -189,7 +185,6 @@ def normalize_metadata(data: dict[str, Any] | None) -> Metadata:
     if not data:
         return {}
 
-    # Filter and return only valid metadata
     normalized: Metadata = {}
     for key, value in data.items():
         if key in _VALID_METADATA_KEYS and value is not None:
@@ -249,18 +244,15 @@ class ExtractionResult:
         Returns:
             Dictionary representation of the ExtractionResult.
         """
-        # Use msgspec.to_builtins for efficient conversion
-        # The builtin_types parameter allows DataFrames to pass through
         result = msgspec.to_builtins(
             self,
-            builtin_types=(type(None),),  # Allow None to pass through
-            order="deterministic",  # Ensure consistent output
+            builtin_types=(type(None),),
+            order="deterministic",
         )
 
         if include_none:
             return result  # type: ignore[no-any-return]
 
-        # Remove None values to match expected behavior
         return {k: v for k, v in result.items() if v is not None}
 
     def export_tables_to_csv(self) -> list[str]:
@@ -394,10 +386,8 @@ class ExtractionConfig:
             return {}
 
         if self.ocr_config is not None:
-            # Use asdict for OCR configs to preserve enum objects correctly
             return asdict(self.ocr_config)
 
-        # Lazy load and cache default configs instead of creating new instances
         match self.ocr_backend:
             case "tesseract":
                 from kreuzberg._ocr._tesseract import TesseractConfig  # noqa: PLC0415
@@ -407,7 +397,7 @@ class ExtractionConfig:
                 from kreuzberg._ocr._easyocr import EasyOCRConfig  # noqa: PLC0415
 
                 return asdict(EasyOCRConfig())
-            case _:  # paddleocr or any other backend
+            case _:
                 from kreuzberg._ocr._paddleocr import PaddleOCRConfig  # noqa: PLC0415
 
                 return asdict(PaddleOCRConfig())

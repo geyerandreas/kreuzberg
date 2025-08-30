@@ -70,7 +70,6 @@ async def handle_files_upload(
     data: Annotated[list[UploadFile], Body(media_type=RequestEncodingType.MULTI_PART)],
 ) -> list[ExtractionResult]:
     """Extracts text content from an uploaded file."""
-    # Try to discover configuration from files
     config = try_discover_config()
 
     return await batch_extract_bytes(

@@ -68,11 +68,9 @@ class KreuzbergCache(Generic[T]):
         if not kwargs:
             return "empty"
 
-        # Build cache key using list + join (faster than StringIO)
         parts = []
         for key in sorted(kwargs):
             value = kwargs[key]
-            # Convert common types efficiently
             if isinstance(value, (str, int, float, bool)):
                 parts.append(f"{key}={value}")
             elif isinstance(value, bytes):
@@ -81,7 +79,6 @@ class KreuzbergCache(Generic[T]):
                 parts.append(f"{key}={type(value).__name__}:{value!s}")
 
         cache_str = "&".join(parts)
-        # SHA256 is secure and fast enough for cache keys
         return hashlib.sha256(cache_str.encode()).hexdigest()[:16]
 
     def _get_cache_path(self, cache_key: str) -> Path:
@@ -103,17 +100,14 @@ class KreuzbergCache(Generic[T]):
 
     def _serialize_result(self, result: T) -> dict[str, Any]:
         """Serialize result for caching with metadata."""
-        # Handle TableData objects that contain DataFrames
         if isinstance(result, list) and result and isinstance(result[0], dict) and "df" in result[0]:
             serialized_data = []
             for item in result:
                 if isinstance(item, dict) and "df" in item:
-                    # Build new dict without unnecessary copy
                     serialized_item = {k: v for k, v in item.items() if k != "df"}
                     if hasattr(item["df"], "to_csv"):
                         serialized_item["df_csv"] = item["df"].to_csv(index=False)
                     else:
-                        # Fallback for non-DataFrame objects
                         serialized_item["df_csv"] = str(item["df"])
                     serialized_data.append(serialized_item)
                 else:
@@ -132,7 +126,6 @@ class KreuzbergCache(Generic[T]):
             deserialized_data = []
             for item in data:
                 if isinstance(item, dict) and "df_csv" in item:
-                    # Build new dict without unnecessary copy
                     deserialized_item = {k: v for k, v in item.items() if k != "df_csv"}
                     deserialized_item["df"] = pd.read_csv(StringIO(item["df_csv"]))
                     deserialized_data.append(deserialized_item)

@@ -6,9 +6,7 @@ import re
 from functools import reduce
 from typing import Any
 
-# Pre-compiled patterns for performance
 _OCR_ARTIFACTS = {
-    # Common OCR misreads
     "scattered_chars": re.compile(r"\b[a-zA-Z]\s{2,}[a-zA-Z]\s{2,}[a-zA-Z]\b"),
     "repeated_punctuation": re.compile(r"[.]{3,}|[-]{3,}|[_]{3,}"),
     "isolated_punctuation": re.compile(r"\s[.,;:!?]\s"),
@@ -17,7 +15,6 @@ _OCR_ARTIFACTS = {
     "broken_sentences": re.compile(r"[a-z]\s{3,}[A-Z][a-z]"),
 }
 
-# Combined pattern for faster OCR penalty calculation
 _COMBINED_OCR_PATTERN = re.compile(
     r"(?P<scattered>\b[a-zA-Z]\s{2,}[a-zA-Z]\s{2,}[a-zA-Z]\b)|"
     r"(?P<repeated>[.]{3,}|[-]{3,}|[_]{3,})|"
@@ -27,14 +24,12 @@ _COMBINED_OCR_PATTERN = re.compile(
     r"(?P<broken>[a-z]\s{3,}[A-Z][a-z])"
 )
 
-# Pre-compiled patterns for text normalization
 _WHITESPACE_NORMALIZE = re.compile(r"[ \t\f\v\r\xa0\u2000-\u200b\u2028\u2029\u3000]+")
 _NEWLINE_NORMALIZE = re.compile(r"\n\s*\n\s*\n+")
 _SENTENCE_DETECT = re.compile(r"[.!?]\s+[A-Z]")
 _PUNCTUATION_DETECT = re.compile(r"[.!?]")
 
 _SCRIPT_PATTERNS = {
-    # JavaScript and CSS content
     "js_functions": re.compile(r"function\s+\w+\s*\([^)]*\)\s*\{[^}]*\}", re.IGNORECASE),
     "css_rules": re.compile(r"\.[a-zA-Z][\w-]*\s*\{[^}]*\}", re.IGNORECASE),
     "script_tags": re.compile(r"<script[^>]*>.*?</script>", re.DOTALL | re.IGNORECASE),
@@ -63,27 +58,21 @@ def calculate_quality_score(text: str, metadata: dict[str, Any] | None = None) -
     if not text or not text.strip():
         return 0.0
 
-    # Initialize score
     score = 1.0
     total_chars = len(text)
 
-    # Penalize OCR artifacts
     ocr_penalty = _calculate_ocr_penalty(text, total_chars)
     score -= ocr_penalty * 0.3
 
-    # Penalize script/style content
     script_penalty = _calculate_script_penalty(text, total_chars)
     score -= script_penalty * 0.2
 
-    # Penalize navigation content
     nav_penalty = _calculate_navigation_penalty(text, total_chars)
     score -= nav_penalty * 0.1
 
-    # Bonus for structure (sentences, paragraphs)
     structure_bonus = _calculate_structure_bonus(text)
     score += structure_bonus * 0.2
 
-    # Bonus for metadata richness
     if metadata:
         metadata_bonus = _calculate_metadata_bonus(metadata)
         score += metadata_bonus * 0.1
@@ -103,16 +92,12 @@ def clean_extracted_text(text: str) -> str:
     if not text:
         return text
 
-    # Remove script and style content using functools.reduce for single pass
     text = reduce(lambda t, pattern: pattern.sub(" ", t), _SCRIPT_PATTERNS.values(), text)
 
-    # Clean OCR artifacts
     text = _clean_ocr_artifacts(text)
 
-    # Clean navigation elements
     text = _clean_navigation_elements(text)
 
-    # Normalize whitespace using pre-compiled patterns
     text = _WHITESPACE_NORMALIZE.sub(" ", text)
     text = _NEWLINE_NORMALIZE.sub("\n\n", text)
 
@@ -124,7 +109,6 @@ def _calculate_ocr_penalty(text: str, total_chars: int) -> float:
     if total_chars == 0:
         return 0.0
 
-    # Use combined pattern for single-pass processing
     artifact_chars = sum(len(match.group()) for match in _COMBINED_OCR_PATTERN.finditer(text))
     return min(1.0, artifact_chars / total_chars)
 
@@ -134,7 +118,6 @@ def _calculate_script_penalty(text: str, total_chars: int) -> float:
     if total_chars == 0:
         return 0.0
 
-    # Use sum with generator expression for single-pass calculation
     script_chars = sum(len(match) for pattern in _SCRIPT_PATTERNS.values() for match in pattern.findall(text))
 
     return min(1.0, script_chars / total_chars)
@@ -145,7 +128,6 @@ def _calculate_navigation_penalty(text: str, total_chars: int) -> float:
     if total_chars == 0:
         return 0.0
 
-    # Use sum with generator expression for single-pass calculation
     nav_chars = sum(len(match) for pattern in _NAVIGATION_PATTERNS.values() for match in pattern.findall(text))
 
     return min(1.0, nav_chars / total_chars)
@@ -156,36 +138,28 @@ def _calculate_structure_bonus(text: str) -> float:
     if not text:
         return 0.0
 
-    # Count sentences (rough heuristic)
     sentence_count = len(_SENTENCE_DETECT.findall(text))
 
-    # Count paragraphs
     paragraph_count = len(text.split("\n\n"))
 
-    # Calculate structure score
     words = len(text.split())
     if words == 0:
         return 0.0
 
-    # Good structure: reasonable sentence and paragraph distribution
     avg_words_per_sentence = words / max(1, sentence_count)
     avg_words_per_paragraph = words / max(1, paragraph_count)
 
     structure_score = 0.0
 
-    # Bonus for reasonable sentence length (10-30 words)
     if 10 <= avg_words_per_sentence <= 30:
         structure_score += 0.3
 
-    # Bonus for reasonable paragraph length (50-300 words)
     if 50 <= avg_words_per_paragraph <= 300:
         structure_score += 0.3
 
-    # Bonus for having multiple paragraphs
     if paragraph_count > 1:
         structure_score += 0.2
 
-    # Bonus for having punctuation
     if _PUNCTUATION_DETECT.search(text):
         structure_score += 0.2
 
@@ -205,29 +179,21 @@ def _calculate_metadata_bonus(metadata: dict[str, Any]) -> float:
 
 def _clean_ocr_artifacts(text: str) -> str:
     """Remove common OCR artifacts from text."""
-    # Fix scattered characters (likely OCR errors)
     text = _OCR_ARTIFACTS["scattered_chars"].sub(lambda m: m.group().replace(" ", ""), text)
 
-    # Clean repeated punctuation
     text = _OCR_ARTIFACTS["repeated_punctuation"].sub("...", text)
 
-    # Fix isolated punctuation
     text = _OCR_ARTIFACTS["isolated_punctuation"].sub(" ", text)
 
-    # Remove malformed words with numbers mixed in
     text = _OCR_ARTIFACTS["malformed_words"].sub(" ", text)
 
-    # Normalize excessive whitespace
     return _OCR_ARTIFACTS["excessive_whitespace"].sub(" ", text)
 
 
 def _clean_navigation_elements(text: str) -> str:
     """Remove navigation elements from text."""
-    # Remove navigation words
     text = _NAVIGATION_PATTERNS["nav_words"].sub(" ", text)
 
-    # Remove breadcrumbs
     text = _NAVIGATION_PATTERNS["breadcrumbs"].sub(" ", text)
 
-    # Remove pagination
     return _NAVIGATION_PATTERNS["pagination"].sub(" ", text)

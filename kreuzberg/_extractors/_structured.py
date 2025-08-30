@@ -28,7 +28,6 @@ from kreuzberg._utils._sync import run_sync
 if TYPE_CHECKING:
     from pathlib import Path
 
-# Define text field keywords as a set for O(1) membership testing
 _TEXT_FIELD_KEYWORDS = frozenset({"title", "name", "subject", "description", "content", "body", "text", "message"})
 
 
@@ -79,7 +78,6 @@ class StructuredDataExtractor(Extractor):
             text_parts: list[str] = []
             metadata: dict[str, Any] = {}
 
-            # Use match statement for cleaner code and avoid multiple isinstance calls
             if isinstance(data, dict):
                 text_parts = self._extract_from_dict(data, metadata)
             elif isinstance(data, list):
@@ -117,7 +115,6 @@ class StructuredDataExtractor(Extractor):
             if isinstance(value, str) and value.strip():
                 text_parts.append(f"{full_key}: {value}")
 
-                # Check if key contains any text field keywords efficiently
                 key_lower = key.lower()
                 if any(keyword in key_lower for keyword in _TEXT_FIELD_KEYWORDS):
                     metadata[full_key] = value

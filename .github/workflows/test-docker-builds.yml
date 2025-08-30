@@ -12,7 +12,7 @@ jobs:
   test-build-all-images:
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 1  # Build one at a time to save disk space
+      max-parallel: 1  # Build one at a time to save disk space ~keep
       matrix:
         include:
           - name: core

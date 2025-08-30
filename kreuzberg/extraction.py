@@ -469,7 +469,6 @@ def batch_extract_bytes_sync(
             return (index, error_result)
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Avoid creating intermediate list, use enumerate directly
         future_to_index = {executor.submit(extract_single, (i, content)): i for i, content in enumerate(contents)}
 
         results: list[ExtractionResult] = [None] * len(contents)  # type: ignore[list-item]

@@ -12,7 +12,6 @@ import psutil
 
 from kreuzberg.exceptions import ValidationError
 
-# Define error keywords as frozensets for O(1) membership testing
 _SYSTEM_ERROR_KEYWORDS = frozenset({"memory", "resource", "process", "thread"})
 _TRANSIENT_ERROR_PATTERNS = frozenset(
     {

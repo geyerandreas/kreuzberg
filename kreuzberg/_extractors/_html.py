@@ -26,7 +26,6 @@ class HTMLExtractor(Extractor):
         return await run_sync(self.extract_bytes_sync, content)
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
-        # Use html-to-markdown with script/nav removal for better quality
         result = html_to_markdown.convert_to_markdown(
             safe_decode(content),
             preprocess_html=True,
@@ -35,10 +34,8 @@ class HTMLExtractor(Extractor):
             remove_forms=True,
         )
 
-        # Skip normalize_spaces since quality processing will handle whitespace
         extraction_result = ExtractionResult(content=result, mime_type=MARKDOWN_MIME_TYPE, metadata={}, chunks=[])
 
-        # Apply quality processing which includes normalization
         return self._apply_quality_processing(extraction_result)
 
     def extract_path_sync(self, path: Path) -> ExtractionResult:

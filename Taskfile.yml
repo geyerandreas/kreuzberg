@@ -11,7 +11,6 @@ vars:
   LOG_DIR: "{{.TEST_DIR}}/logs"
 
 tasks:
-  # Main task for Docker E2E testing
   docker:e2e:
     desc: "Build Docker images and run E2E tests"
     deps:
@@ -19,7 +18,6 @@ tasks:
     cmds:
       - uv run python {{.TEST_DIR}}/docker_images_test.py
 
-  # Docker build tasks
   docker:build:
     desc: "Build all Docker images for testing"
     deps:
@@ -66,13 +64,11 @@ tasks:
       - kreuzberg/**/*.py
       - pyproject.toml
 
-  # Test runner variants
   docker:test:
     desc: "Run Docker E2E tests (images must be built)"
     cmds:
       - uv run python {{.TEST_DIR}}/docker_images_test.py
 
-  # Utility tasks
   docker:clean:
     desc: "Clean up Docker test images and containers"
     cmds:
@@ -86,7 +82,6 @@ tasks:
       - docker ps -a --filter "name=kreuzberg-test" --format "table {{.Names}}\t{{.Status}}"
       - for container in $(docker ps -a --filter "name=kreuzberg-test" --format "{{.Names}}"); do echo "=== $container ==="; docker logs --tail 50 "$container" 2>&1 || true; done
 
-  # Development tasks
   setup:
     desc: "Install dependencies with uv"
     cmds:
@@ -130,7 +125,6 @@ tasks:
     cmds:
       - uv run mypy
 
-  # Documentation tasks
   docs:build:
     desc: "Build documentation"
     cmds:
@@ -141,7 +135,6 @@ tasks:
     cmds:
       - uv run mkdocs serve
 
-  # CI/CD tasks
   ci:
     desc: "Run full CI pipeline locally"
     deps:
@@ -156,7 +149,6 @@ tasks:
       - docker:build
       - docker:test
 
-  # Default task
   default:
     desc: "Show available tasks"
     cmds:

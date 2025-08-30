@@ -197,7 +197,6 @@ class SpreadSheetExtractor(Extractor):
     def _enhance_sheet_with_table_data(self, workbook: CalamineWorkbook, sheet_name: str) -> str:
         """Enhanced sheet processing with better table structure preservation."""
         try:
-            # pandas is optional dependency
             import pandas as pd  # noqa: PLC0415
 
             from kreuzberg._utils._table import enhance_table_markdown  # noqa: PLC0415
@@ -208,19 +207,15 @@ class SpreadSheetExtractor(Extractor):
             if not data or not any(row for row in data):
                 return f"## {sheet_name}\n\n*Empty sheet*"
 
-            # Convert to DataFrame
             df = pd.DataFrame(data)
 
-            # Clean up empty rows and columns
             df = df.dropna(how="all").dropna(axis=1, how="all")
 
             if df.empty:
                 return f"## {sheet_name}\n\n*No data*"
 
-            # Create a mock TableData for enhanced formatting
             from kreuzberg._types import TableData  # noqa: PLC0415
 
-            # Create a 1x1 transparent image as placeholder
             placeholder_image = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
             mock_table: TableData = {"df": df, "text": "", "page_number": 0, "cropped_image": placeholder_image}
 
@@ -228,7 +223,6 @@ class SpreadSheetExtractor(Extractor):
             return f"## {sheet_name}\n\n{enhanced_markdown}"
 
         except (ImportError, AttributeError, ValueError):
-            # Fallback to original method if pandas/table enhancement fails
             return self._convert_sheet_to_text_sync(workbook, sheet_name)
 
     @staticmethod
@@ -243,13 +237,10 @@ class SpreadSheetExtractor(Extractor):
         """
         metadata: Metadata = {}
 
-        # Extract basic document properties
         SpreadSheetExtractor._extract_document_properties(workbook, metadata)
 
-        # Add structural information
         SpreadSheetExtractor._add_structure_info(workbook, metadata)
 
-        # Analyze content complexity
         SpreadSheetExtractor._analyze_content_complexity(workbook, metadata)
 
         return metadata
@@ -263,14 +254,13 @@ class SpreadSheetExtractor(Extractor):
 
             props = workbook.metadata
 
-            # Basic properties mapping
             property_mapping = {
                 "title": "title",
-                "author": "authors",  # Convert to list
+                "author": "authors",
                 "subject": "subject",
                 "comments": "comments",
-                "keywords": "keywords",  # Process separately
-                "category": "categories",  # Convert to list
+                "keywords": "keywords",
+                "category": "categories",
                 "company": "organization",
                 "manager": "modified_by",
             }
@@ -286,7 +276,6 @@ class SpreadSheetExtractor(Extractor):
                     else:
                         metadata[meta_key] = value  # type: ignore[literal-required]
 
-            # Handle dates separately
             SpreadSheetExtractor._extract_date_properties(props, metadata)
 
     @staticmethod
@@ -311,7 +300,6 @@ class SpreadSheetExtractor(Extractor):
         sheet_count = len(workbook.sheet_names)
         structure_info = f"Spreadsheet with {sheet_count} sheet{'s' if sheet_count != 1 else ''}"
 
-        # Don't list too many sheet names (magic number made constant)
         max_sheet_names_to_list = 5
         if sheet_count <= max_sheet_names_to_list:
             structure_info += f": {', '.join(workbook.sheet_names)}"
@@ -325,7 +313,6 @@ class SpreadSheetExtractor(Extractor):
             has_formulas = False
             total_cells = 0
 
-            # Check only first few sheets for performance
             max_sheets_to_check = 3
             max_rows_to_check = 50
 
@@ -335,17 +322,15 @@ class SpreadSheetExtractor(Extractor):
                     data = sheet.to_python()
 
                     for row in data[:max_rows_to_check]:
-                        if not row:  # Skip empty rows
+                        if not row:
                             continue
 
                         total_cells += sum(1 for cell in row if cell is not None and str(cell).strip())
 
-                        # Check for formulas (simple heuristic)
                         if any(isinstance(cell, str) and cell.startswith("=") for cell in row):
                             has_formulas = True
                             break
 
-            # Build summary
             summary_parts = []
             if total_cells > 0:
                 summary_parts.append(f"Contains {total_cells}+ data cells")

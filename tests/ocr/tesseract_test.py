@@ -447,7 +447,7 @@ def test_process_image_sync(backend: TesseractBackend) -> None:
     ):
         mock_run.return_value = None
         mock_temp_file = Mock()
-        mock_temp_file.name = "test_image"  # Use relative path for cross-platform compatibility
+        mock_temp_file.name = "test_image"
         mock_temp.return_value.__enter__.return_value = mock_temp_file
 
         result = backend.process_image_sync(image, language="eng")
@@ -468,18 +468,13 @@ def test_process_file_sync(backend: TesseractBackend, ocr_image: Path) -> None:
     ):
         mock_run.return_value = None
         mock_temp_file = Mock()
-        mock_temp_file.name = "test_output"  # Use relative path for cross-platform compatibility
+        mock_temp_file.name = "test_output"
         mock_temp.return_value.__enter__.return_value = mock_temp_file
 
         result = backend.process_file_sync(ocr_image, language="eng")
 
         assert isinstance(result, ExtractionResult)
         assert result.content.strip() == "Sample file text"
-
-
-# =============================================================================
-# COMPREHENSIVE TESTS FOR TESSERACT OCR BACKEND
-# =============================================================================
 
 
 class TestTesseractConfigValidation:
@@ -525,7 +520,7 @@ class TestTesseractConfigValidation:
         assert config.psm == PSMMode.AUTO
         assert config.tessedit_char_whitelist == ""
         assert config.tessedit_enable_dict_correction is True
-        assert config.language_model_ngram_on is False  # Default is False
+        assert config.language_model_ngram_on is False
         assert config.textord_space_size_is_variable is True
         assert config.tessedit_dont_blkrej_good_wds is True
         assert config.tessedit_dont_rowrej_good_wds is True
@@ -574,7 +569,7 @@ class TestTesseractCommandBuilding:
         assert "-l" in command
         assert "eng" in command
         assert "--psm" in command
-        assert "3" in command  # AUTO mode value
+        assert "3" in command
 
     def test_build_tesseract_command_complex(self, backend: TesseractBackend) -> None:
         """Test complex tesseract command building with all options."""
@@ -596,9 +591,8 @@ class TestTesseractCommandBuilding:
         assert "-l" in command
         assert "eng+deu+fra" in command
         assert "--psm" in command
-        assert "6" in command  # SINGLE_BLOCK mode value
+        assert "6" in command
 
-        # Check for config parameters
         command_str = " ".join(command)
         assert "tessedit_char_whitelist=0123456789" in command_str
         assert "tessedit_enable_dict_correction=0" in command_str
@@ -618,7 +612,6 @@ class TestTesseractCommandBuilding:
         assert command[0] == "tesseract"
         assert "input.jpg" in command
         assert "output" in command
-        # Should have defaults
         assert "-l" in command
         assert "eng" in command
 
@@ -845,7 +838,6 @@ class TestTesseractSyncMethods:
         mock_result.stderr = b""
         mock_run.return_value = mock_result
 
-        # Reset class variable
         TesseractBackend._version_checked = False
 
         backend._validate_tesseract_version_sync()
@@ -862,7 +854,6 @@ class TestTesseractSyncMethods:
         mock_result.stderr = b""
         mock_run.return_value = mock_result
 
-        # Reset class variable
         TesseractBackend._version_checked = False
 
         with pytest.raises(MissingDependencyError, match="Tesseract version 5"):
@@ -873,7 +864,6 @@ class TestTesseractSyncMethods:
         mock_run = mocker.patch("subprocess.run")
         mock_run.side_effect = FileNotFoundError("tesseract not found")
 
-        # Reset class variable
         TesseractBackend._version_checked = False
 
         with pytest.raises(MissingDependencyError, match="Tesseract version 5"):
@@ -889,7 +879,6 @@ class TestTesseractEnvironmentVariables:
         mocker.patch("sys.platform", "linux")
 
         async def mock_run_process(*args: Any, **kwargs: Any) -> Mock:
-            # Verify environment variable is set
             assert kwargs.get("env") == {"OMP_THREAD_LIMIT": "1"}
             result = Mock()
             result.returncode = 0
@@ -899,7 +888,6 @@ class TestTesseractEnvironmentVariables:
 
         mocker.patch("kreuzberg._ocr._tesseract.run_process", side_effect=mock_run_process)
 
-        # Reset version check
         TesseractBackend._version_checked = False
 
         test_image = Image.new("RGB", (100, 100), "white")
@@ -911,7 +899,6 @@ class TestTesseractEnvironmentVariables:
         mocker.patch("sys.platform", "darwin")
 
         async def mock_run_process(*args: Any, **kwargs: Any) -> Mock:
-            # Verify no environment variables are set
             assert kwargs.get("env") is None
             result = Mock()
             result.returncode = 0
@@ -921,7 +908,6 @@ class TestTesseractEnvironmentVariables:
 
         mocker.patch("kreuzberg._ocr._tesseract.run_process", side_effect=mock_run_process)
 
-        # Reset version check
         TesseractBackend._version_checked = False
 
         test_image = Image.new("RGB", (100, 100), "white")
@@ -938,7 +924,6 @@ class TestTesseractImageProcessing:
 
         for mode in modes:
             if mode == "CMYK":
-                # CMYK images need special handling
                 image = Image.new("RGB", (100, 100), "white").convert("CMYK")
             else:
                 image = Image.new(mode, (100, 100), "white")
@@ -957,7 +942,6 @@ class TestTesseractImageProcessing:
     @pytest.mark.anyio
     async def test_process_image_very_large(self, backend: TesseractBackend, mock_run_process: Mock) -> None:
         """Test processing large images."""
-        # Create a reasonably large image for testing
         image = Image.new("RGB", (2000, 1500), "white")
         result = await backend.process_image(image, language="eng")
         assert isinstance(result, ExtractionResult)
@@ -977,10 +961,8 @@ class TestTesseractErrorHandling:
     @pytest.mark.anyio
     async def test_process_image_invalid_format(self, backend: TesseractBackend, mock_run_process: Mock) -> None:
         """Test processing corrupted/invalid image."""
-        # Create an image and then corrupt it
         image = Image.new("RGB", (100, 100), "white")
 
-        # Mock a tesseract error for invalid format
         async def error_side_effect(*args: Any, **kwargs: Any) -> Mock:
             if "--version" in args[0]:
                 result = Mock()
@@ -1037,7 +1019,7 @@ class TestTesseractConfigEdgeCases:
         """Test very long whitelist."""
         from kreuzberg._ocr._tesseract import TesseractConfig
 
-        long_whitelist = "".join(chr(i) for i in range(32, 127))  # All printable ASCII
+        long_whitelist = "".join(chr(i) for i in range(32, 127))
 
         config = TesseractConfig(tessedit_char_whitelist=long_whitelist)
         assert len(config.tessedit_char_whitelist) > 90
@@ -1045,11 +1027,11 @@ class TestTesseractConfigEdgeCases:
     def test_unicode_language_combinations(self) -> None:
         """Test various Unicode language combinations."""
         valid_combinations = [
-            "ara+eng",  # Arabic + English
-            "chi_sim+eng+deu",  # Chinese Simplified + English + German
-            "jpn+kor+eng",  # Japanese + Korean + English
-            "rus+ukr+eng",  # Russian + Ukrainian + English
-            "hin+pan+urd+eng",  # Hindi + Punjabi + Urdu + English
+            "ara+eng",
+            "chi_sim+eng+deu",
+            "jpn+kor+eng",
+            "rus+ukr+eng",
+            "hin+pan+urd+eng",
         ]
 
         for combo in valid_combinations:
@@ -1063,7 +1045,6 @@ class TestTesseractUtilityFunctions:
     def test_normalize_spaces_in_results(self, backend: TesseractBackend, mock_run_process: Mock) -> None:
         """Test that normalize_spaces is properly applied to results."""
 
-        # Mock tesseract to return text with extra spaces
         async def mock_with_extra_spaces(*args: Any, **kwargs: Any) -> Mock:
             if "--version" in args[0]:
                 result = Mock()
@@ -1072,7 +1053,6 @@ class TestTesseractUtilityFunctions:
                 result.stderr = b""
                 return result
 
-            # Create output file with text containing extra spaces
             output_file = args[0][2]
             Path(f"{output_file}.txt").write_text("This  has   extra    spaces\nAnd\t\ttabs\n\n\nAnd newlines")
 
@@ -1085,7 +1065,6 @@ class TestTesseractUtilityFunctions:
 
         image = Image.new("RGB", (100, 100), "white")
 
-        # Use sync version to avoid complexity
         with (
             patch.object(backend, "_validate_tesseract_version_sync"),
             patch("tempfile.NamedTemporaryFile") as mock_temp,
@@ -1096,10 +1075,9 @@ class TestTesseractUtilityFunctions:
 
             result = backend.process_image_sync(image, language="eng")
 
-            # Verify spaces are normalized
-            assert "  " not in result.content  # No double spaces
-            assert "\t\t" not in result.content  # No double tabs
-            assert "\n\n\n" not in result.content  # No triple newlines
+            assert "  " not in result.content
+            assert "\t\t" not in result.content
+            assert "\n\n\n" not in result.content
 
 
 @pytest.mark.anyio
@@ -1123,19 +1101,16 @@ async def test_tesseract_concurrent_processing(backend: TesseractBackend, mock_r
 @pytest.mark.anyio
 async def test_tesseract_memory_efficiency(backend: TesseractBackend, mock_run_process: Mock) -> None:
     """Test memory efficiency with large images."""
-    # Create and process a large image
     large_image = Image.new("RGB", (1000, 1000), "white")
 
     result = await backend.process_image(large_image, language="eng")
     assert isinstance(result, ExtractionResult)
 
-    # Verify the image object can be garbage collected
     import gc
 
     del large_image
     gc.collect()
 
-    # Process should still work with new images
     small_image = Image.new("RGB", (100, 100), "white")
     result2 = await backend.process_image(small_image, language="eng")
     assert isinstance(result2, ExtractionResult)

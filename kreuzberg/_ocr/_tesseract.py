@@ -348,7 +348,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                     if isinstance(value, bool):
                         command.extend(["-c", f"{kwarg}={1 if value else 0}"])
                     else:
-                        # Handle string parameters (like tessedit_char_whitelist)
                         command.extend(["-c", f"{kwarg}={value}"])
 
                 env: dict[str, Any] | None = None
@@ -442,7 +441,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             event = ocr_cache.mark_processing(**cache_kwargs)
             event.wait()
 
-            # Try cache again after waiting for other process to complete
             cached_result = ocr_cache.get(**cache_kwargs)
             if cached_result is not None:
                 return cached_result
@@ -499,7 +497,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             event = ocr_cache.mark_processing(**cache_kwargs)
             event.wait()
 
-            # Try cache again after waiting for other process to complete
             cached_result = ocr_cache.get(**cache_kwargs)
             if cached_result is not None:
                 return cached_result
