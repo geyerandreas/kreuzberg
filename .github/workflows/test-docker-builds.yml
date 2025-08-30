@@ -12,10 +12,10 @@ jobs:
         include:
           - name: base
             extras: "cli"
-            tag_suffix: ""
+            image_name: "goldziher/kreuzberg"
           - name: core
             extras: "cli,chunking,crypto,document-classification,langdetect,additional-extensions"
-            tag_suffix: "-core"
+            image_name: "goldziher/kreuzberg-core"
 
     steps:
       - name: Free up disk space
@@ -64,14 +64,14 @@ jobs:
           docker buildx build \
             --file ./.docker/Dockerfile \
             --build-arg EXTRAS="${{ matrix.extras }}" \
-            --tag kreuzberg:${{ matrix.name }} \
+            --tag ${{ matrix.image_name }}:test \
             --platform linux/amd64 \
             --no-cache \
             --load \
             .
 
           echo "Image built successfully:"
-          docker images | grep kreuzberg:${{ matrix.name }} || true
+          docker images | grep "${{ matrix.image_name }}:test" || true
 
           echo "Current disk usage:"
           df -h /
