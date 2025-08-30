@@ -13,7 +13,15 @@ COPY kreuzberg kreuzberg
 
 # Install dependencies with optimizations
 RUN --mount=type=cache,target=/tmp/uv-cache \
-    uv sync --extra api${EXTRAS:+ --extra ${EXTRAS}} --no-editable --no-dev --compile-bytecode && \
+    if [ -z "$EXTRAS" ]; then \
+        uv sync --extra api --no-editable --no-dev --compile-bytecode; \
+    else \
+        extras_args="--extra api"; \
+        for extra in $EXTRAS; do \
+            extras_args="$extras_args --extra $extra"; \
+        done; \
+        uv sync $extras_args --no-editable --no-dev --compile-bytecode; \
+    fi && \
     rm -rf /app/.venv/lib/python*/site-packages/**/__pycache__ && \
     find /app/.venv -type f -name "*.pyc" -delete && \
     find /app/.venv -type d -name "tests" -exec rm -rf {} + 2>/dev/null || true && \

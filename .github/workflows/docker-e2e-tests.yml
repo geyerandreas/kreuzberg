@@ -12,7 +12,7 @@ jobs:
       matrix:
         image:
           - { name: "base", extras: "cli" }
-          - { name: "core", extras: "cli,chunking,crypto,document-classification,langdetect,additional-extensions" }
+          - { name: "core", extras: "cli chunking crypto document-classification langdetect additional-extensions" }
       fail-fast: false
 
     steps:

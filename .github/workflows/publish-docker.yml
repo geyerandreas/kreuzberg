@@ -43,7 +43,7 @@ jobs:
             image_name: "goldziher/kreuzberg"
             should_build: ${{ github.event_name == 'release' || inputs.build_base == true }}
           - name: core
-            extras: "cli,chunking,crypto,document-classification,langdetect,additional-extensions"
+            extras: "cli chunking crypto document-classification langdetect additional-extensions"
             image_name: "goldziher/kreuzberg-core"
             should_build: ${{ github.event_name == 'release' || inputs.build_core == true }}
 
