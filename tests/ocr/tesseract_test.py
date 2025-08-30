@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from unittest.mock import Mock, patch
+from unittest.mock import ANY, Mock, mock_open, patch
 
 import pytest
 from PIL import Image
@@ -435,7 +435,6 @@ async def test_process_file_validation_error(backend: TesseractBackend, tmp_path
 
 def test_process_image_sync(backend: TesseractBackend) -> None:
     """Test sync image processing."""
-    from unittest.mock import Mock, mock_open, patch
 
     image = Image.new("RGB", (100, 100))
 
@@ -458,7 +457,6 @@ def test_process_image_sync(backend: TesseractBackend) -> None:
 
 def test_process_file_sync(backend: TesseractBackend, ocr_image: Path) -> None:
     """Test sync file processing."""
-    from unittest.mock import Mock, mock_open, patch
 
     with (
         patch.object(backend, "_run_tesseract_sync") as mock_run,
@@ -798,20 +796,20 @@ class TestTesseractSyncMethods:
         mock_run = mocker.patch("subprocess.run")
         mock_result = Mock()
         mock_result.returncode = 0
-        mock_result.stderr = b""
+        mock_result.stderr = ""
         mock_run.return_value = mock_result
 
         command = ["tesseract", "input.png", "output", "-l", "eng"]
         backend._run_tesseract_sync(command)
 
-        mock_run.assert_called_once_with(command, capture_output=True, check=False)
+        mock_run.assert_called_once_with(command, check=False, env=ANY, capture_output=True, text=True, timeout=30)
 
     def test_run_tesseract_sync_error(self, backend: TesseractBackend, mocker: MockerFixture) -> None:
         """Test sync tesseract execution with error."""
         mock_run = mocker.patch("subprocess.run")
         mock_result = Mock()
         mock_result.returncode = 1
-        mock_result.stderr = b"Tesseract error occurred"
+        mock_result.stderr = "Tesseract error occurred"
         mock_run.return_value = mock_result
 
         command = ["tesseract", "input.png", "output", "-l", "eng"]
@@ -826,7 +824,7 @@ class TestTesseractSyncMethods:
 
         command = ["tesseract", "input.png", "output", "-l", "eng"]
 
-        with pytest.raises(OCRError, match="Failed to OCR using tesseract"):
+        with pytest.raises(RuntimeError, match="Command execution failed"):
             backend._run_tesseract_sync(command)
 
     def test_validate_tesseract_version_sync_success(self, backend: TesseractBackend, mocker: MockerFixture) -> None:
@@ -834,15 +832,15 @@ class TestTesseractSyncMethods:
         mock_run = mocker.patch("subprocess.run")
         mock_result = Mock()
         mock_result.returncode = 0
-        mock_result.stdout = b"tesseract 5.2.0"
-        mock_result.stderr = b""
+        mock_result.stdout = "tesseract 5.2.0"
+        mock_result.stderr = ""
         mock_run.return_value = mock_result
 
         TesseractBackend._version_checked = False
 
         backend._validate_tesseract_version_sync()
 
-        mock_run.assert_called_once_with(["tesseract", "--version"], capture_output=True, check=False)
+        mock_run.assert_called_once_with(["tesseract", "--version"], capture_output=True, text=True, check=False)
         assert TesseractBackend._version_checked is True
 
     def test_validate_tesseract_version_sync_too_old(self, backend: TesseractBackend, mocker: MockerFixture) -> None:
@@ -850,8 +848,8 @@ class TestTesseractSyncMethods:
         mock_run = mocker.patch("subprocess.run")
         mock_result = Mock()
         mock_result.returncode = 0
-        mock_result.stdout = b"tesseract 4.1.1"
-        mock_result.stderr = b""
+        mock_result.stdout = "tesseract 4.1.1"
+        mock_result.stderr = ""
         mock_run.return_value = mock_result
 
         TesseractBackend._version_checked = False
@@ -987,7 +985,7 @@ class TestTesseractErrorHandling:
 
         mocker.patch("tempfile.NamedTemporaryFile", side_effect=OSError("Cannot create temp file"))
 
-        with pytest.raises(OCRError, match="Failed to OCR using tesseract"):
+        with pytest.raises(OSError, match="Cannot create temp file"):
             backend.process_image_sync(image, language="eng")
 
     def test_sync_process_file_read_error(

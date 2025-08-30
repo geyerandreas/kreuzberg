@@ -426,7 +426,7 @@ class TestEmailExtractorFormatEmailField:
             {"name": "No Email Key"},
         ]
         result = email_extractor._format_email_field(field)
-        assert result == "valid@example.com, "
+        assert result == "valid@example.com"
 
     def test_format_email_field_list_with_strings(self, email_extractor: EmailExtractor) -> None:
         """Test formatting list of string emails."""
@@ -503,7 +503,7 @@ class TestEmailExtractorHeaderExtractionComprehensive:
             result = email_extractor.extract_bytes_sync(b"dummy")
 
             assert result.metadata["email_from"] == ""
-            assert "From: " in result.content
+            assert "From:" in result.content
 
     def test_extract_headers_from_field_string(self, email_extractor: EmailExtractor) -> None:
         """Test from field as plain string."""
