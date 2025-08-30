@@ -4,7 +4,6 @@ import platform
 import warnings
 from dataclasses import dataclass
 from importlib.util import find_spec
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal
 
 from PIL import Image

@@ -7,28 +7,21 @@ from functools import lru_cache
 
 import chardetng_py
 
-# Compile regex patterns once at module level for performance
 _WHITESPACE_PATTERN = re.compile(r"[ \t\f\v\r\xa0\u2000-\u200b\u2028\u2029\u3000]+")
 _NEWLINES_PATTERN = re.compile(r"\n+")
 _MOJIBAKE_PATTERNS = {
-    # Hebrew as Cyrillic patterns
     "hebrew_as_cyrillic": re.compile(r"[\u0400-\u04FF]{3,}"),
-    # Control characters that shouldn't appear in text
     "control_chars": re.compile(r"[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\x9F]"),
-    # Unicode replacement characters
     "replacement_chars": re.compile(r"\uFFFD+"),
-    # Isolated combining marks (likely encoding issues)
     "isolated_combining": re.compile(r"[\u0300-\u036F](?![^\u0300-\u036F])"),
 }
 
-# Simple cache for encoding detection (in-memory, session-scoped)
 _encoding_cache: dict[str, str] = {}
 
 
 @lru_cache(maxsize=128)
 def _get_encoding_cache_key(data_hash: str, size: int) -> str:
     """Generate cache key for encoding detection."""
-    # Use string interpolation which is faster than format strings for simple cases
     return f"{data_hash}:{size}"
 
 
@@ -45,14 +38,12 @@ def safe_decode(byte_data: bytes, encoding: str | None = None) -> str:
     if not byte_data:
         return ""
 
-    # Try provided encoding first (fastest path)
     if encoding:
         with suppress(UnicodeDecodeError, LookupError):
             decoded = byte_data.decode(encoding)
             return _fix_mojibake(decoded)
 
-    # Check cache for similar content (performance optimization)
-    data_hash = hashlib.sha256(byte_data[:1024]).hexdigest()[:16]  # Hash first 1KB
+    data_hash = hashlib.sha256(byte_data[:1024]).hexdigest()[:16]
     cache_key = _get_encoding_cache_key(data_hash, len(byte_data))
 
     if cache_key in _encoding_cache:
@@ -61,25 +52,22 @@ def safe_decode(byte_data: bytes, encoding: str | None = None) -> str:
             decoded = byte_data.decode(cached_encoding)
             return _fix_mojibake(decoded)
 
-    # Use chardetng for better performance than charset-normalizer
     detected_encoding = chardetng_py.detect(byte_data)
     if detected_encoding:
         with suppress(UnicodeDecodeError, LookupError):
             decoded = byte_data.decode(detected_encoding)
-            # Cache successful encoding detection
-            if len(_encoding_cache) < 1000:  # Prevent unlimited growth
+            if len(_encoding_cache) < 1000:  # Prevent unlimited growth ~keep
                 _encoding_cache[cache_key] = detected_encoding
             return _fix_mojibake(decoded)
 
-    # Try multiple encodings with confidence scoring
     encodings_to_try = [
         "utf-8",
-        "windows-1255",  # Hebrew
-        "iso-8859-8",  # Hebrew
-        "windows-1256",  # Arabic
-        "iso-8859-6",  # Arabic
-        "windows-1252",  # Western European
-        "cp1251",  # Cyrillic
+        "windows-1255",  # Hebrew ~keep
+        "iso-8859-8",  # Hebrew ~keep
+        "windows-1256",  # Arabic ~keep
+        "iso-8859-6",  # Arabic ~keep
+        "windows-1252",  # Western European ~keep
+        "cp1251",  # Cyrillic ~keep
     ]
 
     best_result = None
@@ -96,7 +84,6 @@ def safe_decode(byte_data: bytes, encoding: str | None = None) -> str:
     if best_result and best_confidence > 0.5:
         return _fix_mojibake(best_result)
 
-    # Final fallback
     return byte_data.decode("latin-1", errors="replace")
 
 
@@ -109,25 +96,19 @@ def _calculate_text_confidence(text: str) -> float:
     if total_chars == 0:
         return 0.0
 
-    # Check for common encoding problems - compile patterns once
     replacement_count = len(_MOJIBAKE_PATTERNS["replacement_chars"].findall(text))
     control_count = len(_MOJIBAKE_PATTERNS["control_chars"].findall(text))
 
-    # Penalize replacement and control characters
     penalty = (replacement_count + control_count * 2) / total_chars
 
-    # Bonus for readable character ranges - more efficient counting
-    # Use generator expression with early termination
     readable_chars = sum(1 for c in text if c.isprintable() or c.isspace())
     readability_score = readable_chars / total_chars
 
-    # Check for suspicious Cyrillic that might be misencoded Hebrew
     cyrillic_matches = _MOJIBAKE_PATTERNS["hebrew_as_cyrillic"].findall(text)
     if cyrillic_matches:
-        # Calculate total length more efficiently
         cyrillic_length = sum(len(match) for match in cyrillic_matches)
         if cyrillic_length > total_chars * 0.1:
-            penalty += 0.3  # Heavy penalty for likely mojibake
+            penalty += 0.3
 
     return max(0.0, min(1.0, readability_score - penalty))
 
@@ -137,19 +118,13 @@ def _fix_mojibake(text: str) -> str:
     if not text:
         return text
 
-    # Remove control characters
     text = _MOJIBAKE_PATTERNS["control_chars"].sub("", text)
 
-    # Remove replacement characters
     text = _MOJIBAKE_PATTERNS["replacement_chars"].sub("", text)
 
-    # Remove isolated combining marks
     text = _MOJIBAKE_PATTERNS["isolated_combining"].sub("", text)
 
-    # Try to fix Hebrew encoded as Cyrillic (common Windows-1255 -> CP1251 confusion)
     if _MOJIBAKE_PATTERNS["hebrew_as_cyrillic"].search(text):
-        # This is a heuristic fix - in practice, you'd need actual character mapping
-        # For now, we flag it for manual review by keeping the text but adding a marker
         pass
 
     return text
@@ -167,19 +142,14 @@ def normalize_spaces(text: str) -> str:
     if not text or not text.strip():
         return ""
 
-    # Split by double newlines to preserve paragraph breaks
     paragraphs = text.split("\n\n")
 
     result_paragraphs = []
 
     for paragraph in paragraphs:
-        # Use pre-compiled patterns for better performance
-        # Replace multiple whitespace (except newlines) with single space
         cleaned = _WHITESPACE_PATTERN.sub(" ", paragraph)
-        # Clean up multiple newlines within paragraph (keep single newlines)
         cleaned = _NEWLINES_PATTERN.sub("\n", cleaned)
 
-        # Process lines efficiently - manual loop avoids double strip() calls
         lines = []
         for line in cleaned.split("\n"):
             stripped_line = line.strip()

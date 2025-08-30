@@ -102,23 +102,18 @@ class Extractor(ABC):
         Returns:
             Enhanced extraction result with quality improvements (if enabled)
         """
-        # Only apply quality processing if enabled in config
         if not self.config.enable_quality_processing:
             return result
 
         if not result.content:
             return result
 
-        # Clean the content
         cleaned_content = clean_extracted_text(result.content)
 
-        # Calculate quality score
         quality_score = calculate_quality_score(cleaned_content, dict(result.metadata) if result.metadata else None)
 
-        # Add quality metadata
         enhanced_metadata = (dict(result.metadata) if result.metadata else {}) | {"quality_score": quality_score}
 
-        # Return enhanced result
         return ExtractionResult(
             content=cleaned_content,
             mime_type=result.mime_type,

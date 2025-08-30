@@ -47,15 +47,12 @@ def load_config_from_file(config_path: Path) -> dict[str, Any]:
     except tomllib.TOMLDecodeError as e:
         raise ValidationError(f"Invalid TOML in configuration file: {e}") from e
 
-    # Handle both kreuzberg.toml (root level) and pyproject.toml ([tool.kreuzberg])
     if config_path.name == "kreuzberg.toml":
         return data  # type: ignore[no-any-return]
 
-    # For other files, check if they have [tool.kreuzberg] section
     if config_path.name == "pyproject.toml" or ("tool" in data and "kreuzberg" in data.get("tool", {})):
         return data.get("tool", {}).get("kreuzberg", {})  # type: ignore[no-any-return]
 
-    # Otherwise assume root-level configuration
     return data  # type: ignore[no-any-return]
 
 
@@ -99,7 +96,6 @@ def parse_ocr_backend_config(
 
     match backend:
         case "tesseract":
-            # Convert psm integer to PSMMode enum if needed
             processed_config = backend_config.copy()
             if "psm" in processed_config and isinstance(processed_config["psm"], int):
                 from kreuzberg._ocr._tesseract import PSMMode  # noqa: PLC0415
@@ -125,7 +121,6 @@ def build_extraction_config_from_dict(config_dict: dict[str, Any]) -> Extraction
     """
     extraction_config: dict[str, Any] = {}
 
-    # Copy basic configuration fields using dictionary comprehension
     basic_fields = {
         "force_ocr",
         "chunk_content",
@@ -146,10 +141,8 @@ def build_extraction_config_from_dict(config_dict: dict[str, Any]) -> Extraction
         field: config_dict[field] for field in basic_fields if field in config_dict
     }
 
-    # Handle OCR backend configuration
     ocr_backend = extraction_config.get("ocr_backend")
     if ocr_backend and ocr_backend != "none":
-        # Validate OCR backend
         valid_backends = {"tesseract", "easyocr", "paddleocr"}
         if ocr_backend not in valid_backends:
             raise ValidationError(
@@ -160,11 +153,9 @@ def build_extraction_config_from_dict(config_dict: dict[str, Any]) -> Extraction
         if ocr_config:
             extraction_config["ocr_config"] = ocr_config
 
-    # Handle GMFT configuration for table extraction
     if extraction_config.get("extract_tables") and "gmft" in config_dict and isinstance(config_dict["gmft"], dict):
         extraction_config["gmft_config"] = GMFTConfig(**config_dict["gmft"])
 
-    # Convert "none" to None for ocr_backend
     if extraction_config.get("ocr_backend") == "none":
         extraction_config["ocr_backend"] = None
 
@@ -187,12 +178,10 @@ def find_config_file(start_path: Path | None = None) -> Path | None:
     current = start_path or Path.cwd()
 
     while current != current.parent:
-        # First, look for kreuzberg.toml
         kreuzberg_toml = current / "kreuzberg.toml"
         if kreuzberg_toml.exists():
             return kreuzberg_toml
 
-        # Then, look for pyproject.toml with [tool.kreuzberg] section
         pyproject_toml = current / "pyproject.toml"
         if pyproject_toml.exists():
             try:
@@ -226,7 +215,6 @@ def load_default_config(start_path: Path | None = None) -> ExtractionConfig | No
             return None
         return build_extraction_config_from_dict(config_dict)
     except Exception:  # noqa: BLE001
-        # Silently ignore configuration errors for default loading
         return None
 
 
@@ -293,9 +281,6 @@ def try_discover_config(start_path: Path | str | None = None) -> ExtractionConfi
         return None
 
 
-# Legacy functions for backward compatibility with CLI
-
-# Define common configuration fields to avoid repetition
 _CONFIG_FIELDS = [
     "force_ocr",
     "chunk_content",
@@ -359,7 +344,6 @@ def _configure_ocr_backend(
     if not ocr_backend or ocr_backend == "none":
         return
 
-    # Try CLI config first, then file config
     ocr_config = _build_ocr_config_from_cli(ocr_backend, cli_args)
     if not ocr_config and file_config:
         ocr_config = parse_ocr_backend_config(file_config, ocr_backend)
@@ -402,15 +386,12 @@ def build_extraction_config(
     """
     config_dict: dict[str, Any] = {}
 
-    # Merge configurations: file first, then CLI overrides
     _merge_file_config(config_dict, file_config)
     _merge_cli_args(config_dict, cli_args)
 
-    # Configure complex components
     _configure_ocr_backend(config_dict, file_config, cli_args)
     _configure_gmft(config_dict, file_config, cli_args)
 
-    # Convert "none" to None for ocr_backend
     if config_dict.get("ocr_backend") == "none":
         config_dict["ocr_backend"] = None
 

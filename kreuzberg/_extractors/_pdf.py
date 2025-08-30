@@ -65,7 +65,6 @@ class PDFExtractor(Extractor):
                 if self._validate_extracted_text(content):
                     result = ExtractionResult(content=content, mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[])
             except ParsingError:
-                # If searchable text extraction fails, continue to OCR or empty result
                 pass
 
         if not result and self.config.ocr_backend is not None:
@@ -77,7 +76,7 @@ class PDFExtractor(Extractor):
         result.metadata = await self._extract_metadata_with_password_attempts(content_bytes)
 
         if self.config.extract_tables:
-            # GMFT is optional dependency
+            # GMFT is optional dependency ~keep
             try:
                 from kreuzberg._gmft import extract_tables  # noqa: PLC0415
 
@@ -85,7 +84,6 @@ class PDFExtractor(Extractor):
             except ImportError:  # pragma: no cover
                 result.tables = []
 
-            # Enhance metadata with table information
             if result.tables:
                 table_summary = generate_table_summary(result.tables)
                 result.metadata = result.metadata | {
@@ -126,7 +124,7 @@ class PDFExtractor(Extractor):
 
         tables = []
         if self.config.extract_tables:
-            # GMFT is optional dependency
+            # GMFT is optional dependency ~keep
             try:
                 from kreuzberg._gmft import extract_tables_sync  # noqa: PLC0415
 
@@ -134,7 +132,6 @@ class PDFExtractor(Extractor):
             except ImportError:
                 tables = []
 
-        # Use playa for better text structure preservation when not using OCR
         if not self.config.force_ocr and self._validate_extracted_text(text):
             text = self._extract_with_playa_sync(path, fallback_text=text)
 
@@ -148,7 +145,6 @@ class PDFExtractor(Extractor):
             chunks=[],
         )
 
-        # Enhance metadata with table information
         if tables:
             table_summary = generate_table_summary(tables)
             result.metadata = result.metadata | {
@@ -158,7 +154,6 @@ class PDFExtractor(Extractor):
                 f"{table_summary['total_rows']} total rows",
             }
 
-        # Apply quality processing
         return self._apply_quality_processing(result)
 
     def _validate_extracted_text(self, text: str, corruption_threshold: float = 0.05) -> bool:
@@ -253,7 +248,6 @@ class PDFExtractor(Extractor):
             *[backend.process_image(image, **self.config.get_config_dict()) for image in images],
             batch_size=cpu_count(),
         )
-        # Use list comprehension and join for efficient string building
         content = "\n".join(result.content for result in ocr_results)
 
         return ExtractionResult(content=content, mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[])
@@ -401,18 +395,15 @@ class PDFExtractor(Extractor):
             case _:
                 raise NotImplementedError(f"Sync OCR not implemented for {self.config.ocr_backend}")
 
-        # Use list comprehension and join for efficient string building
         return "\n\n".join(result.content for result in results)
 
     def _parse_with_password_attempts(self, content: bytes) -> Document:
         """Parse PDF with password attempts."""
-        # Normalize password to list
         if isinstance(self.config.pdf_password, str):
             passwords = [self.config.pdf_password] if self.config.pdf_password else [""]
         else:
             passwords = list(self.config.pdf_password)
 
-        # Try each password in sequence
         last_exception = None
         for password in passwords:
             try:
@@ -421,11 +412,9 @@ class PDFExtractor(Extractor):
                 last_exception = e
                 continue
 
-        # If all passwords failed, raise the last exception
         if last_exception:
             raise last_exception from None
 
-        # Fallback to no password
         return parse(content, max_workers=1, password="")
 
     def _get_passwords_to_try(self) -> list[str]:
@@ -446,7 +435,6 @@ class PDFExtractor(Extractor):
                 last_exception = e
                 continue
 
-        # If all passwords failed, try with empty password as fallback
         try:
             return await extract_pdf_metadata(content, password="")
         except Exception:
@@ -466,7 +454,6 @@ class PDFExtractor(Extractor):
                 last_exception = e
                 continue
 
-        # If all passwords failed, try with empty password as fallback
         try:
             return extract_pdf_metadata_sync(content, password="")
         except Exception:
@@ -480,7 +467,6 @@ class PDFExtractor(Extractor):
             content = path.read_bytes()
             document = self._parse_with_password_attempts(content)
 
-            # Extract text while preserving structure
             pages_text = []
             for page in document.pages:
                 page_text = page.extract_text()

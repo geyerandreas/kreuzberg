@@ -51,10 +51,8 @@ def _get_translated_text(result: ExtractionResult) -> str:
     Raises:
         MissingDependencyError: If the deep-translator package is not installed
     """
-    # Combine content with metadata for classification
     text_to_classify = result.content
     if result.metadata:
-        # Add metadata values to the text for classification
         metadata_text = " ".join(str(value) for value in result.metadata.values() if value)
         text_to_classify = f"{text_to_classify} {metadata_text}"
 
@@ -68,7 +66,6 @@ def _get_translated_text(result: ExtractionResult) -> str:
     try:
         return str(GoogleTranslator(source="auto", target="en").translate(text_to_classify).lower())
     except Exception:  # noqa: BLE001
-        # Fall back to original content in lowercase if translation fails
         return text_to_classify.lower()
 
 
@@ -131,13 +128,10 @@ def classify_document_from_layout(
     if not all(col in layout_df.columns for col in ["text", "top", "height"]):
         return None, None
 
-    # Use layout text for classification, not the content
     layout_text = " ".join(layout_df["text"].astype(str).tolist())
 
-    # Translate layout text directly for classification
     text_to_classify = layout_text
     if result.metadata:
-        # Add metadata values to the text for classification
         metadata_text = " ".join(str(value) for value in result.metadata.values() if value)
         text_to_classify = f"{text_to_classify} {metadata_text}"
 
@@ -146,7 +140,6 @@ def classify_document_from_layout(
 
         translated_text = str(GoogleTranslator(source="auto", target="en").translate(text_to_classify).lower())
     except Exception:  # noqa: BLE001
-        # Fall back to original content in lowercase if translation fails
         translated_text = text_to_classify.lower()
 
     layout_df["translated_text"] = translated_text
@@ -184,7 +177,6 @@ def auto_detect_document_type(
         layout_result = get_ocr_backend("tesseract").process_file_sync(file_path, **config.get_config_dict())
         result.document_type, result.document_type_confidence = classify_document_from_layout(layout_result, config)
     elif result.layout is not None and not result.layout.empty:
-        # Use layout-based classification if layout data is available
         result.document_type, result.document_type_confidence = classify_document_from_layout(result, config)
     else:
         result.document_type, result.document_type_confidence = classify_document(result, config)

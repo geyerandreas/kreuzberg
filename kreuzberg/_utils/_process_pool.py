@@ -13,6 +13,8 @@ import psutil
 import pypdfium2
 from typing_extensions import Self
 
+from kreuzberg._utils._ref import Ref
+
 if TYPE_CHECKING:
     import types
     from collections.abc import Callable, Generator
@@ -20,27 +22,31 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 
 
-_PROCESS_POOL: ProcessPoolExecutor | None = None
 _POOL_SIZE = max(1, mp.cpu_count() - 1)
 
 
-def _init_process_pool() -> ProcessPoolExecutor:
-    """Initialize the global process pool."""
-    global _PROCESS_POOL
-    if _PROCESS_POOL is None:
-        _PROCESS_POOL = ProcessPoolExecutor(max_workers=_POOL_SIZE)
-    return _PROCESS_POOL
+def _create_process_pool() -> ProcessPoolExecutor:
+    """Factory function to create process pool instance."""
+    return ProcessPoolExecutor(max_workers=_POOL_SIZE)
+
+
+_process_pool_ref = Ref("process_pool", _create_process_pool)
+
+
+def _get_process_pool() -> ProcessPoolExecutor:
+    """Get the process pool instance."""
+    return _process_pool_ref.get()
 
 
 @contextmanager
 def process_pool() -> Generator[ProcessPoolExecutor, None, None]:
-    """Get the global process pool."""
-    pool = _init_process_pool()
+    """Get the process pool."""
+    pool = _get_process_pool()
     try:
         yield pool
     except Exception:  # noqa: BLE001
         shutdown_process_pool()
-        pool = _init_process_pool()
+        pool = _get_process_pool()
         yield pool
 
 
@@ -52,11 +58,11 @@ def submit_to_process_pool(func: Callable[..., T], *args: Any, **kwargs: Any) ->
 
 
 def shutdown_process_pool() -> None:
-    """Shutdown the global process pool."""
-    global _PROCESS_POOL
-    if _PROCESS_POOL is not None:
-        _PROCESS_POOL.shutdown(wait=True)
-        _PROCESS_POOL = None
+    """Shutdown the process pool."""
+    if _process_pool_ref.is_initialized():
+        pool = _process_pool_ref.get()
+        pool.shutdown(wait=True)
+        _process_pool_ref.clear()
 
 
 def _extract_pdf_text_worker(pdf_path: str) -> tuple[str, str]:

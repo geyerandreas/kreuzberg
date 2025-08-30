@@ -30,7 +30,6 @@ if TYPE_CHECKING:  # pragma: no cover
 
     from kreuzberg._types import Metadata
 
-# Pre-compiled regex patterns for performance
 _NON_WORD_PATTERN = re.compile(r"\W")
 
 
@@ -201,15 +200,12 @@ class PresentationExtractor(Extractor):
         """
         metadata: Metadata = {}
 
-        # Extract core properties
         PresentationExtractor._extract_core_properties(presentation, metadata)
 
-        # Extract fonts used in presentation
         fonts = PresentationExtractor._extract_fonts(presentation)
         if fonts:
             metadata["fonts"] = list(fonts)
 
-        # Add structural information
         PresentationExtractor._add_presentation_structure_info(presentation, metadata, fonts)
 
         return metadata
@@ -217,7 +213,6 @@ class PresentationExtractor(Extractor):
     @staticmethod
     def _extract_core_properties(presentation: Presentation, metadata: Metadata) -> None:
         """Extract core document properties from presentation."""
-        # Property mapping for core metadata
         property_mapping = [
             ("authors", "author"),
             ("comments", "comments"),
@@ -236,7 +231,6 @@ class PresentationExtractor(Extractor):
             if core_property := getattr(presentation.core_properties, core_property_key, None):
                 metadata[metadata_key] = core_property  # type: ignore[literal-required]
 
-        # Handle special list properties
         if presentation.core_properties.language:
             metadata["languages"] = [presentation.core_properties.language]
 
@@ -265,7 +259,6 @@ class PresentationExtractor(Extractor):
         if slide_count == 0:
             return
 
-        # Build description
         structure_info = f"Presentation with {slide_count} slide{'s' if slide_count != 1 else ''}"
 
         slides_with_notes = sum(1 for slide in presentation.slides if slide.has_notes_slide)
@@ -274,7 +267,6 @@ class PresentationExtractor(Extractor):
 
         metadata["description"] = structure_info
 
-        # Build summary if not already present
         if "summary" not in metadata:
             summary_parts = [f"PowerPoint presentation with {slide_count} slides"]
             if slides_with_notes > 0:

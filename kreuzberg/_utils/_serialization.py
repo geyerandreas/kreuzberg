@@ -12,7 +12,6 @@ from msgspec.msgpack import decode, encode
 T = TypeVar("T")
 
 
-# Define dict method names in priority order
 _DICT_METHOD_NAMES = (
     "to_dict",
     "as_dict",
@@ -32,14 +31,12 @@ def encode_hook(obj: Any) -> Any:
     if isinstance(obj, Exception):
         return {"message": str(obj), "type": type(obj).__name__}
 
-    # Check for dict-like methods more efficiently using any() with generator
     for attr_name in _DICT_METHOD_NAMES:
         method = getattr(obj, attr_name, None)
         if method is not None and callable(method):
             return method()
 
     if is_dataclass(obj) and not isinstance(obj, type):
-        # Use msgspec.to_builtins for more efficient conversion
         return msgspec.to_builtins(obj)
 
     if hasattr(obj, "save") and hasattr(obj, "format"):
