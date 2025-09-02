@@ -27,9 +27,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-# This is a standalone E2E script, not a pytest test module
-# When pytest discovers this file, it should be skipped using pytest.ini or similar configuration
-
 DOCKER_IMAGES = {
     "base": "kreuzberg:base",
     "core": "kreuzberg:core",
@@ -224,7 +221,6 @@ def test_file_extraction(image_name: str, test_file: str) -> bool:
 def test_ocr_extraction(image_name: str, image_variant: str) -> bool:
     """Test OCR extraction based on image variant."""
 
-    # Both base and core images have tesseract OCR
     test_file = "ocr-image.jpg"
     test_file_path = TEST_FILES_DIR / test_file
 

@@ -15,15 +15,12 @@ def test_ref_basic_functionality() -> None:
 
     ref = Ref("test_ref", factory)
 
-    # Should not be initialized initially
     assert not ref.is_initialized()
 
-    # Get should create the instance
     value = ref.get()
     assert value == "test_value"
     assert ref.is_initialized()
 
-    # Should return the same instance
     value2 = ref.get()
     assert value2 is value
 
@@ -36,15 +33,12 @@ def test_ref_clear() -> None:
 
     ref = Ref("test_clear", factory)
 
-    # Get instance
     value = ref.get()
     assert ref.is_initialized()
 
-    # Clear it
     ref.clear()
     assert not ref.is_initialized()
 
-    # Get should create a new instance
     value2 = ref.get()
     assert value2 is not value
     assert value2 == ["test"]
@@ -65,7 +59,6 @@ def test_ref_multiple_instances() -> None:
     assert ref1.get() == "value1"
     assert ref2.get() == "value2"
 
-    # Clearing one doesn't affect the other
     ref1.clear()
     assert not ref1.is_initialized()
     assert ref2.is_initialized()
@@ -83,14 +76,12 @@ def test_ref_clear_all() -> None:
     ref1 = Ref("test_clear1", factory1)
     ref2 = Ref("test_clear2", factory2)
 
-    # Initialize both
     ref1.get()
     ref2.get()
 
     assert ref1.is_initialized()
     assert ref2.is_initialized()
 
-    # Clear all
     Ref.clear_all()
 
     assert not ref1.is_initialized()
@@ -108,5 +99,4 @@ def test_ref_factory_exception() -> None:
     with pytest.raises(ValueError, match="Factory failed"):
         ref.get()
 
-    # Should still not be initialized after factory failure
     assert not ref.is_initialized()

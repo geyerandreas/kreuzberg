@@ -123,15 +123,15 @@ bullets = "-"
         assert extraction_config.html_to_markdown_config is not None
         assert extraction_config.html_to_markdown_config.heading_style == "atx_closed"
         assert extraction_config.html_to_markdown_config.bullets == "-"
-        assert extraction_config.html_to_markdown_config.escape_asterisks is True  # Default
+        assert extraction_config.html_to_markdown_config.escape_asterisks is True
 
 
 @pytest.mark.parametrize(
     "heading_style,expected_marker",
     [
-        ("underlined", "="),  # H1 uses = underline
-        ("atx", "# "),  # H1 uses single #
-        ("atx_closed", "# "),  # H1 uses # with closing #
+        ("underlined", "="),
+        ("atx", "# "),
+        ("atx_closed", "# "),
     ],
 )
 def test_html_extraction_with_heading_styles(heading_style: Any, expected_marker: str) -> None:
@@ -181,18 +181,13 @@ def test_preprocessing_presets(preprocessing_preset: Any, should_remove_nav: boo
     assert "Content" in result.content
     assert "Main content here." in result.content
 
-    # Note: remove_navigation=True always removes nav elements regardless of preset
-    # The preprocessing_preset affects other aspects of HTML cleaning
     assert "Navigation Menu" not in result.content
 
 
 def test_html_to_markdown_config_with_invalid_literal() -> None:
     """Test that invalid literal values are handled properly."""
-    # Note: dataclasses with Literal types don't validate at runtime by default
-    # They would need explicit validation in __post_init__ or a library like pydantic
-    # For now, we'll test that the config accepts any string but document the expected values
-    config = HTMLToMarkdownConfig(heading_style="invalid_style")  # type: ignore
-    assert config.heading_style == "invalid_style"  # Won't fail at runtime
+    config = HTMLToMarkdownConfig(heading_style="invalid_style")  # type: ignore[arg-type]
+    assert config.heading_style == "invalid_style"  # type: ignore[comparison-overlap]
 
 
 def test_config_merging() -> None:
@@ -228,7 +223,7 @@ def test_html_to_markdown_config_immutability() -> None:
     config = HTMLToMarkdownConfig()
 
     with pytest.raises(AttributeError):
-        config.heading_style = "atx"
+        config.heading_style = "atx"  # type: ignore[misc]
 
     with pytest.raises(AttributeError):
-        config.wrap = True
+        config.wrap = True  # type: ignore[misc]

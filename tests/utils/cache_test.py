@@ -358,7 +358,6 @@ def test_get_stats_os_error(cache: KreuzbergCache[str]) -> None:
 
 def test_get_ocr_cache() -> None:
     """Test OCR cache factory function."""
-    # Clear any existing cache
     _ocr_cache_ref.clear()
 
     cache = get_ocr_cache()
@@ -371,7 +370,6 @@ def test_get_ocr_cache() -> None:
 
 def test_get_ocr_cache_with_env_vars() -> None:
     """Test OCR cache with environment variables."""
-    # Clear any existing cache
     _ocr_cache_ref.clear()
 
     with patch.dict(
@@ -413,7 +411,6 @@ def test_get_mime_cache() -> None:
 
 def test_clear_all_caches() -> None:
     """Test clearing all global caches."""
-    # Clear refs first to start fresh
     _ocr_cache_ref.clear()
     _document_cache_ref.clear()
     _table_cache_ref.clear()
@@ -426,7 +423,6 @@ def test_clear_all_caches() -> None:
 
     clear_all_caches()
 
-    # After clearing, the refs should be empty
     assert not _ocr_cache_ref.is_initialized()
     assert not _document_cache_ref.is_initialized()
     assert not _table_cache_ref.is_initialized()
