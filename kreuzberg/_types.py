@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
@@ -24,7 +24,6 @@ if TYPE_CHECKING:
     from pandas import DataFrame
     from PIL.Image import Image
 
-    from kreuzberg._config import HTMLToMarkdownConfig
     from kreuzberg._entity_extraction import SpacyEntityExtractionConfig
     from kreuzberg._gmft import GMFTConfig
     from kreuzberg._language_detection import LanguageDetectionConfig
@@ -404,3 +403,85 @@ class ExtractionConfig:
                 from kreuzberg._ocr._paddleocr import PaddleOCRConfig  # noqa: PLC0415
 
                 return asdict(PaddleOCRConfig())
+
+
+@dataclass(frozen=True)
+class HTMLToMarkdownConfig:
+    """Configuration for HTML to Markdown conversion.
+
+    This configuration class provides fine-grained control over how HTML content
+    is converted to Markdown format. Most fields have sensible defaults that work
+    well for typical document extraction scenarios.
+    """
+
+    stream_processing: bool = False
+    """Enable streaming mode for processing large HTML documents."""
+    chunk_size: int = 1024
+    """Size of chunks when stream_processing is enabled."""
+    chunk_callback: Callable[[str], None] | None = None
+    """Callback function invoked for each chunk during stream processing."""
+    progress_callback: Callable[[int, int], None] | None = None
+    """Callback function for progress updates (current, total)."""
+    parser: str | None = None
+    """BeautifulSoup parser to use (e.g., 'html.parser', 'lxml')."""
+    autolinks: bool = True
+    """Convert URLs to clickable links automatically."""
+    bullets: str = "*+-"
+    """Characters to use for unordered list bullets."""
+    code_language: str = ""
+    """Default language for code blocks."""
+    code_language_callback: Callable[[Any], str] | None = None
+    """Callback to determine code language dynamically."""
+    convert: str | Iterable[str] | None = None
+    """HTML tags to convert. If None, all supported tags are converted."""
+    convert_as_inline: bool = False
+    """Convert block elements as inline elements."""
+    custom_converters: Mapping[Any, Any] | None = None
+    """Custom converters for specific HTML elements."""
+    default_title: bool = False
+    """Use a default title if none is found."""
+    escape_asterisks: bool = True
+    """Escape asterisks in text to prevent unintended emphasis."""
+    escape_misc: bool = True
+    """Escape miscellaneous characters that have special meaning in Markdown."""
+    escape_underscores: bool = True
+    """Escape underscores in text to prevent unintended emphasis."""
+    extract_metadata: bool = True
+    """Extract metadata from HTML head section."""
+    heading_style: Literal["underlined", "atx", "atx_closed"] = "underlined"
+    """Style for markdown headings."""
+    highlight_style: Literal["double-equal", "html", "bold"] = "double-equal"
+    """Style for highlighting text."""
+    keep_inline_images_in: Iterable[str] | None = None
+    """HTML tags where inline images should be preserved."""
+    newline_style: Literal["spaces", "backslash"] = "spaces"
+    """Style for line breaks in markdown."""
+    strip: str | Iterable[str] | None = None
+    """HTML tags to strip completely from output."""
+    strip_newlines: bool = False
+    """Strip newlines from the output."""
+    strong_em_symbol: Literal["*", "_"] = "*"
+    """Symbol to use for strong/emphasis formatting."""
+    sub_symbol: str = ""
+    """Symbol to use for subscript text."""
+    sup_symbol: str = ""
+    """Symbol to use for superscript text."""
+    wrap: bool = False
+    """Enable text wrapping."""
+    wrap_width: int = 80
+    """Width for text wrapping when wrap is True."""
+    preprocess_html: bool = True
+    """Enable HTML preprocessing to clean up the input."""
+    preprocessing_preset: Literal["minimal", "standard", "aggressive"] = "aggressive"
+    """Preprocessing level for cleaning HTML."""
+    remove_navigation: bool = True
+    """Remove navigation elements from HTML."""
+    remove_forms: bool = True
+    """Remove form elements from HTML."""
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert config to dictionary for passing to convert_to_markdown.
+
+        Excludes None values and handles special cases.
+        """
+        return {key: value for key, value in self.__dict__.items() if value is not None}

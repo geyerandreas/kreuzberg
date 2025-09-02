@@ -5,10 +5,9 @@ from typing import TYPE_CHECKING, ClassVar
 import html_to_markdown
 from anyio import Path as AsyncPath
 
-from kreuzberg._config import HTMLToMarkdownConfig
 from kreuzberg._extractors._base import Extractor
 from kreuzberg._mime_types import HTML_MIME_TYPE, MARKDOWN_MIME_TYPE
-from kreuzberg._types import ExtractionResult
+from kreuzberg._types import ExtractionResult, HTMLToMarkdownConfig
 from kreuzberg._utils._string import safe_decode
 from kreuzberg._utils._sync import run_sync
 
