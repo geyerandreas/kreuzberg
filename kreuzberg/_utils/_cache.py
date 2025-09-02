@@ -428,7 +428,6 @@ def clear_all_caches() -> None:
     if _mime_cache_ref.is_initialized():
         get_mime_cache().clear()
 
-    # Clear the ref instances
     _ocr_cache_ref.clear()
     _document_cache_ref.clear()
     _table_cache_ref.clear()

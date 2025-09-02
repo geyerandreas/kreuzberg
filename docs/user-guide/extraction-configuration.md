@@ -67,6 +67,14 @@ low_memory = false
 [spacy_entity_extraction]
 language_models = { en = "en_core_web_sm", de = "de_core_news_sm" }
 fallback_to_multilingual = true
+
+# HTML to Markdown conversion configuration
+[html_to_markdown]
+heading_style = "atx"
+strong_em_symbol = "_"
+escape_underscores = false
+wrap = true
+wrap_width = 100
 ```
 
 ### pyproject.toml Example
@@ -433,6 +441,35 @@ file_paths = ["document1.pdf", "document2.docx", "image.jpg"]
 config = ExtractionConfig(force_ocr=True)
 results = await batch_extract_file(file_paths, config=config)
 ```
+
+### HTML to Markdown Configuration
+
+Control how HTML content is converted to Markdown:
+
+```python
+from kreuzberg import extract_file, ExtractionConfig, HTMLToMarkdownConfig
+
+# Custom HTML to Markdown configuration
+html_config = HTMLToMarkdownConfig(
+    heading_style="atx",
+    strong_em_symbol="_",
+    escape_underscores=False,
+    wrap=True,
+    wrap_width=100,
+    preprocessing_preset="standard",
+)
+
+result = await extract_file(
+    "document.html",
+    config=ExtractionConfig(html_to_markdown_config=html_config),
+)
+```
+
+Available heading styles:
+
+- `"underlined"`: Classic Markdown with underlines for h1/h2
+- `"atx"`: Hash-based headers (e.g., `# Header`)
+- `"atx_closed"`: Hash-based with closing hashes
 
 ### Synchronous API
 

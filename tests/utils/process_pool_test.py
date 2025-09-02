@@ -123,15 +123,12 @@ def test_shutdown_process_pool() -> None:
 
     _get_process_pool()
 
-    # Check that the ref has an initialized pool
     assert _process_pool_ref.is_initialized()
 
     shutdown_process_pool()
 
-    # After shutdown, the ref should be cleared
     assert not _process_pool_ref.is_initialized()
 
-    # Shutdown again should be safe
     shutdown_process_pool()
 
 

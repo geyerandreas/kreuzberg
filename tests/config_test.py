@@ -112,6 +112,11 @@ config = "--oem 1"
 [gmft]
 verbosity = 2
 detector_base_threshold = 0.7
+
+[html_to_markdown]
+heading_style = "atx"
+wrap = true
+wrap_width = 100
 """
         config_path.write_text(config_content)
 
@@ -122,6 +127,9 @@ detector_base_threshold = 0.7
         assert result["tesseract"]["language"] == "eng+fra"
         assert result["tesseract"]["psm"] == 6
         assert result["gmft"]["verbosity"] == 2
+        assert result["html_to_markdown"]["heading_style"] == "atx"
+        assert result["html_to_markdown"]["wrap"] is True
+        assert result["html_to_markdown"]["wrap_width"] == 100
 
 
 class TestConfigDiscovery:
@@ -535,6 +543,31 @@ def test_build_from_dict_with_gmft_config() -> None:
     assert result.extract_tables is True
     assert isinstance(result.gmft_config, GMFTConfig)
     assert result.gmft_config.verbosity == 2
+
+
+def test_build_from_dict_with_html_to_markdown_config() -> None:
+    """Test building ExtractionConfig with HTML-to-Markdown configuration."""
+    from kreuzberg._config import HTMLToMarkdownConfig
+
+    config_dict = {
+        "force_ocr": False,
+        "html_to_markdown": {
+            "heading_style": "atx",
+            "strong_em_symbol": "_",
+            "wrap": True,
+            "wrap_width": 120,
+            "preprocessing_preset": "standard",
+        },
+    }
+
+    result = build_extraction_config_from_dict(config_dict)
+    assert result.force_ocr is False
+    assert isinstance(result.html_to_markdown_config, HTMLToMarkdownConfig)
+    assert result.html_to_markdown_config.heading_style == "atx"
+    assert result.html_to_markdown_config.strong_em_symbol == "_"
+    assert result.html_to_markdown_config.wrap is True
+    assert result.html_to_markdown_config.wrap_width == 120
+    assert result.html_to_markdown_config.preprocessing_preset == "standard"
 
 
 def test_build_extraction_config_file_cli_merge() -> None:
@@ -1516,6 +1549,39 @@ class TestEdgeCasesAndErrorHandling:
 
         assert "config_path" in exc_info.value.context
         assert str(config_file) in exc_info.value.context["config_path"]
+
+    def test_html_to_markdown_config_with_all_parameters(self) -> None:
+        """Test HTML-to-Markdown config with various parameters."""
+        from kreuzberg._config import HTMLToMarkdownConfig
+
+        config_dict = {
+            "html_to_markdown": {
+                "heading_style": "atx_closed",
+                "strong_em_symbol": "_",
+                "escape_asterisks": False,
+                "escape_underscores": False,
+                "wrap": True,
+                "wrap_width": 80,
+                "bullets": "-",
+                "preprocessing_preset": "minimal",
+                "remove_navigation": False,
+                "remove_forms": False,
+            },
+        }
+
+        result = build_extraction_config_from_dict(config_dict)
+        assert result.html_to_markdown_config is not None
+        assert isinstance(result.html_to_markdown_config, HTMLToMarkdownConfig)
+        assert result.html_to_markdown_config.heading_style == "atx_closed"
+        assert result.html_to_markdown_config.strong_em_symbol == "_"
+        assert result.html_to_markdown_config.escape_asterisks is False
+        assert result.html_to_markdown_config.escape_underscores is False
+        assert result.html_to_markdown_config.wrap is True
+        assert result.html_to_markdown_config.wrap_width == 80
+        assert result.html_to_markdown_config.bullets == "-"
+        assert result.html_to_markdown_config.preprocessing_preset == "minimal"
+        assert result.html_to_markdown_config.remove_navigation is False
+        assert result.html_to_markdown_config.remove_forms is False
 
     def test_gmft_config_with_all_parameters(self) -> None:
         """Test GMFT config with all possible parameters."""
