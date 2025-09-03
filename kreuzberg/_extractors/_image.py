@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextlib
 import os
 import tempfile
-from dataclasses import asdict
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
@@ -12,9 +11,6 @@ from anyio import Path as AsyncPath
 from kreuzberg._extractors._base import Extractor
 from kreuzberg._mime_types import IMAGE_MIME_TYPES
 from kreuzberg._ocr import get_ocr_backend
-from kreuzberg._ocr._easyocr import EasyOCRConfig
-from kreuzberg._ocr._paddleocr import PaddleOCRConfig
-from kreuzberg._ocr._tesseract import TesseractConfig
 from kreuzberg._utils._tmp import create_temp_file
 from kreuzberg.exceptions import ValidationError
 
@@ -84,25 +80,7 @@ class ImageExtractor(Extractor):
             raise ValidationError("ocr_backend is None, cannot perform OCR")
 
         backend = get_ocr_backend(self.config.ocr_backend)
-
-        match self.config.ocr_backend:
-            case "tesseract":
-                config = (
-                    self.config.ocr_config if isinstance(self.config.ocr_config, TesseractConfig) else TesseractConfig()
-                )
-                result = backend.process_file_sync(path, **asdict(config))
-            case "paddleocr":
-                paddle_config = (
-                    self.config.ocr_config if isinstance(self.config.ocr_config, PaddleOCRConfig) else PaddleOCRConfig()
-                )
-                result = backend.process_file_sync(path, **asdict(paddle_config))
-            case "easyocr":
-                easy_config = (
-                    self.config.ocr_config if isinstance(self.config.ocr_config, EasyOCRConfig) else EasyOCRConfig()
-                )
-                result = backend.process_file_sync(path, **asdict(easy_config))
-            case _:
-                raise NotImplementedError(f"Sync OCR not implemented for {self.config.ocr_backend}")
+        result = backend.process_file_sync(path, **self.config.get_config_dict())
         return self._apply_quality_processing(result)
 
     def _get_extension_from_mime_type(self, mime_type: str) -> str:

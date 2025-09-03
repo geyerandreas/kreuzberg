@@ -1,12 +1,3 @@
-"""This module provides functions to extract textual content from files.
-
-It includes vendored code:
-
-- The extract PPTX logic is based on code vendored from `markitdown` to extract text from PPTX files.
-    See: https://github.com/microsoft/markitdown/blob/main/src/markitdown/_markitdown.py
-    Refer to the markitdown repository for it's license (MIT).
-"""
-
 from __future__ import annotations
 
 import re

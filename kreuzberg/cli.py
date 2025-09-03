@@ -1,5 +1,3 @@
-"""Command-line interface for kreuzberg."""
-
 from __future__ import annotations
 
 import json
@@ -101,39 +99,38 @@ def _load_config(config_path: Path | None, verbose: bool) -> dict[str, Any]:
     return file_config
 
 
-def _build_cli_args(
-    force_ocr: bool,
-    chunk_content: bool,
-    extract_tables: bool,
-    max_chars: int,
-    max_overlap: int,
-    ocr_backend: str | None,
-    tesseract_lang: str | None,
-    tesseract_psm: int | None,
-    easyocr_languages: str | None,
-    paddleocr_languages: str | None,
-) -> dict[str, Any]:
+def _build_cli_args(params: dict[str, Any]) -> dict[str, Any]:
     """Build CLI arguments dictionary."""
     cli_args: dict[str, Any] = {
-        "force_ocr": force_ocr if force_ocr else None,
-        "chunk_content": chunk_content if chunk_content else None,
-        "extract_tables": extract_tables if extract_tables else None,
-        "max_chars": max_chars if max_chars != DEFAULT_MAX_CHARACTERS else None,
-        "max_overlap": max_overlap if max_overlap != DEFAULT_MAX_OVERLAP else None,
-        "ocr_backend": ocr_backend,
+        "force_ocr": params["force_ocr"] if params["force_ocr"] else None,
+        "chunk_content": params["chunk_content"] if params["chunk_content"] else None,
+        "extract_tables": params["extract_tables"] if params["extract_tables"] else None,
+        "max_chars": params["max_chars"] if params["max_chars"] != DEFAULT_MAX_CHARACTERS else None,
+        "max_overlap": params["max_overlap"] if params["max_overlap"] != DEFAULT_MAX_OVERLAP else None,
+        "ocr_backend": params["ocr_backend"],
     }
 
-    if ocr_backend == "tesseract" and (tesseract_lang or tesseract_psm is not None):
+    ocr_backend = params["ocr_backend"]
+    if ocr_backend == "tesseract" and (
+        params["tesseract_lang"]
+        or params["tesseract_psm"] is not None
+        or params["tesseract_output_format"]
+        or params["enable_table_detection"]
+    ):
         tesseract_config = {}
-        if tesseract_lang:
-            tesseract_config["language"] = tesseract_lang
-        if tesseract_psm is not None:
-            tesseract_config["psm"] = tesseract_psm  # type: ignore[assignment]
+        if params["tesseract_lang"]:
+            tesseract_config["language"] = params["tesseract_lang"]
+        if params["tesseract_psm"] is not None:
+            tesseract_config["psm"] = params["tesseract_psm"]
+        if params["tesseract_output_format"]:
+            tesseract_config["output_format"] = params["tesseract_output_format"]
+        if params["enable_table_detection"]:
+            tesseract_config["enable_table_detection"] = True
         cli_args["tesseract_config"] = tesseract_config
-    elif ocr_backend == "easyocr" and easyocr_languages:
-        cli_args["easyocr_config"] = {"languages": easyocr_languages.split(",")}
-    elif ocr_backend == "paddleocr" and paddleocr_languages:
-        cli_args["paddleocr_config"] = {"languages": paddleocr_languages.split(",")}
+    elif ocr_backend == "easyocr" and params["easyocr_languages"]:
+        cli_args["easyocr_config"] = {"languages": params["easyocr_languages"].split(",")}
+    elif ocr_backend == "paddleocr" and params["paddleocr_languages"]:
+        cli_args["paddleocr_config"] = {"languages": params["paddleocr_languages"].split(",")}
 
     return cli_args
 
@@ -158,7 +155,7 @@ def _perform_extraction(file: Path | None, extraction_config: ExtractionConfig, 
             progress.add_task("Extracting text...", total=None)
 
             try:
-                import magic  # type: ignore[import-not-found]  # noqa: PLC0415
+                import magic  # type: ignore[import-not-found] # noqa: PLC0415
 
                 mime_type = magic.from_buffer(input_bytes, mime=True)
             except ImportError:  # pragma: no cover
@@ -191,7 +188,6 @@ def _write_output(
         try:
             click.echo(formatted_output)
         except UnicodeEncodeError:
-            # Fallback to direct buffer write for systems with non-UTF-8 encoding
             sys.stdout.buffer.write(formatted_output.encode("utf-8"))
 
 
@@ -258,57 +254,37 @@ def cli(ctx: click.Context) -> None:
 @click.option("-v", "--verbose", is_flag=True, help="Verbose output for debugging")
 @click.option("--tesseract-lang", help="Tesseract language(s) (e.g., 'eng+deu')")
 @click.option("--tesseract-psm", type=int, help="Tesseract PSM mode (0-13)")
+@click.option(
+    "--tesseract-output-format",
+    type=click.Choice(["text", "markdown", "tsv", "hocr"]),
+    help="Tesseract OCR output format (default: markdown)",
+)
+@click.option(
+    "--enable-table-detection", is_flag=True, help="Enable table extraction from scanned documents (with TSV format)"
+)
 @click.option("--easyocr-languages", help="EasyOCR language codes (comma-separated, e.g., 'en,de')")
 @click.option("--paddleocr-languages", help="PaddleOCR language codes (comma-separated, e.g., 'en,german')")
 @click.pass_context
-def extract(  # noqa: PLR0913
-    _: click.Context,
-    file: Path | None,
-    output: Path | None,
-    force_ocr: bool,
-    chunk_content: bool,
-    extract_tables: bool,
-    max_chars: int,
-    max_overlap: int,
-    ocr_backend: str | None,
-    config_file: Path | None,
-    show_metadata: bool,
-    output_format: str,
-    verbose: bool,
-    tesseract_lang: str | None,
-    tesseract_psm: int | None,
-    easyocr_languages: str | None,
-    paddleocr_languages: str | None,
-) -> None:
+def extract(ctx: click.Context) -> None:
     """Extract text from a document.
 
     FILE can be a path to a document or '-' to read from stdin.
     If FILE is omitted, reads from stdin.
     """
+    params = ctx.params
     try:
-        file_config = _load_config(config_file, verbose)
+        file_config = _load_config(params["config_file"], params["verbose"])
 
-        cli_args = _build_cli_args(
-            force_ocr,
-            chunk_content,
-            extract_tables,
-            max_chars,
-            max_overlap,
-            ocr_backend,
-            tesseract_lang,
-            tesseract_psm,
-            easyocr_languages,
-            paddleocr_languages,
-        )
+        cli_args = _build_cli_args(params)
 
         extraction_config = build_extraction_config(file_config, cli_args)
 
-        result = _perform_extraction(file, extraction_config, verbose)
+        result = _perform_extraction(params["file"], extraction_config, params["verbose"])
 
-        _write_output(result, output, show_metadata, output_format, verbose)
+        _write_output(result, params["output"], params["show_metadata"], params["output_format"], params["verbose"])
 
     except Exception as e:  # noqa: BLE001
-        handle_error(e, verbose)
+        handle_error(e, params["verbose"])
 
 
 @cli.command()

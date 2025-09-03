@@ -1,4 +1,3 @@
-"""Device detection and management utilities for GPU acceleration."""
 # ruff: noqa: BLE001  # ~keep
 
 from __future__ import annotations
@@ -137,7 +136,6 @@ def get_device_memory_info(device: DeviceInfo) -> tuple[float | None, float | No
 
 
 def _is_cuda_available() -> bool:
-    """Check if CUDA is available."""
     try:
         import torch  # type: ignore[import-not-found,unused-ignore]  # noqa: PLC0415
 
@@ -147,7 +145,6 @@ def _is_cuda_available() -> bool:
 
 
 def _is_mps_available() -> bool:
-    """Check if MPS (Apple Silicon) is available."""
     try:
         import torch  # type: ignore[import-not-found,unused-ignore]  # noqa: PLC0415
 
@@ -157,7 +154,6 @@ def _is_mps_available() -> bool:
 
 
 def _get_cuda_devices() -> list[DeviceInfo]:
-    """Get information about available CUDA devices."""
     devices: list[DeviceInfo] = []
 
     try:
@@ -195,7 +191,6 @@ def _get_cuda_devices() -> list[DeviceInfo]:
 
 
 def _get_mps_device() -> DeviceInfo | None:
-    """Get information about the MPS device."""
     try:
         import torch  # noqa: PLC0415
 
@@ -212,7 +207,6 @@ def _get_mps_device() -> DeviceInfo | None:
 
 
 def _get_cuda_memory_info(device_id: int) -> tuple[float | None, float | None]:
-    """Get CUDA memory information for a specific device."""
     try:
         import torch  # noqa: PLC0415
 
@@ -235,20 +229,10 @@ def _get_cuda_memory_info(device_id: int) -> tuple[float | None, float | None]:
 
 
 def _get_mps_memory_info() -> tuple[float | None, float | None]:
-    """Get MPS memory information."""
     return None, None
 
 
 def _validate_memory_limit(device: DeviceInfo, memory_limit: float) -> None:
-    """Validate that a device has enough memory for the requested limit.
-
-    Args:
-        device: The device to validate.
-        memory_limit: Required memory in GB.
-
-    Raises:
-        ValidationError: If the device doesn't have enough memory.
-    """
     if device.device_type == "cpu":
         # CPU memory validation is complex and OS-dependent, skip for now  # ~keep
         return

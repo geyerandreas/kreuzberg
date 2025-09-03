@@ -1,5 +1,3 @@
-"""Fast serialization utilities using msgspec."""
-
 from __future__ import annotations
 
 from dataclasses import is_dataclass

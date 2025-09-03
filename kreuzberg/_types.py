@@ -32,6 +32,64 @@ if TYPE_CHECKING:
     from kreuzberg._ocr._tesseract import TesseractConfig
 
 OcrBackendType = Literal["tesseract", "easyocr", "paddleocr"]
+OutputFormatType = Literal["text", "tsv", "hocr", "markdown"]
+
+
+class BoundingBox(TypedDict):
+    """Bounding box coordinates for text elements."""
+
+    left: int
+    """X coordinate of the left edge."""
+    top: int
+    """Y coordinate of the top edge."""
+    width: int
+    """Width of the bounding box."""
+    height: int
+    """Height of the bounding box."""
+
+
+class TSVWord(TypedDict):
+    """Represents a word from Tesseract TSV output."""
+
+    level: int
+    """Hierarchy level (1=page, 2=block, 3=para, 4=line, 5=word)."""
+    page_num: int
+    """Page number."""
+    block_num: int
+    """Block number within the page."""
+    par_num: int
+    """Paragraph number within the block."""
+    line_num: int
+    """Line number within the paragraph."""
+    word_num: int
+    """Word number within the line."""
+    left: int
+    """X coordinate of the word's left edge."""
+    top: int
+    """Y coordinate of the word's top edge."""
+    width: int
+    """Width of the word's bounding box."""
+    height: int
+    """Height of the word's bounding box."""
+    conf: float
+    """Confidence score (0-100)."""
+    text: str
+    """The recognized text content."""
+
+
+class TableCell(TypedDict):
+    """Represents a cell in a reconstructed table."""
+
+    row: int
+    """Row index (0-based)."""
+    col: int
+    """Column index (0-based)."""
+    text: str
+    """Cell text content."""
+    bbox: BoundingBox
+    """Bounding box of the cell."""
+    confidence: float
+    """Average confidence of words in the cell."""
 
 
 class TableData(TypedDict):
@@ -129,10 +187,16 @@ class Metadata(TypedDict, total=False):
 
     table_count: NotRequired[int]
     """Number of tables extracted from the document."""
+    tables_detected: NotRequired[int]
+    """Number of tables detected in the document."""
     tables_summary: NotRequired[str]
     """Summary of table extraction results."""
     quality_score: NotRequired[float]
     """Quality score for extracted content (0.0-1.0)."""
+    source_format: NotRequired[str]
+    """Source format of the extracted content."""
+    error: NotRequired[str]
+    """Error message if extraction failed."""
 
 
 _VALID_METADATA_KEYS = {
@@ -309,6 +373,8 @@ class ExtractionConfig:
     """Whether to chunk the content into smaller chunks."""
     extract_tables: bool = False
     """Whether to extract tables from the content. This requires the 'gmft' dependency."""
+    extract_tables_from_ocr: bool = False
+    """Extract tables from OCR output using TSV format (Tesseract only)."""
     max_chars: int = DEFAULT_MAX_CHARACTERS
     """The size of each chunk in characters."""
     max_overlap: int = DEFAULT_MAX_OVERLAP
@@ -353,6 +419,8 @@ class ExtractionConfig:
     """Password(s) for encrypted PDF files. Can be a single password or list of passwords to try in sequence. Only used when crypto extra is installed."""
     html_to_markdown_config: HTMLToMarkdownConfig | None = None
     """Configuration for HTML to Markdown conversion. If None, uses default settings."""
+    use_cache: bool = True
+    """Whether to use caching for extraction results. Set to False to disable all caching."""
 
     def __post_init__(self) -> None:
         if self.custom_entity_patterns is not None and isinstance(self.custom_entity_patterns, dict):
@@ -385,24 +453,32 @@ class ExtractionConfig:
             A dict of the OCR configuration or an empty dict if no backend is provided.
         """
         if self.ocr_backend is None:
-            return {}
+            return {"use_cache": self.use_cache}
 
         if self.ocr_config is not None:
-            return asdict(self.ocr_config)
+            config_dict = asdict(self.ocr_config)
+            config_dict["use_cache"] = self.use_cache
+            return config_dict
 
         match self.ocr_backend:
             case "tesseract":
                 from kreuzberg._ocr._tesseract import TesseractConfig  # noqa: PLC0415
 
-                return asdict(TesseractConfig())
+                config_dict = asdict(TesseractConfig())
+                config_dict["use_cache"] = self.use_cache
+                return config_dict
             case "easyocr":
                 from kreuzberg._ocr._easyocr import EasyOCRConfig  # noqa: PLC0415
 
-                return asdict(EasyOCRConfig())
+                config_dict = asdict(EasyOCRConfig())
+                config_dict["use_cache"] = self.use_cache
+                return config_dict
             case _:
                 from kreuzberg._ocr._paddleocr import PaddleOCRConfig  # noqa: PLC0415
 
-                return asdict(PaddleOCRConfig())
+                config_dict = asdict(PaddleOCRConfig())
+                config_dict["use_cache"] = self.use_cache
+                return config_dict
 
 
 @dataclass(frozen=True)
@@ -422,8 +498,8 @@ class HTMLToMarkdownConfig:
     """Callback function invoked for each chunk during stream processing."""
     progress_callback: Callable[[int, int], None] | None = None
     """Callback function for progress updates (current, total)."""
-    parser: str | None = None
-    """BeautifulSoup parser to use (e.g., 'html.parser', 'lxml')."""
+    parser: str | None = "lxml"
+    """BeautifulSoup parser to use. Defaults to 'lxml' for ~30% better performance. Falls back to 'html.parser' if lxml not available."""
     autolinks: bool = True
     """Convert URLs to clickable links automatically."""
     bullets: str = "*+-"

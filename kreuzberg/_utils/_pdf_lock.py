@@ -1,5 +1,3 @@
-"""PDF processing lock utilities for thread-safe pypdfium2 operations."""
-
 from __future__ import annotations
 
 import hashlib

@@ -1,5 +1,3 @@
-"""Process pool utilities for CPU-intensive operations."""
-
 from __future__ import annotations
 
 import io
@@ -26,7 +24,6 @@ _POOL_SIZE = max(1, mp.cpu_count() - 1)
 
 
 def _create_process_pool() -> ProcessPoolExecutor:
-    """Factory function to create process pool instance."""
     return ProcessPoolExecutor(max_workers=_POOL_SIZE)
 
 
@@ -34,7 +31,6 @@ _process_pool_ref = Ref("process_pool", _create_process_pool)
 
 
 def _get_process_pool() -> ProcessPoolExecutor:
-    """Get the process pool instance."""
     return _process_pool_ref.get()
 
 
@@ -66,7 +62,6 @@ def shutdown_process_pool() -> None:
 
 
 def _extract_pdf_text_worker(pdf_path: str) -> tuple[str, str]:
-    """Worker function for extracting PDF text in a separate process."""
     pdf = None
     try:
         pdf = pypdfium2.PdfDocument(pdf_path)
@@ -86,7 +81,6 @@ def _extract_pdf_text_worker(pdf_path: str) -> tuple[str, str]:
 
 
 def _extract_pdf_images_worker(pdf_path: str, scale: float = 4.25) -> tuple[str, list[bytes]]:
-    """Worker function for converting PDF to images in a separate process."""
     pdf = None
     try:
         pdf = pypdfium2.PdfDocument(pdf_path)

@@ -10,15 +10,17 @@ from io import StringIO
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 from anyio import Path as AsyncPath
 from PIL import Image
 from python_calamine import CalamineWorkbook
 
 from kreuzberg._extractors._base import Extractor
 from kreuzberg._mime_types import MARKDOWN_MIME_TYPE, SPREADSHEET_MIME_TYPES
-from kreuzberg._types import ExtractionResult, Metadata
+from kreuzberg._types import ExtractionResult, Metadata, TableData
 from kreuzberg._utils._string import normalize_spaces
 from kreuzberg._utils._sync import run_sync, run_taskgroup
+from kreuzberg._utils._table import enhance_table_markdown
 from kreuzberg._utils._tmp import create_temp_file
 from kreuzberg.exceptions import ParsingError
 
@@ -108,14 +110,6 @@ class SpreadSheetExtractor(Extractor):
 
     @staticmethod
     def _convert_cell_to_str(value: Any) -> str:
-        """Convert a cell value to string representation.
-
-        Args:
-            value: The cell value to convert.
-
-        Returns:
-            String representation of the cell value.
-        """
         if value is None:
             return ""
         if isinstance(value, bool):
@@ -162,7 +156,6 @@ class SpreadSheetExtractor(Extractor):
         return f"## {sheet_name}\n\n{normalize_spaces(result)}"
 
     def _convert_sheet_to_text_sync(self, workbook: CalamineWorkbook, sheet_name: str) -> str:
-        """Synchronous version of _convert_sheet_to_text."""
         values = workbook.get_sheet_by_name(sheet_name).to_python()
 
         csv_buffer = StringIO()
@@ -195,12 +188,7 @@ class SpreadSheetExtractor(Extractor):
         return f"## {sheet_name}\n\n{normalize_spaces(result)}"
 
     def _enhance_sheet_with_table_data(self, workbook: CalamineWorkbook, sheet_name: str) -> str:
-        """Enhanced sheet processing with better table structure preservation."""
         try:
-            import pandas as pd  # noqa: PLC0415
-
-            from kreuzberg._utils._table import enhance_table_markdown  # noqa: PLC0415
-
             sheet = workbook.get_sheet_by_name(sheet_name)
             data = sheet.to_python()
 
@@ -214,27 +202,17 @@ class SpreadSheetExtractor(Extractor):
             if df.empty:
                 return f"## {sheet_name}\n\n*No data*"
 
-            from kreuzberg._types import TableData  # noqa: PLC0415
-
             placeholder_image = Image.new("RGBA", (1, 1), (0, 0, 0, 0))
             mock_table: TableData = {"df": df, "text": "", "page_number": 0, "cropped_image": placeholder_image}
 
             enhanced_markdown = enhance_table_markdown(mock_table)
             return f"## {sheet_name}\n\n{enhanced_markdown}"
 
-        except (ImportError, AttributeError, ValueError):
+        except (AttributeError, ValueError):
             return self._convert_sheet_to_text_sync(workbook, sheet_name)
 
     @staticmethod
     def _extract_spreadsheet_metadata(workbook: CalamineWorkbook) -> Metadata:
-        """Extract metadata from spreadsheet using python-calamine.
-
-        Args:
-            workbook: CalamineWorkbook instance
-
-        Returns:
-            Metadata dict using existing metadata keys where possible
-        """
         metadata: Metadata = {}
 
         SpreadSheetExtractor._extract_document_properties(workbook, metadata)
@@ -247,7 +225,6 @@ class SpreadSheetExtractor(Extractor):
 
     @staticmethod
     def _extract_document_properties(workbook: CalamineWorkbook, metadata: Metadata) -> None:
-        """Extract basic document properties from workbook."""
         with contextlib.suppress(AttributeError, Exception):
             if not (hasattr(workbook, "metadata") and workbook.metadata):
                 return
@@ -280,7 +257,6 @@ class SpreadSheetExtractor(Extractor):
 
     @staticmethod
     def _extract_date_properties(props: Any, metadata: Metadata) -> None:
-        """Extract and format date properties."""
         date_mapping = {"created": "created_at", "modified": "modified_at"}
 
         for prop_name, meta_key in date_mapping.items():
@@ -293,7 +269,6 @@ class SpreadSheetExtractor(Extractor):
 
     @staticmethod
     def _add_structure_info(workbook: CalamineWorkbook, metadata: Metadata) -> None:
-        """Add structural information about the spreadsheet."""
         if not (hasattr(workbook, "sheet_names") and workbook.sheet_names):
             return
 
@@ -308,7 +283,6 @@ class SpreadSheetExtractor(Extractor):
 
     @staticmethod
     def _analyze_content_complexity(workbook: CalamineWorkbook, metadata: Metadata) -> None:
-        """Analyze spreadsheet content for complexity indicators."""
         with contextlib.suppress(Exception):
             has_formulas = False
             total_cells = 0

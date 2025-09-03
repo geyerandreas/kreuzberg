@@ -1,5 +1,3 @@
-"""Enhanced error handling utilities."""
-
 from __future__ import annotations
 
 import platform

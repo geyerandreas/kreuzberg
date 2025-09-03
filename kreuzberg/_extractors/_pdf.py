@@ -157,21 +157,6 @@ class PDFExtractor(Extractor):
         return self._apply_quality_processing(result)
 
     def _validate_extracted_text(self, text: str, corruption_threshold: float = 0.05) -> bool:
-        """Check if text extracted from PDF is valid or corrupted.
-
-        This checks for indicators of corrupted PDF text extraction:
-        1. Empty or whitespace-only text
-        2. High concentration of control characters and null bytes
-        3. High concentration of Unicode replacement characters
-
-        Args:
-            text: The extracted text to validate
-            corruption_threshold: Maximum allowed percentage (0.0-1.0) of corrupted
-                characters (default: 0.05 or 5%)
-
-        Returns:
-            True if the text appears valid, False if it seems corrupted
-        """
         if not text or not text.strip():
             return False
 
@@ -183,17 +168,6 @@ class PDFExtractor(Extractor):
         return (len(corruption_matches) / len(text)) < corruption_threshold
 
     async def _convert_pdf_to_images(self, input_file: Path) -> list[Image]:
-        """Convert a PDF file to images.
-
-        Args:
-            input_file: The path to the PDF file.
-
-        Raises:
-            ParsingError: If the PDF file could not be converted to images.
-
-        Returns:
-            A list of Pillow Images.
-        """
         document: pypdfium2.PdfDocument | None = None
         last_error = None
 
@@ -201,7 +175,7 @@ class PDFExtractor(Extractor):
             try:
                 with pypdfium_file_lock(input_file):
                     document = await run_sync(pypdfium2.PdfDocument, str(input_file))
-                    return [page.render(scale=4.25).to_pil() for page in cast("pypdfium2.PdfDocument", document)]
+                    return [page.render(scale=200 / 72).to_pil() for page in cast("pypdfium2.PdfDocument", document)]
             except pypdfium2.PdfiumError as e:  # noqa: PERF203
                 last_error = e
                 if not should_retry(e, attempt + 1):
@@ -233,15 +207,6 @@ class PDFExtractor(Extractor):
         ) from last_error
 
     async def _extract_pdf_text_with_ocr(self, input_file: Path, ocr_backend: OcrBackendType) -> ExtractionResult:
-        """Extract text from a scanned PDF file using OCR.
-
-        Args:
-            input_file: The path to the PDF file.
-            ocr_backend: The OCR backend to use.
-
-        Returns:
-            The extraction result with text content and metadata.
-        """
         images = await self._convert_pdf_to_images(input_file)
         backend = get_ocr_backend(ocr_backend)
         ocr_results = await run_taskgroup_batched(
@@ -254,17 +219,6 @@ class PDFExtractor(Extractor):
 
     @staticmethod
     async def _extract_pdf_searchable_text(input_file: Path) -> str:
-        """Extract text from a searchable PDF file using pypdfium2.
-
-        Args:
-            input_file: The path to the PDF file.
-
-        Raises:
-            ParsingError: If the text could not be extracted from the PDF file.
-
-        Returns:
-            The extracted text.
-        """
         document: pypdfium2.PdfDocument | None = None
         try:
             with pypdfium_file_lock(input_file):
@@ -312,7 +266,6 @@ class PDFExtractor(Extractor):
                     await run_sync(document.close)
 
     def _extract_pdf_searchable_text_sync(self, path: Path) -> str:
-        """Extract searchable text from PDF using pypdfium2 (sync version)."""
         pdf = None
         try:
             with pypdfium_file_lock(path):
@@ -333,7 +286,6 @@ class PDFExtractor(Extractor):
                     pdf.close()
 
     def _extract_pdf_with_ocr_sync(self, path: Path) -> str:
-        """Extract text from PDF using OCR (sync version)."""
         pdf = None
         try:
             images = []
@@ -346,23 +298,7 @@ class PDFExtractor(Extractor):
                     bitmap.close()
                     page.close()
 
-            image_paths = []
-            temp_files = []
-
-            try:
-                for i, img in enumerate(images):
-                    fd, temp_path = tempfile.mkstemp(suffix=f"_page_{i}.png")
-                    temp_files.append((fd, temp_path))
-                    img.save(temp_path, format="PNG")
-                    os.close(fd)
-                    image_paths.append(temp_path)
-
-                return self._process_pdf_images_with_ocr(image_paths)
-
-            finally:
-                for _, temp_path in temp_files:
-                    with contextlib.suppress(OSError):
-                        Path(temp_path).unlink()
+            return self._process_pdf_images_with_ocr_direct(images)
 
         except Exception as e:
             raise ParsingError(f"Failed to OCR PDF: {e}") from e
@@ -372,7 +308,6 @@ class PDFExtractor(Extractor):
                     pdf.close()
 
     def _process_pdf_images_with_ocr(self, image_paths: list[str]) -> str:
-        """Process PDF images with the configured OCR backend."""
         backend = get_ocr_backend(self.config.ocr_backend)
         paths = [Path(p) for p in image_paths]
 
@@ -397,8 +332,41 @@ class PDFExtractor(Extractor):
 
         return "\n\n".join(result.content for result in results)
 
+    def _process_pdf_images_with_ocr_direct(self, images: list[Image]) -> str:
+        """Process PIL images directly without temp files."""
+        backend = get_ocr_backend(self.config.ocr_backend)
+
+        match self.config.ocr_backend:
+            case "tesseract":
+                config = (
+                    self.config.ocr_config if isinstance(self.config.ocr_config, TesseractConfig) else TesseractConfig()
+                )
+                results = []
+                for image in images:
+                    result = backend.process_image_sync(image, **asdict(config))
+                    results.append(result)
+            case "paddleocr":
+                paddle_config = (
+                    self.config.ocr_config if isinstance(self.config.ocr_config, PaddleOCRConfig) else PaddleOCRConfig()
+                )
+                results = []
+                for image in images:
+                    result = backend.process_image_sync(image, **asdict(paddle_config))
+                    results.append(result)
+            case "easyocr":
+                easy_config = (
+                    self.config.ocr_config if isinstance(self.config.ocr_config, EasyOCRConfig) else EasyOCRConfig()
+                )
+                results = []
+                for image in images:
+                    result = backend.process_image_sync(image, **asdict(easy_config))
+                    results.append(result)
+            case _:
+                raise NotImplementedError(f"Direct image OCR not implemented for {self.config.ocr_backend}")
+
+        return "\n\n".join(result.content for result in results)
+
     def _parse_with_password_attempts(self, content: bytes) -> Document:
-        """Parse PDF with password attempts."""
         if isinstance(self.config.pdf_password, str):
             passwords = [self.config.pdf_password] if self.config.pdf_password else [""]
         else:
@@ -418,13 +386,11 @@ class PDFExtractor(Extractor):
         return parse(content, max_workers=1, password="")
 
     def _get_passwords_to_try(self) -> list[str]:
-        """Get list of passwords to try in sequence."""
         if isinstance(self.config.pdf_password, str):
             return [self.config.pdf_password] if self.config.pdf_password else [""]
         return list(self.config.pdf_password) if self.config.pdf_password else [""]
 
     async def _extract_metadata_with_password_attempts(self, content: bytes) -> Metadata:
-        """Extract PDF metadata with password attempts."""
         passwords = self._get_passwords_to_try()
 
         last_exception = None
@@ -443,7 +409,6 @@ class PDFExtractor(Extractor):
             raise
 
     def _extract_metadata_with_password_attempts_sync(self, content: bytes) -> Metadata:
-        """Extract PDF metadata with password attempts (sync version)."""
         passwords = self._get_passwords_to_try()
 
         last_exception = None
@@ -462,7 +427,6 @@ class PDFExtractor(Extractor):
             raise
 
     def _extract_with_playa_sync(self, path: Path, fallback_text: str) -> str:
-        """Extract text using playa for better structure preservation."""
         with contextlib.suppress(Exception):
             content = path.read_bytes()
             document = self._parse_with_password_attempts(content)

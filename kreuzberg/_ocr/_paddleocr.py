@@ -19,11 +19,20 @@ from kreuzberg.exceptions import MissingDependencyError, OCRError, ValidationErr
 if TYPE_CHECKING:
     from pathlib import Path
 
-
 try:  # pragma: no cover
     from typing import Unpack  # type: ignore[attr-defined]
 except ImportError:  # pragma: no cover
     from typing_extensions import Unpack
+
+try:
+    import numpy as np
+    from paddleocr import PaddleOCR
+
+    HAS_PADDLEOCR = True
+except ImportError:
+    HAS_PADDLEOCR = False
+    np = None  # type: ignore[assignment]
+    PaddleOCR = None
 
 
 PADDLEOCR_SUPPORTED_LANGUAGE_CODES: Final[set[str]] = {"ch", "en", "french", "german", "japan", "korean"}
@@ -122,8 +131,6 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         Raises:
             OCRError: If OCR processing fails.
         """
-        import numpy as np  # noqa: PLC0415
-
         await self._init_paddle_ocr(**kwargs)
 
         if image.mode != "RGB":
@@ -257,12 +264,10 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         if cls._paddle_ocr is not None:
             return
 
-        try:
-            from paddleocr import PaddleOCR  # noqa: PLC0415
-        except ImportError as e:  # pragma: no cover
+        if not HAS_PADDLEOCR or PaddleOCR is None:
             raise MissingDependencyError.create_for_package(
                 dependency_group="paddleocr", functionality="PaddleOCR as an OCR backend", package_name="paddleocr"
-            ) from e
+            )
 
         language = cls._validate_language_code(kwargs.pop("language", "en"))
 
@@ -378,8 +383,6 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         Raises:
             OCRError: If OCR processing fails.
         """
-        import numpy as np  # noqa: PLC0415
-
         self._init_paddle_ocr_sync(**kwargs)
 
         if image.mode != "RGB":
@@ -426,12 +429,10 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         if cls._paddle_ocr is not None:
             return
 
-        try:
-            from paddleocr import PaddleOCR  # noqa: PLC0415
-        except ImportError as e:  # pragma: no cover
+        if not HAS_PADDLEOCR or PaddleOCR is None:
             raise MissingDependencyError.create_for_package(
                 dependency_group="paddleocr", functionality="PaddleOCR as an OCR backend", package_name="paddleocr"
-            ) from e
+            )
 
         language = cls._validate_language_code(kwargs.pop("language", "en"))
 

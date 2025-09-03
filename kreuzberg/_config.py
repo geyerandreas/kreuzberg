@@ -1,10 +1,3 @@
-"""Configuration discovery and loading for Kreuzberg.
-
-This module provides configuration loading from both kreuzberg.toml and pyproject.toml files.
-Configuration is automatically discovered by searching up the directory tree from the current
-working directory.
-"""
-
 from __future__ import annotations
 
 import sys
@@ -19,7 +12,7 @@ else:  # pragma: no cover
 from kreuzberg._gmft import GMFTConfig
 from kreuzberg._ocr._easyocr import EasyOCRConfig
 from kreuzberg._ocr._paddleocr import PaddleOCRConfig
-from kreuzberg._ocr._tesseract import TesseractConfig
+from kreuzberg._ocr._tesseract import PSMMode, TesseractConfig
 from kreuzberg._types import ExtractionConfig, HTMLToMarkdownConfig, OcrBackendType
 from kreuzberg.exceptions import ValidationError
 
@@ -133,8 +126,6 @@ def _create_ocr_config(
         case "tesseract":
             processed_config = backend_config.copy()
             if "psm" in processed_config and isinstance(processed_config["psm"], int):
-                from kreuzberg._ocr._tesseract import PSMMode  # noqa: PLC0415
-
                 try:
                     processed_config["psm"] = PSMMode(processed_config["psm"])
                 except ValueError as e:

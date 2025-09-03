@@ -14,9 +14,11 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import anyio
 import msgspec
+import pandas as pd
 from PIL import Image
 
 from kreuzberg._types import TableData
+from kreuzberg._utils._cache import get_table_cache
 from kreuzberg._utils._sync import run_sync
 from kreuzberg.exceptions import MissingDependencyError, ParsingError
 
@@ -158,8 +160,6 @@ async def extract_tables(
     Returns:
         A list of table data dictionaries.
     """
-    from kreuzberg._utils._cache import get_table_cache  # noqa: PLC0415
-
     # Determine if we should use isolated process  # ~keep
     if use_isolated_process is None:
         use_isolated_process = os.environ.get("KREUZBERG_GMFT_ISOLATED", "true").lower() in ("true", "1", "yes")
@@ -211,15 +211,15 @@ async def extract_tables(
             return result
 
         try:
-            from gmft.auto import (  # type: ignore[attr-defined]  # noqa: PLC0415  # noqa: PLC0415
+            from gmft.auto import (  # type: ignore[attr-defined]  # noqa: PLC0415
                 AutoTableDetector,
                 AutoTableFormatter,
             )
             from gmft.detectors.tatr import TATRDetectorConfig  # type: ignore[attr-defined]  # noqa: PLC0415
-            from gmft.formatters.tatr import TATRFormatConfig  # noqa: PLC0415  # noqa: PLC0415
-            from gmft.pdf_bindings.pdfium import PyPDFium2Document  # noqa: PLC0415  # noqa: PLC0415
+            from gmft.formatters.tatr import TATRFormatConfig  # noqa: PLC0415
+            from gmft.pdf_bindings.pdfium import PyPDFium2Document  # noqa: PLC0415
 
-            formatter: Any = AutoTableFormatter(  # type: ignore[no-untyped-call]  # type: ignore[no-untyped-call]
+            formatter: Any = AutoTableFormatter(  # type: ignore[no-untyped-call]
                 config=TATRFormatConfig(
                     verbosity=config.verbosity,
                     formatter_base_threshold=config.formatter_base_threshold,
@@ -235,7 +235,7 @@ async def extract_tables(
                     force_large_table_assumption=config.force_large_table_assumption,
                 )
             )
-            detector: Any = AutoTableDetector(  # type: ignore[no-untyped-call]  # type: ignore[no-untyped-call]
+            detector: Any = AutoTableDetector(  # type: ignore[no-untyped-call]
                 config=TATRDetectorConfig(detector_base_threshold=config.detector_base_threshold)
             )
             doc = await run_sync(PyPDFium2Document, str(file_path))
@@ -287,8 +287,6 @@ def extract_tables_sync(
     Returns:
         A list of table data dictionaries.
     """
-    from kreuzberg._utils._cache import get_table_cache  # noqa: PLC0415
-
     # Determine if we should use isolated process  # ~keep
     if use_isolated_process is None:
         use_isolated_process = os.environ.get("KREUZBERG_GMFT_ISOLATED", "true").lower() in ("true", "1", "yes")
@@ -542,7 +540,6 @@ def _extract_tables_isolated(
             tables = []
             for table_dict in result:
                 img = Image.open(io.BytesIO(table_dict["cropped_image_bytes"]))
-                import pandas as pd  # noqa: PLC0415
 
                 if table_dict["df_csv"] is None:
                     df = pd.DataFrame(columns=table_dict["df_columns"])
@@ -620,38 +617,29 @@ async def _extract_tables_isolated_async(
 
     try:
 
-        async def wait_for_result() -> tuple[bool, Any]:
+        def get_result_sync() -> tuple[bool, Any]:
             while True:
                 try:
-                    return result_queue.get_nowait()  # type: ignore[no-any-return]
+                    return result_queue.get(timeout=0.1)  # type: ignore[no-any-return]
                 except queue.Empty:  # noqa: PERF203
-                    await anyio.sleep(0.1)
                     if not process.is_alive():
-                        # Process died without putting result  # ~keep
                         if process.exitcode == -signal.SIGSEGV:
                             raise ParsingError(
                                 "GMFT process crashed with segmentation fault",
-                                context={
-                                    "file_path": str(file_path),
-                                    "exit_code": process.exitcode,
-                                },
+                                context={"file_path": str(file_path), "exit_code": process.exitcode},
                             ) from None
                         raise ParsingError(
                             f"GMFT process died unexpectedly with exit code {process.exitcode}",
-                            context={
-                                "file_path": str(file_path),
-                                "exit_code": process.exitcode,
-                            },
+                            context={"file_path": str(file_path), "exit_code": process.exitcode},
                         ) from None
 
         with anyio.fail_after(timeout):
-            success, result = await wait_for_result()
+            success, result = await anyio.to_thread.run_sync(get_result_sync)
 
         if success:
             tables = []
             for table_dict in result:
                 img = Image.open(io.BytesIO(table_dict["cropped_image_bytes"]))
-                import pandas as pd  # noqa: PLC0415
 
                 if table_dict["df_csv"] is None:
                     df = pd.DataFrame(columns=table_dict["df_columns"])

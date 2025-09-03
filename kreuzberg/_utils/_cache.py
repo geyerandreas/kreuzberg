@@ -1,5 +1,3 @@
-"""General-purpose file-based caching layer for Kreuzberg."""
-
 from __future__ import annotations
 
 import hashlib
@@ -58,14 +56,6 @@ class KreuzbergCache(Generic[T]):
         self._lock = threading.Lock()
 
     def _get_cache_key(self, **kwargs: Any) -> str:
-        """Generate cache key from kwargs.
-
-        Args:
-            **kwargs: Key-value pairs to generate cache key from
-
-        Returns:
-            Unique cache key string
-        """
         if not kwargs:
             return "empty"
 
@@ -83,11 +73,9 @@ class KreuzbergCache(Generic[T]):
         return hashlib.sha256(cache_str.encode()).hexdigest()[:16]
 
     def _get_cache_path(self, cache_key: str) -> Path:
-        """Get cache file path for key."""
         return self.cache_dir / f"{cache_key}.msgpack"
 
     def _is_cache_valid(self, cache_path: Path) -> bool:
-        """Check if cached result is still valid."""
         try:
             if not cache_path.exists():
                 return False
@@ -100,7 +88,6 @@ class KreuzbergCache(Generic[T]):
             return False
 
     def _serialize_result(self, result: T) -> dict[str, Any]:
-        """Serialize result for caching with metadata."""
         if isinstance(result, list) and result and isinstance(result[0], dict) and "df" in result[0]:
             serialized_data = []
             for item in result:
@@ -118,7 +105,6 @@ class KreuzbergCache(Generic[T]):
         return {"type": type(result).__name__, "data": result, "cached_at": time.time()}
 
     def _deserialize_result(self, cached_data: dict[str, Any]) -> T:
-        """Deserialize cached result."""
         data = cached_data["data"]
 
         if cached_data.get("type") == "TableDataList" and isinstance(data, list):
@@ -140,7 +126,6 @@ class KreuzbergCache(Generic[T]):
         return data  # type: ignore[no-any-return]
 
     def _cleanup_cache(self) -> None:
-        """Clean up old and oversized cache entries."""
         try:
             cache_files = list(self.cache_dir.glob("*.msgpack"))
 
@@ -326,7 +311,6 @@ class KreuzbergCache(Generic[T]):
 
 
 def _create_ocr_cache() -> KreuzbergCache[ExtractionResult]:
-    """Factory function to create OCR cache instance."""
     cache_dir_str = os.environ.get("KREUZBERG_CACHE_DIR")
     cache_dir: Path | None = None
     if cache_dir_str:
@@ -349,7 +333,6 @@ def get_ocr_cache() -> KreuzbergCache[ExtractionResult]:
 
 
 def _create_document_cache() -> KreuzbergCache[ExtractionResult]:
-    """Factory function to create document cache instance."""
     cache_dir_str = os.environ.get("KREUZBERG_CACHE_DIR")
     cache_dir: Path | None = None
     if cache_dir_str:
@@ -372,7 +355,6 @@ def get_document_cache() -> KreuzbergCache[ExtractionResult]:
 
 
 def _create_table_cache() -> KreuzbergCache[Any]:
-    """Factory function to create table cache instance."""
     cache_dir_str = os.environ.get("KREUZBERG_CACHE_DIR")
     cache_dir: Path | None = None
     if cache_dir_str:
@@ -395,7 +377,6 @@ def get_table_cache() -> KreuzbergCache[Any]:
 
 
 def _create_mime_cache() -> KreuzbergCache[str]:
-    """Factory function to create MIME type cache instance."""
     cache_dir_str = os.environ.get("KREUZBERG_CACHE_DIR")
     cache_dir: Path | None = None
     if cache_dir_str:

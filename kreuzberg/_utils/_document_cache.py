@@ -1,5 +1,3 @@
-"""Document-level caching to prevent pypdfium2 issues with duplicate processing."""
-
 from __future__ import annotations
 
 import hashlib

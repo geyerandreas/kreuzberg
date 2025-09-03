@@ -4,6 +4,7 @@ from mimetypes import guess_type
 from pathlib import Path
 from typing import TYPE_CHECKING, Final
 
+from kreuzberg._utils._cache import get_mime_cache
 from kreuzberg.exceptions import ValidationError
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -191,8 +192,6 @@ def validate_mime_type(
         return _validate_explicit_mime_type(mime_type)
 
     if file_path:
-        from kreuzberg._utils._cache import get_mime_cache  # noqa: PLC0415
-
         path = Path(file_path)
 
         try:
