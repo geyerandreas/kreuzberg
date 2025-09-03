@@ -666,18 +666,18 @@ def serialization(
         }
 
         # Calculate speedup
-        json_data = results["json"]  # type: ignore[index]
-        msgpack_data = results["msgpack"]  # type: ignore[index]
+        json_data = results["json"]
+        msgpack_data = results["msgpack"]
 
-        json_total = json_data["serialize_mean"] + json_data["deserialize_mean"]
+        json_total = json_data["serialize_mean"] + json_data["deserialize_mean"]  # type: ignore[index]
         msgpack_total = (
-            msgpack_data["serialize_mean"] + msgpack_data["deserialize_mean"]
+            msgpack_data["serialize_mean"] + msgpack_data["deserialize_mean"]  # type: ignore[index]
         )
         speedup = json_total / msgpack_total if msgpack_total > 0 else 0
         results["msgpack_speedup"] = speedup
 
     # Display results
-    json_data = results["json"]  # type: ignore[index]
+    json_data = results["json"]
     console.print(
         f"\n[green]JSON serialize: {json_data['serialize_mean']:.6f}s ± {json_data['serialize_stdev']:.6f}s[/green]"  # type: ignore[index]
     )
@@ -686,14 +686,14 @@ def serialization(
     )
 
     if "msgpack" in results:
-        msgpack_data = results["msgpack"]  # type: ignore[index]
+        msgpack_data = results["msgpack"]
         console.print(
             f"[green]msgpack serialize: {msgpack_data['serialize_mean']:.6f}s ± {msgpack_data['serialize_stdev']:.6f}s[/green]"  # type: ignore[index]
         )
         console.print(
             f"[green]msgpack deserialize: {msgpack_data['deserialize_mean']:.6f}s ± {msgpack_data['deserialize_stdev']:.6f}s[/green]"  # type: ignore[index]
         )
-        speedup_val = results["msgpack_speedup"]  # type: ignore[index]
+        speedup_val = results["msgpack_speedup"]
         console.print(f"[yellow]msgpack speedup: {speedup_val:.2f}x[/yellow]")
 
     if output_file:
