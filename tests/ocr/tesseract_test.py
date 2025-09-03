@@ -750,7 +750,7 @@ def test_tesseract_sync_methods_run_tesseract_sync_success(backend: TesseractBac
     output_path = tmp_path / "output"
 
     command = ["tesseract", str(img_path), str(output_path), "-l", "eng"]
-    backend._run_tesseract_sync(command)
+    backend._execute_tesseract_sync(command)
 
     assert (output_path.parent / f"{output_path.name}.txt").exists()
 
@@ -759,7 +759,7 @@ def test_tesseract_sync_methods_run_tesseract_sync_error(backend: TesseractBacke
     command = ["tesseract", "/nonexistent/input.png", "output", "-l", "eng"]
 
     with pytest.raises(OCRError, match="Failed to OCR using tesseract"):
-        backend._run_tesseract_sync(command)
+        backend._execute_tesseract_sync(command)
 
 
 def test_tesseract_sync_methods_run_tesseract_sync_runtime_error(
@@ -771,7 +771,7 @@ def test_tesseract_sync_methods_run_tesseract_sync_runtime_error(
     command = ["tesseract", "input.png", "output", "-l", "eng"]
 
     with pytest.raises(RuntimeError, match="Command execution failed"):
-        backend._run_tesseract_sync(command)
+        backend._execute_tesseract_sync(command)
 
 
 def test_tesseract_sync_methods_validate_tesseract_version_sync_success(backend: TesseractBackend) -> None:
@@ -1018,10 +1018,10 @@ async def test_markdown_extraction_diverse_documents(
             )
 
         assert "source_format" in result.metadata
-        assert result.metadata["source_format"] == "hocr"  # type: ignore[typeddict-item]
+        assert result.metadata["source_format"] == "hocr"
 
         assert "tables_detected" in result.metadata
-        tables_count = result.metadata["tables_detected"]  # type: ignore[typeddict-item]
+        tables_count = result.metadata["tables_detected"]
         assert isinstance(tables_count, int)
         assert tables_count >= 0
 
@@ -1061,7 +1061,7 @@ async def test_markdown_extraction_with_table_detection(
     assert content not in ["[No text detected]", "[OCR processing failed]"]
 
     assert "tables_detected" in result.metadata
-    tables_count = result.metadata["tables_detected"]  # type: ignore[typeddict-item]
+    tables_count = result.metadata["tables_detected"]
     assert isinstance(tables_count, int)
 
     if tables_count > 0:

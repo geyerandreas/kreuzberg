@@ -620,7 +620,7 @@ async def _extract_tables_isolated_async(
         def get_result_sync() -> tuple[bool, Any]:
             while True:
                 try:
-                    return result_queue.get(timeout=0.1)
+                    return result_queue.get(timeout=0.1)  # type: ignore[no-any-return]
                 except queue.Empty:  # noqa: PERF203
                     if not process.is_alive():
                         if process.exitcode == -signal.SIGSEGV:

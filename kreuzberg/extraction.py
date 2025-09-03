@@ -228,7 +228,7 @@ async def batch_extract_file(
                     content=f"Error: {type(e).__name__}: {e!s}",
                     mime_type="text/plain",
                     metadata={  # type: ignore[typeddict-unknown-key]
-                        "error": True,
+                        "error": f"{type(e).__name__}: {e!s}",
                         "error_context": create_error_context(
                             operation="batch_extract_file",
                             file_path=path,
@@ -277,7 +277,7 @@ async def batch_extract_bytes(
                     content=f"Error: {type(e).__name__}: {e!s}",
                     mime_type="text/plain",
                     metadata={  # type: ignore[typeddict-unknown-key]
-                        "error": True,
+                        "error": f"{type(e).__name__}: {e!s}",
                         "error_context": create_error_context(
                             operation="batch_extract_bytes",
                             error=e,
@@ -412,7 +412,7 @@ def batch_extract_file_sync(
                 content=f"Error: {type(e).__name__}: {e!s}",
                 mime_type="text/plain",
                 metadata={  # type: ignore[typeddict-unknown-key]
-                    "error": True,
+                    "error": f"{type(e).__name__}: {e!s}",
                     "error_context": create_error_context(
                         operation="batch_extract_file_sync",
                         file_path=file_path,
@@ -463,7 +463,7 @@ def batch_extract_bytes_sync(
                 content=f"Error: {type(e).__name__}: {e!s}",
                 mime_type="text/plain",
                 metadata={  # type: ignore[typeddict-unknown-key]
-                    "error": True,
+                    "error": f"{type(e).__name__}: {e!s}",
                     "error_context": create_error_context(
                         operation="batch_extract_bytes_sync",
                         error=e,

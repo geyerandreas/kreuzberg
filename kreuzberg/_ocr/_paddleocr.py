@@ -31,7 +31,7 @@ try:
     HAS_PADDLEOCR = True
 except ImportError:
     HAS_PADDLEOCR = False
-    np = None
+    np = None  # type: ignore[assignment]
     PaddleOCR = None
 
 

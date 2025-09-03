@@ -187,10 +187,16 @@ class Metadata(TypedDict, total=False):
 
     table_count: NotRequired[int]
     """Number of tables extracted from the document."""
+    tables_detected: NotRequired[int]
+    """Number of tables detected in the document."""
     tables_summary: NotRequired[str]
     """Summary of table extraction results."""
     quality_score: NotRequired[float]
     """Quality score for extracted content (0.0-1.0)."""
+    source_format: NotRequired[str]
+    """Source format of the extracted content."""
+    error: NotRequired[str]
+    """Error message if extraction failed."""
 
 
 _VALID_METADATA_KEYS = {

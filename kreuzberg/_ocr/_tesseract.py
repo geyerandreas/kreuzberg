@@ -682,7 +682,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         return ExtractionResult(
             content=final_content,
             mime_type=MARKDOWN_MIME_TYPE,
-            metadata={"source_format": "hocr", "tables_detected": len(tables)},  # type: ignore[typeddict-unknown-key]
+            metadata={"source_format": "hocr", "tables_detected": len(tables)},
             chunks=[],
             tables=tables,
         )
@@ -861,7 +861,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         return ExtractionResult(
             content=final_content,
             mime_type=MARKDOWN_MIME_TYPE,
-            metadata={"source_format": "hocr", "tables_detected": len(tables)},  # type: ignore[typeddict-unknown-key]
+            metadata={"source_format": "hocr", "tables_detected": len(tables)},
             chunks=[],
             tables=tables,
         )
