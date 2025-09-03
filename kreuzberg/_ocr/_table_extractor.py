@@ -116,7 +116,6 @@ class TesseractTableExtractor:
             words: list[TSVWord] = []
 
             for row in reader:
-                # Only process word-level data (level 5)
                 if row.get("level") == "5" and row.get("text", "").strip():
                     try:
                         conf = float(row["conf"])
@@ -140,7 +139,6 @@ class TesseractTableExtractor:
                             }
                         )
                     except (ValueError, KeyError):
-                        # Skip malformed rows
                         continue
 
             return words
@@ -166,12 +164,10 @@ class TesseractTableExtractor:
             return [int(x_positions[0, 0])]
 
         if not SCIPY_AVAILABLE:
-            # Fallback to simple gap-based detection
             return self._detect_columns_simple(words)
 
         clusters = fclusterdata(x_positions, self.column_threshold, criterion="distance", method="single")
 
-        # Get median position for each cluster
         column_positions = []
         for cluster_id in np.unique(clusters):
             cluster_mask = clusters == cluster_id
@@ -192,13 +188,11 @@ class TesseractTableExtractor:
         if not words:
             return []
 
-        # Sort by X position
         x_positions = sorted({w["left"] for w in words})
 
         if len(x_positions) == 1:
             return x_positions
 
-        # Group nearby X positions
         columns = []
         current_group = [x_positions[0]]
 
@@ -206,11 +200,9 @@ class TesseractTableExtractor:
             if x - current_group[-1] <= self.column_threshold:
                 current_group.append(x)
             else:
-                # New column detected
                 columns.append(int(np.median(current_group)))
                 current_group = [x]
 
-        # Add last group
         columns.append(int(np.median(current_group)))
 
         return columns
@@ -227,7 +219,6 @@ class TesseractTableExtractor:
         if not words:
             return []
 
-        # Use Y center for better alignment
         y_centers = np.array([w["top"] + w["height"] / 2 for w in words])
         mean_height = np.mean([w["height"] for w in words])
         threshold = mean_height * self.row_threshold_ratio
@@ -238,7 +229,6 @@ class TesseractTableExtractor:
             return [int(y_positions[0, 0])]
 
         if not SCIPY_AVAILABLE:
-            # Fallback to simple detection
             return self._detect_rows_simple(words, float(threshold))
 
         clusters = fclusterdata(y_positions, threshold, criterion="distance", method="single")
@@ -264,13 +254,11 @@ class TesseractTableExtractor:
         if not words:
             return []
 
-        # Sort by Y center position
         y_centers = sorted(w["top"] + w["height"] / 2 for w in words)
 
         if len(y_centers) == 1:
             return [int(y_centers[0])]
 
-        # Group nearby Y positions
         rows = []
         current_group = [y_centers[0]]
 
@@ -278,11 +266,9 @@ class TesseractTableExtractor:
             if y - np.mean(current_group) <= threshold:
                 current_group.append(y)
             else:
-                # New row detected
                 rows.append(int(np.median(current_group)))
                 current_group = [y]
 
-        # Add last group
         rows.append(int(np.median(current_group)))
 
         return rows
@@ -305,25 +291,19 @@ class TesseractTableExtractor:
         if not col_positions or not row_positions:
             return []
 
-        # Create table grid
         table: list[list[str]] = [[""] * len(col_positions) for _ in range(len(row_positions))]
 
-        # Assign words to cells
         for word in words:
-            # Find closest column
             col_idx = self._find_closest_index(word["left"], col_positions)
 
-            # Find closest row (using Y center)
             y_center = word["top"] + word["height"] / 2
             row_idx = self._find_closest_index(y_center, row_positions)
 
-            # Add word to cell (handle multi-word cells)
             if table[row_idx][col_idx]:
                 table[row_idx][col_idx] += " " + word["text"]
             else:
                 table[row_idx][col_idx] = word["text"]
 
-        # Clean up empty rows/columns
         return self._remove_empty_rows_cols(table)
 
     def _find_closest_index(self, value: float, positions: list[int]) -> int:
@@ -354,13 +334,11 @@ class TesseractTableExtractor:
         if not table:
             return table
 
-        # Remove empty rows
         table = [row for row in table if any(cell.strip() for cell in row)]
 
         if not table:
             return []
 
-        # Remove empty columns
         non_empty_cols = [
             col_idx
             for col_idx in range(len(table[0]))
@@ -386,15 +364,11 @@ class TesseractTableExtractor:
 
         lines = []
 
-        # Header row
         lines.append("| " + " | ".join(str(cell) for cell in table[0]) + " |")
 
-        # Separator row
         lines.append("| " + " | ".join(["---"] * len(table[0])) + " |")
 
-        # Data rows
         for row in table[1:]:
-            # Ensure row has same number of columns as header
             padded_row = list(row) + [""] * (len(table[0]) - len(row))
             lines.append("| " + " | ".join(str(cell) for cell in padded_row[: len(table[0])]) + " |")
 

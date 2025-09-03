@@ -43,7 +43,6 @@ def simple_table_image(tmp_path: Path) -> Path:
     img = Image.new("RGB", (800, 400), color="white")
     draw = ImageDraw.Draw(img)
 
-    # Draw simple table structure
     for i in range(4):
         for j in range(3):
             x = 50 + j * 250
@@ -60,7 +59,6 @@ async def test_tsv_output_format(tesseract_backend: TesseractBackend, simple_tab
     """Test that we can get TSV output from Tesseract."""
     with patch("kreuzberg._ocr._tesseract.TesseractBackend._version_checked", True):
         with patch("kreuzberg._ocr._tesseract.run_process") as mock_run:
-            # Mock TSV output
             mock_result = MagicMock()
             mock_result.returncode = 0
             mock_result.stdout = b"""level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext
@@ -68,8 +66,6 @@ async def test_tsv_output_format(tesseract_backend: TesseractBackend, simple_tab
             mock_result.stderr = b""
             mock_run.return_value = mock_result
 
-            # We'll need to implement TSV support in process_file
-            # For now, test that the backend can be called
             result = await tesseract_backend.process_file(simple_table_image)
             assert result is not None
 
@@ -84,7 +80,6 @@ def test_parse_tsv_output(mock_tsv_output: str) -> None:
     assert "left" in headers
     assert "top" in headers
 
-    # Parse data rows
     data_rows = []
     for line in lines[1:]:
         if line.strip():
@@ -94,7 +89,7 @@ def test_parse_tsv_output(mock_tsv_output: str) -> None:
                 if row["text"] and row["text"].strip():
                     data_rows.append(row)
 
-    assert len(data_rows) == 9  # Should have 9 words
+    assert len(data_rows) == 9
     assert data_rows[0]["text"] == "Cell"
     assert data_rows[1]["text"] == "Format"
 
@@ -123,7 +118,6 @@ def test_extract_word_positions(mock_tsv_output: str) -> None:
 
     assert len(words) == 9
 
-    # Check first row words are roughly aligned
     first_row = [w for w in words if w["top"] < 50]  # type: ignore[operator]
     assert len(first_row) == 3
     assert all(20 <= w["top"] <= 30 for w in first_row)  # type: ignore[operator]
@@ -142,13 +136,11 @@ def test_group_words_by_row(mock_tsv_output: str) -> None:
             if row.get("level") == "5" and row.get("text", "").strip():
                 words.append({"text": row["text"], "top": int(row["top"]), "left": int(row["left"])})
 
-    # Group by approximate Y position (with threshold)
     rows: dict[Any, Any] = {}
-    threshold = 20  # pixels
+    threshold = 20
 
     for word in words:
         y = word["top"]
-        # Find existing row or create new one
         row_key = None
         for key in rows:
             if abs(key - y) <= threshold:
@@ -161,12 +153,10 @@ def test_group_words_by_row(mock_tsv_output: str) -> None:
 
         rows[row_key].append(word)
 
-    # Sort rows by Y position
     sorted_rows = sorted(rows.items(), key=lambda x: x[0])
 
-    assert len(sorted_rows) == 3  # Should have 3 rows
+    assert len(sorted_rows) == 3
 
-    # Each row should have 3 words
     for _, row_words in sorted_rows:
         assert len(row_words) == 3
 
@@ -184,13 +174,11 @@ def test_group_words_by_column(mock_tsv_output: str) -> None:
             if row.get("level") == "5" and row.get("text", "").strip():
                 words.append({"text": row["text"], "left": int(row["left"])})
 
-    # Group by X position
     columns: dict[Any, Any] = {}
-    threshold = 50  # pixels
+    threshold = 50
 
     for word in words:
         x = word["left"]
-        # Find existing column or create new one
         col_key = None
         for key in columns:
             if abs(key - x) <= threshold:
@@ -203,23 +191,19 @@ def test_group_words_by_column(mock_tsv_output: str) -> None:
 
         columns[col_key].append(word)
 
-    # Sort columns by X position
     sorted_cols = sorted(columns.items(), key=lambda x: x[0])
 
-    # Should have 3 or 4 columns (Formula might be far enough to be its own column)
     assert 3 <= len(sorted_cols) <= 4
 
-    # Check that we have the expected words
     all_words = []
     for _, col_words in sorted_cols:
         all_words.extend(col_words)
 
-    assert len(all_words) == 9  # Should have 9 total words
+    assert len(all_words) == 9
 
 
 def test_simple_table_reconstruction(mock_tsv_output: str) -> None:
     """Test reconstructing a simple table from TSV data."""
-    # Parse TSV
     lines = mock_tsv_output.strip().split("\n")
     headers = lines[0].split("\t")
 
@@ -231,10 +215,8 @@ def test_simple_table_reconstruction(mock_tsv_output: str) -> None:
             if row.get("level") == "5" and row.get("text", "").strip():
                 words.append({"text": row["text"], "left": int(row["left"]), "top": int(row["top"])})
 
-    # Group into rows and columns
     row_threshold = 20
 
-    # Group by rows
     row_groups: dict[Any, Any] = {}
     for word in words:
         y = word["top"]
@@ -248,13 +230,10 @@ def test_simple_table_reconstruction(mock_tsv_output: str) -> None:
             row_groups[row_key] = []
         row_groups[row_key].append(word)
 
-    # Sort rows
     sorted_rows = sorted(row_groups.items(), key=lambda x: x[0])
 
-    # Build table
     table = []
     for _, row_words in sorted_rows:
-        # Sort words in row by X position
         row_words.sort(key=lambda w: w["left"])
         row_text = [w["text"] for w in row_words]
         table.append(row_text)
@@ -269,16 +248,12 @@ def test_markdown_table_generation() -> None:
     """Test generating markdown table from reconstructed data."""
     table = [["Cell", "Format", "Formula"], ["B4", "Percentage", "None"], ["C4", "General", "None"]]
 
-    # Generate markdown
     lines = []
 
-    # Header
     lines.append("| " + " | ".join(table[0]) + " |")
 
-    # Separator
     lines.append("| " + " | ".join(["---"] * len(table[0])) + " |")
 
-    # Data rows
     lines.extend("| " + " | ".join(row) + " |" for row in table[1:])
 
     markdown = "\n".join(lines)
@@ -296,8 +271,6 @@ async def test_config_with_tsv_output() -> None:
     """Test that TesseractConfig can be extended for TSV output."""
     config = TesseractConfig(language="eng", psm=PSMMode.AUTO)
 
-    # We'll need to add output_format to TesseractConfig
-    # For now, just test the existing config
     assert config.language == "eng"
     assert config.psm == PSMMode.AUTO
 
@@ -305,22 +278,18 @@ async def test_config_with_tsv_output() -> None:
 @pytest.mark.anyio
 async def test_psm_mode_for_tables() -> None:
     """Test using appropriate PSM mode for table extraction."""
-    # PSM 6 - Uniform block of text
     config_block = TesseractConfig(psm=PSMMode.SINGLE_BLOCK)
     assert config_block.psm.value == 6
 
-    # PSM 3 - Fully automatic
     config_auto = TesseractConfig(psm=PSMMode.AUTO)
     assert config_auto.psm.value == 3
 
-    # PSM 4 - Single column (good for tables)
     config_column = TesseractConfig(psm=PSMMode.SINGLE_COLUMN)
     assert config_column.psm.value == 4
 
 
 def test_handle_empty_cells_in_table() -> None:
     """Test handling tables with empty cells."""
-    # Mock TSV with missing cells
     tsv_data = """level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext
 5\t1\t1\t1\t1\t1\t50\t50\t100\t30\t95.0\tName
 5\t1\t1\t1\t1\t2\t200\t50\t100\t30\t95.0\tAge
@@ -331,7 +300,6 @@ def test_handle_empty_cells_in_table() -> None:
     lines = tsv_data.strip().split("\n")
     headers = lines[0].split("\t")
 
-    # Extract words
     words = []
     for line in lines[1:]:
         values = line.split("\t")
@@ -340,7 +308,6 @@ def test_handle_empty_cells_in_table() -> None:
             if row_dict.get("level") == "5":
                 words.append({"text": row_dict["text"], "left": int(row_dict["left"]), "top": int(row_dict["top"])})
 
-    # Group by rows with larger threshold
     row_groups: dict[Any, Any] = {}
     threshold = 30
     for word in words:
@@ -357,10 +324,8 @@ def test_handle_empty_cells_in_table() -> None:
 
     sorted_rows = sorted(row_groups.items(), key=lambda x: x[0])
 
-    # Detect columns
     all_x_positions = sorted({w["left"] for w in words})  # type: ignore[type-var]
 
-    # Build table with empty cell handling
     table: list[list[str]] = []
     for _, row_words in sorted_rows:
         row_dict = {w["left"]: w["text"] for w in row_words}
@@ -369,7 +334,7 @@ def test_handle_empty_cells_in_table() -> None:
 
     assert len(table) == 3
     assert table[0] == ["Name", "Age"]
-    assert table[1] == ["John", ""]  # Missing age for John
+    assert table[1] == ["John", ""]
     assert table[2] == ["Jane", "25"]
 
 
@@ -394,7 +359,6 @@ def test_handle_multi_word_cells() -> None:
             if row_dict.get("level") == "5":
                 words.append({"text": row_dict["text"], "left": int(row_dict["left"]), "top": int(row_dict["top"])})
 
-    # Group by rows
     row_groups: dict[Any, Any] = {}
     for word in words:
         y = word["top"]
@@ -408,22 +372,18 @@ def test_handle_multi_word_cells() -> None:
             row_groups[row_key] = []
         row_groups[row_key].append(word)
 
-    # Detect column boundaries (larger gap between columns)
     sorted_rows = sorted(row_groups.items(), key=lambda x: x[0])
 
-    # Simple column detection based on gaps
     table = []
     for _, row_words in sorted_rows:
         row_words.sort(key=lambda w: w["left"])
 
-        # Group words into cells based on proximity
         cells = []
         current_cell = [row_words[0]["text"]]
         last_x = row_words[0]["left"]
 
         for word in row_words[1:]:
-            # If gap is large, start new cell
-            if word["left"] - last_x > 150:  # Large gap indicates new column
+            if word["left"] - last_x > 150:
                 cells.append(" ".join(current_cell))
                 current_cell = [word["text"]]
             else:

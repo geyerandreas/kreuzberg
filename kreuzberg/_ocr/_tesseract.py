@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import hashlib
 import io
 import os
@@ -9,24 +10,32 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from enum import Enum
+from io import StringIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 import anyio
+import html_to_markdown
+import pandas as pd
 from anyio import Path as AsyncPath
 from anyio import run_process
+from bs4 import BeautifulSoup
+from bs4.element import Tag
 from PIL import Image
+from PIL.Image import Image as PILImage
 from typing_extensions import Self
 
-from kreuzberg._mime_types import PLAIN_TEXT_MIME_TYPE
+from kreuzberg._mime_types import HTML_MIME_TYPE, MARKDOWN_MIME_TYPE, PLAIN_TEXT_MIME_TYPE
 from kreuzberg._ocr._base import OCRBackend
-from kreuzberg._types import ExtractionResult, TableData
+from kreuzberg._ocr._table_extractor import TesseractTableExtractor
+from kreuzberg._types import ExtractionResult, HTMLToMarkdownConfig, TableData
 from kreuzberg._utils._string import normalize_spaces
 from kreuzberg._utils._sync import run_sync
 from kreuzberg._utils._tmp import create_temp_file
 from kreuzberg.exceptions import MissingDependencyError, OCRError, ValidationError
 
 if TYPE_CHECKING:
+    from bs4.element import Tag
     from PIL.Image import Image as PILImage
 
 try:  # pragma: no cover
@@ -228,8 +237,8 @@ class TesseractConfig:
     """Allow variable spacing between words, useful for text with irregular spacing."""
     thresholding_method: bool = False
     """Enable or disable specific thresholding methods during image preprocessing for better OCR accuracy."""
-    output_format: str = "text"
-    """Output format: 'text' (default), 'tsv' (for structured data), or 'hocr' (HTML-based)."""
+    output_format: str = "markdown"
+    """Output format: 'markdown' (default), 'text', 'tsv' (for structured data), or 'hocr' (HTML-based)."""
     enable_table_detection: bool = False
     """Enable table structure detection from TSV output."""
     table_column_threshold: int = 20
@@ -250,8 +259,12 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
     ) -> ExtractionResult:
         from kreuzberg._utils._cache import get_ocr_cache  # noqa: PLC0415
 
+        save_image = image
+        if image.mode not in ("RGB", "RGBA", "L", "LA", "P", "1"):
+            save_image = image.convert("RGB")
+
         image_buffer = io.BytesIO()
-        await run_sync(image.save, image_buffer, format="PNG")
+        await run_sync(save_image.save, image_buffer, format="PNG")
         image_content = image_buffer.getvalue()
 
         cache_kwargs = {
@@ -280,15 +293,9 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             await self._validate_tesseract_version()
             image_path, unlink = await create_temp_file(".png")
 
-            # Convert image to RGB if it's in a mode that can't be saved as PNG
-            save_image = image
-            if image.mode not in ("RGB", "RGBA", "L", "LA", "P", "1"):
-                save_image = image.convert("RGB")
-
             try:
                 await run_sync(save_image.save, str(image_path), format="PNG")
             except OSError as e:
-                # Additional fallback for any mode that still can't be saved
                 if "cannot write mode" in str(e):
                     save_image = image.convert("RGB")
                     await run_sync(save_image.save, str(image_path), format="PNG")
@@ -351,22 +358,25 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         try:
             await self._validate_tesseract_version()
 
-            # Extract configuration options
             language = self._validate_language_code(kwargs.pop("language", "eng"))
             psm = kwargs.pop("psm", PSMMode.AUTO)
-            output_format = kwargs.pop("output_format", "text")
+            output_format = kwargs.pop("output_format", "markdown")
             enable_table_detection = kwargs.pop("enable_table_detection", False)
 
-            # Use TSV format if table detection is enabled
             if enable_table_detection and output_format == "text":
                 output_format = "tsv"
 
-            # Determine file extension based on format
-            if output_format == "tsv":
+            if output_format == "markdown":
+                tesseract_format = "hocr"
+                ext = ".hocr"
+            elif output_format == "tsv":
+                tesseract_format = output_format
                 ext = ".tsv"
             elif output_format == "hocr":
+                tesseract_format = output_format
                 ext = ".hocr"
             else:
+                tesseract_format = "text"
                 ext = ".txt"
 
             output_path, unlink = await create_temp_file(ext)
@@ -387,13 +397,10 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                     "OFF",
                 ]
 
-                # Add output format if not text
-                if output_format != "text":
-                    command.append(output_format)
+                if tesseract_format != "text":
+                    command.append(tesseract_format)
 
-                # Add other configuration options
                 for kwarg, value in kwargs.items():
-                    # Skip table-specific options as they're not Tesseract parameters
                     if kwarg.startswith("table_"):
                         continue
                     if isinstance(value, bool):
@@ -405,7 +412,14 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                 if sys.platform.startswith("linux"):
                     env = {"OMP_THREAD_LIMIT": "1"}
 
-                result = await run_process(command, env=env)
+                try:
+                    result = await run_process(command, env=env)
+                except subprocess.CalledProcessError as e:
+                    error_msg = e.stderr.decode("utf-8") if e.stderr else str(e)
+                    raise OCRError(
+                        f"Failed to OCR using tesseract: {error_msg}",
+                        context={"command": command, "returncode": e.returncode, "error": error_msg},
+                    ) from e
 
                 if not result.returncode == 0:
                     raise OCRError(
@@ -417,8 +431,11 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
                 output = await AsyncPath(output_path).read_text("utf-8")
 
-                # Process based on format
-                if output_format == "tsv" and enable_table_detection:
+                if output_format == "markdown":
+                    extraction_result = await self._process_hocr_to_markdown(
+                        output, enable_table_detection=enable_table_detection, **kwargs
+                    )
+                elif output_format == "tsv" and enable_table_detection:
                     extraction_result = await self._process_tsv_output(
                         output,
                         table_column_threshold=kwargs.get("table_column_threshold", 20),
@@ -426,10 +443,12 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                         table_min_confidence=kwargs.get("table_min_confidence", 30.0),
                     )
                 elif output_format == "tsv":
-                    # TSV without table detection - extract text only
                     extraction_result = self._extract_text_from_tsv(output)
+                elif output_format == "hocr":
+                    extraction_result = ExtractionResult(
+                        content=output, mime_type=HTML_MIME_TYPE, metadata={}, chunks=[]
+                    )
                 else:
-                    # Plain text output
                     extraction_result = ExtractionResult(
                         content=normalize_spaces(output), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[]
                     )
@@ -464,13 +483,10 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         Returns:
             ExtractionResult with extracted content and tables.
         """
-        from kreuzberg._ocr._table_extractor import TesseractTableExtractor  # noqa: PLC0415
         from kreuzberg._utils._sync import run_sync  # noqa: PLC0415
 
-        # Extract plain text from TSV
         text_result = self._extract_text_from_tsv(tsv_content)
 
-        # Try to extract tables
         extractor = TesseractTableExtractor(
             column_threshold=table_column_threshold,
             row_threshold_ratio=table_row_threshold_ratio,
@@ -481,11 +497,9 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             words = extractor.extract_words(tsv_content)
             if words:
                 table_data = extractor.reconstruct_table(words)
-                if table_data and len(table_data) > 1:  # At least header + one data row
-                    # Convert to markdown
+                if table_data and len(table_data) > 1:
                     markdown = extractor.to_markdown(table_data)
 
-                    # Create TableData object
                     try:
                         import pandas as pd  # noqa: PLC0415
 
@@ -495,7 +509,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
                     table: TableData = {"text": markdown, "df": df, "page_number": 1, "cropped_image": None}  # type: ignore[typeddict-item]
 
-                    # Return result with table
                     return ExtractionResult(
                         content=text_result.content,
                         mime_type=text_result.mime_type,
@@ -504,7 +517,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                         chunks=text_result.chunks,
                     )
         except (ValueError, KeyError, ImportError):
-            # If table extraction fails, just return text
             pass
 
         return text_result
@@ -518,27 +530,20 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         Returns:
             ExtractionResult with extracted text.
         """
-        import csv  # noqa: PLC0415
-        from io import StringIO  # noqa: PLC0415
-
         try:
             reader = csv.DictReader(StringIO(tsv_content), delimiter="\t")
 
-            # Collect words grouped by line
             lines: dict[tuple[int, int, int, int], list[tuple[int, str]]] = {}
 
             for row in reader:
                 if row.get("level") == "5" and row.get("text", "").strip():
-                    # Group by page, block, paragraph, line
                     line_key = (int(row["page_num"]), int(row["block_num"]), int(row["par_num"]), int(row["line_num"]))
 
                     if line_key not in lines:
                         lines[line_key] = []
 
-                    # Add word with its position for sorting
                     lines[line_key].append((int(row["left"]), row["text"]))
 
-            # Reconstruct text preserving structure
             text_parts: list[str] = []
             last_block = -1
             last_para = -1
@@ -546,9 +551,8 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             for line_key in sorted(lines.keys()):
                 page_num, block_num, par_num, line_num = line_key
 
-                # Add paragraph break if new paragraph
                 if block_num != last_block:
-                    if text_parts:  # Not first block
+                    if text_parts:  # ~keep
                         text_parts.append("\n\n")
                     last_block = block_num
                     last_para = par_num
@@ -556,7 +560,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                     text_parts.append("\n\n")
                     last_para = par_num
 
-                # Sort words by X position and join
                 words = sorted(lines[line_key], key=lambda x: x[0])
                 line_text = " ".join(word[1] for word in words)
                 text_parts.append(line_text)
@@ -565,17 +568,409 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             content = "".join(text_parts).strip()
 
         except (ValueError, KeyError):
-            # Fallback to simple extraction
             content = ""
-            for line in tsv_content.split("\n")[1:]:  # Skip header
+            for line in tsv_content.split("\n")[1:]:  # ~keep skip header
                 parts = line.split("\t")
-                if len(parts) > 11 and parts[11].strip():  # Text is in column 12
+                if len(parts) > 11 and parts[11].strip():  # ~keep text is in column 11
                     content += parts[11] + " "
             content = content.strip()
 
         return ExtractionResult(
             content=normalize_spaces(content), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[]
         )
+
+    async def _process_hocr_to_markdown(
+        self,
+        hocr_content: str,
+        enable_table_detection: bool = False,
+        html_to_markdown_config: HTMLToMarkdownConfig | None = None,
+        table_column_threshold: int = 20,
+        table_row_threshold_ratio: float = 0.5,
+        table_min_confidence: float = 30.0,
+        **_kwargs: Any,
+    ) -> ExtractionResult:
+        """Convert hOCR content to Markdown with table detection.
+
+        Args:
+            hocr_content: Raw hOCR HTML/XML content from Tesseract.
+            enable_table_detection: Whether to detect and format tables.
+            html_to_markdown_config: Configuration for HTML to Markdown conversion.
+            table_column_threshold: Pixel threshold for column clustering.
+            table_row_threshold_ratio: Row threshold as ratio of mean text height.
+            table_min_confidence: Minimum confidence score to include a word.
+            **kwargs: Additional configuration options.
+
+        Returns:
+            ExtractionResult with Markdown content and detected tables.
+        """
+        config = html_to_markdown_config or HTMLToMarkdownConfig(
+            escape_asterisks=False,
+            escape_underscores=False,
+            extract_metadata=False,
+            strip="meta title",
+        )
+
+        tables: list[TableData] = []
+        if enable_table_detection:
+            soup = BeautifulSoup(hocr_content, "xml")
+            tables = await self._extract_tables_from_hocr(
+                soup,
+                table_column_threshold,
+                table_row_threshold_ratio,
+                table_min_confidence,
+            )
+
+        hocr_converters = self._create_hocr_converters(tables)
+
+        all_converters = dict(hocr_converters)
+        if config.custom_converters:
+            all_converters.update(config.custom_converters)
+
+        config_dict = config.to_dict()
+        config_dict["custom_converters"] = all_converters
+
+        try:
+            markdown_content = html_to_markdown.convert_to_markdown(hocr_content, **config_dict)
+            markdown_content = normalize_spaces(markdown_content)
+        except (ValueError, TypeError, AttributeError):
+            try:
+                soup = BeautifulSoup(hocr_content, "xml")
+                words = soup.find_all("span", class_="ocrx_word")
+                text_parts = []
+                for word in words:
+                    text = word.get_text().strip()
+                    if text:
+                        text_parts.append(text)
+
+                if text_parts:
+                    markdown_content = " ".join(text_parts)
+                else:
+                    markdown_content = soup.get_text().strip() or "[No text detected]"
+
+                markdown_content = normalize_spaces(markdown_content)
+            except (ValueError, TypeError, AttributeError):
+                markdown_content = "[OCR processing failed]"
+
+        if tables:
+            table_sections = []
+            for i, table in enumerate(tables):
+                table_sections.append(f"\n## Table {i + 1}\n\n{table['text']}\n")
+
+            if markdown_content.strip():
+                final_content = f"{markdown_content}\n{''.join(table_sections)}"
+            else:
+                final_content = "".join(table_sections).strip()
+        else:
+            final_content = markdown_content
+
+        return ExtractionResult(
+            content=final_content,
+            mime_type=MARKDOWN_MIME_TYPE,
+            metadata={"source_format": "hocr", "tables_detected": len(tables)},  # type: ignore[typeddict-unknown-key]
+            chunks=[],
+            tables=tables,
+        )
+
+    def _create_basic_converters(self) -> dict[str, Any]:
+        """Create basic converters for individual hOCR elements."""
+
+        def ocrx_word_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
+            """Custom converter for hOCR word elements - adds spaces between words."""
+            del tag
+            return f"{text.strip()} "
+
+        def ocr_line_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
+            """Custom converter for hOCR line elements - handles line breaks."""
+            del tag
+            return f"{text.strip()}\n"
+
+        def ocr_par_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
+            """Custom converter for hOCR paragraph elements - handles paragraph breaks."""
+            del tag
+            content = text.strip()
+            if not content:
+                return ""
+            return f"{content}\n\n"
+
+        def ocr_carea_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
+            """Custom converter for hOCR content area elements."""
+            del tag
+            content = text.strip()
+            if not content:
+                return ""
+            return f"{content}\n\n"
+
+        def ocr_page_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
+            """Custom converter for hOCR page elements."""
+            del tag
+            return text.strip()
+
+        def ocr_separator_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
+            """Custom converter for hOCR separator elements - convert to horizontal rules."""
+            del tag, text
+            return "---\n"
+
+        def ocr_photo_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
+            """Custom converter for hOCR photo/image elements - indicate image presence."""
+            del text
+            title = tag.get("title", "")
+            if isinstance(title, str):
+                bbox_match = re.search(r"bbox (\d+) (\d+) (\d+) (\d+)", title)
+                if bbox_match:
+                    x0, y0, x1, y1 = bbox_match.groups()
+                    width = int(x1) - int(x0)
+                    height = int(y1) - int(y0)
+                    return f"*[Image region: {width}x{height} pixels]*\n\n"
+            return "*[Image detected]*\n\n"
+
+        return {
+            "ocrx_word": ocrx_word_converter,
+            "ocr_line": ocr_line_converter,
+            "ocr_par": ocr_par_converter,
+            "ocr_carea": ocr_carea_converter,
+            "ocr_page": ocr_page_converter,
+            "ocr_separator": ocr_separator_converter,
+            "ocr_photo": ocr_photo_converter,
+        }
+
+    def _create_hocr_converters(self, _tables: list[TableData]) -> dict[str, Any]:
+        """Create custom converters for hOCR elements that preserve spacing.
+
+        Args:
+            tables: List of detected tables (not used for filtering, tables added separately).
+
+        Returns:
+            Dictionary mapping HTML tags to converter functions.
+        """
+        basic_converters = self._create_basic_converters()
+
+        def generic_div_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
+            """Generic converter for div elements based on class."""
+            class_attr = tag.get("class", "")
+            if isinstance(class_attr, list):
+                class_attr = " ".join(class_attr)
+            elif not isinstance(class_attr, str):
+                class_attr = ""
+
+            for class_name in ["ocr_separator", "ocr_photo", "ocr_page", "ocr_carea"]:
+                if class_name in class_attr:
+                    converter_result = basic_converters[class_name](tag=tag, text=text, **_conv_kwargs)
+                    return str(converter_result)
+            return text
+
+        def generic_span_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
+            """Generic converter for span elements based on class."""
+            class_attr = tag.get("class", "")
+            if isinstance(class_attr, list):
+                class_attr = " ".join(class_attr)
+            elif not isinstance(class_attr, str):
+                class_attr = ""
+
+            for class_name in ["ocrx_word", "ocr_line"]:
+                if class_name in class_attr:
+                    converter_result = basic_converters[class_name](tag=tag, text=text, **_conv_kwargs)
+                    return str(converter_result)
+            return f"{text.strip()} "
+
+        return {
+            "span": generic_span_converter,
+            "div": generic_div_converter,
+            "p": basic_converters["ocr_par"],
+        }
+
+    def _process_hocr_to_markdown_sync(self, hocr_content: str, config: TesseractConfig) -> ExtractionResult:
+        """Synchronously process hOCR content to markdown format.
+
+        Args:
+            hocr_content: Raw hOCR content as string
+            config: Tesseract configuration object
+
+        Returns:
+            ExtractionResult with markdown content
+        """
+        tables: list[TableData] = []
+
+        if config.enable_table_detection:
+            pass
+
+        try:
+            converters = self._create_hocr_converters(tables)
+
+            html_config = HTMLToMarkdownConfig(
+                custom_converters=converters,
+                escape_asterisks=False,
+                escape_underscores=False,
+                extract_metadata=False,
+                strip="meta title",
+            )
+
+            markdown_content = html_to_markdown.convert_to_markdown(
+                hocr_content,
+                **html_config.to_dict(),
+            )
+
+            markdown_content = normalize_spaces(markdown_content)
+
+        except (ValueError, TypeError, AttributeError):
+            try:
+                soup = BeautifulSoup(hocr_content, "xml")
+                words = soup.find_all("span", class_="ocrx_word")
+                text_parts = []
+                for word in words:
+                    text = word.get_text().strip()
+                    if text:
+                        text_parts.append(text)
+
+                if text_parts:
+                    markdown_content = " ".join(text_parts)
+                else:
+                    markdown_content = soup.get_text().strip() or "[No text detected]"
+
+                markdown_content = normalize_spaces(markdown_content)
+            except (ValueError, TypeError, AttributeError):
+                markdown_content = "[OCR processing failed]"
+
+        if tables:
+            table_sections = []
+            for i, table in enumerate(tables):
+                table_sections.append(f"\n## Table {i + 1}\n\n{table['text']}\n")
+
+            if markdown_content.strip():
+                final_content = f"{markdown_content}\n{''.join(table_sections)}"
+            else:
+                final_content = "".join(table_sections).strip()
+        else:
+            final_content = markdown_content
+
+        return ExtractionResult(
+            content=final_content,
+            mime_type=MARKDOWN_MIME_TYPE,
+            metadata={"source_format": "hocr", "tables_detected": len(tables)},  # type: ignore[typeddict-unknown-key]
+            chunks=[],
+            tables=tables,
+        )
+
+    async def _extract_tables_from_hocr(
+        self,
+        soup: Any,
+        column_threshold: int = 20,
+        row_threshold_ratio: float = 0.5,
+        min_confidence: float = 30.0,
+    ) -> list[TableData]:
+        """Extract tables from hOCR structure using coordinate analysis.
+
+        Args:
+            soup: Parsed hOCR BeautifulSoup object.
+            column_threshold: Pixel threshold for column clustering.
+            row_threshold_ratio: Row threshold as ratio of mean text height.
+            min_confidence: Minimum confidence score to include a word.
+
+        Returns:
+            List of detected tables as TableData objects.
+        """
+        tsv_data = await self._hocr_to_tsv_data(soup, min_confidence)
+
+        if not tsv_data:
+            return []
+
+        extractor = TesseractTableExtractor(
+            column_threshold=column_threshold,
+            row_threshold_ratio=row_threshold_ratio,
+            min_confidence=min_confidence,
+        )
+
+        words = extractor.extract_words(tsv_data)
+        if not words:
+            return []
+
+        tables: list[TableData] = []
+        try:
+            table_data = extractor.reconstruct_table(words)
+            if table_data and len(table_data) > 1:  # ~keep At least header + one data row
+                markdown = extractor.to_markdown(table_data)
+
+                min_x = min(w["left"] for w in words)
+                max_x = max(w["left"] + w["width"] for w in words)
+                min_y = min(w["top"] for w in words)
+                max_y = max(w["top"] + w["height"] for w in words)
+
+                try:
+                    df = await run_sync(pd.DataFrame, table_data[1:], columns=table_data[0])
+                except (ImportError, IndexError):
+                    df = None
+
+                dummy_image = Image.new("RGB", (1, 1), "white")
+
+                table: TableData = {
+                    "text": markdown,
+                    "df": df,
+                    "page_number": 1,
+                    "cropped_image": dummy_image,
+                    "metadata": {"bbox": (min_x, min_y, max_x, max_y)},
+                }  # type: ignore[typeddict-unknown-key]
+                tables.append(table)
+        except (ValueError, KeyError, ImportError):
+            pass
+
+        return tables
+
+    async def _hocr_to_tsv_data(self, soup: Any, min_confidence: float) -> str:
+        """Convert hOCR structure to TSV format for table extraction.
+
+        Args:
+            soup: Parsed hOCR BeautifulSoup object.
+            min_confidence: Minimum confidence score to include.
+
+        Returns:
+            TSV formatted string compatible with table extractor.
+        """
+        tsv_lines = ["level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext"]
+
+        words = soup.find_all("span", class_="ocrx_word")
+        word_num = 1
+
+        for word in words:
+            title = word.get("title", "")
+            text = word.get_text().strip()
+
+            if not text:
+                continue
+
+            bbox_match = re.search(r"bbox (\d+) (\d+) (\d+) (\d+)", title)
+            if not bbox_match:
+                continue
+
+            x0, y0, x1, y1 = map(int, bbox_match.groups())
+
+            conf_match = re.search(r"x_wconf (\d+)", title)
+            confidence = float(conf_match.group(1)) if conf_match else 100.0
+
+            if confidence < min_confidence:
+                continue
+
+            line = word.find_parent(class_="ocr_line")
+            par = word.find_parent(class_="ocr_par")
+            block = word.find_parent(class_="ocr_carea")
+
+            tsv_line = f"5\t1\t{block.get('id', '1').split('_')[-1] if block else 1}\t{par.get('id', '1').split('_')[-1] if par else 1}\t{line.get('id', '1').split('_')[-1] if line else 1}\t{word_num}\t{x0}\t{y0}\t{x1 - x0}\t{y1 - y0}\t{confidence}\t{text}"
+            tsv_lines.append(tsv_line)
+            word_num += 1
+
+        return "\n".join(tsv_lines)
+
+    def _identify_table_regions(self, words: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+        """Identify potential table regions from word coordinates.
+
+        Args:
+            words: List of word dictionaries with coordinates.
+
+        Returns:
+            List of word groups representing potential tables.
+        """
+        if not words:
+            return []
+
+        return [words]
 
     @classmethod
     async def _validate_tesseract_version(cls) -> None:
@@ -590,7 +985,12 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
             command = ["tesseract", "--version"]
             env = {"OMP_THREAD_LIMIT": "1"} if sys.platform.startswith("linux") else None
-            result = await run_process(command, env=env)
+            try:
+                result = await run_process(command, env=env)
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                raise MissingDependencyError(
+                    "Tesseract version 5 is a required system dependency. Please install it on your system and make sure its available in $PATH."
+                ) from e
             version_match = re.search(r"tesseract\s+v?(\d+)\.\d+\.\d+", result.stdout.decode("utf-8"))
             if not version_match or int(version_match.group(1)) < MINIMAL_SUPPORTED_TESSERACT_VERSION:
                 raise MissingDependencyError(
@@ -619,8 +1019,12 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         """
         from kreuzberg._utils._cache import get_ocr_cache  # noqa: PLC0415
 
+        save_image = image
+        if image.mode not in ("RGB", "RGBA", "L", "LA", "P", "1"):
+            save_image = image.convert("RGB")
+
         image_buffer = io.BytesIO()
-        image.save(image_buffer, format="PNG")
+        save_image.save(image_buffer, format="PNG")
         image_content = image_buffer.getvalue()
 
         cache_kwargs = {
@@ -648,7 +1052,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             self._validate_tesseract_version_sync()
             with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
                 image_path = Path(tmp_file.name)
-                image.save(str(image_path), format="PNG")
+                save_image.save(str(image_path), format="PNG")
             try:
                 result = self.process_file_sync(image_path, **kwargs)
 
@@ -702,33 +1106,85 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
         try:
             self._validate_tesseract_version_sync()
-            with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp_file:
-                output_base = tmp_file.name.replace(".txt", "")
-            language = self._validate_language_code(kwargs.pop("language", "eng"))
-            psm = kwargs.pop("psm", PSMMode.AUTO)
-            try:
-                command = self._build_tesseract_command(path, output_base, language, psm, **kwargs)
-                self._run_tesseract_sync(command)
 
-                output_path = Path(output_base + ".txt")
-                with output_path.open(encoding="utf-8") as f:
-                    output = f.read()
-                extraction_result = ExtractionResult(
-                    content=normalize_spaces(output), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[]
-                )
+            config = TesseractConfig(**kwargs)
+            language = self._validate_language_code(config.language)
 
-                final_cache_kwargs = cache_kwargs.copy()
-                final_cache_kwargs["ocr_config"] = str(sorted({**kwargs, "language": language, "psm": psm}.items()))
-                ocr_cache.set(extraction_result, **final_cache_kwargs)
+            if config.output_format == "markdown":
+                with tempfile.NamedTemporaryFile(suffix=".hocr", delete=False) as tmp_file:
+                    output_base = tmp_file.name.replace(".hocr", "")
 
-                return extraction_result
-            except (RuntimeError, OSError) as e:
-                raise OCRError(f"Failed to OCR using tesseract: {e}") from e
-            finally:
-                for ext in [".txt"]:
-                    temp_file = Path(output_base + ext)
-                    if temp_file.exists():
-                        temp_file.unlink()
+                try:
+                    from dataclasses import asdict  # noqa: PLC0415
+
+                    config_dict = asdict(config)
+                    filtered_config = {
+                        k: v
+                        for k, v in config_dict.items()
+                        if k
+                        not in [
+                            "language",
+                            "psm",
+                            "output_format",
+                            "enable_table_detection",
+                            "table_column_threshold",
+                            "table_row_threshold_ratio",
+                            "table_min_confidence",
+                        ]
+                    }
+                    command = self._build_tesseract_command(path, output_base, language, config.psm, **filtered_config)
+                    command.append("hocr")
+                    self._run_tesseract_sync(command)
+
+                    hocr_path = Path(f"{output_base}.hocr")
+                    if not hocr_path.exists():
+                        extraction_result = ExtractionResult(
+                            content="[OCR processing failed]",
+                            mime_type=MARKDOWN_MIME_TYPE,
+                            metadata={"source_format": "hocr", "error": "hOCR file not generated"},  # type: ignore[typeddict-unknown-key]
+                            chunks=[],
+                            tables=[],
+                        )
+                    else:
+                        with hocr_path.open(encoding="utf-8") as f:
+                            hocr_content = f.read()
+
+                        extraction_result = self._process_hocr_to_markdown_sync(hocr_content, config)
+
+                        hocr_path.unlink(missing_ok=True)
+                finally:
+                    for ext in [".hocr", ".tsv"]:
+                        cleanup_path = Path(f"{output_base}{ext}")
+                        cleanup_path.unlink(missing_ok=True)
+            else:
+                with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp_file:
+                    output_base = tmp_file.name.replace(".txt", "")
+
+                try:
+                    config_dict = asdict(config)
+                    filtered_config = {
+                        k: v for k, v in config_dict.items() if k not in ["language", "psm", "output_format"]
+                    }
+                    command = self._build_tesseract_command(path, output_base, language, config.psm, **filtered_config)
+                    self._run_tesseract_sync(command)
+
+                    output_path = Path(output_base + ".txt")
+                    with output_path.open(encoding="utf-8") as f:
+                        output = f.read()
+                    extraction_result = ExtractionResult(
+                        content=normalize_spaces(output), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[]
+                    )
+                finally:
+                    Path(f"{output_base}.txt").unlink(missing_ok=True)
+
+            final_cache_kwargs = cache_kwargs.copy()
+            config_dict = asdict(config)
+            final_cache_kwargs["ocr_config"] = str(sorted(config_dict.items()))
+            ocr_cache.set(extraction_result, **final_cache_kwargs)
+
+            return extraction_result
+        except Exception as e:
+            raise OCRError(f"Failed to OCR using tesseract: {e}") from e
         finally:
             ocr_cache.mark_complete(**cache_kwargs)
 
@@ -766,12 +1222,10 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             "OFF",
         ]
 
-        # Add output format if not text
         if output_format != "text":
             command.append(output_format)
 
         for kwarg, value in kwargs.items():
-            # Skip table-specific options as they're not Tesseract parameters
             if kwarg.startswith("table_"):
                 continue
             if isinstance(value, bool):
@@ -786,21 +1240,27 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         if sys.platform.startswith("linux"):
             env["OMP_THREAD_LIMIT"] = "1"
 
-        result = subprocess.run(
-            command,
-            check=False,
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=30,
-            encoding="utf-8",
-        )
-
-        if result.returncode != 0:
-            raise OCRError(
-                "OCR failed with a non-0 return code.",
-                context={"error": result.stderr},
+        try:
+            subprocess.run(
+                command,
+                check=True,
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=30,
+                encoding="utf-8",
             )
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr if e.stderr else str(e)
+            raise OCRError(
+                f"Failed to OCR using tesseract: {error_msg}",
+                context={"command": command, "returncode": e.returncode, "error": error_msg},
+            ) from e
+        except subprocess.TimeoutExpired as e:
+            raise OCRError(
+                "Tesseract timed out during processing.",
+                context={"command": command, "timeout": 30},
+            ) from e
 
     @classmethod
     def _validate_tesseract_version_sync(cls) -> None:
@@ -814,7 +1274,12 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                 return
 
             command = ["tesseract", "--version"]
-            result = subprocess.run(command, capture_output=True, text=True, check=False, encoding="utf-8")
+            try:
+                result = subprocess.run(command, capture_output=True, text=True, check=True, encoding="utf-8")
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+                raise MissingDependencyError(
+                    "Tesseract version 5 is a required system dependency. Please install it on your system and make sure its available in $PATH."
+                ) from e
             version_match = re.search(r"tesseract\s+v?(\d+)\.\d+\.\d+", result.stdout)
             if not version_match or int(version_match.group(1)) < MINIMAL_SUPPORTED_TESSERACT_VERSION:
                 raise MissingDependencyError(

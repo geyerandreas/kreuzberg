@@ -516,7 +516,6 @@ def test_cli_ocr_backend_none(tmp_path: Path) -> None:
 def test_cli_unicode_character_handling(tmp_path: Path) -> None:
     """Test that CLI correctly handles Unicode characters including the problematic U+2015."""
     txt_file = tmp_path / "unicode_test.txt"
-    # Include the problematic character U+2015 (horizontal bar) that was reported in issue #111
     unicode_content = "Test with Unicode: — (em dash) ― (horizontal bar U+2015) • (bullet) € (euro) 中文 (Chinese)"
     txt_file.write_text(unicode_content, encoding="utf-8")
 
@@ -525,14 +524,13 @@ def test_cli_unicode_character_handling(tmp_path: Path) -> None:
         check=False,
         capture_output=True,
         text=True,
-        encoding="utf-8",  # Ensure subprocess uses UTF-8
+        encoding="utf-8",
         cwd=Path.cwd(),
     )
 
     assert result.returncode == 0
-    # Check that all Unicode characters are present in the output
-    assert "—" in result.stdout  # em dash
-    assert "―" in result.stdout  # horizontal bar (U+2015)
-    assert "•" in result.stdout  # bullet
-    assert "€" in result.stdout  # euro
-    assert "中文" in result.stdout  # Chinese characters
+    assert "—" in result.stdout
+    assert "―" in result.stdout
+    assert "•" in result.stdout
+    assert "€" in result.stdout
+    assert "中文" in result.stdout

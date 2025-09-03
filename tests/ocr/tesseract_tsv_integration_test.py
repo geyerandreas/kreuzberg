@@ -34,12 +34,10 @@ async def test_tesseract_tsv_output_integration(table_image_path: Path) -> None:
     """Test end-to-end TSV output with REAL Tesseract and real image."""
     backend = TesseractBackend()
 
-    # Use REAL Tesseract - no mocks!
     result = await backend.process_file(table_image_path, output_format="tsv", enable_table_detection=False)
 
     assert result is not None
     assert isinstance(result.content, str)
-    # Check that we got some text extracted
     assert len(result.content) > 0
 
 
@@ -48,9 +46,7 @@ async def test_tesseract_process_image_with_table_detection(table_image_path: Pa
     """Test REAL table detection using process_image with PIL.Image."""
     backend = TesseractBackend()
 
-    # Load image with PIL
     with Image.open(table_image_path) as img:
-        # Use REAL Tesseract with process_image
         result = await backend.process_image(
             img,
             enable_table_detection=True,
@@ -61,7 +57,6 @@ async def test_tesseract_process_image_with_table_detection(table_image_path: Pa
     assert result is not None
     assert len(result.content) > 0
 
-    # Check if tables were detected
     if result.tables:
         for _i, _table in enumerate(result.tables):
             pass
@@ -72,7 +67,6 @@ async def test_table_detection_enabled(table_image_path: Path) -> None:
     """Test REAL table detection from TSV output using actual Tesseract."""
     backend = TesseractBackend()
 
-    # Use REAL Tesseract with table detection enabled
     result = await backend.process_file(
         table_image_path,
         enable_table_detection=True,
@@ -81,14 +75,11 @@ async def test_table_detection_enabled(table_image_path: Path) -> None:
     )
 
     assert result is not None
-    # If tables are detected, they should be in result.tables
     if result.tables:
         table = result.tables[0]
         assert "text" in table
-        assert "|" in table["text"]  # Markdown table format
-        # The actual content depends on what Tesseract extracts from the real image
+        assert "|" in table["text"]
     else:
-        # At minimum we should have extracted text content
         assert len(result.content) > 0
 
 
@@ -112,25 +103,21 @@ def test_table_extractor_with_real_tsv() -> None:
     assert len(words) == 9
     assert words[0]["text"] == "Product"
 
-    # Test column detection
     cols = extractor.detect_columns(words)
     assert len(cols) == 3
-    assert 90 < cols[0] < 110  # Around 100
-    assert 240 < cols[1] < 260  # Around 250
-    assert 390 < cols[2] < 410  # Around 400
+    assert 90 < cols[0] < 110
+    assert 240 < cols[1] < 260
+    assert 390 < cols[2] < 410
 
-    # Test row detection
     rows = extractor.detect_rows(words)
     assert len(rows) == 3
 
-    # Test table reconstruction
     table = extractor.reconstruct_table(words)
     assert len(table) == 3
     assert table[0] == ["Product", "Price", "Quantity"]
     assert table[1] == ["Apples", "$2.50", "10"]
     assert table[2] == ["Bananas", "$1.20", "15"]
 
-    # Test markdown conversion
     markdown = extractor.to_markdown(table)
     assert "| Product | Price | Quantity |" in markdown
     assert "| --- | --- | --- |" in markdown
@@ -168,7 +155,7 @@ def test_table_extraction_with_empty_cells() -> None:
     assert len(table) == 2
     assert table[0] == ["Header1", "Header2", "Header3"]
     assert table[1][0] == "Data1"
-    assert table[1][1] == ""  # Empty cell
+    assert table[1][1] == ""
     assert table[1][2] == "Data3"
 
 
@@ -182,7 +169,7 @@ def test_table_extraction_confidence_threshold() -> None:
     extractor = TesseractTableExtractor(min_confidence=30.0)
     words = extractor.extract_words(tsv_data)
 
-    assert len(words) == 2  # "Bad" should be filtered out
+    assert len(words) == 2
     assert words[0]["text"] == "Good"
     assert words[1]["text"] == "AlsoGood"
 
@@ -190,9 +177,9 @@ def test_table_extraction_confidence_threshold() -> None:
 @pytest.mark.parametrize(
     "column_threshold,expected_cols",
     [
-        (10, 3),  # Tight threshold - more columns
-        (50, 2),  # Loose threshold - columns merge
-        (200, 1),  # Very loose - all merge to one
+        (10, 3),
+        (50, 2),
+        (200, 1),
     ],
 )
 def test_column_clustering_thresholds(column_threshold: int, expected_cols: int) -> None:

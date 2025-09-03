@@ -191,7 +191,6 @@ def _write_output(
         try:
             click.echo(formatted_output)
         except UnicodeEncodeError:
-            # Fallback to direct buffer write for systems with non-UTF-8 encoding
             sys.stdout.buffer.write(formatted_output.encode("utf-8"))
 
 
