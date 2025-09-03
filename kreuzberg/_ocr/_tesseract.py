@@ -20,7 +20,7 @@ from typing_extensions import Self
 
 from kreuzberg._mime_types import PLAIN_TEXT_MIME_TYPE
 from kreuzberg._ocr._base import OCRBackend
-from kreuzberg._types import ExtractionResult
+from kreuzberg._types import ExtractionResult, TableData
 from kreuzberg._utils._string import normalize_spaces
 from kreuzberg._utils._sync import run_sync
 from kreuzberg._utils._tmp import create_temp_file
@@ -228,6 +228,16 @@ class TesseractConfig:
     """Allow variable spacing between words, useful for text with irregular spacing."""
     thresholding_method: bool = False
     """Enable or disable specific thresholding methods during image preprocessing for better OCR accuracy."""
+    output_format: str = "text"
+    """Output format: 'text' (default), 'tsv' (for structured data), or 'hocr' (HTML-based)."""
+    enable_table_detection: bool = False
+    """Enable table structure detection from TSV output."""
+    table_column_threshold: int = 20
+    """Pixel threshold for column clustering in table detection."""
+    table_row_threshold_ratio: float = 0.5
+    """Row threshold as ratio of mean text height for table detection."""
+    table_min_confidence: float = 30.0
+    """Minimum confidence score to include a word in table extraction."""
 
 
 class TesseractBackend(OCRBackend[TesseractConfig]):
@@ -281,7 +291,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         finally:
             ocr_cache.mark_complete(**cache_kwargs)
 
-    async def process_file(
+    async def process_file(  # noqa: C901, PLR0912, PLR0915
         self,
         path: Path,
         **kwargs: Unpack[TesseractConfig],
@@ -326,11 +336,29 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
         try:
             await self._validate_tesseract_version()
-            output_path, unlink = await create_temp_file(".txt")
+
+            # Extract configuration options
             language = self._validate_language_code(kwargs.pop("language", "eng"))
             psm = kwargs.pop("psm", PSMMode.AUTO)
+            output_format = kwargs.pop("output_format", "text")
+            enable_table_detection = kwargs.pop("enable_table_detection", False)
+
+            # Use TSV format if table detection is enabled
+            if enable_table_detection and output_format == "text":
+                output_format = "tsv"
+
+            # Determine file extension based on format
+            if output_format == "tsv":
+                ext = ".tsv"
+            elif output_format == "hocr":
+                ext = ".hocr"
+            else:
+                ext = ".txt"
+
+            output_path, unlink = await create_temp_file(ext)
+
             try:
-                output_base = str(output_path).replace(".txt", "")
+                output_base = str(output_path).replace(ext, "")
                 command = [
                     "tesseract",
                     str(path),
@@ -344,7 +372,16 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                     "--loglevel",
                     "OFF",
                 ]
+
+                # Add output format if not text
+                if output_format != "text":
+                    command.append(output_format)
+
+                # Add other configuration options
                 for kwarg, value in kwargs.items():
+                    # Skip table-specific options as they're not Tesseract parameters
+                    if kwarg.startswith("table_"):
+                        continue
                     if isinstance(value, bool):
                         command.extend(["-c", f"{kwarg}={1 if value else 0}"])
                     else:
@@ -365,9 +402,23 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                     )
 
                 output = await AsyncPath(output_path).read_text("utf-8")
-                extraction_result = ExtractionResult(
-                    content=normalize_spaces(output), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[]
-                )
+
+                # Process based on format
+                if output_format == "tsv" and enable_table_detection:
+                    extraction_result = await self._process_tsv_output(
+                        output,
+                        table_column_threshold=kwargs.get("table_column_threshold", 20),
+                        table_row_threshold_ratio=kwargs.get("table_row_threshold_ratio", 0.5),
+                        table_min_confidence=kwargs.get("table_min_confidence", 30.0),
+                    )
+                elif output_format == "tsv":
+                    # TSV without table detection - extract text only
+                    extraction_result = self._extract_text_from_tsv(output)
+                else:
+                    # Plain text output
+                    extraction_result = ExtractionResult(
+                        content=normalize_spaces(output), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[]
+                    )
 
                 final_cache_kwargs = cache_kwargs.copy()
                 final_cache_kwargs["ocr_config"] = str(sorted({**kwargs, "language": language, "psm": psm}.items()))
@@ -380,6 +431,137 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                 await unlink()
         finally:
             ocr_cache.mark_complete(**cache_kwargs)
+
+    async def _process_tsv_output(
+        self,
+        tsv_content: str,
+        table_column_threshold: int = 20,
+        table_row_threshold_ratio: float = 0.5,
+        table_min_confidence: float = 30.0,
+    ) -> ExtractionResult:
+        """Process TSV output and extract tables if detected.
+
+        Args:
+            tsv_content: Raw TSV output from Tesseract.
+            table_column_threshold: Pixel threshold for column clustering.
+            table_row_threshold_ratio: Row threshold as ratio of mean text height.
+            table_min_confidence: Minimum confidence score to include a word.
+
+        Returns:
+            ExtractionResult with extracted content and tables.
+        """
+        from kreuzberg._ocr._table_extractor import TesseractTableExtractor  # noqa: PLC0415
+        from kreuzberg._utils._sync import run_sync  # noqa: PLC0415
+
+        # Extract plain text from TSV
+        text_result = self._extract_text_from_tsv(tsv_content)
+
+        # Try to extract tables
+        extractor = TesseractTableExtractor(
+            column_threshold=table_column_threshold,
+            row_threshold_ratio=table_row_threshold_ratio,
+            min_confidence=table_min_confidence,
+        )
+
+        try:
+            words = extractor.extract_words(tsv_content)
+            if words:
+                table_data = extractor.reconstruct_table(words)
+                if table_data and len(table_data) > 1:  # At least header + one data row
+                    # Convert to markdown
+                    markdown = extractor.to_markdown(table_data)
+
+                    # Create TableData object
+                    try:
+                        import pandas as pd  # noqa: PLC0415
+
+                        df = await run_sync(pd.DataFrame, table_data[1:], columns=table_data[0])
+                    except (ImportError, IndexError):
+                        df = None
+
+                    table: TableData = {"text": markdown, "df": df, "page_number": 1, "cropped_image": None}  # type: ignore[typeddict-item]
+
+                    # Return result with table
+                    return ExtractionResult(
+                        content=text_result.content,
+                        mime_type=text_result.mime_type,
+                        metadata=text_result.metadata,
+                        tables=[table],
+                        chunks=text_result.chunks,
+                    )
+        except (ValueError, KeyError, ImportError):
+            # If table extraction fails, just return text
+            pass
+
+        return text_result
+
+    def _extract_text_from_tsv(self, tsv_content: str) -> ExtractionResult:
+        """Extract plain text from TSV output.
+
+        Args:
+            tsv_content: Raw TSV output from Tesseract.
+
+        Returns:
+            ExtractionResult with extracted text.
+        """
+        import csv  # noqa: PLC0415
+        from io import StringIO  # noqa: PLC0415
+
+        try:
+            reader = csv.DictReader(StringIO(tsv_content), delimiter="\t")
+
+            # Collect words grouped by line
+            lines: dict[tuple[int, int, int, int], list[tuple[int, str]]] = {}
+
+            for row in reader:
+                if row.get("level") == "5" and row.get("text", "").strip():
+                    # Group by page, block, paragraph, line
+                    line_key = (int(row["page_num"]), int(row["block_num"]), int(row["par_num"]), int(row["line_num"]))
+
+                    if line_key not in lines:
+                        lines[line_key] = []
+
+                    # Add word with its position for sorting
+                    lines[line_key].append((int(row["left"]), row["text"]))
+
+            # Reconstruct text preserving structure
+            text_parts: list[str] = []
+            last_block = -1
+            last_para = -1
+
+            for line_key in sorted(lines.keys()):
+                page_num, block_num, par_num, line_num = line_key
+
+                # Add paragraph break if new paragraph
+                if block_num != last_block:
+                    if text_parts:  # Not first block
+                        text_parts.append("\n\n")
+                    last_block = block_num
+                    last_para = par_num
+                elif par_num != last_para:
+                    text_parts.append("\n\n")
+                    last_para = par_num
+
+                # Sort words by X position and join
+                words = sorted(lines[line_key], key=lambda x: x[0])
+                line_text = " ".join(word[1] for word in words)
+                text_parts.append(line_text)
+                text_parts.append("\n")
+
+            content = "".join(text_parts).strip()
+
+        except (ValueError, KeyError):
+            # Fallback to simple extraction
+            content = ""
+            for line in tsv_content.split("\n")[1:]:  # Skip header
+                parts = line.split("\t")
+                if len(parts) > 11 and parts[11].strip():  # Text is in column 12
+                    content += parts[11] + " "
+            content = content.strip()
+
+        return ExtractionResult(
+            content=normalize_spaces(content), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[]
+        )
 
     @classmethod
     async def _validate_tesseract_version(cls) -> None:
@@ -552,7 +734,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             }
 
     def _build_tesseract_command(
-        self, path: Path, output_base: str, language: str, psm: PSMMode, **kwargs: Any
+        self, path: Path, output_base: str, language: str, psm: PSMMode, output_format: str = "text", **kwargs: Any
     ) -> list[str]:
         """Build tesseract command with all parameters."""
         command = [
@@ -568,7 +750,15 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             "--loglevel",
             "OFF",
         ]
+
+        # Add output format if not text
+        if output_format != "text":
+            command.append(output_format)
+
         for kwarg, value in kwargs.items():
+            # Skip table-specific options as they're not Tesseract parameters
+            if kwarg.startswith("table_"):
+                continue
             if isinstance(value, bool):
                 command.extend(["-c", f"{kwarg}={1 if value else 0}"])
             else:

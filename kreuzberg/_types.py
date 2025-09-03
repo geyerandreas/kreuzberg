@@ -32,6 +32,64 @@ if TYPE_CHECKING:
     from kreuzberg._ocr._tesseract import TesseractConfig
 
 OcrBackendType = Literal["tesseract", "easyocr", "paddleocr"]
+OutputFormatType = Literal["text", "tsv", "hocr"]
+
+
+class BoundingBox(TypedDict):
+    """Bounding box coordinates for text elements."""
+
+    left: int
+    """X coordinate of the left edge."""
+    top: int
+    """Y coordinate of the top edge."""
+    width: int
+    """Width of the bounding box."""
+    height: int
+    """Height of the bounding box."""
+
+
+class TSVWord(TypedDict):
+    """Represents a word from Tesseract TSV output."""
+
+    level: int
+    """Hierarchy level (1=page, 2=block, 3=para, 4=line, 5=word)."""
+    page_num: int
+    """Page number."""
+    block_num: int
+    """Block number within the page."""
+    par_num: int
+    """Paragraph number within the block."""
+    line_num: int
+    """Line number within the paragraph."""
+    word_num: int
+    """Word number within the line."""
+    left: int
+    """X coordinate of the word's left edge."""
+    top: int
+    """Y coordinate of the word's top edge."""
+    width: int
+    """Width of the word's bounding box."""
+    height: int
+    """Height of the word's bounding box."""
+    conf: float
+    """Confidence score (0-100)."""
+    text: str
+    """The recognized text content."""
+
+
+class TableCell(TypedDict):
+    """Represents a cell in a reconstructed table."""
+
+    row: int
+    """Row index (0-based)."""
+    col: int
+    """Column index (0-based)."""
+    text: str
+    """Cell text content."""
+    bbox: BoundingBox
+    """Bounding box of the cell."""
+    confidence: float
+    """Average confidence of words in the cell."""
 
 
 class TableData(TypedDict):
@@ -309,6 +367,8 @@ class ExtractionConfig:
     """Whether to chunk the content into smaller chunks."""
     extract_tables: bool = False
     """Whether to extract tables from the content. This requires the 'gmft' dependency."""
+    extract_tables_from_ocr: bool = False
+    """Extract tables from OCR output using TSV format (Tesseract only)."""
     max_chars: int = DEFAULT_MAX_CHARACTERS
     """The size of each chunk in characters."""
     max_overlap: int = DEFAULT_MAX_OVERLAP
