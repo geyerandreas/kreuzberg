@@ -155,6 +155,111 @@ The priority order is:
 1. Configuration file settings
 1. Default values (lowest priority)
 
+## API Runtime Configuration
+
+When using the [Kreuzberg API Server](api-server.md), you can configure extraction behavior at runtime without requiring static configuration files. This allows different requests to use different extraction settings.
+
+### Query Parameters
+
+Configure extraction options directly via URL query parameters when making requests to the `/extract` endpoint:
+
+Enable chunking with custom settings:
+
+```bash
+curl -X POST "http://localhost:8000/extract?chunk_content=true&max_chars=500&max_overlap=50" \
+  -F "data=@document.pdf"
+```
+
+Extract entities and keywords:
+
+```bash
+curl -X POST "http://localhost:8000/extract?extract_entities=true&extract_keywords=true&keyword_count=5" \
+  -F "data=@document.pdf"
+```
+
+Force OCR with specific backend:
+
+```bash
+curl -X POST "http://localhost:8000/extract?force_ocr=true&ocr_backend=tesseract" \
+  -F "data=@image.jpg"
+```
+
+**Supported Query Parameters:**
+
+- `chunk_content` (boolean): Enable content chunking
+- `max_chars` (integer): Maximum characters per chunk
+- `max_overlap` (integer): Overlap between chunks in characters
+- `extract_tables` (boolean): Enable table extraction
+- `extract_entities` (boolean): Enable named entity extraction
+- `extract_keywords` (boolean): Enable keyword extraction
+- `keyword_count` (integer): Number of keywords to extract
+- `force_ocr` (boolean): Force OCR processing
+- `ocr_backend` (string): OCR engine (`tesseract`, `easyocr`, `paddleocr`)
+- `auto_detect_language` (boolean): Enable automatic language detection
+- `pdf_password` (string): Password for encrypted PDFs
+
+### Header Configuration
+
+For complex nested configurations (like OCR-specific settings), use the `X-Extraction-Config` header with JSON format:
+
+Advanced OCR configuration:
+
+```bash
+curl -X POST http://localhost:8000/extract \
+  -H "X-Extraction-Config: {
+    \"force_ocr\": true,
+    \"ocr_backend\": \"tesseract\",
+    \"ocr_config\": {
+      \"language\": \"eng+deu\",
+      \"psm\": 6,
+      \"output_format\": \"text\"
+    }
+  }" \
+  -F "data=@multilingual_document.pdf"
+```
+
+Table extraction with GMFT configuration:
+
+```bash
+curl -X POST http://localhost:8000/extract \
+  -H "X-Extraction-Config: {
+    \"extract_tables\": true,
+    \"gmft_config\": {
+      \"detector_base_threshold\": 0.85,
+      \"remove_null_rows\": true,
+      \"enable_multi_header\": true
+    }
+  }" \
+  -F "data=@document_with_tables.pdf"
+```
+
+### API Configuration Precedence
+
+When using the API server, configuration is merged with the following precedence:
+
+1. **Header config** (highest priority) - `X-Extraction-Config` header
+1. **Query params** - URL query parameters
+1. **Static config** - `kreuzberg.toml` or `pyproject.toml` files
+1. **Defaults** (lowest priority) - Built-in default values
+
+This means you can have a base configuration in files, override specific settings via query parameters, and use headers for complex nested configuration—all in the same request.
+
+### Mapping API Parameters to Configuration
+
+The runtime API parameters correspond directly to the programmatic configuration options:
+
+| Query Parameter    | Config Class Field                  | Header JSON Key                 |
+| ------------------ | ----------------------------------- | ------------------------------- |
+| `chunk_content`    | `ExtractionConfig.chunk_content`    | `"chunk_content"`               |
+| `max_chars`        | `ExtractionConfig.max_chars`        | `"max_chars"`                   |
+| `extract_entities` | `ExtractionConfig.extract_entities` | `"extract_entities"`            |
+| `force_ocr`        | `ExtractionConfig.force_ocr`        | `"force_ocr"`                   |
+| `ocr_backend`      | `ExtractionConfig.ocr_backend`      | `"ocr_backend"`                 |
+| N/A                | `ExtractionConfig.ocr_config`       | `"ocr_config"` (nested object)  |
+| N/A                | `ExtractionConfig.gmft_config`      | `"gmft_config"` (nested object) |
+
+For complete API documentation and examples, see the [API Server guide](api-server.md).
+
 ## Programmatic Configuration
 
 You can also configure Kreuzberg entirely through code using the `ExtractionConfig` class. This approach gives you full control and is useful for dynamic configuration.

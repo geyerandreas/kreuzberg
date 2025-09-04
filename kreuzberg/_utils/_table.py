@@ -20,7 +20,6 @@ def export_table_to_csv(table: TableData, separator: str = ",") -> str:
     if "df" not in table or table["df"] is None:
         return ""
 
-    # Use polars native CSV export
     buffer = io.StringIO()
     df = table["df"]
     df.write_csv(buffer, separator=separator, include_header=True)
@@ -92,7 +91,6 @@ def _analyze_float_columns(df: Any) -> dict[str, str]:
         if dtype_str in ["Float64", "Float32"]:
             non_null_values = df[col].drop_nulls()
             if len(non_null_values) > 0:
-                # Check if all values are effectively integers
                 try:
                     values_list = non_null_values.to_list()
                     all_integers = all(float(val).is_integer() for val in values_list if val is not None)
@@ -141,7 +139,6 @@ def _is_numeric_column(series: Any) -> bool:
         if len(series_no_nulls) == 0:
             return False
 
-        # Polars doesn't have sample with random_state, so we use slice
         sample_series = series_no_nulls.slice(0, sample_size) if len(series_no_nulls) > 1000 else series_no_nulls
 
         if len(sample_series) == 0:

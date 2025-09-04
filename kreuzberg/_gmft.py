@@ -7,17 +7,16 @@ import queue
 import signal
 import time
 import traceback
-from dataclasses import dataclass, field
 from io import StringIO
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import anyio
 import msgspec
 import pandas as pd
 from PIL import Image
 
-from kreuzberg._types import TableData
+from kreuzberg._types import GMFTConfig, TableData
 from kreuzberg._utils._cache import get_table_cache
 from kreuzberg._utils._sync import run_sync
 from kreuzberg.exceptions import MissingDependencyError, ParsingError
@@ -27,117 +26,6 @@ if TYPE_CHECKING:
 
     from gmft.detectors.base import CroppedTable
     from pandas import DataFrame
-
-
-@dataclass(unsafe_hash=True, slots=True)
-class GMFTConfig:
-    """Configuration options for GMFT.
-
-    This class encapsulates the configuration options for GMFT, providing a way to customize its behavior.
-    """
-
-    verbosity: int = 0
-    """
-    Verbosity level for logging.
-
-    0: errors only
-    1: print warnings
-    2: print warnings and info
-    3: print warnings, info, and debug
-    """
-    formatter_base_threshold: float = 0.3
-    """
-    Base threshold for the confidence demanded of a table feature (row/column).
-
-    Note that a low threshold is actually better, because overzealous rows means that generally, numbers are still aligned and there are just many empty rows (having fewer rows than expected merges cells, which is bad).
-    """
-    cell_required_confidence: dict[Literal[0, 1, 2, 3, 4, 5, 6], float] = field(
-        default_factory=lambda: {
-            0: 0.3,
-            1: 0.3,
-            2: 0.3,
-            3: 0.3,
-            4: 0.5,
-            5: 0.5,
-            6: 99,
-        },
-        hash=False,
-    )
-    """
-    Confidences required (>=) for a row/column feature to be considered good. See TATRFormattedTable.id2label
-
-    But low confidences may be better than too high confidence (see formatter_base_threshold)
-    """
-    detector_base_threshold: float = 0.9
-    """Minimum confidence score required for a table"""
-    remove_null_rows: bool = True
-    """
-    Flag to remove rows with no text.
-    """
-    enable_multi_header: bool = False
-    """
-    Enable multi-indices in the dataframe.
-
-    If false, then multiple headers will be merged column-wise.
-    """
-    semantic_spanning_cells: bool = False
-    """
-    [Experimental] Enable semantic spanning cells, which often encode hierarchical multi-level indices.
-    """
-    semantic_hierarchical_left_fill: Literal["algorithm", "deep"] | None = "algorithm"
-    """
-    [Experimental] When semantic spanning cells is enabled, when a left header is detected which might represent a group of rows, that same value is reduplicated for each row.
-
-    Possible values: 'algorithm', 'deep', None.
-
-    'algorithm': assumes that the higher-level header is always the first row followed by several empty rows.
-    'deep': merges headers according to the spanning cells detected by the Table Transformer.
-    None: headers are not duplicated.
-    """
-    large_table_if_n_rows_removed: int = 8
-    """
-    If >= n rows are removed due to non-maxima suppression (NMS), then this table is classified as a large table.
-    """
-    large_table_threshold: int = 10
-    """
-    With large tables, table transformer struggles with placing too many overlapping rows. Luckily, with more rows, we have more info on the usual size of text, which we can use to make a guess on the height such that no rows are merged or overlapping.
-
-    Large table assumption is only applied when (# of rows > large_table_threshold) AND (total overlap > large_table_row_overlap_threshold). Set 9999 to disable; set 0 to force large table assumption to run every time.
-    """
-    large_table_row_overlap_threshold: float = 0.2
-    """
-    With large tables, table transformer struggles with placing too many overlapping rows. Luckily, with more rows, we have more info on the usual size of text, which we can use to make a guess on the height such that no rows are merged or overlapping.
-
-    Large table assumption is only applied when (# of rows > large_table_threshold) AND (total overlap > large_table_row_overlap_threshold).
-    """
-    large_table_maximum_rows: int = 1000
-    """
-    Maximum number of rows allowed for a large table.
-    """
-    force_large_table_assumption: bool | None = None
-    """
-    Force the large table assumption to be applied, regardless of the number of rows and overlap.
-    """
-    total_overlap_reject_threshold: float = 0.9
-    """
-    Reject if total overlap is > 90% of table area.
-    """
-    total_overlap_warn_threshold: float = 0.1
-    """
-    Warn if total overlap is > 10% of table area.
-    """
-    nms_warn_threshold: int = 5
-    """
-    Warn if non maxima suppression removes > 5 rows.
-    """
-    iob_reject_threshold: float = 0.05
-    """
-    Reject if iob between textbox and cell is < 5%.
-    """
-    iob_warn_threshold: float = 0.5
-    """
-    Warn if iob between textbox and cell is < 50%.
-    """
 
 
 async def extract_tables(

@@ -1,4 +1,3 @@
-"""Core benchmark implementations comparing sync vs async performance."""
 # mypy: disable-error-code=unused-ignore
 
 from __future__ import annotations
@@ -16,14 +15,11 @@ from kreuzberg import (
 
 
 class KreuzbergBenchmarks:
-    """Benchmark suite for Kreuzberg sync vs async performance comparison."""
-
     def __init__(self, test_files_dir: Path | None = None) -> None:
         self.test_files_dir = test_files_dir or Path("../tests/test_source_files")
         self.test_files = self._discover_test_files()
 
     def _discover_test_files(self) -> list[Path]:
-        """Discover available test files for benchmarking."""
         if not self.test_files_dir.exists():
             return []
 
@@ -53,7 +49,6 @@ class KreuzbergBenchmarks:
     def get_sync_benchmarks(
         self,
     ) -> list[tuple[str, Callable[[], Any], dict[str, Any]]]:
-        """Get list of synchronous benchmarks."""
         benchmarks: list[tuple[str, Callable[[], Any], dict[str, Any]]] = []
 
         for test_file in self.test_files:
@@ -116,7 +111,6 @@ class KreuzbergBenchmarks:
     def get_async_benchmarks(
         self,
     ) -> list[tuple[str, Callable[[], Any], dict[str, Any]]]:
-        """Get list of asynchronous benchmarks."""
         benchmarks: list[tuple[str, Callable[[], Any], dict[str, Any]]] = []
 
         for test_file in self.test_files:
@@ -191,7 +185,6 @@ class KreuzbergBenchmarks:
     def get_comparison_benchmarks(
         self,
     ) -> list[tuple[str, Callable[[], Any], dict[str, Any]]]:
-        """Get benchmarks specifically for sync vs async comparison."""
         if not self.test_files:
             return []
 
@@ -251,7 +244,6 @@ class KreuzbergBenchmarks:
     def get_stress_benchmarks(
         self,
     ) -> list[tuple[str, Callable[[], Any], dict[str, Any]]]:
-        """Get stress test benchmarks for performance limits."""
         if len(self.test_files) < 2:
             return []
 
@@ -282,7 +274,6 @@ class KreuzbergBenchmarks:
     def get_backend_benchmarks(
         self,
     ) -> list[tuple[str, Callable[[], Any], dict[str, Any]]]:
-        """Get benchmarks for Kreuzberg extraction (single backend now)."""
         benchmarks: list[tuple[str, Callable[[], Any], dict[str, Any]]] = []
 
         for test_file in self.test_files:

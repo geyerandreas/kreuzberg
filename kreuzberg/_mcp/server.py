@@ -8,7 +8,7 @@ import msgspec
 from mcp.server import FastMCP
 from mcp.types import TextContent
 
-from kreuzberg._config import try_discover_config
+from kreuzberg._config import discover_config
 from kreuzberg._types import ExtractionConfig, OcrBackendType
 from kreuzberg.extraction import extract_bytes_sync, extract_file_sync
 
@@ -24,7 +24,7 @@ def _create_config_with_overrides(**kwargs: Any) -> ExtractionConfig:
     Returns:
         ExtractionConfig instance.
     """
-    base_config = try_discover_config()
+    base_config = discover_config()
 
     if base_config is None:
         return ExtractionConfig(**kwargs)
@@ -182,7 +182,7 @@ def get_default_config() -> str:
 @mcp.resource("config://discovered")
 def get_discovered_config() -> str:
     """Get the discovered configuration from config files."""
-    config = try_discover_config()
+    config = discover_config()
     if config is None:
         return "No configuration file found"
     return json.dumps(msgspec.to_builtins(config, order="deterministic"), indent=2)

@@ -514,7 +514,6 @@ def test_cli_ocr_backend_none(tmp_path: Path) -> None:
 
 
 def test_cli_tesseract_output_format_text(tmp_path: Path) -> None:
-    """Test Tesseract text output format."""
     txt_file = tmp_path / "test.txt"
     txt_file.write_text("Text for Tesseract text format testing.")
 
@@ -541,7 +540,6 @@ def test_cli_tesseract_output_format_text(tmp_path: Path) -> None:
 
 
 def test_cli_tesseract_output_format_markdown(tmp_path: Path) -> None:
-    """Test Tesseract markdown output format (default)."""
     txt_file = tmp_path / "test.txt"
     txt_file.write_text("Text for **markdown** format testing.")
 
@@ -568,7 +566,6 @@ def test_cli_tesseract_output_format_markdown(tmp_path: Path) -> None:
 
 
 def test_cli_tesseract_output_format_tsv(tmp_path: Path) -> None:
-    """Test Tesseract TSV output format."""
     txt_file = tmp_path / "test.txt"
     txt_file.write_text("Text for TSV format testing.")
 
@@ -595,7 +592,6 @@ def test_cli_tesseract_output_format_tsv(tmp_path: Path) -> None:
 
 
 def test_cli_tesseract_output_format_hocr(tmp_path: Path) -> None:
-    """Test Tesseract hOCR output format."""
     txt_file = tmp_path / "test.txt"
     txt_file.write_text("Text for hOCR format testing.")
 
@@ -628,7 +624,6 @@ def test_cli_tesseract_output_format_hocr(tmp_path: Path) -> None:
 
 
 def test_cli_enable_table_detection(tmp_path: Path) -> None:
-    """Test table detection feature."""
     html_file = tmp_path / "table.html"
     html_file.write_text("""
     <html>
@@ -671,7 +666,6 @@ def test_cli_enable_table_detection(tmp_path: Path) -> None:
 
 
 def test_cli_tesseract_with_image_file(tmp_path: Path) -> None:
-    """Test Tesseract with actual image file if available."""
     image_files = list(Path("tests/test_source_files").glob("*.png"))
     if not image_files:
         pytest.skip("No PNG test files available")
@@ -703,7 +697,6 @@ def test_cli_tesseract_with_image_file(tmp_path: Path) -> None:
 
 
 def test_cli_table_detection_with_tsv(tmp_path: Path) -> None:
-    """Test combined TSV format with table detection."""
     txt_file = tmp_path / "test.txt"
     txt_file.write_text("Simple text with potential table structure.")
 
@@ -735,7 +728,6 @@ def test_cli_table_detection_with_tsv(tmp_path: Path) -> None:
 
 
 def test_cli_all_tesseract_options_combined(tmp_path: Path) -> None:
-    """Test combining multiple Tesseract options."""
     txt_file = tmp_path / "test.txt"
     txt_file.write_text("Comprehensive Tesseract options test.")
 
@@ -768,7 +760,6 @@ def test_cli_all_tesseract_options_combined(tmp_path: Path) -> None:
 
 
 def test_cli_help_shows_new_options() -> None:
-    """Test that help text includes new Tesseract options."""
     result = subprocess.run(
         [sys.executable, "-m", "kreuzberg", "extract", "--help"],
         check=False,
@@ -786,7 +777,6 @@ def test_cli_help_shows_new_options() -> None:
 
 
 def test_cli_config_with_tesseract_output_format(tmp_path: Path) -> None:
-    """Test config file with Tesseract output format."""
     txt_file = tmp_path / "test.txt"
     txt_file.write_text("Config test content.")
 
@@ -823,7 +813,6 @@ language = "eng"
 
 
 def test_cli_invalid_tesseract_output_format(tmp_path: Path) -> None:
-    """Test error handling for invalid Tesseract output format."""
     txt_file = tmp_path / "test.txt"
     txt_file.write_text("Test content")
 

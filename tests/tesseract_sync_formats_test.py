@@ -1,5 +1,3 @@
-"""Comprehensive tests for Tesseract sync format handling."""
-
 from pathlib import Path
 
 import pytest
@@ -10,25 +8,19 @@ from kreuzberg._utils._cache import clear_all_caches
 
 
 class TestTesseractSyncFormats:
-    """Test Tesseract synchronous format handling."""
-
     @pytest.fixture(autouse=True)
     def setup_method(self) -> None:
-        """Clear caches before each test."""
         clear_all_caches()
 
     @pytest.fixture
     def test_image_path(self) -> Path:
-        """Get path to test image."""
         return Path("tests/test_source_files/ocr-image.jpg")
 
     @pytest.fixture
     def tesseract_backend(self) -> TesseractBackend:
-        """Create TesseractBackend instance."""
         return TesseractBackend()
 
     def test_text_format_sync(self, tesseract_backend: TesseractBackend, test_image_path: Path) -> None:
-        """Test text format produces plain text output."""
         if not test_image_path.exists():
             pytest.skip("Test image not found")
 
@@ -42,7 +34,6 @@ class TestTesseractSyncFormats:
         assert "<?xml" not in result.content
 
     def test_hocr_format_sync(self, tesseract_backend: TesseractBackend, test_image_path: Path) -> None:
-        """Test hOCR format produces XML output."""
         if not test_image_path.exists():
             pytest.skip("Test image not found")
 
@@ -56,7 +47,6 @@ class TestTesseractSyncFormats:
         assert "DOCTYPE html" in result.content
 
     def test_markdown_format_sync(self, tesseract_backend: TesseractBackend, test_image_path: Path) -> None:
-        """Test markdown format produces markdown output."""
         if not test_image_path.exists():
             pytest.skip("Test image not found")
 
@@ -70,7 +60,6 @@ class TestTesseractSyncFormats:
         assert 'class="ocrx_word"' not in result.content
 
     def test_tsv_format_sync(self, tesseract_backend: TesseractBackend, test_image_path: Path) -> None:
-        """Test TSV format produces plain text (extracted from TSV)."""
         if not test_image_path.exists():
             pytest.skip("Test image not found")
 
@@ -83,7 +72,6 @@ class TestTesseractSyncFormats:
         assert isinstance(result.content, str)
 
     def test_tsv_with_table_detection_sync(self, tesseract_backend: TesseractBackend, test_image_path: Path) -> None:
-        """Test TSV format with table detection enabled."""
         if not test_image_path.exists():
             pytest.skip("Test image not found")
 
@@ -95,7 +83,6 @@ class TestTesseractSyncFormats:
         assert isinstance(result.content, str)
 
     def test_format_differences_sync(self, tesseract_backend: TesseractBackend, test_image_path: Path) -> None:
-        """Test that different formats produce different outputs."""
         if not test_image_path.exists():
             pytest.skip("Test image not found")
 
@@ -119,7 +106,6 @@ class TestTesseractSyncFormats:
             assert base_text in result.content or base_text.lower() in result.content.lower()
 
     def test_sync_format_via_extract_file_sync(self, test_image_path: Path) -> None:
-        """Test format handling via the public extract_file_sync API."""
         if not test_image_path.exists():
             pytest.skip("Test image not found")
 
@@ -143,7 +129,6 @@ class TestTesseractSyncFormats:
     def test_auto_switch_text_to_tsv_with_table_detection(
         self, tesseract_backend: TesseractBackend, test_image_path: Path
     ) -> None:
-        """Test that text format auto-switches to TSV when table detection is enabled."""
         if not test_image_path.exists():
             pytest.skip("Test image not found")
 
@@ -158,7 +143,6 @@ class TestTesseractSyncFormats:
     def test_cache_isolation_by_format(
         self, tesseract_backend: TesseractBackend, test_image_path: Path, output_format: str
     ) -> None:
-        """Test that different formats create separate cache entries."""
         if not test_image_path.exists():
             pytest.skip("Test image not found")
 
@@ -173,7 +157,6 @@ class TestTesseractSyncFormats:
         assert result1.mime_type == result2.mime_type
 
     def test_error_handling_invalid_format(self, tesseract_backend: TesseractBackend, test_image_path: Path) -> None:
-        """Test that invalid formats fall back to text."""
         if not test_image_path.exists():
             pytest.skip("Test image not found")
 

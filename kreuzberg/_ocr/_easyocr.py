@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import warnings
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from PIL import Image
 
 from kreuzberg._mime_types import PLAIN_TEXT_MIME_TYPE
 from kreuzberg._ocr._base import OCRBackend
-from kreuzberg._types import ExtractionResult, Metadata
-from kreuzberg._utils._device import DeviceInfo, DeviceType, validate_device_request
+from kreuzberg._types import EasyOCRConfig, ExtractionResult, Metadata
+from kreuzberg._utils._device import DeviceInfo, validate_device_request
 from kreuzberg._utils._string import normalize_spaces
 from kreuzberg._utils._sync import run_sync
 from kreuzberg.exceptions import MissingDependencyError, OCRError, ValidationError
@@ -120,59 +119,6 @@ EASYOCR_SUPPORTED_LANGUAGE_CODES: Final[set[str]] = {
     "uz",
     "vi",
 }
-
-
-@dataclass(unsafe_hash=True, frozen=True, slots=True)
-class EasyOCRConfig:
-    """Configuration options for EasyOCR."""
-
-    add_margin: float = 0.1
-    """Extend bounding boxes in all directions."""
-    adjust_contrast: float = 0.5
-    """Target contrast level for low contrast text."""
-    beam_width: int = 5
-    """Beam width for beam search in recognition."""
-    canvas_size: int = 2560
-    """Maximum image dimension for detection."""
-    contrast_ths: float = 0.1
-    """Contrast threshold for preprocessing."""
-    decoder: Literal["greedy", "beamsearch", "wordbeamsearch"] = "greedy"
-    """Decoder method. Options: 'greedy', 'beamsearch', 'wordbeamsearch'."""
-    height_ths: float = 0.5
-    """Maximum difference in box height for merging."""
-    language: str | list[str] = "en"
-    """Language or languages to use for OCR. Can be a single language code (e.g., 'en'),
-    a comma-separated string of language codes (e.g., 'en,ch_sim'), or a list of language codes."""
-    link_threshold: float = 0.4
-    """Link confidence threshold."""
-    low_text: float = 0.4
-    """Text low-bound score."""
-    mag_ratio: float = 1.0
-    """Image magnification ratio."""
-    min_size: int = 10
-    """Minimum text box size in pixels."""
-    rotation_info: list[int] | None = None
-    """List of angles to try for detection."""
-    slope_ths: float = 0.1
-    """Maximum slope for merging text boxes."""
-    text_threshold: float = 0.7
-    """Text confidence threshold."""
-    use_gpu: bool = False
-    """Whether to use GPU for inference. DEPRECATED: Use 'device' parameter instead."""
-    device: DeviceType = "auto"
-    """Device to use for inference. Options: 'cpu', 'cuda', 'mps', 'auto'."""
-    gpu_memory_limit: float | None = None
-    """Maximum GPU memory to use in GB. None for no limit."""
-    fallback_to_cpu: bool = True
-    """Whether to fallback to CPU if requested device is unavailable."""
-    width_ths: float = 0.5
-    """Maximum horizontal distance for merging boxes."""
-    x_ths: float = 1.0
-    """Maximum horizontal distance for paragraph merging."""
-    y_ths: float = 0.5
-    """Maximum vertical distance for paragraph merging."""
-    ycenter_ths: float = 0.5
-    """Maximum shift in y direction for merging."""
 
 
 class EasyOCRBackend(OCRBackend[EasyOCRConfig]):

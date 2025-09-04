@@ -197,7 +197,6 @@ class SpreadSheetExtractor(Extractor):
 
             df = pl.DataFrame(data)
 
-            # Drop rows and columns that are all null
             df = df.filter(~pl.all_horizontal(pl.all().is_null()))
             df = df.select([col for col in df.columns if not df[col].is_null().all()])
 

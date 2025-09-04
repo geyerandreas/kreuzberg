@@ -1,5 +1,3 @@
-"""Performance profiling utilities."""
-
 from __future__ import annotations
 
 import gc
@@ -22,8 +20,6 @@ T = TypeVar("T")
 
 
 class PerformanceProfiler:
-    """Comprehensive performance profiler for benchmarks."""
-
     def __init__(self) -> None:
         self.process = psutil.Process()
         self.start_time: float = 0
@@ -34,7 +30,6 @@ class PerformanceProfiler:
         self.gc_start: dict[int, int] = {}
 
     def start_monitoring(self) -> None:
-        """Start background monitoring of system resources."""
         self.start_time = time.perf_counter()
         self.memory_samples.clear()
         self.cpu_samples.clear()
@@ -47,7 +42,6 @@ class PerformanceProfiler:
         self.monitoring_thread.start()
 
     def stop_monitoring(self) -> PerformanceMetrics:
-        """Stop monitoring and return collected metrics."""
         self.monitoring_active = False
         if self.monitoring_thread:
             self.monitoring_thread.join(timeout=1.0)
@@ -70,7 +64,6 @@ class PerformanceProfiler:
         )
 
     def _monitor_resources(self) -> None:
-        """Background monitoring of CPU and memory usage."""
         while self.monitoring_active:
             try:
                 memory_info = self.process.memory_info()
@@ -86,7 +79,6 @@ class PerformanceProfiler:
 
     @contextmanager
     def profile(self) -> Generator[None, None, PerformanceMetrics]:
-        """Context manager for profiling a code block."""
         self.start_monitoring()
         try:
             yield
@@ -96,15 +88,12 @@ class PerformanceProfiler:
 
 
 class FlameGraphProfiler:
-    """Flame graph profiler using py-spy."""
-
     def __init__(self, config: FlameGraphConfig) -> None:
         self.config = config
 
     def profile_function(
         self, func: Callable[[], T], output_path: Path, name: str = "benchmark"
     ) -> tuple[T, Path | None]:
-        """Profile a function and generate flame graph."""
         if not self.config.enabled:
             result = func()
             return result, None
@@ -158,8 +147,6 @@ sys.path.insert(0, '{Path.cwd()}')
             temp_script.unlink(missing_ok=True)
 
     def _generate_function_call_code(self, func: Callable[[], T]) -> str:
-        """Generate Python code to call the function."""
-
         # sophisticated serialization for complex functions  # ~keep
         return f"""
 # Placeholder for function execution
@@ -173,7 +160,6 @@ time.sleep({self.config.duration_seconds})
 def profile_benchmark(
     flame_config: FlameGraphConfig | None = None,
 ) -> Generator[PerformanceProfiler, None, PerformanceMetrics]:
-    """Context manager for comprehensive benchmark profiling."""
     profiler = PerformanceProfiler()
     profiler.start_monitoring()
 

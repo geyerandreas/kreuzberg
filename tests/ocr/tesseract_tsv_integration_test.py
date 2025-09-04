@@ -34,7 +34,6 @@ def science_table_image() -> Path:
 
 @pytest.mark.anyio
 async def test_tesseract_tsv_output_integration(table_image_path: Path) -> None:
-    """Test that TSV output format produces extracted text from the image."""
     backend = TesseractBackend()
 
     result = await backend.process_file(table_image_path, output_format="tsv", enable_table_detection=False)
@@ -52,7 +51,6 @@ async def test_tesseract_tsv_output_integration(table_image_path: Path) -> None:
 
 @pytest.mark.anyio
 async def test_tesseract_process_image_with_table_detection(table_image_path: Path) -> None:
-    """Test table detection from PIL Image with default TSV processing."""
     backend = TesseractBackend()
 
     with Image.open(table_image_path) as img:
@@ -89,7 +87,6 @@ async def test_tesseract_process_image_with_table_detection(table_image_path: Pa
 
 @pytest.mark.anyio
 async def test_table_detection_with_tsv_format(table_image_path: Path) -> None:
-    """Test table detection when using TSV output format."""
     backend = TesseractBackend()
 
     result = await backend.process_file(
@@ -125,7 +122,6 @@ async def test_table_detection_with_tsv_format(table_image_path: Path) -> None:
 
 
 def test_table_extractor_with_real_tsv() -> None:
-    """Test complete table extraction pipeline with real-world TSV data."""
     tsv_data = """level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext
 1\t1\t0\t0\t0\t0\t0\t0\t800\t600\t-1\t
 5\t1\t1\t1\t1\t1\t100\t100\t80\t30\t95.0\tProduct
@@ -175,7 +171,6 @@ def test_table_extractor_with_real_tsv() -> None:
 
 
 def test_extract_table_from_tsv_convenience() -> None:
-    """Test the all-in-one convenience function for TSV to markdown conversion."""
     tsv_data = """level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext
 5\t1\t1\t1\t1\t1\t50\t50\t40\t20\t95.0\tA
 5\t1\t1\t1\t1\t2\t150\t50\t40\t20\t94.0\tB
@@ -200,7 +195,6 @@ def test_extract_table_from_tsv_convenience() -> None:
 
 
 def test_table_extraction_with_empty_cells() -> None:
-    """Test handling of tables with missing/empty cells in the middle."""
     tsv_data = """level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext
 5\t1\t1\t1\t1\t1\t50\t50\t60\t30\t95.0\tHeader1
 5\t1\t1\t1\t1\t2\t200\t50\t60\t30\t94.0\tHeader2
@@ -224,7 +218,6 @@ def test_table_extraction_with_empty_cells() -> None:
 
 
 def test_table_extraction_confidence_threshold() -> None:
-    """Test that confidence threshold properly filters low-confidence words."""
     tsv_data = """level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext
 5\t1\t1\t1\t1\t1\t50\t50\t60\t30\t95.0\tGood
 5\t1\t1\t1\t1\t2\t150\t50\t60\t30\t20.0\tBad
@@ -255,7 +248,6 @@ def test_table_extraction_confidence_threshold() -> None:
     ],
 )
 def test_column_clustering_thresholds(column_threshold: int, expected_cols: int, expected_positions: list[int]) -> None:
-    """Test column detection with various clustering thresholds."""
     tsv_data = """level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext
 5\t1\t1\t1\t1\t1\t50\t50\t40\t30\t95.0\tA
 5\t1\t1\t1\t1\t2\t80\t50\t40\t30\t94.0\tB

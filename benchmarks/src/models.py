@@ -1,5 +1,3 @@
-"""Benchmark data models and types."""
-
 from __future__ import annotations
 
 import platform
@@ -13,8 +11,6 @@ import psutil
 
 @dataclass(slots=True)
 class SystemInfo:
-    """System information for benchmark context."""
-
     platform: str
     python_version: str
     cpu_count: int
@@ -26,7 +22,6 @@ class SystemInfo:
 
     @classmethod
     def collect(cls) -> SystemInfo:
-        """Collect current system information."""
         cpu_info = psutil.cpu_freq()
         memory_info = psutil.virtual_memory()
 
@@ -44,8 +39,6 @@ class SystemInfo:
 
 @dataclass(slots=True)
 class PerformanceMetrics:
-    """Performance metrics for a single benchmark run."""
-
     duration_seconds: float
     memory_peak_mb: float
     memory_average_mb: float
@@ -57,8 +50,6 @@ class PerformanceMetrics:
 
 @dataclass(slots=True)
 class MetadataQualityMetrics:
-    """Metadata quality metrics for extraction result."""
-
     metadata_count: int
     metadata_fields: list[str]
     metadata_completeness: float
@@ -73,8 +64,6 @@ class MetadataQualityMetrics:
 
 @dataclass(slots=True)
 class ExtractionQualityMetrics:
-    """Quality metrics for extraction result."""
-
     text_length: int
     word_count: int
     line_count: int
@@ -88,8 +77,6 @@ class ExtractionQualityMetrics:
 
 @dataclass(slots=True)
 class BenchmarkResult:
-    """Complete result of a single benchmark."""
-
     name: str
     success: bool
     performance: PerformanceMetrics | None
@@ -100,8 +87,6 @@ class BenchmarkResult:
 
 @dataclass(slots=True)
 class BenchmarkSuite:
-    """Complete benchmark suite results."""
-
     name: str
     system_info: SystemInfo
     results: list[BenchmarkResult]
@@ -111,7 +96,6 @@ class BenchmarkSuite:
 
     @property
     def success_rate(self) -> float:
-        """Calculate success rate as percentage."""
         if not self.results:
             return 0.0
         successful = sum(1 for r in self.results if r.success)
@@ -119,11 +103,9 @@ class BenchmarkSuite:
 
     @property
     def successful_results(self) -> list[BenchmarkResult]:
-        """Get only successful benchmark results."""
         return [r for r in self.results if r.success and r.performance]
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary for JSON serialization."""
         return {
             "name": self.name,
             "version": self.version,
@@ -195,8 +177,6 @@ class BenchmarkSuite:
 
 @dataclass(slots=True)
 class FlameGraphConfig:
-    """Configuration for flame graph generation."""
-
     enabled: bool = True
     duration_seconds: float = 10.0
     rate_hz: int = 100
