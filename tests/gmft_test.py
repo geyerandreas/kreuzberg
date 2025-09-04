@@ -621,7 +621,7 @@ def test_gmft_inline_extraction_edge_cases_sync_empty_cropped_tables(tiny_pdf_wi
         pytest.skip("Testing inline extraction, but isolated mode is enabled")
 
     try:
-        from gmft.auto import AutoTableDetector
+        from gmft.auto import AutoTableDetector  # type: ignore[attr-defined]
 
         with patch.object(AutoTableDetector, "extract", return_value=[]):
             result = extract_tables_sync(tiny_pdf_with_tables, use_isolated_process=False)
