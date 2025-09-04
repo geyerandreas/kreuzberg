@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
+from kreuzberg._types import LanguageDetectionConfig
 from kreuzberg.exceptions import MissingDependencyError
 
 if TYPE_CHECKING:
@@ -21,27 +21,6 @@ except ImportError:  # pragma: no cover
     FastLangDetectConfig = None
 
 _CACHE_SIZE = 128
-
-
-@dataclass(frozen=True, slots=True)
-class LanguageDetectionConfig:
-    """Configuration for language detection.
-
-    Attributes:
-        low_memory: If True, uses a smaller model (~200MB). If False, uses a larger, more accurate model.
-            Defaults to True for better memory efficiency.
-        top_k: Maximum number of languages to return for multilingual detection. Defaults to 3.
-        multilingual: If True, uses multilingual detection to handle mixed-language text.
-            If False, uses single language detection. Defaults to False.
-        cache_dir: Custom directory for model cache. If None, uses system default.
-        allow_fallback: If True, falls back to small model if large model fails. Defaults to True.
-    """
-
-    low_memory: bool = True
-    top_k: int = 3
-    multilingual: bool = False
-    cache_dir: str | None = None
-    allow_fallback: bool = True
 
 
 def _create_fast_langdetect_config(config: LanguageDetectionConfig) -> FastLangDetectConfig | None:

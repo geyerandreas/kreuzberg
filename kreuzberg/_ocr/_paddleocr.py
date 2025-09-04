@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import platform
 import warnings
-from dataclasses import dataclass
 from importlib.util import find_spec
-from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Final
 
 from PIL import Image
 
 from kreuzberg._mime_types import PLAIN_TEXT_MIME_TYPE
 from kreuzberg._ocr._base import OCRBackend
-from kreuzberg._types import ExtractionResult, Metadata
-from kreuzberg._utils._device import DeviceInfo, DeviceType, validate_device_request
+from kreuzberg._types import ExtractionResult, Metadata, PaddleOCRConfig
+from kreuzberg._utils._device import DeviceInfo, validate_device_request
 from kreuzberg._utils._string import normalize_spaces
 from kreuzberg._utils._sync import run_sync
 from kreuzberg.exceptions import MissingDependencyError, OCRError, ValidationError
@@ -36,83 +35,6 @@ except ImportError:
 
 
 PADDLEOCR_SUPPORTED_LANGUAGE_CODES: Final[set[str]] = {"ch", "en", "french", "german", "japan", "korean"}
-
-
-@dataclass(unsafe_hash=True, frozen=True, slots=True)
-class PaddleOCRConfig:
-    """Configuration options for PaddleOCR.
-
-    This TypedDict provides type hints and documentation for all PaddleOCR parameters.
-    """
-
-    cls_image_shape: str = "3,48,192"
-    """Image shape for classification algorithm in format 'channels,height,width'."""
-    det_algorithm: Literal["DB", "EAST", "SAST", "PSE", "FCE", "PAN", "CT", "DB++", "Layout"] = "DB"
-    """Detection algorithm."""
-    det_db_box_thresh: float = 0.5
-    """Score threshold for detected boxes. Boxes below this value are discarded."""
-    det_db_thresh: float = 0.3
-    """Binarization threshold for DB output map."""
-    det_db_unclip_ratio: float = 2.0
-    """Expansion ratio for detected text boxes."""
-    det_east_cover_thresh: float = 0.1
-    """Score threshold for EAST output boxes."""
-    det_east_nms_thresh: float = 0.2
-    """NMS threshold for EAST model output boxes."""
-    det_east_score_thresh: float = 0.8
-    """Binarization threshold for EAST output map."""
-    det_max_side_len: int = 960
-    """Maximum size of image long side. Images exceeding this will be proportionally resized."""
-    det_model_dir: str | None = None
-    """Directory for detection model. If None, uses default model location."""
-    drop_score: float = 0.5
-    """Filter recognition results by confidence score. Results below this are discarded."""
-    enable_mkldnn: bool = False
-    """Whether to enable MKL-DNN acceleration (Intel CPU only)."""
-    gpu_mem: int = 8000
-    """GPU memory size (in MB) to use for initialization."""
-    language: str = "en"
-    """Language to use for OCR."""
-    max_text_length: int = 25
-    """Maximum text length that the recognition algorithm can recognize."""
-    rec: bool = True
-    """Enable text recognition when using the ocr() function."""
-    rec_algorithm: Literal[
-        "CRNN",
-        "SRN",
-        "NRTR",
-        "SAR",
-        "SEED",
-        "SVTR",
-        "SVTR_LCNet",
-        "ViTSTR",
-        "ABINet",
-        "VisionLAN",
-        "SPIN",
-        "RobustScanner",
-        "RFL",
-    ] = "CRNN"
-    """Recognition algorithm."""
-    rec_image_shape: str = "3,32,320"
-    """Image shape for recognition algorithm in format 'channels,height,width'."""
-    rec_model_dir: str | None = None
-    """Directory for recognition model. If None, uses default model location."""
-    table: bool = True
-    """Whether to enable table recognition."""
-    use_angle_cls: bool = True
-    """Whether to use text orientation classification model."""
-    use_gpu: bool = False
-    """Whether to use GPU for inference. DEPRECATED: Use 'device' parameter instead."""
-    device: DeviceType = "auto"
-    """Device to use for inference. Options: 'cpu', 'cuda', 'auto'. Note: MPS not supported by PaddlePaddle."""
-    gpu_memory_limit: float | None = None
-    """Maximum GPU memory to use in GB. None for no limit."""
-    fallback_to_cpu: bool = True
-    """Whether to fallback to CPU if requested device is unavailable."""
-    use_space_char: bool = True
-    """Whether to recognize spaces."""
-    use_zero_copy_run: bool = False
-    """Whether to enable zero_copy_run for inference optimization."""
 
 
 class PaddleBackend(OCRBackend[PaddleOCRConfig]):

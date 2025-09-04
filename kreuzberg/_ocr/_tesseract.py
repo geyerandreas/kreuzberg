@@ -8,8 +8,6 @@ import re
 import subprocess
 import sys
 import tempfile
-from dataclasses import asdict, dataclass
-from enum import Enum
 from io import StringIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Final
@@ -28,7 +26,7 @@ from typing_extensions import Self
 from kreuzberg._mime_types import HTML_MIME_TYPE, MARKDOWN_MIME_TYPE, PLAIN_TEXT_MIME_TYPE
 from kreuzberg._ocr._base import OCRBackend
 from kreuzberg._ocr._table_extractor import extract_words, reconstruct_table, to_markdown
-from kreuzberg._types import ExtractionResult, HTMLToMarkdownConfig, TableData
+from kreuzberg._types import ExtractionResult, HTMLToMarkdownConfig, PSMMode, TableData, TesseractConfig
 from kreuzberg._utils._cache import get_ocr_cache
 from kreuzberg._utils._string import normalize_spaces
 from kreuzberg._utils._sync import run_sync
@@ -176,82 +174,6 @@ TESSERACT_SUPPORTED_LANGUAGE_CODES: Final[set[str]] = {
 }
 
 MINIMAL_SUPPORTED_TESSERACT_VERSION: Final[int] = 5
-
-
-class PSMMode(Enum):
-    """Enum for Tesseract Page Segmentation Modes (PSM) with human-readable values."""
-
-    OSD_ONLY = 0
-    """Orientation and script detection only."""
-    AUTO_OSD = 1
-    """Automatic page segmentation with orientation and script detection."""
-    AUTO_ONLY = 2
-    """Automatic page segmentation without OSD."""
-    AUTO = 3
-    """Fully automatic page segmentation (default)."""
-    SINGLE_COLUMN = 4
-    """Assume a single column of text."""
-    SINGLE_BLOCK_VERTICAL = 5
-    """Assume a single uniform block of vertically aligned text."""
-    SINGLE_BLOCK = 6
-    """Assume a single uniform block of text."""
-    SINGLE_LINE = 7
-    """Treat the image as a single text line."""
-    SINGLE_WORD = 8
-    """Treat the image as a single word."""
-    CIRCLE_WORD = 9
-    """Treat the image as a single word in a circle."""
-    SINGLE_CHAR = 10
-    """Treat the image as a single character."""
-
-
-@dataclass(unsafe_hash=True, frozen=True, slots=True)
-class TesseractConfig:
-    """Configuration options for Tesseract OCR engine."""
-
-    classify_use_pre_adapted_templates: bool = True
-    """Whether to use pre-adapted templates during classification to improve recognition accuracy."""
-    language: str = "eng"
-    """Language code to use for OCR.
-    Examples:
-            -   'eng' for English
-            -   'deu' for German
-            -    multiple languages combined with '+', e.g. 'eng+deu')
-    """
-    language_model_ngram_on: bool = False
-    """Enable or disable the use of n-gram-based language models for improved text recognition.
-
-    Default is False for optimal performance on modern documents. Enable for degraded or historical text."""
-    psm: PSMMode = PSMMode.AUTO
-    """Page segmentation mode (PSM) to guide Tesseract on how to segment the image (e.g., single block, single line)."""
-    tessedit_dont_blkrej_good_wds: bool = True
-    """If True, prevents block rejection of words identified as good, improving text output quality."""
-    tessedit_dont_rowrej_good_wds: bool = True
-    """If True, prevents row rejection of words identified as good, avoiding unnecessary omissions."""
-    tessedit_enable_dict_correction: bool = True
-    """Enable or disable dictionary-based correction for recognized text to improve word accuracy."""
-    tessedit_char_whitelist: str = ""
-    """Whitelist of characters that Tesseract is allowed to recognize. Empty string means no restriction."""
-    tessedit_use_primary_params_model: bool = True
-    """If True, forces the use of the primary parameters model for text recognition."""
-    textord_space_size_is_variable: bool = True
-    """Allow variable spacing between words, useful for text with irregular spacing."""
-    thresholding_method: bool = False
-    """Enable or disable specific thresholding methods during image preprocessing for better OCR accuracy."""
-    output_format: str = "markdown"
-    """Output format: 'markdown' (default), 'text', 'tsv' (for structured data), or 'hocr' (HTML-based)."""
-    enable_table_detection: bool = False
-    """Enable table structure detection from TSV output."""
-    table_column_threshold: int = 20
-    """Pixel threshold for column clustering in table detection."""
-    table_row_threshold_ratio: float = 0.5
-    """Row threshold as ratio of mean text height for table detection."""
-    table_min_confidence: float = 30.0
-    """Minimum confidence score to include a word in table extraction."""
-
-    def to_dict(self) -> dict[str, Any]:
-        """Convert config to dictionary for passing as kwargs."""
-        return asdict(self)
 
 
 class TesseractBackend(OCRBackend[TesseractConfig]):

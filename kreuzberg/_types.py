@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import asdict, dataclass, field
+from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, TypedDict
 
 import msgspec
@@ -15,24 +16,400 @@ from kreuzberg._utils._table import (
 )
 from kreuzberg.exceptions import ValidationError
 
+if TYPE_CHECKING:
+    from kreuzberg._utils._device import DeviceType
+
 if sys.version_info < (3, 11):  # pragma: no cover
     from typing_extensions import NotRequired
 else:  # pragma: no cover
     from typing import NotRequired
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from PIL.Image import Image
     from polars import DataFrame
 
-    from kreuzberg._entity_extraction import SpacyEntityExtractionConfig
-    from kreuzberg._gmft import GMFTConfig
-    from kreuzberg._language_detection import LanguageDetectionConfig
-    from kreuzberg._ocr._easyocr import EasyOCRConfig
-    from kreuzberg._ocr._paddleocr import PaddleOCRConfig
-    from kreuzberg._ocr._tesseract import TesseractConfig
-
 OcrBackendType = Literal["tesseract", "easyocr", "paddleocr"]
 OutputFormatType = Literal["text", "tsv", "hocr", "markdown"]
+
+
+class PSMMode(Enum):
+    """Enum for Tesseract Page Segmentation Modes (PSM) with human-readable values."""
+
+    OSD_ONLY = 0
+    """Orientation and script detection only."""
+    AUTO_OSD = 1
+    """Automatic page segmentation with orientation and script detection."""
+    AUTO_ONLY = 2
+    """Automatic page segmentation without OSD."""
+    AUTO = 3
+    """Fully automatic page segmentation (default)."""
+    SINGLE_COLUMN = 4
+    """Assume a single column of text."""
+    SINGLE_BLOCK_VERTICAL = 5
+    """Assume a single uniform block of vertically aligned text."""
+    SINGLE_BLOCK = 6
+    """Assume a single uniform block of text."""
+    SINGLE_LINE = 7
+    """Treat the image as a single text line."""
+    SINGLE_WORD = 8
+    """Treat the image as a single word."""
+    CIRCLE_WORD = 9
+    """Treat the image as a single word in a circle."""
+    SINGLE_CHAR = 10
+    """Treat the image as a single character."""
+
+
+@dataclass(unsafe_hash=True, frozen=True, slots=True)
+class TesseractConfig:
+    """Configuration options for Tesseract OCR engine."""
+
+    classify_use_pre_adapted_templates: bool = True
+    """Whether to use pre-adapted templates during classification to improve recognition accuracy."""
+    language: str = "eng"
+    """Language code to use for OCR.
+    Examples:
+            -   'eng' for English
+            -   'deu' for German
+            -    multiple languages combined with '+', e.g. 'eng+deu'
+    """
+    language_model_ngram_on: bool = False
+    """Enable or disable the use of n-gram-based language models for improved text recognition.
+    Default is False for optimal performance on modern documents. Enable for degraded or historical text."""
+    psm: PSMMode = PSMMode.AUTO
+    """Page segmentation mode (PSM) to guide Tesseract on how to segment the image (e.g., single block, single line)."""
+    tessedit_dont_blkrej_good_wds: bool = True
+    """If True, prevents block rejection of words identified as good, improving text output quality."""
+    tessedit_dont_rowrej_good_wds: bool = True
+    """If True, prevents row rejection of words identified as good, avoiding unnecessary omissions."""
+    tessedit_enable_dict_correction: bool = True
+    """Enable or disable dictionary-based correction for recognized text to improve word accuracy."""
+    tessedit_char_whitelist: str = ""
+    """Whitelist of characters that Tesseract is allowed to recognize. Empty string means no restriction."""
+    tessedit_use_primary_params_model: bool = True
+    """If True, forces the use of the primary parameters model for text recognition."""
+    textord_space_size_is_variable: bool = True
+    """Allow variable spacing between words, useful for text with irregular spacing."""
+    thresholding_method: bool = False
+    """Enable or disable specific thresholding methods during image preprocessing for better OCR accuracy."""
+    output_format: OutputFormatType = "markdown"
+    """Output format: 'markdown' (default), 'text', 'tsv' (for structured data), or 'hocr' (HTML-based)."""
+    enable_table_detection: bool = False
+    """Enable table structure detection from TSV output."""
+    table_column_threshold: int = 20
+    """Pixel threshold for column clustering in table detection."""
+    table_row_threshold_ratio: float = 0.5
+    """Row threshold as ratio of mean text height for table detection."""
+    table_min_confidence: float = 30.0
+    """Minimum confidence score to include a word in table extraction."""
+
+    def to_dict(self) -> dict[str, Any]:
+        """Convert config to dictionary for passing as kwargs."""
+        return asdict(self)
+
+
+@dataclass(unsafe_hash=True, frozen=True, slots=True)
+class EasyOCRConfig:
+    """Configuration options for EasyOCR."""
+
+    add_margin: float = 0.1
+    """Extend bounding boxes in all directions."""
+    adjust_contrast: float = 0.5
+    """Target contrast level for low contrast text."""
+    beam_width: int = 5
+    """Beam width for beam search in recognition."""
+    canvas_size: int = 2560
+    """Maximum image dimension for detection."""
+    contrast_ths: float = 0.1
+    """Contrast threshold for preprocessing."""
+    decoder: Literal["greedy", "beamsearch", "wordbeamsearch"] = "greedy"
+    """Decoder method. Options: 'greedy', 'beamsearch', 'wordbeamsearch'."""
+    height_ths: float = 0.5
+    """Maximum difference in box height for merging."""
+    language: str | list[str] = "en"
+    """Language or languages to use for OCR. Can be a single language code (e.g., 'en'),
+    a comma-separated string of language codes (e.g., 'en,ch_sim'), or a list of language codes."""
+    link_threshold: float = 0.4
+    """Link confidence threshold."""
+    low_text: float = 0.4
+    """Text low-bound score."""
+    mag_ratio: float = 1.0
+    """Image magnification ratio."""
+    min_size: int = 10
+    """Minimum text box size in pixels."""
+    rotation_info: list[int] | None = None
+    """List of angles to try for detection."""
+    slope_ths: float = 0.1
+    """Maximum slope for merging text boxes."""
+    text_threshold: float = 0.7
+    """Text confidence threshold."""
+    use_gpu: bool = False
+    """Whether to use GPU for inference. DEPRECATED: Use 'device' parameter instead."""
+    device: DeviceType = "auto"
+    """Device to use for inference. Options: 'cpu', 'cuda', 'mps', 'auto'."""
+    gpu_memory_limit: float | None = None
+    """Maximum GPU memory to use in GB. None for no limit."""
+    fallback_to_cpu: bool = True
+    """Whether to fallback to CPU if requested device is unavailable."""
+    width_ths: float = 0.5
+    """Maximum horizontal distance for merging boxes."""
+    x_ths: float = 1.0
+    """Maximum horizontal distance for paragraph merging."""
+    y_ths: float = 0.5
+    """Maximum vertical distance for paragraph merging."""
+    ycenter_ths: float = 0.5
+    """Maximum shift in y direction for merging."""
+
+
+@dataclass(unsafe_hash=True, frozen=True, slots=True)
+class PaddleOCRConfig:
+    """Configuration options for PaddleOCR.
+
+    This dataclass provides type hints and documentation for all PaddleOCR parameters.
+    """
+
+    cls_image_shape: str = "3,48,192"
+    """Image shape for classification algorithm in format 'channels,height,width'."""
+    det_algorithm: Literal["DB", "EAST", "SAST", "PSE", "FCE", "PAN", "CT", "DB++", "Layout"] = "DB"
+    """Detection algorithm."""
+    det_db_box_thresh: float = 0.5
+    """Score threshold for detected boxes. Boxes below this value are discarded."""
+    det_db_thresh: float = 0.3
+    """Binarization threshold for DB output map."""
+    det_db_unclip_ratio: float = 2.0
+    """Expansion ratio for detected text boxes."""
+    det_east_cover_thresh: float = 0.1
+    """Score threshold for EAST output boxes."""
+    det_east_nms_thresh: float = 0.2
+    """NMS threshold for EAST model output boxes."""
+    det_east_score_thresh: float = 0.8
+    """Binarization threshold for EAST output map."""
+    det_max_side_len: int = 960
+    """Maximum size of image long side. Images exceeding this will be proportionally resized."""
+    det_model_dir: str | None = None
+    """Directory for detection model. If None, uses default model location."""
+    drop_score: float = 0.5
+    """Filter recognition results by confidence score. Results below this are discarded."""
+    enable_mkldnn: bool = False
+    """Whether to enable MKL-DNN acceleration (Intel CPU only)."""
+    gpu_mem: int = 8000
+    """GPU memory size (in MB) to use for initialization."""
+    language: str = "en"
+    """Language to use for OCR."""
+    max_text_length: int = 25
+    """Maximum text length that the recognition algorithm can recognize."""
+    rec: bool = True
+    """Enable text recognition when using the ocr() function."""
+    rec_algorithm: Literal[
+        "CRNN",
+        "SRN",
+        "NRTR",
+        "SAR",
+        "SEED",
+        "SVTR",
+        "SVTR_LCNet",
+        "ViTSTR",
+        "ABINet",
+        "VisionLAN",
+        "SPIN",
+        "RobustScanner",
+        "RFL",
+    ] = "CRNN"
+    """Recognition algorithm."""
+    rec_image_shape: str = "3,32,320"
+    """Image shape for recognition algorithm in format 'channels,height,width'."""
+    rec_model_dir: str | None = None
+    """Directory for recognition model. If None, uses default model location."""
+    table: bool = True
+    """Whether to enable table recognition."""
+    use_angle_cls: bool = True
+    """Whether to use text orientation classification model."""
+    use_gpu: bool = False
+    """Whether to use GPU for inference. DEPRECATED: Use 'device' parameter instead."""
+    device: DeviceType = "auto"
+    """Device to use for inference. Options: 'cpu', 'cuda', 'auto'. Note: MPS not supported by PaddlePaddle."""
+    gpu_memory_limit: float | None = None
+    """Maximum GPU memory to use in GB. None for no limit."""
+    fallback_to_cpu: bool = True
+    """Whether to fallback to CPU if requested device is unavailable."""
+    use_space_char: bool = True
+    """Whether to recognize spaces."""
+    use_zero_copy_run: bool = False
+    """Whether to enable zero_copy_run for inference optimization."""
+
+
+@dataclass(unsafe_hash=True, slots=True)
+class GMFTConfig:
+    """Configuration options for GMFT table extraction.
+
+    This class encapsulates the configuration options for GMFT, providing a way to customize its behavior.
+    """
+
+    verbosity: int = 0
+    """
+    Verbosity level for logging.
+
+    0: errors only
+    1: print warnings
+    2: print warnings and info
+    3: print warnings, info, and debug
+    """
+    formatter_base_threshold: float = 0.3
+    """
+    Base threshold for the confidence demanded of a table feature (row/column).
+
+    Note that a low threshold is actually better, because overzealous rows means that generally, numbers are still aligned and there are just many empty rows (having fewer rows than expected merges cells, which is bad).
+    """
+    cell_required_confidence: dict[Literal[0, 1, 2, 3, 4, 5, 6], float] = field(
+        default_factory=lambda: {
+            0: 0.3,
+            1: 0.3,
+            2: 0.3,
+            3: 0.3,
+            4: 0.5,
+            5: 0.5,
+            6: 99,
+        },
+        hash=False,
+    )
+    """
+    Confidences required (>=) for a row/column feature to be considered good. See TATRFormattedTable.id2label
+
+    But low confidences may be better than too high confidence (see formatter_base_threshold)
+    """
+    detector_base_threshold: float = 0.9
+    """Minimum confidence score required for a table"""
+    remove_null_rows: bool = True
+    """
+    Flag to remove rows with no text.
+    """
+    enable_multi_header: bool = False
+    """
+    Enable multi-indices in the dataframe.
+
+    If false, then multiple headers will be merged column-wise.
+    """
+    semantic_spanning_cells: bool = False
+    """
+    [Experimental] Enable semantic spanning cells, which often encode hierarchical multi-level indices.
+    """
+    semantic_hierarchical_left_fill: Literal["algorithm", "deep"] | None = "algorithm"
+    """
+    [Experimental] When semantic spanning cells is enabled, when a left header is detected which might represent a group of rows, that same value is reduplicated for each row.
+
+    Possible values: 'algorithm', 'deep', None.
+    """
+
+
+@dataclass(frozen=True, slots=True)
+class LanguageDetectionConfig:
+    """Configuration for language detection.
+
+    Attributes:
+        low_memory: If True, uses a smaller model (~200MB). If False, uses a larger, more accurate model.
+            Defaults to True for better memory efficiency.
+        top_k: Maximum number of languages to return for multilingual detection. Defaults to 3.
+        multilingual: If True, uses multilingual detection to handle mixed-language text.
+            If False, uses single language detection. Defaults to False.
+        cache_dir: Custom directory for model cache. If None, uses system default.
+        allow_fallback: If True, falls back to small model if large model fails. Defaults to True.
+    """
+
+    low_memory: bool = True
+    top_k: int = 3
+    multilingual: bool = False
+    cache_dir: str | None = None
+    allow_fallback: bool = True
+
+
+@dataclass(unsafe_hash=True, frozen=True, slots=True)
+class SpacyEntityExtractionConfig:
+    """Configuration for spaCy-based entity extraction."""
+
+    model_cache_dir: str | Path | None = None
+    """Directory to cache spaCy models. If None, uses spaCy's default."""
+
+    language_models: dict[str, str] | tuple[tuple[str, str], ...] | None = None
+    """Mapping of language codes to spaCy model names.
+
+    If None, uses default mappings:
+    - en: en_core_web_sm
+    - de: de_core_news_sm
+    - fr: fr_core_news_sm
+    - es: es_core_news_sm
+    - pt: pt_core_news_sm
+    - it: it_core_news_sm
+    - nl: nl_core_news_sm
+    - zh: zh_core_web_sm
+    - ja: ja_core_news_sm
+    """
+
+    fallback_to_multilingual: bool = True
+    """If True and language-specific model fails, try xx_ent_wiki_sm (multilingual)."""
+
+    max_doc_length: int = 1000000
+    """Maximum document length for spaCy processing."""
+
+    batch_size: int = 1000
+    """Batch size for processing multiple texts."""
+
+    def __post_init__(self) -> None:
+        if self.language_models is None:
+            object.__setattr__(self, "language_models", self._get_default_language_models())
+
+        if isinstance(self.language_models, dict):
+            object.__setattr__(self, "language_models", tuple(sorted(self.language_models.items())))
+
+    @staticmethod
+    def _get_default_language_models() -> dict[str, str]:
+        return {
+            "en": "en_core_web_sm",
+            "de": "de_core_news_sm",
+            "fr": "fr_core_news_sm",
+            "es": "es_core_news_sm",
+            "pt": "pt_core_news_sm",
+            "it": "it_core_news_sm",
+            "nl": "nl_core_news_sm",
+            "zh": "zh_core_web_sm",
+            "ja": "ja_core_news_sm",
+            "ko": "ko_core_news_sm",
+            "ru": "ru_core_news_sm",
+            "pl": "pl_core_news_sm",
+            "ro": "ro_core_news_sm",
+            "el": "el_core_news_sm",
+            "da": "da_core_news_sm",
+            "fi": "fi_core_news_sm",
+            "nb": "nb_core_news_sm",
+            "sv": "sv_core_news_sm",
+            "ca": "ca_core_news_sm",
+            "hr": "hr_core_news_sm",
+            "lt": "lt_core_news_sm",
+            "mk": "mk_core_news_sm",
+            "sl": "sl_core_news_sm",
+            "uk": "uk_core_news_sm",
+            "xx": "xx_ent_wiki_sm",
+        }
+
+    def get_model_for_language(self, language_code: str) -> str | None:
+        """Get the appropriate spaCy model for a language code."""
+        if not self.language_models:
+            return None
+
+        models_dict = dict(self.language_models) if isinstance(self.language_models, tuple) else self.language_models
+
+        if language_code in models_dict:
+            return models_dict[language_code]
+
+        base_lang = language_code.split("-")[0].lower()
+        if base_lang in models_dict:
+            return models_dict[base_lang]
+
+        return None
+
+    def get_fallback_model(self) -> str | None:
+        """Get fallback multilingual model if enabled."""
+        return "xx_ent_wiki_sm" if self.fallback_to_multilingual else None
 
 
 class BoundingBox(TypedDict):
@@ -64,13 +441,13 @@ class TSVWord(TypedDict):
     word_num: int
     """Word number within the line."""
     left: int
-    """X coordinate of the word's left edge."""
+    """X coordinate of the left edge of the word."""
     top: int
-    """Y coordinate of the word's top edge."""
+    """Y coordinate of the top edge of the word."""
     width: int
-    """Width of the word's bounding box."""
+    """Width of the word bounding box."""
     height: int
-    """Height of the word's bounding box."""
+    """Height of the word bounding box."""
     conf: float
     """Confidence score (0-100)."""
     text: str
@@ -429,9 +806,6 @@ class ExtractionConfig:
             object.__setattr__(self, "post_processing_hooks", tuple(self.post_processing_hooks))
         if self.validators is not None and isinstance(self.validators, list):
             object.__setattr__(self, "validators", tuple(self.validators))
-        from kreuzberg._ocr._easyocr import EasyOCRConfig  # noqa: PLC0415
-        from kreuzberg._ocr._paddleocr import PaddleOCRConfig  # noqa: PLC0415
-        from kreuzberg._ocr._tesseract import TesseractConfig  # noqa: PLC0415
 
         if self.ocr_backend is None and self.ocr_config is not None:
             raise ValidationError("'ocr_backend' is None but 'ocr_config' is provided")

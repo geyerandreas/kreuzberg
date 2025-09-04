@@ -413,18 +413,15 @@ def baseline(
     results = {}
     console.print(f"Testing with file: {single_file.name}")
 
-    # Cold cache test
     clear_all_caches()
     start_time = time.time()
     result = extract_file_sync(single_file)
     cold_duration = time.time() - start_time
 
-    # Warm cache test
     start_time = time.time()
     result = extract_file_sync(single_file)
     warm_duration = time.time() - start_time
 
-    # Batch test
     clear_all_caches()
     start_time = time.time()
 
@@ -444,7 +441,6 @@ def baseline(
         "content_length": len(result.content),
     }
 
-    # Display results
     console.print(f"\n[green]Cold cache extraction: {cold_duration:.3f}s[/green]")
     console.print(f"[green]Warm cache extraction: {warm_duration:.3f}s[/green]")
     console.print(f"[green]Batch extraction: {batch_duration:.3f}s[/green]")
@@ -455,7 +451,6 @@ def baseline(
             json.dump(results, f, indent=2)
         console.print(f"[blue]Results saved to {output_file}[/blue]")
     else:
-        # Save to default location
         output_dir = Path("results")
         output_dir.mkdir(parents=True, exist_ok=True)
         default_file = output_dir / "baseline.json"
@@ -500,14 +495,12 @@ def statistical(
     warm_times = []
 
     async def run_trial() -> tuple[float, float]:
-        # Cold cache trial
         clear_all_caches()
         start_time = time.time()
         await extract_file(single_file, config=config)
         cold_time = time.time() - start_time
         cold_times.append(cold_time)
 
-        # Warm cache trial
         start_time = time.time()
         await extract_file(single_file, config=config)
         warm_time = time.time() - start_time
@@ -542,7 +535,6 @@ def statistical(
         },
     }
 
-    # Display summary
     cold_cache = results["cold_cache"]
     warm_cache = results["warm_cache"]
 
@@ -560,7 +552,6 @@ def statistical(
             json.dump(results, f, indent=2)
         console.print(f"[blue]Results saved to {output_file}[/blue]")
     else:
-        # Save to default location
         output_dir = Path("results")
         output_dir.mkdir(parents=True, exist_ok=True)
         default_file = output_dir / "statistical.json"
@@ -582,7 +573,6 @@ def serialization(
 
     console.print("[bold blue]Serialization Performance Benchmark[/bold blue]")
 
-    # Create test data
     large_content = "This is a realistic OCR result content. " * 500
     metadata: dict[str, Any] = {
         "file_path": "/some/long/path/to/document.pdf",
@@ -611,7 +601,6 @@ def serialization(
     json_serialize_times = []
     json_deserialize_times = []
 
-    # JSON benchmarks
     console.print("Benchmarking JSON serialization...")
     for _ in range(trials):
         start_time = time.time()
@@ -622,7 +611,6 @@ def serialization(
         json.loads(json_str)
         json_deserialize_times.append(time.time() - start_time)
 
-    # Try msgpack if available
     msgpack_serialize_times = []
     msgpack_deserialize_times = []
 
@@ -665,7 +653,6 @@ def serialization(
             "deserialize_stdev": statistics.stdev(msgpack_deserialize_times),
         }
 
-        # Calculate speedup
         json_data = results["json"]
         msgpack_data = results["msgpack"]
 
@@ -676,7 +663,6 @@ def serialization(
         speedup = json_total / msgpack_total if msgpack_total > 0 else 0
         results["msgpack_speedup"] = speedup
 
-    # Display results
     json_data = results["json"]
     console.print(
         f"\n[green]JSON serialize: {json_data['serialize_mean']:.6f}s ± {json_data['serialize_stdev']:.6f}s[/green]"  # type: ignore[index]
@@ -701,7 +687,6 @@ def serialization(
             json.dump(results, f, indent=2)
         console.print(f"[blue]Results saved to {output_file}[/blue]")
     else:
-        # Save to default location
         output_dir = Path("results")
         output_dir.mkdir(parents=True, exist_ok=True)
         default_file = output_dir / "serialization.json"

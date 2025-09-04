@@ -2,105 +2,14 @@ from __future__ import annotations
 
 import os
 import re
-from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any
 
-from kreuzberg._types import Entity
+from kreuzberg._types import Entity, SpacyEntityExtractionConfig
 from kreuzberg.exceptions import MissingDependencyError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-    from pathlib import Path
-
-
-@dataclass(unsafe_hash=True, frozen=True, slots=True)
-class SpacyEntityExtractionConfig:
-    """Configuration for spaCy-based entity extraction."""
-
-    model_cache_dir: str | Path | None = None
-    """Directory to cache spaCy models. If None, uses spaCy's default."""
-
-    language_models: dict[str, str] | tuple[tuple[str, str], ...] | None = None
-    """Mapping of language codes to spaCy model names.
-
-    If None, uses default mappings:
-    - en: en_core_web_sm
-    - de: de_core_news_sm
-    - fr: fr_core_news_sm
-    - es: es_core_news_sm
-    - pt: pt_core_news_sm
-    - it: it_core_news_sm
-    - nl: nl_core_news_sm
-    - zh: zh_core_web_sm
-    - ja: ja_core_news_sm
-    """
-
-    fallback_to_multilingual: bool = True
-    """If True and language-specific model fails, try xx_ent_wiki_sm (multilingual)."""
-
-    max_doc_length: int = 1000000
-    """Maximum document length for spaCy processing."""
-
-    batch_size: int = 1000
-    """Batch size for processing multiple texts."""
-
-    def __post_init__(self) -> None:
-        if self.language_models is None:
-            object.__setattr__(self, "language_models", self._get_default_language_models())
-
-        if isinstance(self.language_models, dict):
-            object.__setattr__(self, "language_models", tuple(sorted(self.language_models.items())))
-
-    @staticmethod
-    def _get_default_language_models() -> dict[str, str]:
-        """Get default language model mappings based on available spaCy models."""
-        return {
-            "en": "en_core_web_sm",
-            "de": "de_core_news_sm",
-            "fr": "fr_core_news_sm",
-            "es": "es_core_news_sm",
-            "pt": "pt_core_news_sm",
-            "it": "it_core_news_sm",
-            "nl": "nl_core_news_sm",
-            "zh": "zh_core_web_sm",
-            "ja": "ja_core_news_sm",
-            "ko": "ko_core_news_sm",
-            "ru": "ru_core_news_sm",
-            "pl": "pl_core_news_sm",
-            "ro": "ro_core_news_sm",
-            "el": "el_core_news_sm",
-            "da": "da_core_news_sm",
-            "fi": "fi_core_news_sm",
-            "nb": "nb_core_news_sm",
-            "sv": "sv_core_news_sm",
-            "ca": "ca_core_news_sm",
-            "hr": "hr_core_news_sm",
-            "lt": "lt_core_news_sm",
-            "mk": "mk_core_news_sm",
-            "sl": "sl_core_news_sm",
-            "uk": "uk_core_news_sm",
-        }
-
-    def get_model_for_language(self, language_code: str) -> str | None:
-        """Get the appropriate spaCy model for a language code."""
-        if not self.language_models:
-            return None
-
-        models_dict = dict(self.language_models) if isinstance(self.language_models, tuple) else self.language_models
-
-        if language_code in models_dict:
-            return models_dict[language_code]
-
-        base_lang = language_code.split("-")[0].lower()
-        if base_lang in models_dict:
-            return models_dict[base_lang]
-
-        return None
-
-    def get_fallback_model(self) -> str | None:
-        """Get fallback multilingual model if enabled."""
-        return "xx_ent_wiki_sm" if self.fallback_to_multilingual else None
 
 
 def extract_entities(

@@ -4,18 +4,14 @@ from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
-from litestar.testing import AsyncTestClient
 
-from kreuzberg._api.main import app, exception_handler
+from kreuzberg._api.main import exception_handler
 from kreuzberg.exceptions import OCRError, ParsingError, ValidationError
 
 if TYPE_CHECKING:
     from pathlib import Path
 
-
-@pytest.fixture
-def test_client() -> AsyncTestClient[Any]:
-    return AsyncTestClient(app=app)
+    from litestar.testing import AsyncTestClient
 
 
 @pytest.mark.anyio
@@ -401,8 +397,7 @@ async def test_get_configuration_no_config(
 
 @pytest.mark.anyio
 async def test_get_configuration_with_config(test_client: AsyncTestClient[Any]) -> None:
-    from kreuzberg import ExtractionConfig
-    from kreuzberg._ocr._tesseract import PSMMode, TesseractConfig
+    from kreuzberg import ExtractionConfig, PSMMode, TesseractConfig
 
     test_config = ExtractionConfig(
         ocr_backend="tesseract",
