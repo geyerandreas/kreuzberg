@@ -1,5 +1,3 @@
-"""Shared fixtures for API tests."""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
@@ -14,7 +12,6 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def test_client() -> AsyncTestClient[Any]:
-    """Create a test client for the API."""
     from litestar.testing import AsyncTestClient
 
     return AsyncTestClient(app=app)

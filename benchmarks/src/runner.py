@@ -1,5 +1,3 @@
-"""Benchmark runner and execution engine."""
-
 from __future__ import annotations
 
 import asyncio
@@ -28,8 +26,6 @@ if TYPE_CHECKING:
 
 
 class BenchmarkRunner:
-    """Executes and manages benchmark suites."""
-
     def __init__(
         self,
         console: Console | None = None,
@@ -42,7 +38,6 @@ class BenchmarkRunner:
     def _analyze_extraction_result(
         self, result: Any
     ) -> ExtractionQualityMetrics | None:
-        """Analyze extraction result to compute quality metrics."""
         try:
             if not hasattr(result, "content") or not hasattr(result, "metadata"):
                 return None
@@ -148,7 +143,6 @@ class BenchmarkRunner:
         func: Callable[[], Any],
         metadata: dict[str, Any] | None = None,
     ) -> BenchmarkResult:
-        """Run a single synchronous benchmark."""
         profiler = PerformanceProfiler()
 
         try:
@@ -203,7 +197,6 @@ class BenchmarkRunner:
         func: Callable[[], Any],
         metadata: dict[str, Any] | None = None,
     ) -> BenchmarkResult:
-        """Run a single asynchronous benchmark."""
         profiler = PerformanceProfiler()
 
         try:
@@ -262,7 +255,6 @@ class BenchmarkRunner:
         async_benchmarks: list[tuple[str, Callable[[], Any], dict[str, Any] | None]]
         | None = None,
     ) -> BenchmarkSuite:
-        """Run a complete benchmark suite with both sync and async tests."""
         start_time = time.perf_counter()
         results: list[BenchmarkResult] = []
 
@@ -323,7 +315,6 @@ class BenchmarkRunner:
         )
 
     def print_summary(self, suite: BenchmarkSuite) -> None:
-        """Print a summary table of benchmark results."""
         table = Table(title=f"Benchmark Results: {suite.name}")
         table.add_column("Benchmark", style="cyan", no_wrap=True)
         table.add_column("Status", style="green", justify="center")
@@ -379,8 +370,6 @@ class BenchmarkRunner:
                 )
 
     def save_results(self, suite: BenchmarkSuite, output_path: Path) -> None:
-        """Save benchmark results to JSON file."""
-
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         with open(output_path, "w") as f:

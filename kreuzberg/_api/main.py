@@ -103,13 +103,11 @@ def _merge_configs_cached(
     base_config = static_config or ExtractionConfig()
     config_dict = base_config.to_dict()
 
-    # Convert query_params tuple back to dict for processing
     query_dict = dict(query_params) if query_params else {}
     for key, value in query_dict.items():
         if value is not None and key in config_dict:
             config_dict[key] = _convert_value_type(config_dict[key], value)
 
-    # Convert header_config tuple back to dict for processing
     if header_config:
         header_dict = dict(header_config)
         for key, value in header_dict.items():
@@ -129,7 +127,6 @@ def merge_configs(
     header_config: dict[str, Any] | None,
 ) -> ExtractionConfig:
     """Merge configurations with precedence: header > query > static > default."""
-    # Convert dict parameters to hashable tuples for caching
     query_tuple = tuple(sorted(query_params.items())) if query_params else ()
     header_tuple = tuple(sorted(header_config.items())) if header_config else None
 

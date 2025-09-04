@@ -926,7 +926,6 @@ class ExtractionConfig(ConfigDict):
             order="deterministic",
         )
 
-        # Recursively convert nested config objects
         for field_name, value in result.items():
             if hasattr(value, "to_dict"):
                 result[field_name] = value.to_dict(include_none=include_none)

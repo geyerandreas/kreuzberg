@@ -1,6 +1,4 @@
-"""Command-line interface for Kreuzberg benchmarks."""
-
-# type: ignore[index,unused-ignore]
+# mypy: disable-error-code="index,unused-ignore,misc"
 
 from __future__ import annotations
 
@@ -22,7 +20,6 @@ console = Console()
 
 
 def _generate_quality_report(data: dict[str, Any], console: Console) -> None:
-    """Generate metadata quality report from benchmark results."""
     console.print("\n[bold]METADATA QUALITY REPORT[/bold]")
     console.print("=" * 80)
 
@@ -181,7 +178,6 @@ def run(
         False, "--backend-comparison", help="Run backend comparison benchmarks"
     ),
 ) -> None:
-    """Run Kreuzberg performance benchmarks."""
     console.print("[bold blue]Kreuzberg Performance Benchmarks[/bold blue]")
     console.print(f"Suite: {suite_name}")
 
@@ -273,7 +269,6 @@ def compare(
         None, "--output", "-o", help="Save comparison to file"
     ),
 ) -> None:
-    """Compare two benchmark results."""
     console.print("[bold blue]Benchmark Comparison[/bold blue]")
 
     try:
@@ -332,7 +327,6 @@ def analyze(
         False, "--quality", "-q", help="Generate metadata quality report"
     ),
 ) -> None:
-    """Analyze benchmark results and generate insights."""
     console.print("[bold blue]Benchmark Analysis[/bold blue]")
 
     try:
@@ -392,7 +386,6 @@ def baseline(
         None, "--output", "-o", help="Save results to file"
     ),
 ) -> None:
-    """Run baseline performance benchmark."""
     import asyncio
     import time
     from kreuzberg import extract_file_sync, batch_extract_file
@@ -466,7 +459,6 @@ def statistical(
         None, "--output", "-o", help="Save results to file"
     ),
 ) -> None:
-    """Run statistical benchmark with multiple trials."""
     import asyncio
     import statistics
     import time
@@ -566,7 +558,6 @@ def serialization(
         None, "--output", "-o", help="Save results to file"
     ),
 ) -> None:
-    """Benchmark serialization performance (JSON vs msgpack)."""
     import time
     import statistics
     from kreuzberg._types import ExtractionResult
