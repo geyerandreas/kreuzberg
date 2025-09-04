@@ -391,7 +391,6 @@ class SpacyEntityExtractionConfig(ConfigDict):
 
     model_cache_dir: str | Path | None = None
     """Directory to cache spaCy models. If None, uses spaCy's default."""
-
     language_models: dict[str, str] | tuple[tuple[str, str], ...] | None = None
     """Mapping of language codes to spaCy model names.
 
@@ -406,13 +405,10 @@ class SpacyEntityExtractionConfig(ConfigDict):
     - zh: zh_core_web_sm
     - ja: ja_core_news_sm
     """
-
     fallback_to_multilingual: bool = True
     """If True and language-specific model fails, try xx_ent_wiki_sm (multilingual)."""
-
     max_doc_length: int = 1000000
     """Maximum document length for spaCy processing."""
-
     batch_size: int = 1000
     """Batch size for processing multiple texts."""
 
@@ -603,7 +599,6 @@ class Metadata(TypedDict, total=False):
     """Version identifier or revision number."""
     width: NotRequired[int]
     """Width of the document page/slide/image, if applicable."""
-
     email_from: NotRequired[str]
     """Email sender (from field)."""
     email_to: NotRequired[str]
@@ -616,14 +611,12 @@ class Metadata(TypedDict, total=False):
     """Email date or document date."""
     attachments: NotRequired[list[str]]
     """List of attachment names."""
-
     content: NotRequired[str]
     """Content metadata field."""
     parse_error: NotRequired[str]
     """Parse error information."""
     warning: NotRequired[str]
     """Warning messages."""
-
     table_count: NotRequired[int]
     """Number of tables extracted from the document."""
     tables_detected: NotRequired[int]
