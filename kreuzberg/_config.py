@@ -9,11 +9,16 @@ if sys.version_info >= (3, 11):
 else:  # pragma: no cover
     import tomli as tomllib  # type: ignore[import-not-found]
 
-from kreuzberg._gmft import GMFTConfig
-from kreuzberg._ocr._easyocr import EasyOCRConfig
-from kreuzberg._ocr._paddleocr import PaddleOCRConfig
-from kreuzberg._ocr._tesseract import PSMMode, TesseractConfig
-from kreuzberg._types import ExtractionConfig, HTMLToMarkdownConfig, OcrBackendType
+from kreuzberg._types import (
+    EasyOCRConfig,
+    ExtractionConfig,
+    GMFTConfig,
+    HTMLToMarkdownConfig,
+    OcrBackendType,
+    PaddleOCRConfig,
+    PSMMode,
+    TesseractConfig,
+)
 from kreuzberg.exceptions import ValidationError
 
 if TYPE_CHECKING:

@@ -239,7 +239,7 @@ class PaddleOCRConfig:
     """Whether to enable zero_copy_run for inference optimization."""
 
 
-@dataclass(unsafe_hash=True, slots=True)
+@dataclass(unsafe_hash=True, frozen=True, slots=True)
 class GMFTConfig:
     """Configuration options for GMFT table extraction.
 
@@ -299,6 +299,50 @@ class GMFTConfig:
     [Experimental] When semantic spanning cells is enabled, when a left header is detected which might represent a group of rows, that same value is reduplicated for each row.
 
     Possible values: 'algorithm', 'deep', None.
+    """
+    large_table_if_n_rows_removed: int = 8
+    """
+    If >= n rows are removed due to non-maxima suppression (NMS), then this table is classified as a large table.
+    """
+    large_table_threshold: int = 10
+    """
+    With large tables, table transformer struggles with placing too many overlapping rows. Luckily, with more rows, we have more info on the usual size of text, which we can use to make a guess on the height such that no rows are merged or overlapping.
+
+    Large table assumption is only applied when (# of rows > large_table_threshold) AND (total overlap > large_table_row_overlap_threshold). Set 9999 to disable; set 0 to force large table assumption to run every time.
+    """
+    large_table_row_overlap_threshold: float = 0.2
+    """
+    With large tables, table transformer struggles with placing too many overlapping rows. Luckily, with more rows, we have more info on the usual size of text, which we can use to make a guess on the height such that no rows are merged or overlapping.
+
+    Large table assumption is only applied when (# of rows > large_table_threshold) AND (total overlap > large_table_row_overlap_threshold).
+    """
+    large_table_maximum_rows: int = 1000
+    """
+    Maximum number of rows allowed for a large table.
+    """
+    force_large_table_assumption: bool | None = None
+    """
+    Force the large table assumption to be applied, regardless of the number of rows and overlap.
+    """
+    total_overlap_reject_threshold: float = 0.9
+    """
+    Reject if total overlap is > 90% of table area.
+    """
+    total_overlap_warn_threshold: float = 0.1
+    """
+    Warn if total overlap is > 10% of table area.
+    """
+    nms_warn_threshold: int = 5
+    """
+    Warn if non maxima suppression removes > 5 rows.
+    """
+    iob_reject_threshold: float = 0.05
+    """
+    Reject if iob between textbox and cell is < 5%.
+    """
+    iob_warn_threshold: float = 0.5
+    """
+    Warn if iob between textbox and cell is < 50%.
     """
 
 
@@ -836,20 +880,14 @@ class ExtractionConfig:
 
         match self.ocr_backend:
             case "tesseract":
-                from kreuzberg._ocr._tesseract import TesseractConfig  # noqa: PLC0415
-
                 config_dict = asdict(TesseractConfig())
                 config_dict["use_cache"] = self.use_cache
                 return config_dict
             case "easyocr":
-                from kreuzberg._ocr._easyocr import EasyOCRConfig  # noqa: PLC0415
-
                 config_dict = asdict(EasyOCRConfig())
                 config_dict["use_cache"] = self.use_cache
                 return config_dict
             case _:
-                from kreuzberg._ocr._paddleocr import PaddleOCRConfig  # noqa: PLC0415
-
                 config_dict = asdict(PaddleOCRConfig())
                 config_dict["use_cache"] = self.use_cache
                 return config_dict
