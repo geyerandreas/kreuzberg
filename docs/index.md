@@ -41,7 +41,7 @@ Kreuzberg addresses the complete document intelligence pipeline through a modula
 - **Serverless**: Optimized for AWS Lambda, Google Cloud Functions, Azure Functions
 - **Processing Modes**: CPU-based with optional GPU acceleration (EasyOCR, PaddleOCR)
 - **Data Sovereignty**: Local processing without external API dependencies
-- **Interface Options**: Command-line interface, REST API, MCP server
+- **Interface Options**: Command-line interface, REST API with runtime configuration, MCP server
 
 ### Document Intelligence Features
 

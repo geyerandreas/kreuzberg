@@ -92,9 +92,132 @@ curl -X POST http://localhost:8000/extract \
     "metadata": {
       "pages": 5,
       "title": "Document Title"
-    }
+    },
+    "chunks": [],
+    "entities": null,
+    "keywords": null,
+    "detected_languages": null
   }
 ]
+```
+
+### Runtime Configuration
+
+The `/extract` endpoint supports runtime configuration via query parameters and HTTP headers, allowing you to customize extraction behavior without requiring static configuration files.
+
+#### Query Parameters
+
+Configure extraction options directly via URL query parameters:
+
+```bash
+# Enable chunking with custom settings
+curl -X POST "http://localhost:8000/extract?chunk_content=true&max_chars=500&max_overlap=50" \
+  -F "data=@document.pdf"
+
+# Extract entities and keywords
+curl -X POST "http://localhost:8000/extract?extract_entities=true&extract_keywords=true&keyword_count=5" \
+  -F "data=@document.pdf"
+
+# Force OCR with specific backend
+curl -X POST "http://localhost:8000/extract?force_ocr=true&ocr_backend=tesseract" \
+  -F "data=@image.jpg"
+
+# Enable language detection
+curl -X POST "http://localhost:8000/extract?auto_detect_language=true" \
+  -F "data=@multilingual_document.pdf"
+```
+
+**Supported Query Parameters:**
+
+- `chunk_content` (boolean): Enable content chunking
+- `max_chars` (integer): Maximum characters per chunk
+- `max_overlap` (integer): Overlap between chunks in characters
+- `extract_tables` (boolean): Enable table extraction
+- `extract_entities` (boolean): Enable named entity extraction
+- `extract_keywords` (boolean): Enable keyword extraction
+- `keyword_count` (integer): Number of keywords to extract
+- `force_ocr` (boolean): Force OCR processing
+- `ocr_backend` (string): OCR engine (`tesseract`, `easyocr`, `paddleocr`)
+- `auto_detect_language` (boolean): Enable automatic language detection
+- `pdf_password` (string): Password for encrypted PDFs
+
+**Boolean Parameter Formats:**
+
+Query parameters accept flexible boolean values:
+
+- `true`, `false`
+- `1`, `0`
+- `yes`, `no`
+- `on`, `off`
+
+#### Header Configuration
+
+For complex nested configurations, use the `X-Extraction-Config` header with JSON format:
+
+```bash
+# Basic header configuration
+curl -X POST http://localhost:8000/extract \
+  -H "X-Extraction-Config: {\"chunk_content\": true, \"max_chars\": 300, \"extract_keywords\": true}" \
+  -F "data=@document.pdf"
+
+# Advanced OCR configuration
+curl -X POST http://localhost:8000/extract \
+  -H "X-Extraction-Config: {
+    \"force_ocr\": true,
+    \"ocr_backend\": \"tesseract\",
+    \"ocr_config\": {
+      \"language\": \"eng+deu\",
+      \"psm\": 6,
+      \"output_format\": \"text\"
+    }
+  }" \
+  -F "data=@multilingual_document.pdf"
+
+# Table extraction with GMFT configuration
+curl -X POST http://localhost:8000/extract \
+  -H "X-Extraction-Config: {
+    \"extract_tables\": true,
+    \"gmft_config\": {
+      \"detector_base_threshold\": 0.85,
+      \"remove_null_rows\": true,
+      \"enable_multi_header\": true
+    }
+  }" \
+  -F "data=@document_with_tables.pdf"
+```
+
+#### Configuration Precedence
+
+When multiple configuration sources are present, they are merged with the following precedence:
+
+1. **Header config** (highest priority) - `X-Extraction-Config` header
+1. **Query params** - URL query parameters
+1. **Static config** - `kreuzberg.toml` or `pyproject.toml` files
+1. **Defaults** (lowest priority) - Built-in default values
+
+```bash
+# Header overrides query parameters
+curl -X POST "http://localhost:8000/extract?max_chars=1000" \
+  -H "X-Extraction-Config: {\"max_chars\": 500}" \
+  -F "data=@document.pdf"
+# Result: max_chars will be 500 (from header)
+```
+
+#### Error Handling
+
+Invalid configuration returns appropriate error responses:
+
+```bash
+# Invalid JSON in header
+curl -X POST http://localhost:8000/extract \
+  -H "X-Extraction-Config: {invalid-json}" \
+  -F "data=@document.pdf"
+
+# Response: 400 Bad Request
+{
+  "message": "Invalid JSON in X-Extraction-Config header: ...",
+  "details": "{\"error\": \"...\"}"
+}
 ```
 
 ## Error Handling
@@ -118,9 +241,11 @@ Error responses include:
 
 ## Features
 
+- **Runtime Configuration**: Configure extraction via query parameters and HTTP headers
 - **Batch Processing**: Extract from multiple files in a single request
 - **Automatic Format Detection**: Detects file types from MIME types
 - **OCR Support**: Automatically applies OCR to images and scanned PDFs
+- **Configuration Precedence**: Flexible configuration merging with clear precedence
 - **Structured Logging**: Uses structlog for detailed logging
 - **OpenTelemetry**: Built-in observability support
 - **Async Processing**: High-performance async request handling

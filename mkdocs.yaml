@@ -136,7 +136,7 @@ nav:
       - OCR Backends: user-guide/ocr-backends.md
       - Document Classification: user-guide/document-classification.md
       - Supported Formats: user-guide/supported-formats.md
-      - Performance Analysis: performance-analysis.md
+      - Performance Analysis: advanced/performance.md
       - MCP Server: user-guide/mcp-server.md
       - API Server: user-guide/api-server.md
       - Docker: user-guide/docker.md
