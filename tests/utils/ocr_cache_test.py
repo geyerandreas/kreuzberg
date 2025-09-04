@@ -1,5 +1,3 @@
-"""Tests for shared OCR cache utilities."""
-
 from __future__ import annotations
 
 import tempfile

@@ -61,7 +61,6 @@ class ImageExtractor(Extractor):
         return self._apply_quality_processing(result)
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
-        """Pure sync implementation of extract_bytes."""
         extension = self._get_extension_from_mime_type(self.mime_type)
         fd, temp_path = tempfile.mkstemp(suffix=f".{extension}")
 
@@ -75,7 +74,6 @@ class ImageExtractor(Extractor):
                 Path(temp_path).unlink()
 
     def extract_path_sync(self, path: Path) -> ExtractionResult:
-        """Pure sync implementation of extract_path."""
         if self.config.ocr_backend is None:
             raise ValidationError("ocr_backend is None, cannot perform OCR")
 

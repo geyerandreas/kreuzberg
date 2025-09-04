@@ -231,7 +231,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                 ocr_cache.mark_complete(**cache_kwargs)
 
     async def _handle_cache_lookup(self, cache_kwargs: dict[str, Any]) -> ExtractionResult | None:
-        """Handle cache lookup before processing."""
         ocr_cache = get_ocr_cache()
 
         cached_result = await ocr_cache.aget(**cache_kwargs)
@@ -249,7 +248,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         return None
 
     def _prepare_tesseract_run_config(self, **kwargs: Any) -> dict[str, Any]:
-        """Prepare configuration for a Tesseract run."""
         language = self._validate_language_code(kwargs.pop("language", "eng"))
         psm = kwargs.pop("psm", PSMMode.AUTO)
         output_format = kwargs.pop("output_format", "markdown")
@@ -282,7 +280,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         }
 
     async def _execute_tesseract(self, path: Path, output_base: str, run_config: dict[str, Any]) -> None:
-        """Build and execute the Tesseract command."""
         command = [
             "tesseract",
             str(path),
@@ -327,7 +324,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             ) from e
 
     async def _process_tesseract_output(self, output: str, run_config: dict[str, Any]) -> ExtractionResult:
-        """Process the raw output from Tesseract based on the requested format."""
         output_format = run_config["output_format"]
         enable_table_detection = run_config["enable_table_detection"]
         kwargs = run_config["remaining_kwargs"]
@@ -413,17 +409,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         table_row_threshold_ratio: float = 0.5,
         table_min_confidence: float = 30.0,
     ) -> ExtractionResult:
-        """Process TSV output and extract tables if detected.
-
-        Args:
-            tsv_content: Raw TSV output from Tesseract.
-            table_column_threshold: Pixel threshold for column clustering.
-            table_row_threshold_ratio: Row threshold as ratio of mean text height.
-            table_min_confidence: Minimum confidence score to include a word.
-
-        Returns:
-            ExtractionResult with extracted content and tables.
-        """
         text_result = self._extract_text_from_tsv(tsv_content)
 
         try:
@@ -460,14 +445,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         return text_result
 
     def _extract_text_from_tsv(self, tsv_content: str) -> ExtractionResult:
-        """Extract plain text from TSV output.
-
-        Args:
-            tsv_content: Raw TSV output from Tesseract.
-
-        Returns:
-            ExtractionResult with extracted text.
-        """
         try:
             reader = csv.DictReader(StringIO(tsv_content), delimiter="\t")
 
@@ -527,20 +504,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         table_min_confidence: float = 30.0,
         **_kwargs: Any,
     ) -> ExtractionResult:
-        """Convert hOCR content to Markdown with table detection.
-
-        Args:
-            hocr_content: Raw hOCR HTML/XML content from Tesseract.
-            enable_table_detection: Whether to detect and format tables.
-            html_to_markdown_config: Configuration for HTML to Markdown conversion.
-            table_column_threshold: Pixel threshold for column clustering.
-            table_row_threshold_ratio: Row threshold as ratio of mean text height.
-            table_min_confidence: Minimum confidence score to include a word.
-            **kwargs: Additional configuration options.
-
-        Returns:
-            ExtractionResult with Markdown content and detected tables.
-        """
         config = html_to_markdown_config or HTMLToMarkdownConfig(
             escape_asterisks=False,
             escape_underscores=False,
@@ -610,20 +573,15 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         )
 
     def _create_basic_converters(self) -> dict[str, Any]:
-        """Create basic converters for individual hOCR elements."""
-
         def ocrx_word_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
-            """Custom converter for hOCR word elements - adds spaces between words."""
             del tag
             return f"{text.strip()} "
 
         def ocr_line_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
-            """Custom converter for hOCR line elements - handles line breaks."""
             del tag
             return f"{text.strip()}\n"
 
         def ocr_par_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
-            """Custom converter for hOCR paragraph elements - handles paragraph breaks."""
             del tag
             content = text.strip()
             if not content:
@@ -631,7 +589,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             return f"{content}\n\n"
 
         def ocr_carea_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
-            """Custom converter for hOCR content area elements."""
             del tag
             content = text.strip()
             if not content:
@@ -639,17 +596,14 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             return f"{content}\n\n"
 
         def ocr_page_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
-            """Custom converter for hOCR page elements."""
             del tag
             return text.strip()
 
         def ocr_separator_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
-            """Custom converter for hOCR separator elements - convert to horizontal rules."""
             del tag, text
             return "---\n"
 
         def ocr_photo_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
-            """Custom converter for hOCR photo/image elements - indicate image presence."""
             del text
             title = tag.get("title", "")
             if isinstance(title, str):
@@ -672,18 +626,9 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         }
 
     def _create_hocr_converters(self, _tables: list[TableData]) -> dict[str, Any]:
-        """Create custom converters for hOCR elements that preserve spacing.
-
-        Args:
-            tables: List of detected tables (not used for filtering, tables added separately).
-
-        Returns:
-            Dictionary mapping HTML tags to converter functions.
-        """
         basic_converters = self._create_basic_converters()
 
         def generic_div_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
-            """Generic converter for div elements based on class."""
             class_attr = tag.get("class", "")
             if isinstance(class_attr, list):
                 class_attr = " ".join(class_attr)
@@ -697,7 +642,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             return text
 
         def generic_span_converter(*, tag: Tag, text: str, **_conv_kwargs: Any) -> str:
-            """Generic converter for span elements based on class."""
             class_attr = tag.get("class", "")
             if isinstance(class_attr, list):
                 class_attr = " ".join(class_attr)
@@ -717,15 +661,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         }
 
     def _process_hocr_to_markdown_sync(self, hocr_content: str, config: TesseractConfig) -> ExtractionResult:
-        """Synchronously process hOCR content to markdown format.
-
-        Args:
-            hocr_content: Raw hOCR content as string
-            config: Tesseract configuration object
-
-        Returns:
-            ExtractionResult with markdown content
-        """
         tables: list[TableData] = []
 
         if config.enable_table_detection:
@@ -795,17 +730,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         table_row_threshold_ratio: float = 0.5,
         table_min_confidence: float = 30.0,
     ) -> ExtractionResult:
-        """Synchronously process TSV output and extract tables if detected.
-
-        Args:
-            tsv_content: Raw TSV output from Tesseract.
-            table_column_threshold: Pixel threshold for column clustering.
-            table_row_threshold_ratio: Row threshold as ratio of mean text height.
-            table_min_confidence: Minimum confidence score to include a word.
-
-        Returns:
-            ExtractionResult with extracted content and tables.
-        """
         text_result = self._extract_text_from_tsv(tsv_content)
 
         try:
@@ -848,17 +772,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         row_threshold_ratio: float = 0.5,
         min_confidence: float = 30.0,
     ) -> list[TableData]:
-        """Extract tables from hOCR structure using coordinate analysis.
-
-        Args:
-            soup: Parsed hOCR BeautifulSoup object.
-            column_threshold: Pixel threshold for column clustering.
-            row_threshold_ratio: Row threshold as ratio of mean text height.
-            min_confidence: Minimum confidence score to include a word.
-
-        Returns:
-            List of detected tables as TableData objects.
-        """
         tsv_data = await self._hocr_to_tsv_data(soup, min_confidence)
 
         if not tsv_data:
@@ -903,15 +816,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         return tables
 
     async def _hocr_to_tsv_data(self, soup: Any, min_confidence: float) -> str:
-        """Convert hOCR structure to TSV format for table extraction.
-
-        Args:
-            soup: Parsed hOCR BeautifulSoup object.
-            min_confidence: Minimum confidence score to include.
-
-        Returns:
-            TSV formatted string compatible with table extractor.
-        """
         tsv_lines = ["level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext"]
 
         words = soup.find_all("span", class_="ocrx_word")
@@ -947,14 +851,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         return "\n".join(tsv_lines)
 
     def _identify_table_regions(self, words: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
-        """Identify potential table regions from word coordinates.
-
-        Args:
-            words: List of word dictionaries with coordinates.
-
-        Returns:
-            List of word groups representing potential tables.
-        """
         if not words:
             return []
 
@@ -962,11 +858,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
     @classmethod
     async def _validate_tesseract_version(cls) -> None:
-        """Validate that Tesseract is installed and is version 5 or above.
-
-        Raises:
-            MissingDependencyError: If Tesseract is not installed or is below version 5.
-        """
         try:
             if cls._version_checked:
                 return
@@ -992,7 +883,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             ) from e
 
     def _handle_cache_lookup_sync(self, cache_kwargs: dict[str, Any]) -> ExtractionResult | None:
-        """Handle cache lookup before processing (sync)."""
         ocr_cache = get_ocr_cache()
 
         cached_result = ocr_cache.get(**cache_kwargs)
@@ -1010,7 +900,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         return None
 
     def _execute_tesseract_sync(self, command: list[str]) -> None:
-        """Run tesseract command synchronously."""
         env = os.environ.copy()
         if sys.platform.startswith("linux"):
             env["OMP_THREAD_LIMIT"] = "1"
@@ -1038,7 +927,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             ) from e
 
     def _process_tesseract_output_sync(self, output: str, run_config: dict[str, Any]) -> ExtractionResult:
-        """Process the raw output from Tesseract based on the requested format (sync)."""
         output_format = run_config["output_format"]
         enable_table_detection = run_config["enable_table_detection"]
         kwargs = run_config["remaining_kwargs"]
@@ -1063,7 +951,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         )
 
     def process_image_sync(self, image: PILImage, **kwargs: Unpack[TesseractConfig]) -> ExtractionResult:
-        """Synchronously process an image and extract its text and metadata."""
         use_cache = kwargs.pop("use_cache", True)
 
         save_image = image
@@ -1107,7 +994,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                 ocr_cache.mark_complete(**cache_kwargs)
 
     def process_file_sync(self, path: Path, **kwargs: Unpack[TesseractConfig]) -> ExtractionResult:
-        """Synchronously process a file and extract its text and metadata."""
         use_cache = kwargs.pop("use_cache", True)
 
         file_info = self._get_file_info(path)
@@ -1188,7 +1074,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                 ocr_cache.mark_complete(**cache_kwargs)
 
     def _get_file_info(self, path: Path) -> dict[str, Any]:
-        """Get file information for caching."""
         try:
             stat = path.stat()
             return {
@@ -1206,7 +1091,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
     def _build_tesseract_command(
         self, path: Path, output_base: str, language: str, psm: PSMMode, output_format: str = "text", **kwargs: Any
     ) -> list[str]:
-        """Build tesseract command with all parameters."""
         command = [
             "tesseract",
             str(path),
@@ -1235,11 +1119,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
     @classmethod
     def _validate_tesseract_version_sync(cls) -> None:
-        """Synchronously validate that Tesseract is installed and is version 5 or above.
-
-        Raises:
-            MissingDependencyError: If Tesseract is not installed or is below version 5.
-        """
         try:
             if cls._version_checked:
                 return
@@ -1265,17 +1144,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
     @staticmethod
     def _validate_language_code(language_code: str) -> str:
-        """Convert a language code to Tesseract format.
-
-        Args:
-            language_code: Tesseract supported language code or multiple language codes connected with '+'
-
-        Raises:
-            ValidationError: If the language is not supported by Tesseract
-
-        Returns:
-            Language code compatible with Tesseract
-        """
         normalized = language_code.lower()
         if normalized in TESSERACT_SUPPORTED_LANGUAGE_CODES:
             return normalized
@@ -1300,18 +1168,6 @@ def _process_image_with_tesseract(
     image_path: str,
     config_dict: dict[str, Any],
 ) -> dict[str, Any]:
-    """Process a single image with Tesseract in a separate process.
-
-    This function is designed to be executed in a subprocess.
-    It uses direct tesseract command execution to avoid async complications.
-
-    Args:
-        image_path: Path to the image file.
-        config_dict: Tesseract configuration as dictionary.
-
-    Returns:
-        OCR result as dictionary.
-    """
     try:
         with tempfile.NamedTemporaryFile(suffix=".txt", delete=False) as tmp_file:
             output_base = tmp_file.name.replace(".txt", "")
@@ -1399,15 +1255,6 @@ def _process_image_bytes_with_tesseract(
     image_bytes: bytes,
     config_dict: dict[str, Any],
 ) -> dict[str, Any]:
-    """Process image bytes with Tesseract in a separate process.
-
-    Args:
-        image_bytes: Image data as bytes.
-        config_dict: Tesseract configuration as dictionary.
-
-    Returns:
-        OCR result as dictionary.
-    """
     try:
         with (
             tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_image,
@@ -1433,21 +1280,12 @@ def _process_image_bytes_with_tesseract(
 
 
 class TesseractProcessPool:
-    """Process pool for parallel Tesseract OCR processing."""
-
     def __init__(
         self,
         config: TesseractConfig | None = None,
         max_processes: int | None = None,
         memory_limit_gb: float | None = None,
     ) -> None:
-        """Initialize the Tesseract process pool.
-
-        Args:
-            config: Default Tesseract configuration.
-            max_processes: Maximum number of processes.
-            memory_limit_gb: Memory limit in GB.
-        """
         from kreuzberg._utils._process_pool import ProcessPoolManager  # noqa: PLC0415
 
         self.config = config or TesseractConfig()
@@ -1457,7 +1295,6 @@ class TesseractProcessPool:
         )
 
     def _config_to_dict(self, config: TesseractConfig | None = None) -> dict[str, Any]:
-        """Convert TesseractConfig to dictionary for pickling."""
         cfg = config or self.config
 
         config_dict = {}
@@ -1472,7 +1309,6 @@ class TesseractProcessPool:
         return config_dict
 
     def _result_from_dict(self, result_dict: dict[str, Any]) -> ExtractionResult:
-        """Convert result dictionary back to OCRResult."""
         if not result_dict["success"]:
             raise OCRError(f"Tesseract processing failed: {result_dict['error']}")
 
@@ -1488,15 +1324,6 @@ class TesseractProcessPool:
         image_path: str | Path,
         config: TesseractConfig | None = None,
     ) -> ExtractionResult:
-        """Process a single image file with Tesseract.
-
-        Args:
-            image_path: Path to the image file.
-            config: Tesseract configuration (uses default if None).
-
-        Returns:
-            OCR result.
-        """
         config_dict = self._config_to_dict(config)
 
         task_memory_mb = 80
@@ -1515,15 +1342,6 @@ class TesseractProcessPool:
         image_bytes: bytes,
         config: TesseractConfig | None = None,
     ) -> ExtractionResult:
-        """Process image bytes with Tesseract.
-
-        Args:
-            image_bytes: Image data as bytes.
-            config: Tesseract configuration (uses default if None).
-
-        Returns:
-            OCR result.
-        """
         config_dict = self._config_to_dict(config)
 
         image_size_mb = len(image_bytes) / 1024 / 1024
@@ -1544,16 +1362,6 @@ class TesseractProcessPool:
         config: TesseractConfig | None = None,
         max_concurrent: int | None = None,
     ) -> list[ExtractionResult]:
-        """Process a batch of images in parallel.
-
-        Args:
-            image_paths: List of image file paths.
-            config: Tesseract configuration (uses default if None).
-            max_concurrent: Maximum concurrent processes.
-
-        Returns:
-            List of OCR results in the same order as input.
-        """
         if not image_paths:
             return []
 
@@ -1578,16 +1386,6 @@ class TesseractProcessPool:
         config: TesseractConfig | None = None,
         max_concurrent: int | None = None,
     ) -> list[ExtractionResult]:
-        """Process a batch of image bytes in parallel.
-
-        Args:
-            image_bytes_list: List of image data as bytes.
-            config: Tesseract configuration (uses default if None).
-            max_concurrent: Maximum concurrent processes.
-
-        Returns:
-            List of OCR results in the same order as input.
-        """
         if not image_bytes_list:
             return []
 
@@ -1608,15 +1406,12 @@ class TesseractProcessPool:
         return [self._result_from_dict(result_dict) for result_dict in result_dicts]
 
     def get_system_info(self) -> dict[str, Any]:
-        """Get system information from the process manager."""
         return self.process_manager.get_system_info()
 
     def shutdown(self, wait: bool = True) -> None:
-        """Shutdown the process pool."""
         self.process_manager.shutdown(wait=wait)
 
     async def __aenter__(self) -> Self:
-        """Async context manager entry."""
         return self
 
     async def __aexit__(
@@ -1625,5 +1420,4 @@ class TesseractProcessPool:
         exc_val: BaseException | None,
         exc_tb: object,
     ) -> None:
-        """Async context manager exit."""
         self.shutdown()

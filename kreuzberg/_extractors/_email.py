@@ -42,7 +42,6 @@ class EmailExtractor(Extractor):
     def _extract_email_headers(
         self, parsed_email: dict[str, Any], text_parts: list[str], metadata: dict[str, Any]
     ) -> None:
-        """Extract and process email headers."""
         subject = parsed_email.get("subject")
         if subject:
             metadata["subject"] = subject
@@ -85,7 +84,6 @@ class EmailExtractor(Extractor):
             text_parts.append(f"BCC: {bcc_formatted}")
 
     def _format_email_field(self, field: Any) -> str:
-        """Format email field (to, cc, bcc) for display."""
         if isinstance(field, list):
             emails = []
             for item in field:
@@ -101,7 +99,6 @@ class EmailExtractor(Extractor):
         return str(field)
 
     def _extract_email_body(self, parsed_email: dict[str, Any], text_parts: list[str]) -> None:
-        """Extract and process email body content."""
         text_content = parsed_email.get("text")
         if text_content:
             text_parts.append(f"\n{text_content}")
@@ -123,7 +120,6 @@ class EmailExtractor(Extractor):
     def _extract_email_attachments(
         self, parsed_email: dict[str, Any], text_parts: list[str], metadata: dict[str, Any]
     ) -> None:
-        """Extract and process email attachments info."""
         if parsed_email.get("attachments"):
             attachment_names = [att.get("name", "unknown") for att in parsed_email["attachments"]]
             metadata["attachments"] = attachment_names

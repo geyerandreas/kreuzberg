@@ -44,15 +44,6 @@ _NAVIGATION_PATTERNS = {
 
 
 def calculate_quality_score(text: str, metadata: dict[str, Any] | None = None) -> float:
-    """Calculate overall quality score for extracted text.
-
-    Args:
-        text: The extracted text content
-        metadata: Optional metadata for additional scoring
-
-    Returns:
-        Quality score between 0.0 and 1.0
-    """
     if not text or not text.strip():
         return 0.0
 
@@ -79,14 +70,6 @@ def calculate_quality_score(text: str, metadata: dict[str, Any] | None = None) -
 
 
 def clean_extracted_text(text: str) -> str:
-    """Clean extracted text by removing artifacts and improving quality.
-
-    Args:
-        text: The raw extracted text
-
-    Returns:
-        Cleaned text with artifacts removed
-    """
     if not text:
         return text
 

@@ -57,18 +57,6 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
     _paddle_ocr: ClassVar[Any] = None
 
     async def process_image(self, image: Image.Image, **kwargs: Unpack[PaddleOCRConfig]) -> ExtractionResult:
-        """Asynchronously process an image and extract its text and metadata using PaddleOCR.
-
-        Args:
-            image: An instance of PIL.Image representing the input image.
-            **kwargs: Configuration parameters for PaddleOCR including language, detection thresholds, etc.
-
-        Returns:
-            ExtractionResult: The extraction result containing text content, mime type, and metadata.
-
-        Raises:
-            OCRError: If OCR processing fails.
-        """
         use_cache = kwargs.pop("use_cache", True)
 
         cache_kwargs = None
@@ -102,18 +90,6 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
             raise OCRError(f"Failed to OCR using PaddleOCR: {e}") from e
 
     async def process_file(self, path: Path, **kwargs: Unpack[PaddleOCRConfig]) -> ExtractionResult:
-        """Asynchronously process a file and extract its text and metadata using PaddleOCR.
-
-        Args:
-            path: A Path object representing the file to be processed.
-            **kwargs: Configuration parameters for PaddleOCR including language, detection thresholds, etc.
-
-        Returns:
-            ExtractionResult: The extraction result containing text content, mime type, and metadata.
-
-        Raises:
-            OCRError: If file loading or OCR processing fails.
-        """
         use_cache = kwargs.pop("use_cache", True)
 
         cache_kwargs = None
@@ -143,15 +119,6 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
 
     @staticmethod
     def _process_paddle_result(result: list[Any] | Any, image: Image.Image) -> ExtractionResult:
-        """Process PaddleOCR result into an ExtractionResult with metadata.
-
-        Args:
-            result: The raw result from PaddleOCR.
-            image: The original PIL image.
-
-        Returns:
-            ExtractionResult: The extraction result containing text content, mime type, and metadata.
-        """
         text_content = ""
         confidence_sum = 0
         confidence_count = 0
@@ -211,11 +178,6 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
 
     @classmethod
     def _is_mkldnn_supported(cls) -> bool:
-        """Check if the current architecture supports MKL-DNN optimization.
-
-        Returns:
-            True if MKL-DNN is supported on this architecture.
-        """
         system = platform.system().lower()
         processor = platform.processor().lower()
         machine = platform.machine().lower()
@@ -230,15 +192,6 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
 
     @classmethod
     async def _init_paddle_ocr(cls, **kwargs: Unpack[PaddleOCRConfig]) -> None:
-        """Initialize PaddleOCR with the provided configuration.
-
-        Args:
-            **kwargs: Configuration parameters for PaddleOCR including language, detection thresholds, etc.
-
-        Raises:
-            MissingDependencyError: If PaddleOCR is not installed.
-            OCRError: If initialization fails.
-        """
         if cls._paddle_ocr is not None:
             return
 
@@ -277,17 +230,6 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
 
     @classmethod
     def _resolve_device_config(cls, **kwargs: Unpack[PaddleOCRConfig]) -> DeviceInfo:
-        """Resolve device configuration with backward compatibility.
-
-        Args:
-            **kwargs: Configuration parameters including device settings.
-
-        Returns:
-            DeviceInfo object for the selected device.
-
-        Raises:
-            ValidationError: If requested device is not available and fallback is disabled.
-        """
         use_gpu = kwargs.get("use_gpu", False)
         device = kwargs.get("device", "auto")
         memory_limit = kwargs.get("gpu_memory_limit")
@@ -332,17 +274,6 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
 
     @staticmethod
     def _validate_language_code(lang_code: str) -> str:
-        """Convert a language code to PaddleOCR format.
-
-        Args:
-            lang_code: ISO language code or language name
-
-        Raises:
-            ValidationError: If the language is not supported by PaddleOCR
-
-        Returns:
-            Language code compatible with PaddleOCR
-        """
         normalized = lang_code.lower()
         if normalized in PADDLEOCR_SUPPORTED_LANGUAGE_CODES:
             return normalized
@@ -356,18 +287,6 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         )
 
     def process_image_sync(self, image: Image.Image, **kwargs: Unpack[PaddleOCRConfig]) -> ExtractionResult:
-        """Synchronously process an image and extract its text and metadata using PaddleOCR.
-
-        Args:
-            image: An instance of PIL.Image representing the input image.
-            **kwargs: Configuration parameters for PaddleOCR including language, detection thresholds, etc.
-
-        Returns:
-            ExtractionResult: The extraction result containing text content, mime type, and metadata.
-
-        Raises:
-            OCRError: If OCR processing fails.
-        """
         use_cache = kwargs.pop("use_cache", True)
 
         cache_kwargs = None
@@ -401,18 +320,6 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
             raise OCRError(f"Failed to OCR using PaddleOCR: {e}") from e
 
     def process_file_sync(self, path: Path, **kwargs: Unpack[PaddleOCRConfig]) -> ExtractionResult:
-        """Synchronously process a file and extract its text and metadata using PaddleOCR.
-
-        Args:
-            path: A Path object representing the file to be processed.
-            **kwargs: Configuration parameters for PaddleOCR including language, detection thresholds, etc.
-
-        Returns:
-            ExtractionResult: The extraction result containing text content, mime type, and metadata.
-
-        Raises:
-            OCRError: If file loading or OCR processing fails.
-        """
         use_cache = kwargs.pop("use_cache", True)
 
         cache_kwargs = None
@@ -442,15 +349,6 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
 
     @classmethod
     def _init_paddle_ocr_sync(cls, **kwargs: Unpack[PaddleOCRConfig]) -> None:
-        """Synchronously initialize PaddleOCR with the provided configuration.
-
-        Args:
-            **kwargs: Configuration parameters for PaddleOCR including language, detection thresholds, etc.
-
-        Raises:
-            MissingDependencyError: If PaddleOCR is not installed.
-            OCRError: If initialization fails.
-        """
         if cls._paddle_ocr is not None:
             return
 

@@ -42,17 +42,6 @@ DOCUMENT_CLASSIFIERS = {
 
 
 def _get_translated_text(result: ExtractionResult) -> str:
-    """Translate extracted text to English using Google Translate API.
-
-    Args:
-        result: ExtractionResult containing the text to be translated
-
-    Returns:
-        str: The translated text in lowercase English
-
-    Raises:
-        MissingDependencyError: If the deep-translator package is not installed
-    """
     text_to_classify = result.content
     if result.metadata:
         metadata_text = " ".join(str(value) for value in result.metadata.values() if value)
@@ -72,16 +61,6 @@ def _get_translated_text(result: ExtractionResult) -> str:
 
 
 def classify_document(result: ExtractionResult, config: ExtractionConfig) -> tuple[str | None, float | None]:
-    """Classifies the document type based on keywords and patterns.
-
-    Args:
-        result: The extraction result containing the content.
-        config: The extraction configuration.
-
-    Returns:
-        A tuple containing the detected document type and the confidence score,
-        or (None, None) if no type is detected with sufficient confidence.
-    """
     if not config.auto_detect_document_type:
         return None, None
 
@@ -110,16 +89,6 @@ def classify_document(result: ExtractionResult, config: ExtractionConfig) -> tup
 def classify_document_from_layout(
     result: ExtractionResult, config: ExtractionConfig
 ) -> tuple[str | None, float | None]:
-    """Classifies the document type based on layout information from OCR.
-
-    Args:
-        result: The extraction result containing the layout data.
-        config: The extraction configuration.
-
-    Returns:
-        A tuple containing the detected document type and the confidence score,
-        or (None, None) if no type is detected with sufficient confidence.
-    """
     if not config.auto_detect_document_type:
         return None, None
 

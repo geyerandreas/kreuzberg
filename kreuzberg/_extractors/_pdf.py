@@ -93,7 +93,6 @@ class PDFExtractor(Extractor):
         return self._apply_quality_processing(result)
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
-        """Pure sync implementation of PDF extraction from bytes."""
         fd, temp_path = tempfile.mkstemp(suffix=".pdf")
         try:
             with os.fdopen(fd, "wb") as f:
@@ -110,7 +109,6 @@ class PDFExtractor(Extractor):
                 Path(temp_path).unlink()
 
     def extract_path_sync(self, path: Path) -> ExtractionResult:
-        """Pure sync implementation of PDF extraction from path."""
         try:
             text = self._extract_pdf_searchable_text_sync(path)
         except ParsingError:
@@ -330,7 +328,6 @@ class PDFExtractor(Extractor):
         return "\n\n".join(result.content for result in results)
 
     def _process_pdf_images_with_ocr_direct(self, images: list[Image]) -> str:
-        """Process PIL images directly without temp files."""
         backend = get_ocr_backend(self.config.ocr_backend)
 
         match self.config.ocr_backend:

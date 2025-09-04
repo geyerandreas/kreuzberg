@@ -142,18 +142,6 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
     _reader: ClassVar[Any] = None
 
     async def process_image(self, image: Image.Image, **kwargs: Unpack[EasyOCRConfig]) -> ExtractionResult:
-        """Asynchronously process an image and extract its text and metadata using EasyOCR.
-
-        Args:
-            image: An instance of PIL.Image representing the input image.
-            **kwargs: Configuration parameters for EasyOCR including language, detection thresholds, etc.
-
-        Returns:
-            ExtractionResult: The extraction result containing text content, mime type, and metadata.
-
-        Raises:
-            OCRError: If OCR processing fails.
-        """
         use_cache = kwargs.pop("use_cache", True)
 
         cache_kwargs = None
@@ -195,18 +183,6 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
             raise OCRError(f"Failed to OCR using EasyOCR: {e}") from e
 
     async def process_file(self, path: Path, **kwargs: Unpack[EasyOCRConfig]) -> ExtractionResult:
-        """Asynchronously process a file and extract its text and metadata using EasyOCR.
-
-        Args:
-            path: A Path object representing the file to be processed.
-            **kwargs: Configuration parameters for EasyOCR including language, detection thresholds, etc.
-
-        Returns:
-            ExtractionResult: The extraction result containing text content, mime type, and metadata.
-
-        Raises:
-            OCRError: If file loading or OCR processing fails.
-        """
         use_cache = kwargs.pop("use_cache", True)
 
         cache_kwargs = None
@@ -388,17 +364,6 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
 
     @staticmethod
     def _validate_language_code(language_codes: str | list[str]) -> list[str]:
-        """Validate and normalize provided language codes.
-
-        Args:
-            language_codes: The language code(s), either as a string (single or comma-separated) or a list.
-
-        Raises:
-            ValidationError: If any of the languages are not supported by EasyOCR
-
-        Returns:
-            A list with the normalized language codes.
-        """
         if isinstance(language_codes, str):
             languages = [lang.strip().lower() for lang in language_codes.split(",")]
         else:
@@ -417,18 +382,6 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
         return languages
 
     def process_image_sync(self, image: Image.Image, **kwargs: Unpack[EasyOCRConfig]) -> ExtractionResult:
-        """Synchronously process an image and extract its text and metadata using EasyOCR.
-
-        Args:
-            image: An instance of PIL.Image representing the input image.
-            **kwargs: Configuration parameters for EasyOCR including language, detection thresholds, etc.
-
-        Returns:
-            ExtractionResult: The extraction result containing text content, mime type, and metadata.
-
-        Raises:
-            OCRError: If OCR processing fails.
-        """
         use_cache = kwargs.pop("use_cache", True)
 
         cache_kwargs = None
@@ -468,18 +421,6 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
             raise OCRError(f"Failed to OCR using EasyOCR: {e}") from e
 
     def process_file_sync(self, path: Path, **kwargs: Unpack[EasyOCRConfig]) -> ExtractionResult:
-        """Synchronously process a file and extract its text and metadata using EasyOCR.
-
-        Args:
-            path: A Path object representing the file to be processed.
-            **kwargs: Configuration parameters for EasyOCR including language, detection thresholds, etc.
-
-        Returns:
-            ExtractionResult: The extraction result containing text content, mime type, and metadata.
-
-        Raises:
-            OCRError: If file loading or OCR processing fails.
-        """
         use_cache = kwargs.pop("use_cache", True)
 
         cache_kwargs = None
@@ -509,15 +450,6 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
 
     @classmethod
     def _init_easyocr_sync(cls, **kwargs: Unpack[EasyOCRConfig]) -> None:
-        """Synchronously initialize EasyOCR with the provided configuration.
-
-        Args:
-            **kwargs: Configuration parameters for EasyOCR including language, etc.
-
-        Raises:
-            MissingDependencyError: If EasyOCR is not installed.
-            OCRError: If initialization fails.
-        """
         if cls._reader is not None:
             return
 

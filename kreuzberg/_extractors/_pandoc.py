@@ -84,8 +84,6 @@ NodeType = Literal[
 
 
 class PandocExtractor(Extractor):
-    """Extractor for documents supported by Pandoc."""
-
     _checked_version: bool = False
 
     MIMETYPE_TO_PANDOC_TYPE_MAPPING: ClassVar[Mapping[str, str]] = {
@@ -153,14 +151,6 @@ class PandocExtractor(Extractor):
     }
 
     async def extract_bytes_async(self, content: bytes) -> ExtractionResult:
-        """Extract text and metadata from bytes content using Pandoc.
-
-        Args:
-            content: The content bytes to process.
-
-        Returns:
-            ExtractionResult with the extracted text and metadata.
-        """
         extension = self._get_pandoc_type_from_mime_type(self.mime_type)
         input_file, unlink = await create_temp_file(f".{extension}")
 
@@ -171,17 +161,6 @@ class PandocExtractor(Extractor):
             await unlink()
 
     async def extract_path_async(self, path: Path) -> ExtractionResult:
-        """Extract text and metadata from a file using Pandoc.
-
-        Args:
-            path: The path to the file to process.
-
-        Raises:
-            ParsingError: If the file data could not be extracted.
-
-        Returns:
-            ExtractionResult with the extracted text and metadata.
-        """
         await self._validate_pandoc_version()
         self._get_pandoc_type_from_mime_type(self.mime_type)
 
@@ -198,14 +177,6 @@ class PandocExtractor(Extractor):
             raise ParsingError("Failed to process file", context={"file": str(path), "errors": eg.exceptions}) from eg
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
-        """Pure sync implementation of extract_bytes.
-
-        Args:
-            content: The content bytes to process.
-
-        Returns:
-            ExtractionResult with the extracted text and metadata.
-        """
         extension = self._get_pandoc_type_from_mime_type(self.mime_type)
         fd, temp_path = tempfile.mkstemp(suffix=f".{extension}")
 
@@ -219,17 +190,6 @@ class PandocExtractor(Extractor):
                 Path(temp_path).unlink()
 
     def extract_path_sync(self, path: Path) -> ExtractionResult:
-        """Pure sync implementation of extract_path.
-
-        Args:
-            path: The path to the file to process.
-
-        Returns:
-            ExtractionResult with the extracted text and metadata.
-
-        Raises:
-            ParsingError: When file processing fails.
-        """
         self._validate_pandoc_version_sync()
         self._get_pandoc_type_from_mime_type(self.mime_type)
 
@@ -612,8 +572,6 @@ class PandocExtractor(Extractor):
 
 
 class MarkdownExtractor(PandocExtractor):
-    """Extractor for Markdown-based document formats."""
-
     SUPPORTED_MIME_TYPES: ClassVar[set[str]] = {
         "text/x-markdown",
         "text/x-commonmark",
@@ -625,8 +583,6 @@ class MarkdownExtractor(PandocExtractor):
 
 
 class OfficeDocumentExtractor(PandocExtractor):
-    """Extractor for Office document formats (Word, ODT)."""
-
     SUPPORTED_MIME_TYPES: ClassVar[set[str]] = {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/vnd.oasis.opendocument.text",
@@ -634,8 +590,6 @@ class OfficeDocumentExtractor(PandocExtractor):
 
 
 class EbookExtractor(PandocExtractor):
-    """Extractor for e-book formats (EPUB, FB2)."""
-
     SUPPORTED_MIME_TYPES: ClassVar[set[str]] = {
         "application/epub+zip",
         "application/x-fictionbook+xml",
@@ -643,8 +597,6 @@ class EbookExtractor(PandocExtractor):
 
 
 class StructuredTextExtractor(PandocExtractor):
-    """Extractor for structured text formats (RST, Org, etc.)."""
-
     SUPPORTED_MIME_TYPES: ClassVar[set[str]] = {
         "text/x-rst",
         "text/x-org",
@@ -654,8 +606,6 @@ class StructuredTextExtractor(PandocExtractor):
 
 
 class LaTeXExtractor(PandocExtractor):
-    """Extractor for LaTeX and Typst documents."""
-
     SUPPORTED_MIME_TYPES: ClassVar[set[str]] = {
         "application/x-latex",
         "application/x-typst",
@@ -663,8 +613,6 @@ class LaTeXExtractor(PandocExtractor):
 
 
 class BibliographyExtractor(PandocExtractor):
-    """Extractor for bibliography formats (BibTeX, CSL JSON, etc.)."""
-
     SUPPORTED_MIME_TYPES: ClassVar[set[str]] = {
         "application/x-bibtex",
         "application/x-biblatex",
@@ -675,8 +623,6 @@ class BibliographyExtractor(PandocExtractor):
 
 
 class XMLBasedExtractor(PandocExtractor):
-    """Extractor for XML-based document formats (DocBook, JATS, OPML)."""
-
     SUPPORTED_MIME_TYPES: ClassVar[set[str]] = {
         "application/docbook+xml",
         "application/x-jats+xml",
@@ -685,8 +631,6 @@ class XMLBasedExtractor(PandocExtractor):
 
 
 class TabularDataExtractor(PandocExtractor):
-    """Extractor for tabular data formats (CSV, TSV)."""
-
     SUPPORTED_MIME_TYPES: ClassVar[set[str]] = {
         "text/csv",
         "text/tab-separated-values",
@@ -694,8 +638,6 @@ class TabularDataExtractor(PandocExtractor):
 
 
 class MiscFormatExtractor(PandocExtractor):
-    """Extractor for miscellaneous formats (RTF, man, Jupyter notebooks)."""
-
     SUPPORTED_MIME_TYPES: ClassVar[set[str]] = {
         "application/rtf",
         "text/troff",

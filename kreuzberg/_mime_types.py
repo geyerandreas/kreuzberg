@@ -173,21 +173,6 @@ SUPPORTED_MIME_TYPES: Final[set[str]] = (
 def validate_mime_type(
     *, file_path: PathLike[str] | str | None = None, mime_type: str | None = None, check_file_exists: bool = True
 ) -> str:
-    """Validate and detect the MIME type for a given file.
-
-    Args:
-        file_path: The path to the file.
-        mime_type: Optional explicit MIME type. If provided, this will be validated.
-            If not provided, the function will attempt to detect the MIME type.
-        check_file_exists: Whether to check if the file exists. Default is True.
-            Set to False in tests where you want to validate a mime type without an actual file.
-
-    Raises:
-        ValidationError: If the MIME type is not supported or cannot be determined.
-
-    Returns:
-        The validated MIME type.
-    """
     if mime_type:
         return _validate_explicit_mime_type(mime_type)
 
@@ -227,7 +212,6 @@ def validate_mime_type(
 
 
 def _validate_explicit_mime_type(mime_type: str) -> str:
-    """Validate an explicitly provided MIME type."""
     if mime_type in SUPPORTED_MIME_TYPES:
         return mime_type
 
@@ -242,7 +226,6 @@ def _validate_explicit_mime_type(mime_type: str) -> str:
 
 
 def _detect_mime_type_uncached(file_path: PathLike[str] | str | None = None, check_file_exists: bool = True) -> str:
-    """Detect MIME type without caching (internal function)."""
     if file_path and check_file_exists:
         path = Path(file_path)
         if not path.exists():

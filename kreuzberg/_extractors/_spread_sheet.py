@@ -72,7 +72,6 @@ class SpreadSheetExtractor(Extractor):
             ) from e
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
-        """Pure sync implementation of extract_bytes."""
         fd, temp_path = tempfile.mkstemp(suffix=".xlsx")
 
         try:
@@ -85,7 +84,6 @@ class SpreadSheetExtractor(Extractor):
                 Path(temp_path).unlink()
 
     def extract_path_sync(self, path: Path) -> ExtractionResult:
-        """Pure sync implementation of extract_path."""
         try:
             workbook = CalamineWorkbook.from_path(str(path))
             results = []
