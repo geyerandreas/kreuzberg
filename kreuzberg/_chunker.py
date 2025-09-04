@@ -17,21 +17,6 @@ def get_chunker(
     max_characters: int = DEFAULT_MAX_CHARACTERS,
     overlap_characters: int = DEFAULT_MAX_OVERLAP,
 ) -> MarkdownSplitter | TextSplitter:
-    """Creates and returns a Chunker object configured with the given maximum
-    characters per chunk and overlap between chunks.
-
-    Args:
-        mime_type: The mime type of the content.
-        max_characters: Maximum number of characters allowed in each chunk.
-        overlap_characters: Number of characters overlapping between two consecutive chunks.
-
-    Raises:
-        MissingDependencyError: if semantic-text-splitter is not installed.
-
-    Returns:
-        Chunker: A Chunker object configured with the specified maximum
-            characters and overlap.
-    """
     key = (max_characters, overlap_characters, mime_type)
     if key not in _chunkers:
         try:

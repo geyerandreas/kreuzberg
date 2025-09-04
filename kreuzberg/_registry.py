@@ -28,14 +28,6 @@ if TYPE_CHECKING:
 
 
 class ExtractorRegistry:
-    """Manages extractors for different MIME types and their configurations.
-
-    This class provides functionality to register, unregister, and retrieve
-    extractors based on MIME types. It supports both synchronous and asynchronous
-    operations for managing extractors. A default set of extractors is also
-    maintained alongside user-registered extractors.
-    """
-
     _default_extractors: ClassVar[list[type[Extractor]]] = [
         PDFExtractor,
         OfficeDocumentExtractor,
@@ -59,15 +51,6 @@ class ExtractorRegistry:
     @classmethod
     @lru_cache
     def get_extractor(cls, mime_type: str | None, config: ExtractionConfig) -> Extractor | None:
-        """Gets the extractor for the mimetype.
-
-        Args:
-            mime_type: The mime type of the content.
-            config: Extraction options object, defaults to the default object.
-
-        Returns:
-            The extractor
-        """
         extractors: list[type[Extractor]] = [
             *cls._registered_extractors,
             *cls._default_extractors,
@@ -81,30 +64,11 @@ class ExtractorRegistry:
 
     @classmethod
     def add_extractor(cls, extractor: type[Extractor]) -> None:
-        """Add an extractor to the registry.
-
-        Note:
-            Extractors are tried in the order they are added: first added, first tried.
-
-        Args:
-            extractor: The extractor to add.
-
-        Returns:
-            None
-        """
         cls._registered_extractors.append(extractor)
         cls.get_extractor.cache_clear()
 
     @classmethod
     def remove_extractor(cls, extractor: type[Extractor]) -> None:
-        """Remove an extractor from the registry.
-
-        Args:
-            extractor: The extractor to remove.
-
-        Returns:
-            None
-        """
         try:
             cls._registered_extractors.remove(extractor)
             cls.get_extractor.cache_clear()

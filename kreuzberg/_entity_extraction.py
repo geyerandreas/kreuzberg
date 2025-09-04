@@ -19,21 +19,6 @@ def extract_entities(
     languages: list[str] | None = None,
     spacy_config: SpacyEntityExtractionConfig | None = None,
 ) -> list[Entity]:
-    """Extract entities from text using custom regex patterns and/or a NER model.
-
-    Args:
-        text: The input text to extract entities from.
-        entity_types: List of entity types to extract using the NER model.
-        custom_patterns: Tuple mapping entity types to regex patterns for custom extraction.
-        languages: List of detected languages to choose appropriate spaCy models.
-        spacy_config: Configuration for spaCy entity extraction.
-
-    Returns:
-        list[Entity]: A list of extracted Entity objects with type, text, start, and end positions.
-
-    Raises:
-        MissingDependencyError: If `spacy` is not installed.
-    """
     entities: list[Entity] = []
     if custom_patterns:
         for ent_type, pattern in custom_patterns:
@@ -85,7 +70,6 @@ def extract_entities(
 
 @lru_cache(maxsize=32)
 def _load_spacy_model(model_name: str, spacy_config: SpacyEntityExtractionConfig) -> Any:
-    """Load a spaCy model with caching."""
     try:
         import spacy  # noqa: PLC0415
 
@@ -102,7 +86,6 @@ def _load_spacy_model(model_name: str, spacy_config: SpacyEntityExtractionConfig
 
 
 def _select_spacy_model(languages: list[str] | None, spacy_config: SpacyEntityExtractionConfig) -> str | None:
-    """Select the best spaCy model based on detected languages."""
     if not languages:
         return spacy_config.get_model_for_language("en")
 
@@ -118,18 +101,6 @@ def extract_keywords(
     text: str,
     keyword_count: int = 10,
 ) -> list[tuple[str, float]]:
-    """Extract keywords from text using the KeyBERT model.
-
-    Args:
-        text: The input text to extract keywords from.
-        keyword_count: Number of top keywords to return. Defaults to 10.
-
-    Returns:
-        list[tuple[str, float]]: A list of tuples containing keywords and their relevance scores.
-
-    Raises:
-        MissingDependencyError: If `keybert` is not installed.
-    """
     try:
         from keybert import KeyBERT  # noqa: PLC0415
 

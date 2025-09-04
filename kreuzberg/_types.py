@@ -35,18 +35,7 @@ OutputFormatType = Literal["text", "tsv", "hocr", "markdown"]
 
 
 class ConfigDict:
-    """Abstract base class for configuration objects that can be converted to dictionaries."""
-
     def to_dict(self, include_none: bool = False) -> dict[str, Any]:
-        """Convert configuration to dictionary.
-
-        Args:
-            include_none: If True, include fields with None values.
-                         If False (default), exclude None values.
-
-        Returns:
-            Dictionary representation of the configuration.
-        """
         result = msgspec.to_builtins(
             self,
             builtin_types=(type(None),),
@@ -60,8 +49,6 @@ class ConfigDict:
 
 
 class PSMMode(Enum):
-    """Enum for Tesseract Page Segmentation Modes (PSM) with human-readable values."""
-
     OSD_ONLY = 0
     """Orientation and script detection only."""
     AUTO_OSD = 1
@@ -88,8 +75,6 @@ class PSMMode(Enum):
 
 @dataclass(unsafe_hash=True, frozen=True, slots=True)
 class TesseractConfig(ConfigDict):
-    """Configuration options for Tesseract OCR engine."""
-
     classify_use_pre_adapted_templates: bool = True
     """Whether to use pre-adapted templates during classification to improve recognition accuracy."""
     language: str = "eng"
@@ -132,8 +117,6 @@ class TesseractConfig(ConfigDict):
 
 @dataclass(unsafe_hash=True, frozen=True, slots=True)
 class EasyOCRConfig(ConfigDict):
-    """Configuration options for EasyOCR."""
-
     add_margin: float = 0.1
     """Extend bounding boxes in all directions."""
     adjust_contrast: float = 0.5
@@ -185,21 +168,16 @@ class EasyOCRConfig(ConfigDict):
 
 @dataclass(unsafe_hash=True, frozen=True, slots=True)
 class PaddleOCRConfig(ConfigDict):
-    """Configuration options for PaddleOCR.
-
-    This dataclass provides type hints and documentation for all PaddleOCR parameters.
-    """
-
     cls_image_shape: str = "3,48,192"
     """Image shape for classification algorithm in format 'channels,height,width'."""
     det_algorithm: Literal["DB", "EAST", "SAST", "PSE", "FCE", "PAN", "CT", "DB++", "Layout"] = "DB"
     """Detection algorithm."""
     det_db_box_thresh: float = 0.5
-    """Score threshold for detected boxes. Boxes below this value are discarded."""
+    """DEPRECATED in PaddleOCR 3.2.0+: Use 'text_det_box_thresh' instead. Score threshold for detected boxes."""
     det_db_thresh: float = 0.3
-    """Binarization threshold for DB output map."""
+    """DEPRECATED in PaddleOCR 3.2.0+: Use 'text_det_thresh' instead. Binarization threshold for DB output map."""
     det_db_unclip_ratio: float = 2.0
-    """Expansion ratio for detected text boxes."""
+    """DEPRECATED in PaddleOCR 3.2.0+: Use 'text_det_unclip_ratio' instead. Expansion ratio for detected text boxes."""
     det_east_cover_thresh: float = 0.1
     """Score threshold for EAST output boxes."""
     det_east_nms_thresh: float = 0.2
@@ -215,7 +193,7 @@ class PaddleOCRConfig(ConfigDict):
     enable_mkldnn: bool = False
     """Whether to enable MKL-DNN acceleration (Intel CPU only)."""
     gpu_mem: int = 8000
-    """GPU memory size (in MB) to use for initialization."""
+    """DEPRECATED in PaddleOCR 3.2.0+: Parameter no longer supported. GPU memory size (in MB) to use for initialization."""
     language: str = "en"
     """Language to use for OCR."""
     max_text_length: int = 25
@@ -245,13 +223,13 @@ class PaddleOCRConfig(ConfigDict):
     table: bool = True
     """Whether to enable table recognition."""
     use_angle_cls: bool = True
-    """Whether to use text orientation classification model."""
+    """DEPRECATED in PaddleOCR 3.2.0+: Use 'use_textline_orientation' instead. Whether to use text orientation classification model."""
     use_gpu: bool = False
-    """Whether to use GPU for inference. DEPRECATED: Use 'device' parameter instead."""
+    """DEPRECATED in PaddleOCR 3.2.0+: Parameter no longer supported. Use hardware acceleration flags instead."""
     device: DeviceType = "auto"
     """Device to use for inference. Options: 'cpu', 'cuda', 'auto'. Note: MPS not supported by PaddlePaddle."""
     gpu_memory_limit: float | None = None
-    """Maximum GPU memory to use in GB. None for no limit."""
+    """DEPRECATED in PaddleOCR 3.2.0+: Parameter no longer supported. Maximum GPU memory to use in GB."""
     fallback_to_cpu: bool = True
     """Whether to fallback to CPU if requested device is unavailable."""
     use_space_char: bool = True
@@ -259,14 +237,18 @@ class PaddleOCRConfig(ConfigDict):
     use_zero_copy_run: bool = False
     """Whether to enable zero_copy_run for inference optimization."""
 
+    text_det_thresh: float = 0.3
+    """Binarization threshold for text detection output map (replaces det_db_thresh)."""
+    text_det_box_thresh: float = 0.5
+    """Score threshold for detected text boxes (replaces det_db_box_thresh)."""
+    text_det_unclip_ratio: float = 2.0
+    """Expansion ratio for detected text boxes (replaces det_db_unclip_ratio)."""
+    use_textline_orientation: bool = True
+    """Whether to use text line orientation classification model (replaces use_angle_cls)."""
+
 
 @dataclass(unsafe_hash=True, frozen=True, slots=True)
 class GMFTConfig(ConfigDict):
-    """Configuration options for GMFT table extraction.
-
-    This class encapsulates the configuration options for GMFT, providing a way to customize its behavior.
-    """
-
     verbosity: int = 0
     """
     Verbosity level for logging.
@@ -369,8 +351,6 @@ class GMFTConfig(ConfigDict):
 
 @dataclass(frozen=True, slots=True)
 class LanguageDetectionConfig(ConfigDict):
-    """Configuration for language detection."""
-
     low_memory: bool = True
     """If True, uses a smaller model (~200MB). If False, uses a larger, more accurate model.
     Defaults to True for better memory efficiency."""
@@ -387,8 +367,6 @@ class LanguageDetectionConfig(ConfigDict):
 
 @dataclass(unsafe_hash=True, frozen=True, slots=True)
 class SpacyEntityExtractionConfig(ConfigDict):
-    """Configuration for spaCy-based entity extraction."""
-
     model_cache_dir: str | Path | None = None
     """Directory to cache spaCy models. If None, uses spaCy's default."""
     language_models: dict[str, str] | tuple[tuple[str, str], ...] | None = None
@@ -450,7 +428,6 @@ class SpacyEntityExtractionConfig(ConfigDict):
         }
 
     def get_model_for_language(self, language_code: str) -> str | None:
-        """Get the appropriate spaCy model for a language code."""
         if not self.language_models:
             return None
 
@@ -466,13 +443,10 @@ class SpacyEntityExtractionConfig(ConfigDict):
         return None
 
     def get_fallback_model(self) -> str | None:
-        """Get fallback multilingual model if enabled."""
         return "xx_ent_wiki_sm" if self.fallback_to_multilingual else None
 
 
 class BoundingBox(TypedDict):
-    """Bounding box coordinates for text elements."""
-
     left: int
     """X coordinate of the left edge."""
     top: int
@@ -484,8 +458,6 @@ class BoundingBox(TypedDict):
 
 
 class TSVWord(TypedDict):
-    """Represents a word from Tesseract TSV output."""
-
     level: int
     """Hierarchy level (1=page, 2=block, 3=para, 4=line, 5=word)."""
     page_num: int
@@ -513,8 +485,6 @@ class TSVWord(TypedDict):
 
 
 class TableCell(TypedDict):
-    """Represents a cell in a reconstructed table."""
-
     row: int
     """Row index (0-based)."""
     col: int
@@ -528,8 +498,6 @@ class TableCell(TypedDict):
 
 
 class TableData(TypedDict):
-    """Table data, returned from table extraction."""
-
     cropped_image: Image
     """The cropped image of the table."""
     df: DataFrame | None
@@ -541,12 +509,6 @@ class TableData(TypedDict):
 
 
 class Metadata(TypedDict, total=False):
-    """Base metadata common to all document types.
-
-    All fields will only be included if they contain non-empty values.
-    Any field that would be empty or None is omitted from the dictionary.
-    """
-
     authors: NotRequired[list[str]]
     """List of document authors."""
     categories: NotRequired[list[str]]
@@ -674,10 +636,6 @@ _VALID_METADATA_KEYS = {
 
 
 def normalize_metadata(data: dict[str, Any] | None) -> Metadata:
-    """Normalize any dict to proper Metadata TypedDict.
-
-    Filters out invalid keys and ensures type safety.
-    """
     if not data:
         return {}
 
@@ -691,8 +649,6 @@ def normalize_metadata(data: dict[str, Any] | None) -> Metadata:
 
 @dataclass(frozen=True, slots=True)
 class Entity:
-    """Represents an extracted entity with type, text, and position."""
-
     type: str
     """e.g., PERSON, ORGANIZATION, LOCATION, DATE, EMAIL, PHONE, or custom"""
     text: str
@@ -705,8 +661,6 @@ class Entity:
 
 @dataclass(slots=True)
 class ExtractionResult:
-    """The result of a file extraction."""
-
     content: str
     """The extracted content."""
     mime_type: str
@@ -731,15 +685,6 @@ class ExtractionResult:
     """Internal layout data from OCR, not for public use."""
 
     def to_dict(self, include_none: bool = False) -> dict[str, Any]:
-        """Converts the ExtractionResult to a dictionary.
-
-        Args:
-            include_none: If True, include fields with None values.
-                         If False (default), exclude None values.
-
-        Returns:
-            Dictionary representation of the ExtractionResult.
-        """
         result = msgspec.to_builtins(
             self,
             builtin_types=(type(None),),
@@ -752,33 +697,18 @@ class ExtractionResult:
         return {k: v for k, v in result.items() if v is not None}
 
     def export_tables_to_csv(self) -> list[str]:
-        """Export all tables to CSV format.
-
-        Returns:
-            List of CSV strings, one per table
-        """
         if not self.tables:  # pragma: no cover
             return []
 
         return [export_table_to_csv(table) for table in self.tables]
 
     def export_tables_to_tsv(self) -> list[str]:
-        """Export all tables to TSV format.
-
-        Returns:
-            List of TSV strings, one per table
-        """
         if not self.tables:  # pragma: no cover
             return []
 
         return [export_table_to_tsv(table) for table in self.tables]
 
     def get_table_summaries(self) -> list[dict[str, Any]]:
-        """Get structural information for all tables.
-
-        Returns:
-            List of table structure dictionaries
-        """
         if not self.tables:  # pragma: no cover
             return []
 
@@ -791,14 +721,6 @@ ValidationHook = Callable[[ExtractionResult], None | Awaitable[None]]
 
 @dataclass(unsafe_hash=True, slots=True)
 class ExtractionConfig(ConfigDict):
-    """Represents configuration settings for an extraction process.
-
-    This class encapsulates the configuration options for extracting text
-    from images or documents using Optical Character Recognition (OCR). It
-    provides options to customize the OCR behavior, select the backend
-    engine, and configure engine-specific parameters.
-    """
-
     force_ocr: bool = False
     """Whether to force OCR."""
     chunk_content: bool = False
@@ -876,11 +798,6 @@ class ExtractionConfig(ConfigDict):
             )
 
     def get_config_dict(self) -> dict[str, Any]:
-        """Returns the OCR configuration object based on the backend specified.
-
-        Returns:
-            A dict of the OCR configuration or an empty dict if no backend is provided.
-        """
         if self.ocr_backend is None:
             return {"use_cache": self.use_cache}
 
@@ -904,15 +821,6 @@ class ExtractionConfig(ConfigDict):
                 return config_dict
 
     def to_dict(self, include_none: bool = False) -> dict[str, Any]:
-        """Convert configuration to dictionary recursively.
-
-        Args:
-            include_none: If True, include fields with None values.
-                         If False (default), exclude None values.
-
-        Returns:
-            Dictionary representation of the configuration with nested configs converted.
-        """
         result = msgspec.to_builtins(
             self,
             builtin_types=(type(None),),
@@ -931,13 +839,6 @@ class ExtractionConfig(ConfigDict):
 
 @dataclass(frozen=True)
 class HTMLToMarkdownConfig:
-    """Configuration for HTML to Markdown conversion.
-
-    This configuration class provides fine-grained control over how HTML content
-    is converted to Markdown format. Most fields have sensible defaults that work
-    well for typical document extraction scenarios.
-    """
-
     stream_processing: bool = False
     """Enable streaming mode for processing large HTML documents."""
     chunk_size: int = 1024
@@ -1004,8 +905,4 @@ class HTMLToMarkdownConfig:
     """Remove form elements from HTML."""
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert config to dictionary for passing to convert_to_markdown.
-
-        Excludes None values and handles special cases.
-        """
         return {key: value for key, value in self.__dict__.items() if value is not None}

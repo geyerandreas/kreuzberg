@@ -13,18 +13,6 @@ if TYPE_CHECKING:
 
 
 def extract_words(tsv_data: str, *, min_confidence: float = 30.0) -> list[TSVWord]:
-    """Parse TSV output into structured word data.
-
-    Args:
-        tsv_data: Raw TSV output from Tesseract.
-        min_confidence: Minimum confidence score to include a word.
-
-    Returns:
-        List of word dictionaries with position and text data.
-
-    Raises:
-        ParsingError: If TSV data cannot be parsed.
-    """
     try:
         reader = csv.DictReader(StringIO(tsv_data), delimiter="\t")
         words: list[TSVWord] = []
@@ -62,15 +50,6 @@ def extract_words(tsv_data: str, *, min_confidence: float = 30.0) -> list[TSVWor
 
 
 def detect_columns(words: list[TSVWord], *, column_threshold: int = 20) -> list[int]:
-    """Detect columns using X position clustering.
-
-    Args:
-        words: List of word dictionaries from TSV.
-        column_threshold: Pixel threshold for column clustering.
-
-    Returns:
-        Sorted list of column X positions.
-    """
     if not words:
         return []
 
@@ -94,15 +73,6 @@ def detect_columns(words: list[TSVWord], *, column_threshold: int = 20) -> list[
 
 
 def detect_rows(words: list[TSVWord], *, row_threshold_ratio: float = 0.5) -> list[int]:
-    """Detect rows using Y position clustering.
-
-    Args:
-        words: List of word dictionaries from TSV.
-        row_threshold_ratio: Row threshold as ratio of mean text height.
-
-    Returns:
-        Sorted list of row Y positions.
-    """
     if not words:
         return []
 
@@ -129,15 +99,6 @@ def detect_rows(words: list[TSVWord], *, row_threshold_ratio: float = 0.5) -> li
 
 
 def _find_closest_index(value: float, positions: list[int]) -> int:
-    """Find index of closest position.
-
-    Args:
-        value: The value to match.
-        positions: List of positions to search.
-
-    Returns:
-        Index of the closest position.
-    """
     if not positions:
         return 0
 
@@ -146,14 +107,6 @@ def _find_closest_index(value: float, positions: list[int]) -> int:
 
 
 def _remove_empty_rows_cols(table: list[list[str]]) -> list[list[str]]:
-    """Remove completely empty rows and columns.
-
-    Args:
-        table: 2D table array.
-
-    Returns:
-        Cleaned table with empty rows/columns removed.
-    """
     if not table:
         return table
 
@@ -175,16 +128,6 @@ def _remove_empty_rows_cols(table: list[list[str]]) -> list[list[str]]:
 def reconstruct_table(
     words: list[TSVWord], *, column_threshold: int = 20, row_threshold_ratio: float = 0.5
 ) -> list[list[str]]:
-    """Reconstruct table from words and detected structure.
-
-    Args:
-        words: List of word dictionaries from TSV.
-        column_threshold: Pixel threshold for column clustering.
-        row_threshold_ratio: Row threshold as ratio of mean text height.
-
-    Returns:
-        2D list representing the table structure.
-    """
     if not words:
         return []
 
@@ -211,14 +154,6 @@ def reconstruct_table(
 
 
 def to_markdown(table: list[list[str]]) -> str:
-    """Convert table to markdown format.
-
-    Args:
-        table: 2D list representing the table.
-
-    Returns:
-        Markdown-formatted table string.
-    """
     if not table or not table[0]:
         return ""
 
@@ -238,17 +173,6 @@ def to_markdown(table: list[list[str]]) -> str:
 def extract_table_from_tsv(
     tsv_data: str, *, column_threshold: int = 20, row_threshold_ratio: float = 0.5, min_confidence: float = 30.0
 ) -> str:
-    """Extract table from TSV data and convert to markdown.
-
-    Args:
-        tsv_data: Raw TSV output from Tesseract.
-        column_threshold: Pixel threshold for column clustering.
-        row_threshold_ratio: Row threshold as ratio of mean text height.
-        min_confidence: Minimum confidence score to include a word.
-
-    Returns:
-        Markdown-formatted table string, or empty string if no table detected.
-    """
     words = extract_words(tsv_data, min_confidence=min_confidence)
     if not words:
         return ""

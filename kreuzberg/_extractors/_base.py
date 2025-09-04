@@ -13,20 +13,6 @@ if TYPE_CHECKING:
 
 
 class Extractor(ABC):
-    """Abstract base class for file content extraction.
-
-    This class provides the interface for different types of content extractors.
-    Subclasses are expected to implement the methods for extracting content
-    either asynchronously or synchronously and determining the supported MIME types.
-
-    Attributes:
-        SUPPORTED_MIME_TYPES: The set of supported mime types - all none abstract extractors must implement this.
-
-    Args:
-        mime_type: The MIME type that this extractor handles (e.g., "application/pdf").
-        config: Configuration options for the extraction process.
-    """
-
     __slots__ = ("config", "mime_type")
 
     SUPPORTED_MIME_TYPES: ClassVar[set[str]]
@@ -36,72 +22,24 @@ class Extractor(ABC):
         self.config = config
 
     @abstractmethod
-    async def extract_bytes_async(self, content: bytes) -> ExtractionResult:
-        """Asynchronously extract content from a byte stream.
-
-        Args:
-            content: The byte content to extract.
-
-        Returns:
-            ExtractionResult: The extracted content along with metadata about the extraction.
-        """
+    async def extract_bytes_async(self, content: bytes) -> ExtractionResult: ...
 
     @abstractmethod
-    async def extract_path_async(self, path: Path) -> ExtractionResult:
-        """Asynchronously extract content from a file located at the specified path.
-
-        Args:
-            path: The path to the file to process.
-
-        Returns:
-            ExtractionResult: The extracted content along with metadata about the extraction.
-        """
+    async def extract_path_async(self, path: Path) -> ExtractionResult: ...
 
     @abstractmethod
-    def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
-        """Synchronously extract content from a byte stream.
-
-        Args:
-            content: The byte content to extract.
-
-        Returns:
-            ExtractionResult: The extracted content along with metadata about the extraction.
-        """
+    def extract_bytes_sync(self, content: bytes) -> ExtractionResult: ...
 
     @abstractmethod
-    def extract_path_sync(self, path: Path) -> ExtractionResult:
-        """Synchronously extract content from a file located at the specified path.
-
-        Args:
-            path: The path to the file to process.
-
-        Returns:
-            ExtractionResult: The extracted content along with metadata about the extraction.
-        """
+    def extract_path_sync(self, path: Path) -> ExtractionResult: ...
 
     @classmethod
     def supports_mimetype(cls, mime_type: str) -> bool:
-        """Verify whether the extractor supports the given MIME type.
-
-        Args:
-            mime_type: The MIME type to check (e.g., "application/pdf").
-
-        Returns:
-            bool: True if the MIME type is supported, False otherwise.
-        """
         return mime_type in cls.SUPPORTED_MIME_TYPES or any(
             mime_type.startswith(supported_type) for supported_type in cls.SUPPORTED_MIME_TYPES
         )
 
     def _apply_quality_processing(self, result: ExtractionResult) -> ExtractionResult:
-        """Apply quality post-processing to extraction result if enabled.
-
-        Args:
-            result: The raw extraction result
-
-        Returns:
-            Enhanced extraction result with quality improvements (if enabled)
-        """
         if not self.config.enable_quality_processing:
             return result
 

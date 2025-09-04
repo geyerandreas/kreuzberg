@@ -16,15 +16,6 @@ if TYPE_CHECKING:  # pragma: no cover
 async def create_temp_file(
     extension: str, content: bytes | None = None
 ) -> tuple[Path, Callable[[], Coroutine[None, None, None]]]:
-    """Create a temporary file that is closed.
-
-    Args:
-        extension: The file extension.
-        content: The content to write to the file.
-
-    Returns:
-        The temporary file path.
-    """
     file = await run_sync(NamedTemporaryFile, suffix=extension, delete=False)
     if content:
         await AsyncPath(file.name).write_bytes(content)

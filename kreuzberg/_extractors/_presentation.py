@@ -25,94 +25,23 @@ _NON_WORD_PATTERN = re.compile(r"\W")
 
 
 class PresentationExtractor(Extractor):
-    """Extractor for PowerPoint (.pptx) files.
-
-    This extractor processes PowerPoint presentations and converts their content into Markdown format.
-    It handles slides, shapes, images, tables, and slide notes, preserving the structure and content
-    of the presentation in a readable text format.
-
-    The extractor provides both synchronous and asynchronous methods for processing files either
-    from disk or from bytes in memory.
-    """
-
     SUPPORTED_MIME_TYPES: ClassVar[set[str]] = {POWER_POINT_MIME_TYPE}
 
     async def extract_bytes_async(self, content: bytes) -> ExtractionResult:
-        """Asynchronously extract content from PowerPoint file bytes.
-
-        Args:
-            content: Raw bytes of the PowerPoint file to process.
-
-        Returns:
-            ExtractionResult: Contains the extracted content in Markdown format,
-                the MIME type, and any additional metadata.
-        """
         return self._extract_pptx(content)
 
     async def extract_path_async(self, path: Path) -> ExtractionResult:
-        """Asynchronously extract content from a PowerPoint file on disk.
-
-        Args:
-            path: Path to the PowerPoint file to process.
-
-        Returns:
-            ExtractionResult: Contains the extracted content in Markdown format,
-                the MIME type, and any additional metadata.
-        """
         content = await AsyncPath(path).read_bytes()
         return self._extract_pptx(content)
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
-        """Synchronously extract content from PowerPoint file bytes.
-
-        Args:
-            content: Raw bytes of the PowerPoint file to process.
-
-        Returns:
-            ExtractionResult: Contains the extracted content in Markdown format,
-                the MIME type, and any additional metadata.
-        """
         return self._extract_pptx(content)
 
     def extract_path_sync(self, path: Path) -> ExtractionResult:
-        """Synchronously extract content from a PowerPoint file on disk.
-
-        Args:
-            path: Path to the PowerPoint file to process.
-
-        Returns:
-            ExtractionResult: Contains the extracted content in Markdown format,
-                the MIME type, and any additional metadata.
-        """
         content = Path(path).read_bytes()
         return self._extract_pptx(content)
 
     def _extract_pptx(self, file_contents: bytes) -> ExtractionResult:
-        """Process PowerPoint file contents and convert to Markdown.
-
-        This method handles the core logic of extracting content from a PowerPoint file.
-        It processes:
-        - Slide titles and content
-        - Images (with alt text if available)
-        - Tables (converted to HTML format)
-        - Text frames
-        - Slide notes
-
-        Args:
-            file_contents: Raw bytes of the PowerPoint file to process.
-
-        Returns:
-            ExtractionResult: Contains the extracted content in Markdown format,
-                the MIME type, and any additional metadata.
-
-        Notes:
-            The extraction preserves the following elements:
-            - Slide numbers (as HTML comments)
-            - Images (converted to Markdown image syntax with alt text)
-            - Tables (converted to HTML table syntax)
-            - Text content (with titles properly formatted)
-            - Slide notes (under a dedicated section for each slide)
-        """
         md_content = ""
         presentation = pptx.Presentation(BytesIO(file_contents))
 
@@ -181,14 +110,6 @@ class PresentationExtractor(Extractor):
 
     @staticmethod
     def _extract_presentation_metadata(presentation: Presentation) -> Metadata:
-        """Extract metadata from a presentation instance.
-
-        Args:
-            presentation: A `Presentation` object representing the PowerPoint file.
-
-        Returns:
-            PresentationMetadata: Object containing presentation-specific metadata fields.
-        """
         metadata: Metadata = {}
 
         PresentationExtractor._extract_core_properties(presentation, metadata)
@@ -203,7 +124,6 @@ class PresentationExtractor(Extractor):
 
     @staticmethod
     def _extract_core_properties(presentation: Presentation, metadata: Metadata) -> None:
-        """Extract core document properties from presentation."""
         property_mapping = [
             ("authors", "author"),
             ("comments", "comments"),
@@ -230,7 +150,6 @@ class PresentationExtractor(Extractor):
 
     @staticmethod
     def _extract_fonts(presentation: Presentation) -> set[str]:
-        """Extract all fonts used in the presentation."""
         fonts = set()
         for slide in presentation.slides:
             for shape in slide.shapes:
@@ -245,7 +164,6 @@ class PresentationExtractor(Extractor):
 
     @staticmethod
     def _add_presentation_structure_info(presentation: Presentation, metadata: Metadata, fonts: set[str]) -> None:
-        """Add structural information about the presentation."""
         slide_count = len(presentation.slides)
         if slide_count == 0:
             return

@@ -14,8 +14,6 @@ DeviceType = Literal["cpu", "cuda", "mps", "auto"]
 
 @dataclass(frozen=True, slots=True)
 class DeviceInfo:
-    """Information about a compute device."""
-
     device_type: Literal["cpu", "cuda", "mps"]
     """The type of device."""
     device_id: int | None = None
@@ -29,11 +27,6 @@ class DeviceInfo:
 
 
 def detect_available_devices() -> list[DeviceInfo]:
-    """Detect all available compute devices.
-
-    Returns:
-        List of available devices, with the most preferred device first.
-    """
     cpu_device = DeviceInfo(device_type="cpu", name="CPU")
 
     cuda_devices = _get_cuda_devices() if _is_cuda_available() else []
@@ -46,11 +39,6 @@ def detect_available_devices() -> list[DeviceInfo]:
 
 
 def get_optimal_device() -> DeviceInfo:
-    """Get the optimal device for OCR processing.
-
-    Returns:
-        The best available device, preferring GPU over CPU.
-    """
     devices = detect_available_devices()
     return devices[0] if devices else DeviceInfo(device_type="cpu", name="CPU")
 
@@ -62,20 +50,6 @@ def validate_device_request(
     memory_limit: float | None = None,
     fallback_to_cpu: bool = True,
 ) -> DeviceInfo:
-    """Validate and resolve a device request.
-
-    Args:
-        requested: The requested device type.
-        backend: Name of the OCR backend requesting the device.
-        memory_limit: Optional memory limit in GB.
-        fallback_to_cpu: Whether to fallback to CPU if requested device unavailable.
-
-    Returns:
-        A validated DeviceInfo object.
-
-    Raises:
-        ValidationError: If the requested device is not available and fallback is disabled.
-    """
     available_devices = detect_available_devices()
 
     if requested == "auto":
@@ -115,14 +89,6 @@ def validate_device_request(
 
 
 def get_device_memory_info(device: DeviceInfo) -> tuple[float | None, float | None]:
-    """Get memory information for a device.
-
-    Args:
-        device: The device to query.
-
-    Returns:
-        Tuple of (total_memory_gb, available_memory_gb). None values if unknown.
-    """
     if device.device_type == "cpu":
         return None, None
 
@@ -261,28 +227,11 @@ def _validate_memory_limit(device: DeviceInfo, memory_limit: float) -> None:
 
 
 def is_backend_gpu_compatible(backend: str) -> bool:
-    """Check if an OCR backend supports GPU acceleration.
-
-    Args:
-        backend: Name of the OCR backend.
-
-    Returns:
-        True if the backend supports GPU acceleration.
-    """
     # EasyOCR and PaddleOCR support GPU, Tesseract does not  # ~keep
     return backend.lower() in ("easyocr", "paddleocr")
 
 
 def get_recommended_batch_size(device: DeviceInfo, input_size_mb: float = 10.0) -> int:
-    """Get recommended batch size for OCR processing.
-
-    Args:
-        device: The device to optimize for.
-        input_size_mb: Estimated input size per item in MB.
-
-    Returns:
-        Recommended batch size.
-    """
     if device.device_type == "cpu":
         # Conservative batch size for CPU  # ~keep
         return 1
@@ -304,11 +253,6 @@ def get_recommended_batch_size(device: DeviceInfo, input_size_mb: float = 10.0) 
 
 
 def cleanup_device_memory(device: DeviceInfo) -> None:
-    """Clean up device memory.
-
-    Args:
-        device: The device to clean up.
-    """
     if device.device_type == "cuda":
         try:
             import torch  # noqa: PLC0415

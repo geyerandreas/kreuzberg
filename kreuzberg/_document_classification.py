@@ -42,17 +42,6 @@ DOCUMENT_CLASSIFIERS = {
 
 
 def _get_translated_text(result: ExtractionResult) -> str:
-    """Translate extracted text to English using Google Translate API.
-
-    Args:
-        result: ExtractionResult containing the text to be translated
-
-    Returns:
-        str: The translated text in lowercase English
-
-    Raises:
-        MissingDependencyError: If the deep-translator package is not installed
-    """
     text_to_classify = result.content
     if result.metadata:
         metadata_text = " ".join(str(value) for value in result.metadata.values() if value)
@@ -72,16 +61,6 @@ def _get_translated_text(result: ExtractionResult) -> str:
 
 
 def classify_document(result: ExtractionResult, config: ExtractionConfig) -> tuple[str | None, float | None]:
-    """Classifies the document type based on keywords and patterns.
-
-    Args:
-        result: The extraction result containing the content.
-        config: The extraction configuration.
-
-    Returns:
-        A tuple containing the detected document type and the confidence score,
-        or (None, None) if no type is detected with sufficient confidence.
-    """
     if not config.auto_detect_document_type:
         return None, None
 
@@ -110,16 +89,6 @@ def classify_document(result: ExtractionResult, config: ExtractionConfig) -> tup
 def classify_document_from_layout(
     result: ExtractionResult, config: ExtractionConfig
 ) -> tuple[str | None, float | None]:
-    """Classifies the document type based on layout information from OCR.
-
-    Args:
-        result: The extraction result containing the layout data.
-        config: The extraction configuration.
-
-    Returns:
-        A tuple containing the detected document type and the confidence score,
-        or (None, None) if no type is detected with sufficient confidence.
-    """
     if not config.auto_detect_document_type:
         return None, None
 
@@ -146,7 +115,6 @@ def classify_document_from_layout(
 
     layout_df = layout_df.with_columns(pl.lit(translated_text).alias("translated_text"))
 
-    # Cast columns to numeric types for arithmetic operations
     try:
         layout_df = layout_df.with_columns(
             [pl.col("top").cast(pl.Float64, strict=False), pl.col("height").cast(pl.Float64, strict=False)]
@@ -157,7 +125,6 @@ def classify_document_from_layout(
             page_height_val = 0.0
         page_height = float(page_height_val)
     except Exception:  # noqa: BLE001
-        # Fallback if casting fails
         page_height = 1000.0
     scores = dict.fromkeys(DOCUMENT_CLASSIFIERS, 0.0)
 

@@ -53,17 +53,6 @@ def create_error_context(
     error: Exception | None = None,
     **extra: Any,
 ) -> dict[str, Any]:
-    """Create comprehensive error context.
-
-    Args:
-        operation: The operation being performed (e.g., "extract_file", "convert_pdf_to_images")
-        file_path: The file being processed, if applicable
-        error: The original exception, if any
-        **extra: Additional context fields
-
-    Returns:
-        Dictionary with error context including system info
-    """
     context: dict[str, Any] = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "operation": operation,
@@ -104,14 +93,6 @@ def create_error_context(
 
 
 def is_transient_error(error: Exception) -> bool:
-    """Check if an error is likely transient and worth retrying.
-
-    Args:
-        error: The exception to check
-
-    Returns:
-        True if the error is likely transient
-    """
     transient_types = (
         OSError,
         PermissionError,
@@ -128,29 +109,11 @@ def is_transient_error(error: Exception) -> bool:
 
 
 def is_resource_error(error: Exception) -> bool:
-    """Check if an error is related to system resources.
-
-    Args:
-        error: The exception to check
-
-    Returns:
-        True if the error is resource-related
-    """
     error_str = str(error).lower()
     return any(pattern in error_str for pattern in _RESOURCE_ERROR_PATTERNS)
 
 
 def should_retry(error: Exception, attempt: int, max_attempts: int = 3) -> bool:
-    """Determine if an operation should be retried.
-
-    Args:
-        error: The exception that occurred
-        attempt: Current attempt number (1-based)
-        max_attempts: Maximum number of attempts
-
-    Returns:
-        True if the operation should be retried
-    """
     if attempt >= max_attempts:
         return False
 
@@ -161,22 +124,17 @@ def should_retry(error: Exception, attempt: int, max_attempts: int = 3) -> bool:
 
 
 class BatchExtractionResult:
-    """Result container for batch operations with partial success support."""
-
     __slots__ = ("failed", "successful", "total_count")
 
     def __init__(self) -> None:
-        """Initialize batch result container."""
         self.successful: list[tuple[int, Any]] = []
         self.failed: list[tuple[int, dict[str, Any]]] = []
         self.total_count: int = 0
 
     def add_success(self, index: int, result: Any) -> None:
-        """Add a successful result."""
         self.successful.append((index, result))
 
     def add_failure(self, index: int, error: Exception, context: dict[str, Any]) -> None:
-        """Add a failed result with context."""
         error_info = {
             "error": {
                 "type": type(error).__name__,
@@ -188,30 +146,25 @@ class BatchExtractionResult:
 
     @property
     def success_count(self) -> int:
-        """Number of successful operations."""
         return len(self.successful)
 
     @property
     def failure_count(self) -> int:
-        """Number of failed operations."""
         return len(self.failed)
 
     @property
     def success_rate(self) -> float:
-        """Success rate as a percentage."""
         if self.total_count == 0:
             return 0.0
         return (self.success_count / self.total_count) * 100
 
     def get_ordered_results(self) -> list[Any | None]:
-        """Get results in original order with None for failures."""
         results = [None] * self.total_count
         for index, result in self.successful:
             results[index] = result
         return results
 
     def get_summary(self) -> dict[str, Any]:
-        """Get summary of batch operation."""
         return {
             "total": self.total_count,
             "successful": self.success_count,

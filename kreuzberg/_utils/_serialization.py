@@ -22,7 +22,6 @@ _DICT_METHOD_NAMES = (
 
 
 def encode_hook(obj: Any) -> Any:
-    """Custom encoder for complex objects."""
     if callable(obj):
         return None
 
@@ -44,18 +43,6 @@ def encode_hook(obj: Any) -> Any:
 
 
 def deserialize(value: str | bytes, target_type: type[T]) -> T:
-    """Deserialize bytes/string to target type.
-
-    Args:
-        value: Serialized data
-        target_type: Type to deserialize to
-
-    Returns:
-        Deserialized object
-
-    Raises:
-        ValueError: If deserialization fails
-    """
     try:
         return decode(cast("bytes", value), type=target_type, strict=False)
     except MsgspecError as e:
@@ -63,18 +50,6 @@ def deserialize(value: str | bytes, target_type: type[T]) -> T:
 
 
 def serialize(value: Any, **kwargs: Any) -> bytes:
-    """Serialize value to bytes.
-
-    Args:
-        value: Object to serialize
-        **kwargs: Additional data to merge with value if it's a dict
-
-    Returns:
-        Serialized bytes
-
-    Raises:
-        ValueError: If serialization fails
-    """
     if isinstance(value, dict) and kwargs:
         value = value | kwargs
 

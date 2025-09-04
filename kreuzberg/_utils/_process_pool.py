@@ -36,7 +36,6 @@ def _get_process_pool() -> ProcessPoolExecutor:
 
 @contextmanager
 def process_pool() -> Generator[ProcessPoolExecutor, None, None]:
-    """Get the process pool."""
     pool = _get_process_pool()
     try:
         yield pool
@@ -47,14 +46,12 @@ def process_pool() -> Generator[ProcessPoolExecutor, None, None]:
 
 
 def submit_to_process_pool(func: Callable[..., T], *args: Any, **kwargs: Any) -> T:
-    """Submit a function to the process pool and wait for result."""
     with process_pool() as pool:
         future = pool.submit(func, *args, **kwargs)
         return future.result()
 
 
 def shutdown_process_pool() -> None:
-    """Shutdown the process pool."""
     if _process_pool_ref.is_initialized():
         pool = _process_pool_ref.get()
         pool.shutdown(wait=True)
@@ -102,19 +99,11 @@ def _extract_pdf_images_worker(pdf_path: str, scale: float = 4.25) -> tuple[str,
 
 
 class ProcessPoolManager:
-    """Resource-aware process pool manager for CPU-intensive tasks."""
-
     def __init__(
         self,
         max_processes: int | None = None,
         memory_limit_gb: float | None = None,
     ) -> None:
-        """Initialize the process pool manager.
-
-        Args:
-            max_processes: Maximum number of processes. Defaults to CPU count.
-            memory_limit_gb: Memory limit in GB. Defaults to 75% of available memory.
-        """
         self.max_processes = max_processes or mp.cpu_count()
 
         if memory_limit_gb is None:
@@ -127,21 +116,12 @@ class ProcessPoolManager:
         self._active_tasks = 0
 
     def get_optimal_workers(self, task_memory_mb: float = 100) -> int:
-        """Calculate optimal number of workers based on memory constraints.
-
-        Args:
-            task_memory_mb: Estimated memory usage per task in MB.
-
-        Returns:
-            Optimal number of workers.
-        """
         task_memory_bytes = task_memory_mb * 1024**2
         memory_based_limit = max(1, int(self.memory_limit_bytes / task_memory_bytes))
 
         return min(self.max_processes, memory_based_limit)
 
     def _ensure_executor(self, max_workers: int | None = None) -> ProcessPoolExecutor:
-        """Ensure process pool executor is initialized."""
         if self._executor is None or getattr(self._executor, "_max_workers", None) != max_workers:
             if self._executor is not None:
                 self._executor.shutdown(wait=False)
@@ -157,16 +137,6 @@ class ProcessPoolManager:
         *args: Any,
         task_memory_mb: float = 100,
     ) -> T:
-        """Submit a task to the process pool.
-
-        Args:
-            func: Function to execute.
-            *args: Positional arguments for the function.
-            task_memory_mb: Estimated memory usage in MB.
-
-        Returns:
-            Result of the function execution.
-        """
         workers = self.get_optimal_workers(task_memory_mb)
         self._ensure_executor(workers)
 
@@ -184,17 +154,6 @@ class ProcessPoolManager:
         task_memory_mb: float = 100,
         max_concurrent: int | None = None,
     ) -> list[T]:
-        """Submit a batch of tasks to the process pool.
-
-        Args:
-            func: Function to execute.
-            arg_batches: List of argument tuples for each task.
-            task_memory_mb: Estimated memory usage per task in MB.
-            max_concurrent: Maximum concurrent tasks. Defaults to optimal workers.
-
-        Returns:
-            List of results in the same order as input.
-        """
         if not arg_batches:
             return []
 
@@ -225,7 +184,6 @@ class ProcessPoolManager:
         return results
 
     def get_system_info(self) -> dict[str, Any]:
-        """Get current system resource information."""
         memory = psutil.virtual_memory()
         cpu_percent = psutil.cpu_percent(interval=1)
 
@@ -241,13 +199,11 @@ class ProcessPoolManager:
         }
 
     def shutdown(self, wait: bool = True) -> None:
-        """Shutdown the process pool."""
         if self._executor is not None:
             self._executor.shutdown(wait=wait)
             self._executor = None
 
     def __enter__(self) -> Self:
-        """Context manager entry."""
         return self
 
     def __exit__(
@@ -256,11 +212,9 @@ class ProcessPoolManager:
         exc_val: BaseException | None,
         exc_tb: types.TracebackType | None,
     ) -> None:
-        """Context manager exit."""
         self.shutdown()
 
     async def __aenter__(self) -> Self:
-        """Async context manager entry."""
         return self
 
     async def __aexit__(
@@ -269,5 +223,4 @@ class ProcessPoolManager:
         exc_val: BaseException | None,
         exc_tb: types.TracebackType | None,
     ) -> None:
-        """Async context manager exit."""
         self.shutdown()

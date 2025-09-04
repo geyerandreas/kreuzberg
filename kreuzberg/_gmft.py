@@ -31,23 +31,6 @@ if TYPE_CHECKING:
 async def extract_tables(
     file_path: str | PathLike[str], config: GMFTConfig | None = None, use_isolated_process: bool | None = None
 ) -> list[TableData]:
-    """Extracts tables from a PDF file.
-
-    This function takes a file path to a PDF file, and an optional configuration object.
-    It returns a list of strings, where each string is a markdown-formatted table.
-
-    Args:
-        file_path: The path to the PDF file.
-        config: An optional configuration object.
-        use_isolated_process: Whether to use an isolated process for extraction.
-            If None, uses environment variable KREUZBERG_GMFT_ISOLATED (default: True).
-
-    Raises:
-        MissingDependencyError: Raised when the required dependencies are not installed.
-
-    Returns:
-        A list of table data dictionaries.
-    """
     # Determine if we should use isolated process  # ~keep
     if use_isolated_process is None:
         use_isolated_process = os.environ.get("KREUZBERG_GMFT_ISOLATED", "true").lower() in ("true", "1", "yes")
@@ -164,17 +147,6 @@ async def extract_tables(
 def extract_tables_sync(
     file_path: str | PathLike[str], config: GMFTConfig | None = None, use_isolated_process: bool | None = None
 ) -> list[TableData]:
-    """Synchronous wrapper for extract_tables.
-
-    Args:
-        file_path: The path to the PDF file.
-        config: An optional configuration object.
-        use_isolated_process: Whether to use an isolated process for extraction.
-            If None, uses environment variable KREUZBERG_GMFT_ISOLATED (default: True).
-
-    Returns:
-        A list of table data dictionaries.
-    """
     # Determine if we should use isolated process  # ~keep
     if use_isolated_process is None:
         use_isolated_process = os.environ.get("KREUZBERG_GMFT_ISOLATED", "true").lower() in ("true", "1", "yes")
@@ -276,13 +248,6 @@ def _extract_tables_in_process(
     config_dict: dict[str, Any],
     result_queue: queue.Queue[tuple[bool, Any]],
 ) -> None:
-    """Extract tables in an isolated process to handle potential segfaults.
-
-    Args:
-        file_path: Path to the PDF file
-        config_dict: Serialized GMFTConfig as a dict
-        result_queue: Queue to put results or errors
-    """
     signal.signal(signal.SIGINT, signal.SIG_IGN)
 
     try:
@@ -366,19 +331,6 @@ def _extract_tables_isolated(
     config: GMFTConfig | None = None,
     timeout: float = 300.0,
 ) -> list[TableData]:
-    """Extract tables using an isolated process to handle segfaults.
-
-    Args:
-        file_path: Path to the PDF file
-        config: GMFT configuration
-        timeout: Maximum time to wait for extraction
-
-    Returns:
-        List of extracted tables
-
-    Raises:
-        RuntimeError: If extraction fails or times out
-    """
     config = config or GMFTConfig()
     config_dict = msgspec.to_builtins(config)
 
@@ -477,19 +429,6 @@ async def _extract_tables_isolated_async(
     config: GMFTConfig | None = None,
     timeout: float = 300.0,  # noqa: ASYNC109
 ) -> list[TableData]:
-    """Async version of extract_tables_isolated using asyncio.
-
-    Args:
-        file_path: Path to the PDF file
-        config: GMFT configuration
-        timeout: Maximum time to wait for extraction
-
-    Returns:
-        List of extracted tables
-
-    Raises:
-        RuntimeError: If extraction fails or times out
-    """
     config = config or GMFTConfig()
     config_dict = msgspec.to_builtins(config)
 

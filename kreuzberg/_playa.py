@@ -25,18 +25,6 @@ BOM_CHAR = "\ufeff"
 
 
 async def extract_pdf_metadata(pdf_content: bytes, password: str = "") -> Metadata:
-    """Extract metadata from a PDF document.
-
-    Args:
-        pdf_content: The bytes of the PDF document.
-        password: Password for encrypted PDF files.
-
-    Raises:
-        ParsingError: If the PDF metadata could not be extracted.
-
-    Returns:
-        A dictionary of metadata extracted from the PDF.
-    """
     try:
         document = parse(pdf_content, max_workers=1, password=password)
         metadata: Metadata = {}
@@ -247,7 +235,6 @@ def _collect_document_permissions(document: Document) -> list[str]:
 
 
 def _extract_structure_information(document: Document, result: Metadata) -> None:
-    """Extract language and subtitle from document structure."""
     if document.structure:
         languages = set()
         subtitle = None
@@ -280,20 +267,6 @@ def _extract_structure_information(document: Document, result: Metadata) -> None
 
 
 def extract_pdf_metadata_sync(pdf_content: bytes, password: str = "") -> Metadata:
-    """Synchronous version of extract_pdf_metadata.
-
-    Extract metadata from a PDF document without using async/await.
-
-    Args:
-        pdf_content: The bytes of the PDF document.
-        password: Password for encrypted PDF files.
-
-    Raises:
-        ParsingError: If the PDF metadata could not be extracted.
-
-    Returns:
-        A dictionary of metadata extracted from the PDF.
-    """
     try:
         document = parse(pdf_content, max_workers=1, password=password)
         metadata: Metadata = {}

@@ -20,12 +20,6 @@ T = TypeVar("T")
 
 
 class KreuzbergCache(Generic[T]):
-    """File-based cache for Kreuzberg operations.
-
-    Provides both sync and async interfaces for caching extraction results,
-    OCR results, table data, and other expensive operations to disk.
-    """
-
     def __init__(
         self,
         cache_type: str,
@@ -33,14 +27,6 @@ class KreuzbergCache(Generic[T]):
         max_cache_size_mb: float = 500.0,
         max_age_days: int = 30,
     ) -> None:
-        """Initialize cache.
-
-        Args:
-            cache_type: Type of cache (e.g., 'ocr', 'tables', 'documents', 'mime')
-            cache_dir: Cache directory (defaults to .kreuzberg/{cache_type} in cwd)
-            max_cache_size_mb: Maximum cache size in MB (default: 500MB)
-            max_age_days: Maximum age of cached results in days (default: 30 days)
-        """
         if cache_dir is None:
             cache_dir = Path.cwd() / ".kreuzberg" / cache_type
 
@@ -159,14 +145,6 @@ class KreuzbergCache(Generic[T]):
             pass
 
     def get(self, **kwargs: Any) -> T | None:
-        """Get cached result (sync).
-
-        Args:
-            **kwargs: Key-value pairs to generate cache key from
-
-        Returns:
-            Cached result if available, None otherwise
-        """
         cache_key = self._get_cache_key(**kwargs)
         cache_path = self._get_cache_path(cache_key)
 
@@ -183,12 +161,6 @@ class KreuzbergCache(Generic[T]):
             return None
 
     def set(self, result: T, **kwargs: Any) -> None:
-        """Cache result (sync).
-
-        Args:
-            result: Result to cache
-            **kwargs: Key-value pairs to generate cache key from
-        """
         cache_key = self._get_cache_key(**kwargs)
         cache_path = self._get_cache_path(cache_key)
 
@@ -203,14 +175,6 @@ class KreuzbergCache(Generic[T]):
             pass
 
     async def aget(self, **kwargs: Any) -> T | None:
-        """Get cached result (async).
-
-        Args:
-            **kwargs: Key-value pairs to generate cache key from
-
-        Returns:
-            Cached result if available, None otherwise
-        """
         cache_key = self._get_cache_key(**kwargs)
         cache_path = AsyncPath(self._get_cache_path(cache_key))
 
@@ -227,12 +191,6 @@ class KreuzbergCache(Generic[T]):
             return None
 
     async def aset(self, result: T, **kwargs: Any) -> None:
-        """Cache result (async).
-
-        Args:
-            result: Result to cache
-            **kwargs: Key-value pairs to generate cache key from
-        """
         cache_key = self._get_cache_key(**kwargs)
         cache_path = AsyncPath(self._get_cache_path(cache_key))
 
@@ -247,13 +205,11 @@ class KreuzbergCache(Generic[T]):
             pass
 
     def is_processing(self, **kwargs: Any) -> bool:
-        """Check if operation is currently being processed."""
         cache_key = self._get_cache_key(**kwargs)
         with self._lock:
             return cache_key in self._processing
 
     def mark_processing(self, **kwargs: Any) -> threading.Event:
-        """Mark operation as being processed and return event to wait on."""
         cache_key = self._get_cache_key(**kwargs)
 
         with self._lock:
@@ -262,7 +218,6 @@ class KreuzbergCache(Generic[T]):
             return self._processing[cache_key]
 
     def mark_complete(self, **kwargs: Any) -> None:
-        """Mark operation processing as complete."""
         cache_key = self._get_cache_key(**kwargs)
 
         with self._lock:
@@ -271,7 +226,6 @@ class KreuzbergCache(Generic[T]):
                 event.set()
 
     def clear(self) -> None:
-        """Clear all cached results."""
         try:
             for cache_file in self.cache_dir.glob("*.msgpack"):
                 cache_file.unlink(missing_ok=True)
@@ -282,7 +236,6 @@ class KreuzbergCache(Generic[T]):
             pass
 
     def get_stats(self) -> dict[str, Any]:
-        """Get cache statistics."""
         try:
             cache_files = list(self.cache_dir.glob("*.msgpack"))
             total_size = sum(cache_file.stat().st_size for cache_file in cache_files if cache_file.exists())
@@ -328,7 +281,6 @@ _ocr_cache_ref = Ref("ocr_cache", _create_ocr_cache)
 
 
 def get_ocr_cache() -> KreuzbergCache[ExtractionResult]:
-    """Get the OCR cache instance."""
     return _ocr_cache_ref.get()
 
 
@@ -350,7 +302,6 @@ _document_cache_ref = Ref("document_cache", _create_document_cache)
 
 
 def get_document_cache() -> KreuzbergCache[ExtractionResult]:
-    """Get the document cache instance."""
     return _document_cache_ref.get()
 
 
@@ -372,7 +323,6 @@ _table_cache_ref = Ref("table_cache", _create_table_cache)
 
 
 def get_table_cache() -> KreuzbergCache[Any]:
-    """Get the table cache instance."""
     return _table_cache_ref.get()
 
 
@@ -394,12 +344,10 @@ _mime_cache_ref = Ref("mime_cache", _create_mime_cache)
 
 
 def get_mime_cache() -> KreuzbergCache[str]:
-    """Get the MIME type cache instance."""
     return _mime_cache_ref.get()
 
 
 def clear_all_caches() -> None:
-    """Clear all caches."""
     if _ocr_cache_ref.is_initialized():
         get_ocr_cache().clear()
     if _document_cache_ref.is_initialized():

@@ -8,15 +8,6 @@ if TYPE_CHECKING:
 
 
 def export_table_to_csv(table: TableData, separator: str = ",") -> str:
-    r"""Export a TableData object to CSV/TSV format.
-
-    Args:
-        table: TableData object containing DataFrame
-        separator: Field separator ("," for CSV, "\t" for TSV)
-
-    Returns:
-        String representation in CSV/TSV format
-    """
     if "df" not in table or table["df"] is None:
         return ""
 
@@ -27,26 +18,10 @@ def export_table_to_csv(table: TableData, separator: str = ",") -> str:
 
 
 def export_table_to_tsv(table: TableData) -> str:
-    """Export a TableData object to TSV format.
-
-    Args:
-        table: TableData object containing DataFrame
-
-    Returns:
-        String representation in TSV format
-    """
     return export_table_to_csv(table, separator="\t")
 
 
 def enhance_table_markdown(table: TableData) -> str:
-    """Generate enhanced markdown table with better formatting.
-
-    Args:
-        table: TableData object
-
-    Returns:
-        Enhanced markdown table string
-    """
     if "df" not in table or table["df"] is None:
         return table.get("text", "")
 
@@ -72,7 +47,6 @@ def enhance_table_markdown(table: TableData) -> str:
 
 
 def _generate_separator_row(df: Any) -> str:
-    """Generate separator row with proper alignment hints."""
     separators = []
     for col in df.columns:
         dtype_str = str(df[col].dtype)
@@ -84,7 +58,6 @@ def _generate_separator_row(df: Any) -> str:
 
 
 def _analyze_float_columns(df: Any) -> dict[str, str]:
-    """Analyze float columns to determine formatting strategy."""
     float_col_formatting = {}
     for col in df.columns:
         dtype_str = str(df[col].dtype)
@@ -103,7 +76,6 @@ def _analyze_float_columns(df: Any) -> dict[str, str]:
 
 
 def _format_table_row(row: Any, df: Any, float_col_formatting: dict[str, str]) -> list[str]:
-    """Format a single table row with proper value formatting."""
     formatted_row = []
     for col_name, value in row.items():
         if value is None:
@@ -124,7 +96,6 @@ def _format_table_row(row: Any, df: Any, float_col_formatting: dict[str, str]) -
 
 
 def _is_numeric_column(series: Any) -> bool:
-    """Check if a polars Series contains mostly numeric values."""
     if len(series) == 0:
         return False
 
@@ -161,14 +132,6 @@ def _is_numeric_column(series: Any) -> bool:
 
 
 def generate_table_summary(tables: list[TableData]) -> dict[str, Any]:
-    """Generate summary statistics for extracted tables.
-
-    Args:
-        tables: List of TableData objects
-
-    Returns:
-        Dictionary with table statistics
-    """
     if not tables:
         return {
             "table_count": 0,
@@ -208,14 +171,6 @@ def generate_table_summary(tables: list[TableData]) -> dict[str, Any]:
 
 
 def extract_table_structure_info(table: TableData) -> dict[str, Any]:
-    """Extract structural information from a table.
-
-    Args:
-        table: TableData object
-
-    Returns:
-        Dictionary with structural information
-    """
     info = {
         "has_headers": False,
         "row_count": 0,

@@ -148,17 +148,6 @@ def _create_ocr_config(
 
 
 def load_config_from_file(config_path: Path) -> dict[str, Any]:
-    """Load configuration from a TOML file.
-
-    Args:
-        config_path: Path to the configuration file.
-
-    Returns:
-        Dictionary containing the loaded configuration.
-
-    Raises:
-        ValidationError: If the file cannot be read or parsed.
-    """
     try:
         with config_path.open("rb") as f:
             data = tomllib.load(f)
@@ -177,15 +166,6 @@ def load_config_from_file(config_path: Path) -> dict[str, Any]:
 
 
 def merge_configs(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
-    """Merge two configuration dictionaries recursively.
-
-    Args:
-        base: Base configuration dictionary.
-        override: Configuration dictionary to override base values.
-
-    Returns:
-        Merged configuration dictionary.
-    """
     result = base.copy()
     for key, value in override.items():
         if isinstance(value, dict) and key in result and isinstance(result[key], dict):
@@ -198,18 +178,6 @@ def merge_configs(base: dict[str, Any], override: dict[str, Any]) -> dict[str, A
 def parse_ocr_backend_config(
     config_dict: dict[str, Any], backend: OcrBackendType
 ) -> TesseractConfig | EasyOCRConfig | PaddleOCRConfig | None:
-    """Parse OCR backend-specific configuration.
-
-    Args:
-        config_dict: Configuration dictionary.
-        backend: The OCR backend type.
-
-    Returns:
-        Backend-specific configuration object or None.
-
-    Raises:
-        ValidationError: If the backend configuration is invalid.
-    """
     if backend not in config_dict:
         return None
 
@@ -230,17 +198,6 @@ def parse_ocr_backend_config(
 
 
 def build_extraction_config_from_dict(config_dict: dict[str, Any]) -> ExtractionConfig:
-    """Build ExtractionConfig from a configuration dictionary.
-
-    Args:
-        config_dict: Configuration dictionary from TOML file.
-
-    Returns:
-        ExtractionConfig instance.
-
-    Raises:
-        ValidationError: If the configuration is invalid.
-    """
     extraction_config: dict[str, Any] = {field: config_dict[field] for field in _CONFIG_FIELDS if field in config_dict}
 
     ocr_backend = extraction_config.get("ocr_backend")
@@ -288,18 +245,6 @@ def build_extraction_config(
     file_config: dict[str, Any],
     cli_args: MutableMapping[str, Any],
 ) -> ExtractionConfig:
-    """Build ExtractionConfig from file config and CLI arguments.
-
-    Args:
-        file_config: Configuration loaded from file.
-        cli_args: CLI arguments.
-
-    Returns:
-        ExtractionConfig instance.
-
-    Raises:
-        ValidationError: If the combined configuration is invalid.
-    """
     config_dict: dict[str, Any] = {}
 
     _merge_file_config(config_dict, file_config)
@@ -321,21 +266,6 @@ def build_extraction_config(
 
 
 def find_config_file(start_path: Path | None = None) -> Path | None:
-    """Find configuration file by searching up the directory tree.
-
-    Searches for configuration files in the following order:
-    1. kreuzberg.toml
-    2. pyproject.toml (with [tool.kreuzberg] section)
-
-    Args:
-        start_path: Directory to start searching from. Defaults to current working directory.
-
-    Returns:
-        Path to the configuration file or None if not found.
-
-    Raises:
-        ValidationError: If a config file exists but cannot be read or has invalid TOML.
-    """
     current = start_path or Path.cwd()
 
     while current != current.parent:
@@ -366,17 +296,6 @@ def find_config_file(start_path: Path | None = None) -> Path | None:
 
 
 def load_default_config(start_path: Path | None = None) -> ExtractionConfig | None:
-    """Load the default configuration from discovered config file.
-
-    Args:
-        start_path: Directory to start searching from. Defaults to current working directory.
-
-    Returns:
-        ExtractionConfig instance or None if no configuration found.
-
-    Raises:
-        ValidationError: If configuration file exists but contains invalid configuration.
-    """
     config_path = find_config_file(start_path)
     if not config_path:
         return None
@@ -388,34 +307,12 @@ def load_default_config(start_path: Path | None = None) -> ExtractionConfig | No
 
 
 def load_config_from_path(config_path: Path | str) -> ExtractionConfig:
-    """Load configuration from a specific file path.
-
-    Args:
-        config_path: Path to the configuration file.
-
-    Returns:
-        ExtractionConfig instance.
-
-    Raises:
-        ValidationError: If the file cannot be read, parsed, or is invalid.
-    """
     path = Path(config_path)
     config_dict = load_config_from_file(path)
     return build_extraction_config_from_dict(config_dict)
 
 
 def discover_and_load_config(start_path: Path | str | None = None) -> ExtractionConfig:
-    """Load configuration by discovering config files in the directory tree.
-
-    Args:
-        start_path: Directory to start searching from. Defaults to current working directory.
-
-    Returns:
-        ExtractionConfig instance.
-
-    Raises:
-        ValidationError: If no configuration file is found or if the file is invalid.
-    """
     search_path = Path(start_path) if start_path else None
     config_path = find_config_file(search_path)
 
@@ -436,19 +333,6 @@ def discover_and_load_config(start_path: Path | str | None = None) -> Extraction
 
 
 def discover_config(start_path: Path | str | None = None) -> ExtractionConfig | None:
-    """Discover and load configuration, returning None if no config file found.
-
-    If a config file is found, attempts to load it. Any errors during loading will bubble up.
-
-    Args:
-        start_path: Directory to start searching from. Defaults to current working directory.
-
-    Returns:
-        ExtractionConfig instance or None if no configuration file found.
-
-    Raises:
-        ValidationError: If a configuration file exists but is invalid.
-    """
     search_path = Path(start_path) if start_path else None
     config_path = find_config_file(search_path)
 
@@ -462,12 +346,4 @@ def discover_config(start_path: Path | str | None = None) -> ExtractionConfig | 
 
 
 def find_default_config() -> Path | None:
-    """Find the default configuration file (pyproject.toml).
-
-    Returns:
-        Path to the configuration file or None if not found.
-
-    Note:
-        This function is deprecated. Use find_config_file() instead.
-    """
     return find_config_file()

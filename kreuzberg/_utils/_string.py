@@ -21,20 +21,10 @@ _encoding_cache: dict[str, str] = {}
 
 @lru_cache(maxsize=128)
 def _get_encoding_cache_key(data_hash: str, size: int) -> str:
-    """Generate cache key for encoding detection."""
     return f"{data_hash}:{size}"
 
 
 def safe_decode(byte_data: bytes, encoding: str | None = None) -> str:
-    """Decode a byte string safely with mojibake detection and correction.
-
-    Args:
-        byte_data: The byte string to decode.
-        encoding: The encoding to use when decoding the byte string.
-
-    Returns:
-        The decoded string with mojibake detection and correction.
-    """
     if not byte_data:
         return ""
 
@@ -88,7 +78,6 @@ def safe_decode(byte_data: bytes, encoding: str | None = None) -> str:
 
 
 def _calculate_text_confidence(text: str) -> float:
-    """Calculate confidence score for decoded text quality."""
     if not text:
         return 0.0
 
@@ -114,7 +103,6 @@ def _calculate_text_confidence(text: str) -> float:
 
 
 def _fix_mojibake(text: str) -> str:
-    """Attempt to fix common mojibake patterns."""
     if not text:
         return text
 
@@ -131,14 +119,6 @@ def _fix_mojibake(text: str) -> str:
 
 
 def normalize_spaces(text: str) -> str:
-    """Normalize spaces while preserving line breaks and paragraph structure.
-
-    Args:
-        text: The text to normalize.
-
-    Returns:
-        The normalized text with proper spacing.
-    """
     if not text or not text.strip():
         return ""
 
