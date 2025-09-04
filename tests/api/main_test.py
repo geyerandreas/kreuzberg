@@ -386,7 +386,7 @@ def test_import_error_handling() -> None:
 async def test_get_configuration_no_config(
     test_client: AsyncTestClient[Any], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    with patch("kreuzberg._api.main.try_discover_config", return_value=None):
+    with patch("kreuzberg._api.main.discover_config", return_value=None):
         response = await test_client.get("/config")
 
     assert response.status_code == 200
@@ -408,7 +408,7 @@ async def test_get_configuration_with_config(test_client: AsyncTestClient[Any]) 
         max_chars=5000,
     )
 
-    with patch("kreuzberg._api.main.try_discover_config", return_value=test_config):
+    with patch("kreuzberg._api.main.discover_config", return_value=test_config):
         response = await test_client.get("/config")
 
     assert response.status_code == 200
@@ -428,7 +428,7 @@ async def test_extract_with_discovered_config(test_client: AsyncTestClient[Any],
 
     test_config = ExtractionConfig(chunk_content=True, max_chars=1000, max_overlap=200)
 
-    with patch("kreuzberg._api.main.try_discover_config", return_value=test_config):
+    with patch("kreuzberg._api.main.discover_config", return_value=test_config):
         with patch("kreuzberg._api.main.batch_extract_bytes", new_callable=AsyncMock) as mock_extract:
             mock_extract.return_value = [
                 {"content": "Test content", "mime_type": "text/plain", "metadata": {}, "chunks": ["chunk1", "chunk2"]}
@@ -451,7 +451,7 @@ async def test_extract_with_discovered_config(test_client: AsyncTestClient[Any],
 
 @pytest.mark.anyio
 async def test_extract_without_discovered_config(test_client: AsyncTestClient[Any], searchable_pdf: Path) -> None:
-    with patch("kreuzberg._api.main.try_discover_config", return_value=None):
+    with patch("kreuzberg._api.main.discover_config", return_value=None):
         with patch("kreuzberg._api.main.batch_extract_bytes", new_callable=AsyncMock) as mock_extract:
             mock_extract.return_value = [
                 {"content": "Test content", "mime_type": "text/plain", "metadata": {}, "chunks": []}
@@ -654,7 +654,7 @@ async def test_msgspec_serialization_deterministic(test_client: AsyncTestClient[
 async def test_extract_with_invalid_config_file(test_client: AsyncTestClient[Any], tmp_path: Path) -> None:
     from kreuzberg.exceptions import ValidationError
 
-    with patch("kreuzberg._api.main.try_discover_config") as mock_discover:
+    with patch("kreuzberg._api.main.discover_config") as mock_discover:
         mock_discover.side_effect = ValidationError(
             "Invalid TOML in configuration file: Expected '=' after key",
             context={"file": "/path/to/kreuzberg.toml", "error": "TOML parse error"},
@@ -677,7 +677,7 @@ async def test_extract_with_invalid_config_file(test_client: AsyncTestClient[Any
 async def test_get_config_with_invalid_config_file(test_client: AsyncTestClient[Any]) -> None:
     from kreuzberg.exceptions import ValidationError
 
-    with patch("kreuzberg._api.main.try_discover_config") as mock_discover:
+    with patch("kreuzberg._api.main.discover_config") as mock_discover:
         mock_discover.side_effect = ValidationError(
             "Invalid OCR backend: unknown. Must be one of: easyocr, paddleocr, tesseract or 'none'",
             context={"provided": "unknown", "valid": ["easyocr", "paddleocr", "tesseract"]},
@@ -696,7 +696,7 @@ async def test_get_config_with_invalid_config_file(test_client: AsyncTestClient[
 async def test_extract_with_invalid_ocr_config(test_client: AsyncTestClient[Any], tmp_path: Path) -> None:
     from kreuzberg.exceptions import ValidationError
 
-    with patch("kreuzberg._api.main.try_discover_config") as mock_discover:
+    with patch("kreuzberg._api.main.discover_config") as mock_discover:
         mock_discover.side_effect = ValidationError(
             "Invalid configuration for OCR backend 'tesseract': Invalid PSM mode value: 99",
             context={"psm_value": 99, "error": "99 is not a valid PSMMode"},
@@ -718,7 +718,7 @@ async def test_extract_with_invalid_ocr_config(test_client: AsyncTestClient[Any]
 async def test_extract_with_invalid_gmft_config(test_client: AsyncTestClient[Any], tmp_path: Path) -> None:
     from kreuzberg.exceptions import ValidationError
 
-    with patch("kreuzberg._api.main.try_discover_config") as mock_discover:
+    with patch("kreuzberg._api.main.discover_config") as mock_discover:
         mock_discover.side_effect = ValidationError(
             "Invalid GMFT configuration: Invalid parameter 'invalid_param'",
             context={"gmft_config": {"invalid_param": "value"}, "error": "Unknown parameter"},
@@ -742,7 +742,7 @@ async def test_extract_with_invalid_gmft_config(test_client: AsyncTestClient[Any
 async def test_extract_with_unreadable_config_file(test_client: AsyncTestClient[Any], tmp_path: Path) -> None:
     from kreuzberg.exceptions import ValidationError
 
-    with patch("kreuzberg._api.main.try_discover_config") as mock_discover:
+    with patch("kreuzberg._api.main.discover_config") as mock_discover:
         mock_discover.side_effect = ValidationError(
             "Failed to read pyproject.toml: Permission denied",
             context={"file": "/path/to/pyproject.toml", "error": "Permission denied"},
@@ -765,7 +765,7 @@ async def test_extract_with_unreadable_config_file(test_client: AsyncTestClient[
 async def test_extract_with_invalid_extraction_config(test_client: AsyncTestClient[Any], tmp_path: Path) -> None:
     from kreuzberg.exceptions import ValidationError
 
-    with patch("kreuzberg._api.main.try_discover_config") as mock_discover:
+    with patch("kreuzberg._api.main.discover_config") as mock_discover:
         mock_discover.side_effect = ValidationError(
             "Invalid extraction configuration: max_chars must be positive",
             context={"config": {"max_chars": -100}, "error": "Negative max_chars"},

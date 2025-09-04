@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from unittest.mock import Mock, patch
 
-import numpy as np
 import pytest
 from PIL import Image
 
@@ -23,78 +22,6 @@ def backend() -> PaddleBackend:
 
 
 @pytest.fixture
-def mock_paddleocr(mocker: MockerFixture) -> Mock:
-    mock = mocker.patch("paddleocr.PaddleOCR")
-    instance = mock.return_value
-
-    instance.ocr.return_value = [
-        [
-            [
-                [[10, 10], [100, 10], [100, 30], [10, 30]],
-                ("Sample text 1", 0.95),
-            ],
-            [
-                [[10, 40], [100, 40], [100, 60], [10, 60]],
-                ("Sample text 2", 0.90),
-            ],
-        ]
-    ]
-    return mock
-
-
-@pytest.fixture
-def mock_run_sync(mocker: MockerFixture) -> Mock:
-    async def mock_async_run_sync(func: Any, *args: Any, **kwargs: Any) -> Any:
-        if isinstance(func, Mock) and kwargs.get("image_np") is not None:
-            return [
-                [
-                    [
-                        [[10, 10], [100, 10], [100, 30], [10, 30]],
-                        ("Sample text 1", 0.95),
-                    ],
-                    [
-                        [[10, 40], [100, 40], [100, 60], [10, 60]],
-                        ("Sample text 2", 0.90),
-                    ],
-                ]
-            ]
-
-        if callable(func) and hasattr(func, "__name__") and func.__name__ == "open":
-            img = Mock(spec=Image.Image)
-            img.size = (100, 100)
-
-            array_interface = {
-                "shape": (100, 100, 3),
-                "typestr": "|u1",
-                "data": np.zeros((100, 100, 3), dtype=np.uint8).tobytes(),
-                "strides": None,
-                "version": 3,
-            }
-            type(img).__array_interface__ = array_interface
-            return img
-
-        if callable(func) and hasattr(func, "__name__") and func.__name__ == "PaddleOCR":
-            paddle_ocr = Mock()
-            paddle_ocr.ocr = Mock()
-            paddle_ocr.ocr.return_value = [
-                [
-                    [
-                        [[10, 10], [100, 10], [100, 30], [10, 30]],
-                        ("Sample text 1", 0.95),
-                    ],
-                    [
-                        [[10, 40], [100, 40], [100, 60], [10, 60]],
-                        ("Sample text 2", 0.90),
-                    ],
-                ]
-            ]
-            return paddle_ocr
-        return func(*args, **kwargs)
-
-    return mocker.patch("kreuzberg._ocr._paddleocr.run_sync", side_effect=mock_async_run_sync)
-
-
-@pytest.fixture
 def mock_find_spec(mocker: MockerFixture) -> Mock:
     mock = mocker.patch("kreuzberg._ocr._paddleocr.find_spec")
     mock.return_value = True
@@ -106,25 +33,6 @@ def mock_find_spec_missing(mocker: MockerFixture) -> Mock:
     mock = mocker.patch("kreuzberg._ocr._paddleocr.find_spec")
     mock.return_value = None
     return mock
-
-
-@pytest.fixture
-def mock_image() -> Mock:
-    img = Mock(spec=Image.Image)
-
-    img.configure_mock(size=(100, 100), width=100, height=100)
-
-    img.convert.return_value = img
-
-    array_interface = {
-        "shape": (100, 100, 3),
-        "typestr": "|u1",
-        "data": np.zeros((100, 100, 3), dtype=np.uint8).tobytes(),
-        "strides": None,
-        "version": 3,
-    }
-    type(img).__array_interface__ = array_interface
-    return img
 
 
 @pytest.mark.anyio
@@ -161,30 +69,30 @@ async def test_is_mkldnn_supported(mocker: MockerFixture) -> None:
 
 
 @pytest.mark.anyio
-async def test_init_paddle_ocr(
-    backend: PaddleBackend, mock_paddleocr: Mock, mock_run_sync: Mock, mock_find_spec: Mock
-) -> None:
+async def test_init_paddle_ocr(backend: PaddleBackend, mock_find_spec: Mock, mocker: MockerFixture) -> None:
+    """Test that PaddleOCR is initialized only once."""
     PaddleBackend._paddle_ocr = None
+
+    mock_paddleocr = mocker.patch("kreuzberg._ocr._paddleocr.PaddleOCR")
+    mock_instance = Mock()
+    mock_paddleocr.return_value = mock_instance
 
     await backend._init_paddle_ocr()
 
-    mock_run_sync.assert_called_once()
     mock_paddleocr.assert_called_once()
+    assert PaddleBackend._paddle_ocr is mock_instance
 
-    assert PaddleBackend._paddle_ocr is not None
-
-    mock_run_sync.reset_mock()
     mock_paddleocr.reset_mock()
 
     await backend._init_paddle_ocr()
-    mock_run_sync.assert_not_called()
     mock_paddleocr.assert_not_called()
 
 
 @pytest.mark.anyio
 async def test_init_paddle_ocr_with_gpu_package(
-    backend: PaddleBackend, mock_paddleocr: Mock, mock_run_sync: Mock, mock_find_spec: Mock, mocker: MockerFixture
+    backend: PaddleBackend, mock_find_spec: Mock, mocker: MockerFixture
 ) -> None:
+    """Test PaddleOCR initialization with GPU package."""
     PaddleBackend._paddle_ocr = None
 
     mocker.patch("kreuzberg._ocr._paddleocr.find_spec", side_effect=lambda x: True if x == "paddlepaddle_gpu" else None)
@@ -194,24 +102,28 @@ async def test_init_paddle_ocr_with_gpu_package(
     mock_device_info = DeviceInfo(device_type="cuda", device_id=0, name="NVIDIA GPU")
     mocker.patch("kreuzberg._ocr._paddleocr.validate_device_request", return_value=mock_device_info)
 
+    mock_paddleocr = mocker.patch("kreuzberg._ocr._paddleocr.PaddleOCR")
+    mock_instance = Mock()
+    mock_paddleocr.return_value = mock_instance
+
     await backend._init_paddle_ocr()
 
     mock_paddleocr.assert_called_once()
     call_args, call_kwargs = mock_paddleocr.call_args
 
-    assert call_kwargs.get("use_gpu") is True
     assert call_kwargs.get("enable_mkldnn") is False
-
-    PaddleBackend._paddle_ocr = None
-    mock_paddleocr.reset_mock()
-    mock_run_sync.reset_mock()
 
 
 @pytest.mark.anyio
 async def test_init_paddle_ocr_with_language(
-    backend: PaddleBackend, mock_paddleocr: Mock, mock_run_sync: Mock, mock_find_spec: Mock
+    backend: PaddleBackend, mock_find_spec: Mock, mocker: MockerFixture
 ) -> None:
+    """Test PaddleOCR initialization with language parameter."""
     PaddleBackend._paddle_ocr = None
+
+    mock_paddleocr = mocker.patch("kreuzberg._ocr._paddleocr.PaddleOCR")
+    mock_instance = Mock()
+    mock_paddleocr.return_value = mock_instance
 
     with patch.object(PaddleBackend, "_validate_language_code", return_value="french"):
         await backend._init_paddle_ocr(language="fra")
@@ -223,9 +135,14 @@ async def test_init_paddle_ocr_with_language(
 
 @pytest.mark.anyio
 async def test_init_paddle_ocr_with_custom_options(
-    backend: PaddleBackend, mock_paddleocr: Mock, mock_run_sync: Mock, mock_find_spec: Mock
+    backend: PaddleBackend, mock_find_spec: Mock, mocker: MockerFixture
 ) -> None:
+    """Test PaddleOCR initialization with custom options and deprecated parameters."""
     PaddleBackend._paddle_ocr = None
+
+    mock_paddleocr = mocker.patch("kreuzberg._ocr._paddleocr.PaddleOCR")
+    mock_instance = Mock()
+    mock_paddleocr.return_value = mock_instance
 
     custom_options = {
         "det_db_thresh": 0.4,
@@ -241,19 +158,29 @@ async def test_init_paddle_ocr_with_custom_options(
     mock_paddleocr.assert_called_once()
     call_args, call_kwargs = mock_paddleocr.call_args
 
-    assert call_kwargs.get("det_db_thresh") == 0.4
-    assert call_kwargs.get("det_db_box_thresh") == 0.6
-    assert call_kwargs.get("det_db_unclip_ratio") == 2.0
-    assert call_kwargs.get("use_angle_cls") is False
+    assert call_kwargs.get("text_det_thresh") == 0.4
+    assert call_kwargs.get("text_det_box_thresh") == 0.6
+    assert call_kwargs.get("text_det_unclip_ratio") == 2.0
+    assert call_kwargs.get("use_textline_orientation") is False
     assert call_kwargs.get("det_algorithm") == "EAST"
     assert call_kwargs.get("rec_algorithm") == "SRN"
+
+    assert "det_db_thresh" not in call_kwargs
+    assert "det_db_box_thresh" not in call_kwargs
+    assert "det_db_unclip_ratio" not in call_kwargs
+    assert "use_angle_cls" not in call_kwargs
 
 
 @pytest.mark.anyio
 async def test_init_paddle_ocr_with_model_dirs(
-    backend: PaddleBackend, mock_paddleocr: Mock, mock_run_sync: Mock, mock_find_spec: Mock
+    backend: PaddleBackend, mock_find_spec: Mock, mocker: MockerFixture
 ) -> None:
+    """Test PaddleOCR initialization with model directories."""
     PaddleBackend._paddle_ocr = None
+
+    mock_paddleocr = mocker.patch("kreuzberg._ocr._paddleocr.PaddleOCR")
+    mock_instance = Mock()
+    mock_paddleocr.return_value = mock_instance
 
     custom_options = {
         "det_model_dir": "/path/to/det/model",
@@ -273,18 +200,14 @@ async def test_init_paddle_ocr_with_model_dirs(
 async def test_init_paddle_ocr_missing_dependency(backend: PaddleBackend, mock_find_spec_missing: Mock) -> None:
     PaddleBackend._paddle_ocr = None
 
-    def mock_import(name: str, *args: Any, **kwargs: Any) -> Any:
-        if name == "paddleocr":
-            raise ImportError("No module named 'paddleocr'")
-        return __import__(name, *args, **kwargs)
+    with patch("kreuzberg._ocr._paddleocr.HAS_PADDLEOCR", False):
+        with patch("kreuzberg._ocr._paddleocr.PaddleOCR", None):
+            with pytest.raises(MissingDependencyError) as excinfo:
+                await backend._init_paddle_ocr()
 
-    with patch("builtins.__import__", side_effect=mock_import):
-        with pytest.raises(MissingDependencyError) as excinfo:
-            await backend._init_paddle_ocr()
-
-        error_message = str(excinfo.value)
-        assert "paddleocr" in error_message
-        assert "missing" in error_message.lower() or "required" in error_message.lower()
+            error_message = str(excinfo.value)
+            assert "paddleocr" in error_message
+            assert "missing" in error_message.lower() or "required" in error_message.lower()
 
 
 @pytest.mark.anyio
@@ -303,163 +226,171 @@ async def test_init_paddle_ocr_initialization_error(backend: PaddleBackend, mock
 
 
 @pytest.mark.anyio
-async def test_process_image(
-    backend: PaddleBackend, mock_image: Mock, mock_run_sync: Mock, mock_paddleocr: Mock
-) -> None:
-    paddle_mock = Mock()
+async def test_process_image(backend: PaddleBackend) -> None:
+    """Test basic image processing with PaddleOCR."""
+    from PIL import ImageDraw
 
-    paddle_mock.ocr.return_value = [
-        [
-            [
-                [[10, 10], [100, 10], [100, 30], [10, 30]],
-                ("Sample text 1", 0.95),
-            ],
-            [
-                [[10, 40], [100, 40], [100, 60], [10, 60]],
-                ("Sample text 2", 0.90),
-            ],
-        ]
-    ]
-    PaddleBackend._paddle_ocr = paddle_mock
+    image = Image.new("RGB", (400, 100), "white")
+    draw = ImageDraw.Draw(image)
+    draw.text((10, 30), "Hello World Test", fill="black")
 
-    result = await backend.process_image(mock_image)
+    with patch.object(backend, "_init_paddle_ocr"):
+        PaddleBackend._paddle_ocr = Mock()
+        backend._paddle_ocr.ocr = Mock(
+            return_value=[[[[[10, 30], [150, 30], [150, 50], [10, 50]], ("Hello World Test", 0.95)]]]
+        )
 
-    assert isinstance(result, ExtractionResult)
-    assert result.content == "Sample text 1\nSample text 2"
-    assert result.mime_type == "text/plain"
-    assert result.metadata.get("width") == 100
-    assert result.metadata.get("height") == 100
+        result = await backend.process_image(image, language="en", use_cache=False)
+
+        assert isinstance(result, ExtractionResult)
+        assert result.mime_type == "text/plain"
+        assert "Hello World Test" in result.content
+        assert result.metadata.get("width") == 400
+        assert result.metadata.get("height") == 100
 
 
 @pytest.mark.anyio
-async def test_process_image_with_options(backend: PaddleBackend, mock_image: Mock, mock_run_sync: Mock) -> None:
-    paddle_mock = Mock()
+async def test_process_image_with_options(backend: PaddleBackend) -> None:
+    """Test image processing with custom options and deprecated parameters."""
+    from PIL import ImageDraw
 
-    paddle_mock.ocr.return_value = [
-        [
-            [
-                [[10, 10], [100, 10], [100, 30], [10, 30]],
-                ("Sample text 1", 0.95),
-            ],
-            [
-                [[10, 40], [100, 40], [100, 60], [10, 60]],
-                ("Sample text 2", 0.90),
-            ],
-        ]
-    ]
-    PaddleBackend._paddle_ocr = paddle_mock
+    image = Image.new("RGB", (300, 80), "white")
+    draw = ImageDraw.Draw(image)
+    draw.text((10, 20), "Text Line 1", fill="black")
+    draw.text((10, 50), "Text Line 2", fill="black")
 
-    result = await backend.process_image(
-        mock_image,
-        language="german",
-        use_angle_cls=True,
-        det_db_thresh=0.4,
-        det_db_box_thresh=0.6,
-    )
+    with patch.object(backend, "_init_paddle_ocr"):
+        PaddleBackend._paddle_ocr = Mock()
+        backend._paddle_ocr.ocr = Mock(
+            return_value=[
+                [
+                    [[[10, 20], [100, 20], [100, 40], [10, 40]], ("Text Line 1", 0.95)],
+                    [[[10, 50], [100, 50], [100, 70], [10, 70]], ("Text Line 2", 0.90)],
+                ]
+            ]
+        )
 
-    assert isinstance(result, ExtractionResult)
-    assert result.content == "Sample text 1\nSample text 2"
+        result = await backend.process_image(
+            image,
+            language="en",
+            use_angle_cls=True,
+            det_db_thresh=0.4,
+            det_db_box_thresh=0.6,
+            use_cache=False,
+        )
+
+        assert isinstance(result, ExtractionResult)
+        assert "Text Line 1" in result.content
+        assert "Text Line 2" in result.content
 
 
 @pytest.mark.anyio
-async def test_process_image_error(backend: PaddleBackend, mock_image: Mock) -> None:
-    paddle_mock = Mock()
+async def test_process_image_error(backend: PaddleBackend) -> None:
+    """Test error handling during image processing."""
+    from PIL import ImageDraw
 
-    paddle_mock.ocr.return_value = [
-        [
-            [
-                [[10, 10], [100, 10], [100, 30], [10, 30]],
-                ("Sample text 1", 0.95),
-            ],
-            [
-                [[10, 40], [100, 40], [100, 60], [10, 60]],
-                ("Sample text 2", 0.90),
-            ],
-        ]
-    ]
-    PaddleBackend._paddle_ocr = paddle_mock
+    image = Image.new("RGB", (100, 50), "white")
+    draw = ImageDraw.Draw(image)
+    draw.text((10, 10), "Error Test", fill="black")
 
-    with patch("kreuzberg._ocr._paddleocr.run_sync", side_effect=Exception("OCR processing error")):
+    with patch.object(backend, "_init_paddle_ocr"):
+        PaddleBackend._paddle_ocr = Mock()
+        backend._paddle_ocr.ocr = Mock(side_effect=Exception("OCR processing error"))
+
         with pytest.raises(OCRError) as excinfo:
-            await backend.process_image(mock_image)
+            await backend.process_image(image, use_cache=False)
 
         assert "Failed to OCR using PaddleOCR" in str(excinfo.value)
 
 
 @pytest.mark.anyio
-async def test_process_file(backend: PaddleBackend, mock_run_sync: Mock, ocr_image: Path) -> None:
-    paddle_mock = Mock()
+async def test_process_file(backend: PaddleBackend, tmp_path: Path) -> None:
+    """Test processing a file with PaddleOCR."""
+    from PIL import ImageDraw
 
-    paddle_mock.ocr.return_value = [
-        [
-            [
-                [[10, 10], [100, 10], [100, 30], [10, 30]],
-                ("Sample text 1", 0.95),
-            ],
-            [
-                [[10, 40], [100, 40], [100, 60], [10, 60]],
-                ("Sample text 2", 0.90),
-            ],
-        ]
-    ]
-    PaddleBackend._paddle_ocr = paddle_mock
+    image = Image.new("RGB", (200, 60), "white")
+    draw = ImageDraw.Draw(image)
+    draw.text((10, 10), "File Line 1", fill="black")
+    draw.text((10, 35), "File Line 2", fill="black")
 
-    result = await backend.process_file(ocr_image)
+    test_file = tmp_path / "test_ocr.png"
+    image.save(test_file)
 
-    assert isinstance(result, ExtractionResult)
-    assert result.content == "Sample text 1\nSample text 2"
+    with patch.object(backend, "_init_paddle_ocr"):
+        PaddleBackend._paddle_ocr = Mock()
+        backend._paddle_ocr.ocr = Mock(
+            return_value=[
+                [
+                    [[[10, 10], [100, 10], [100, 30], [10, 30]], ("File Line 1", 0.95)],
+                    [[[10, 35], [100, 35], [100, 55], [10, 55]], ("File Line 2", 0.90)],
+                ]
+            ]
+        )
 
+        result = await backend.process_file(test_file)
 
-@pytest.mark.anyio
-async def test_process_file_with_options(backend: PaddleBackend, mock_run_sync: Mock, ocr_image: Path) -> None:
-    paddle_mock = Mock()
-
-    paddle_mock.ocr.return_value = [
-        [
-            [
-                [[10, 10], [100, 10], [100, 30], [10, 30]],
-                ("Sample text 1", 0.95),
-            ],
-            [
-                [[10, 40], [100, 40], [100, 60], [10, 60]],
-                ("Sample text 2", 0.90),
-            ],
-        ]
-    ]
-    PaddleBackend._paddle_ocr = paddle_mock
-
-    result = await backend.process_file(
-        ocr_image,
-        language="french",
-        use_angle_cls=True,
-        det_db_thresh=0.4,
-    )
-
-    assert isinstance(result, ExtractionResult)
-    assert result.content == "Sample text 1\nSample text 2"
+        assert isinstance(result, ExtractionResult)
+        assert "File Line 1" in result.content
+        assert "File Line 2" in result.content
 
 
 @pytest.mark.anyio
-async def test_process_file_error(backend: PaddleBackend, ocr_image: Path) -> None:
-    paddle_mock = Mock()
+async def test_process_file_with_options(backend: PaddleBackend, tmp_path: Path) -> None:
+    """Test processing a file with custom options."""
+    from PIL import ImageDraw
 
-    paddle_mock.ocr.return_value = [
-        [
-            [
-                [[10, 10], [100, 10], [100, 30], [10, 30]],
-                ("Sample text 1", 0.95),
-            ],
-            [
-                [[10, 40], [100, 40], [100, 60], [10, 60]],
-                ("Sample text 2", 0.90),
-            ],
-        ]
-    ]
-    PaddleBackend._paddle_ocr = paddle_mock
+    image = Image.new("RGB", (200, 60), "white")
+    draw = ImageDraw.Draw(image)
+    draw.text((10, 10), "Options Test 1", fill="black")
+    draw.text((10, 35), "Options Test 2", fill="black")
 
-    with patch("kreuzberg._ocr._paddleocr.run_sync", side_effect=Exception("File processing error")):
+    test_file = tmp_path / "test_options.png"
+    image.save(test_file)
+
+    with patch.object(backend, "_init_paddle_ocr") as mock_init:
+        PaddleBackend._paddle_ocr = Mock()
+        backend._paddle_ocr.ocr = Mock(
+            return_value=[
+                [
+                    [[[10, 10], [120, 10], [120, 30], [10, 30]], ("Options Test 1", 0.95)],
+                    [[[10, 35], [120, 35], [120, 55], [10, 55]], ("Options Test 2", 0.90)],
+                ]
+            ]
+        )
+
+        result = await backend.process_file(
+            test_file,
+            language="french",
+            use_angle_cls=True,
+            det_db_thresh=0.4,
+        )
+
+        assert mock_init.called
+        kwargs = mock_init.call_args_list[-1][1]
+        assert kwargs.get("language") == "french"
+        assert kwargs.get("use_angle_cls") is True
+        assert kwargs.get("det_db_thresh") == 0.4
+
+        assert isinstance(result, ExtractionResult)
+        assert "Options Test 1" in result.content
+        assert "Options Test 2" in result.content
+
+
+@pytest.mark.anyio
+async def test_process_file_error(backend: PaddleBackend, tmp_path: Path) -> None:
+    """Test error handling during file processing."""
+    from PIL import ImageDraw
+
+    image = Image.new("RGB", (100, 50), "white")
+    draw = ImageDraw.Draw(image)
+    draw.text((10, 10), "Error", fill="black")
+
+    test_file = tmp_path / "error_test.png"
+    image.save(test_file)
+
+    with patch("kreuzberg._ocr._paddleocr.Image.open", side_effect=Exception("File processing error")):
         with pytest.raises(OCRError) as excinfo:
-            await backend.process_file(ocr_image)
+            await backend.process_file(test_file, use_cache=False)
 
         assert "Failed to load or process image using PaddleOCR" in str(excinfo.value)
 
@@ -672,24 +603,29 @@ def test_validate_language_code_invalid(invalid_language_code: str) -> None:
 
 @pytest.mark.anyio
 async def test_process_image_grayscale_conversion() -> None:
+    """Test that grayscale images are converted to RGB before processing."""
+    from PIL import ImageDraw
+
     backend = PaddleBackend()
 
-    grayscale_image = Image.new("L", (100, 100), color=128)
+    grayscale_image = Image.new("L", (200, 50), color=255)
+    draw = ImageDraw.Draw(grayscale_image)
+    draw.text((10, 10), "TEST", fill=0)
 
     with patch.object(backend, "_init_paddle_ocr"):
-        backend._paddle_ocr = Mock()  # type: ignore[misc]
-        backend._paddle_ocr.ocr.return_value = [[]]
+        PaddleBackend._paddle_ocr = Mock()
+        backend._paddle_ocr.ocr = Mock(return_value=[[[[[10, 10], [50, 10], [50, 30], [10, 30]], ("TEST", 0.95)]]])
 
-        with patch("kreuzberg._ocr._paddleocr.run_sync") as mock_run_sync:
-            mock_run_sync.return_value = [[]]
+        result = await backend.process_image(grayscale_image, use_cache=False)
 
-            await backend.process_image(grayscale_image)
+        backend._paddle_ocr.ocr.assert_called_once()
 
-            mock_run_sync.assert_called_once()
-            np_array_arg = mock_run_sync.call_args[0][1]
+        np_array = backend._paddle_ocr.ocr.call_args[0][0]
+        assert len(np_array.shape) == 3
+        assert np_array.shape[2] == 3
 
-            assert len(np_array_arg.shape) == 3
-            assert np_array_arg.shape[2] == 3
+        assert isinstance(result, ExtractionResult)
+        assert "TEST" in result.content
 
 
 @pytest.mark.anyio
@@ -728,33 +664,40 @@ def test_process_paddle_result_image_size_fallback() -> None:
 
 
 @pytest.mark.anyio
-async def test_init_paddle_ocr_gpu_memory_conversion() -> None:
+async def test_init_paddle_ocr_deprecated_params() -> None:
+    """Test that deprecated parameters are properly mapped to new ones."""
     from unittest.mock import Mock, patch
 
     PaddleBackend._paddle_ocr = None
 
-    mock_paddle_ocr_class = Mock()
-    mock_paddle_ocr_instance = Mock()
-    mock_paddle_ocr_class.return_value = mock_paddle_ocr_instance
+    with patch("kreuzberg._ocr._paddleocr.PaddleOCR") as mock_paddle_ocr:
+        mock_instance = Mock()
+        mock_paddle_ocr.return_value = mock_instance
 
-    mock_device_info = Mock()
-    mock_device_info.device_type = "cuda"
+        await PaddleBackend._init_paddle_ocr(
+            language="en",
+            use_angle_cls=True,
+            det_db_thresh=0.4,
+            det_db_box_thresh=0.6,
+            det_db_unclip_ratio=2.5,
+            gpu_memory_limit=2.5,
+        )
 
-    async def mock_run_sync_func(func: object, *args: object, **kwargs: object) -> object:
-        return func(*args, **kwargs)  # type: ignore[operator]
+        mock_paddle_ocr.assert_called_once()
+        kwargs = mock_paddle_ocr.call_args[1]
 
-    with (
-        patch("kreuzberg._ocr._paddleocr.find_spec", return_value=True),
-        patch.dict("sys.modules", {"paddleocr": Mock(PaddleOCR=mock_paddle_ocr_class)}),
-        patch.object(PaddleBackend, "_validate_language_code", return_value="en"),
-        patch.object(PaddleBackend, "_resolve_device_config", return_value=mock_device_info),
-        patch("kreuzberg._ocr._paddleocr.run_sync", side_effect=mock_run_sync_func),
-    ):
-        await PaddleBackend._init_paddle_ocr(language="en", gpu_memory_limit=2.5)
+        assert kwargs.get("use_textline_orientation") is True
+        assert kwargs.get("text_det_thresh") == 0.4
+        assert kwargs.get("text_det_box_thresh") == 0.6
+        assert kwargs.get("text_det_unclip_ratio") == 2.5
 
-        mock_paddle_ocr_class.assert_called_once()
-        expected_call_kwargs = mock_paddle_ocr_class.call_args[1]
-        assert expected_call_kwargs["gpu_mem"] == 2560
+        assert "use_angle_cls" not in kwargs
+        assert "det_db_thresh" not in kwargs
+        assert "det_db_box_thresh" not in kwargs
+        assert "det_db_unclip_ratio" not in kwargs
+        assert "gpu_mem" not in kwargs
+        assert "gpu_memory_limit" not in kwargs
+        assert "use_gpu" not in kwargs
 
 
 @pytest.mark.anyio

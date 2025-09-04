@@ -146,7 +146,6 @@ def classify_document_from_layout(
 
     layout_df = layout_df.with_columns(pl.lit(translated_text).alias("translated_text"))
 
-    # Cast columns to numeric types for arithmetic operations
     try:
         layout_df = layout_df.with_columns(
             [pl.col("top").cast(pl.Float64, strict=False), pl.col("height").cast(pl.Float64, strict=False)]
@@ -157,7 +156,6 @@ def classify_document_from_layout(
             page_height_val = 0.0
         page_height = float(page_height_val)
     except Exception:  # noqa: BLE001
-        # Fallback if casting fails
         page_height = 1000.0
     scores = dict.fromkeys(DOCUMENT_CLASSIFIERS, 0.0)
 

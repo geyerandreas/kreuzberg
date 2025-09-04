@@ -48,6 +48,32 @@ def mock_run_process(mocker: MockerFixture) -> Mock:
 5\t1\t1\t1\t1\t2\t160\t50\t60\t30\t94.0\tOCR
 5\t1\t1\t1\t1\t3\t230\t50\t60\t30\t96.0\ttext"""
                 Path(f"{output_file}.tsv").write_text(tsv_content)
+            elif "hocr" in command:
+                hocr_content = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 5.0.0' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word' />
+ </head>
+ <body>
+  <div class='ocr_page' id='page_1' title='bbox 0 0 100 100; ppageno 0'>
+   <div class='ocr_carea' id='carea_1_1' title='bbox 50 50 350 80'>
+    <p class='ocr_par' id='par_1_1' title='bbox 50 50 350 80'>
+     <span class='ocr_line' id='line_1_1' title='bbox 50 50 350 80; baseline 0 -10'>
+      <span class='ocrx_word' id='word_1_1' title='bbox 50 50 150 80; x_wconf 95'>Sample</span>
+      <span class='ocrx_word' id='word_1_2' title='bbox 160 50 220 80; x_wconf 94'>OCR</span>
+      <span class='ocrx_word' id='word_1_3' title='bbox 230 50 290 80; x_wconf 96'>text</span>
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>"""
+                Path(f"{output_file}.hocr").write_text(hocr_content)
             else:
                 output_txt_file = Path(f"{output_file}.txt")
                 output_txt_file.write_text("Sample OCR text")
@@ -266,22 +292,67 @@ async def test_integration_process_image(backend: TesseractBackend, ocr_image: P
 
 
 @pytest.mark.anyio
-async def test_process_file_linux(backend: TesseractBackend, mocker: MockerFixture, fresh_cache: None) -> None:
+async def test_process_file_linux(
+    backend: TesseractBackend, mocker: MockerFixture, tmp_path: Path, fresh_cache: None
+) -> None:
+    """Test that OMP_THREAD_LIMIT is set on Linux to avoid OpenMP issues."""
     mocker.patch("sys.platform", "linux")
+
+    test_file = tmp_path / "test.png"
+    test_image = Image.new("RGB", (100, 50), "white")
+    test_image.save(test_file)
 
     async def linux_mock_run(*args: Any, **kwargs: Any) -> Mock:
         result = Mock()
         result.returncode = 0
-        result.stdout = b"tesseract 5.0.0" if "--version" in args[0] else b"test output"
         result.stderr = b""
+
+        command = args[0]
+        if "--version" in command:
+            result.stdout = b"tesseract 5.0.0"
+        elif len(command) >= 3 and command[0].endswith("tesseract"):
+            output_base = command[2]
+            if "hocr" in command:
+                hocr_content = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+  <meta name='ocr-system' content='tesseract 5.0.0' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word' />
+ </head>
+ <body>
+  <div class='ocr_page' id='page_1' title='bbox 0 0 100 50; ppageno 0'>
+   <div class='ocr_carea' id='carea_1_1' title='bbox 10 10 90 40'>
+    <p class='ocr_par' id='par_1_1' title='bbox 10 10 90 40'>
+     <span class='ocr_line' id='line_1_1' title='bbox 10 10 90 40'>
+      <span class='ocrx_word' id='word_1_1' title='bbox 10 10 40 40; x_wconf 95'>Test</span>
+      <span class='ocrx_word' id='word_1_2' title='bbox 50 10 90 40; x_wconf 95'>text</span>
+     </span>
+    </p>
+   </div>
+  </div>
+ </body>
+</html>"""
+                Path(f"{output_base}.hocr").write_text(hocr_content)
+            else:
+                Path(f"{output_base}.txt").write_text("Test text")
+            result.stdout = b""
+        else:
+            result.stdout = b"test output"
+
         return result
 
     mock_run = mocker.patch("kreuzberg._ocr._tesseract.run_process", side_effect=linux_mock_run)
 
     TesseractBackend._version_checked = False
-    await backend.process_file(Path("test.png"), language="eng", psm=PSMMode.AUTO)
+    result = await backend.process_file(test_file, language="eng", psm=PSMMode.AUTO)
 
     assert any(call[1].get("env") == {"OMP_THREAD_LIMIT": "1"} for call in mock_run.call_args_list)
+    assert isinstance(result, ExtractionResult)
+    assert "Test text" in result.content
 
 
 @pytest.mark.anyio
@@ -810,16 +881,40 @@ def test_tesseract_sync_methods_validate_tesseract_version_sync_not_found(
 
 @pytest.mark.anyio
 async def test_tesseract_environment_variables_linux_omp_thread_limit(
-    backend: TesseractBackend, mocker: MockerFixture
+    backend: TesseractBackend, mocker: MockerFixture, tmp_path: Path
 ) -> None:
+    """Test that OMP_THREAD_LIMIT is set to 1 on Linux for image processing."""
     mocker.patch("sys.platform", "linux")
 
     async def mock_run_process(*args: Any, **kwargs: Any) -> Mock:
-        assert kwargs.get("env") == {"OMP_THREAD_LIMIT": "1"}
+        if "--version" not in args[0]:
+            assert kwargs.get("env") == {"OMP_THREAD_LIMIT": "1"}
+
         result = Mock()
         result.returncode = 0
-        result.stdout = b"tesseract 5.0.0" if "--version" in args[0] else b""
         result.stderr = b""
+
+        command = args[0]
+        if "--version" in command:
+            result.stdout = b"tesseract 5.0.0"
+        elif len(command) >= 3 and command[0].endswith("tesseract"):
+            output_base = command[2]
+            if "hocr" in command:
+                hocr_content = """<?xml version="1.0" encoding="UTF-8"?>
+<html>
+ <body>
+  <div class='ocr_page' title='bbox 0 0 100 100'>
+   <span class='ocrx_word' title='bbox 10 10 50 30; x_wconf 95'>Test</span>
+  </div>
+ </body>
+</html>"""
+                Path(f"{output_base}.hocr").write_text(hocr_content)
+            else:
+                Path(f"{output_base}.txt").write_text("Test output")
+            result.stdout = b""
+        else:
+            result.stdout = b""
+
         return result
 
     mocker.patch("kreuzberg._ocr._tesseract.run_process", side_effect=mock_run_process)
@@ -827,7 +922,10 @@ async def test_tesseract_environment_variables_linux_omp_thread_limit(
     TesseractBackend._version_checked = False
 
     test_image = Image.new("RGB", (100, 100), "white")
-    await backend.process_image(test_image, language="eng")
+    result = await backend.process_image(test_image, language="eng")
+
+    assert isinstance(result, ExtractionResult)
+    assert result.content.strip()
 
 
 @pytest.mark.anyio

@@ -9,6 +9,16 @@ from kreuzberg._mime_types import PLAIN_TEXT_MIME_TYPE
 from kreuzberg._ocr._base import OCRBackend
 from kreuzberg._types import EasyOCRConfig, ExtractionResult, Metadata
 from kreuzberg._utils._device import DeviceInfo, validate_device_request
+from kreuzberg._utils._ocr_cache import (
+    build_cache_kwargs,
+    cache_and_complete_async,
+    cache_and_complete_sync,
+    generate_image_hash,
+    get_file_info,
+    handle_cache_lookup_async,
+    handle_cache_lookup_sync,
+    mark_processing_complete,
+)
 from kreuzberg._utils._string import normalize_spaces
 from kreuzberg._utils._sync import run_sync
 from kreuzberg.exceptions import MissingDependencyError, OCRError, ValidationError
@@ -21,17 +31,24 @@ try:  # pragma: no cover
 except ImportError:  # pragma: no cover
     from typing_extensions import Unpack
 
-try:
+if TYPE_CHECKING:
     import easyocr
     import numpy as np
     import torch
 
-    HAS_EASYOCR = True
-except ImportError:
-    HAS_EASYOCR = False
-    easyocr = None
-    np = None
-    torch = None
+HAS_EASYOCR: bool
+if not TYPE_CHECKING:
+    try:
+        import easyocr
+        import numpy as np
+        import torch
+
+        HAS_EASYOCR = True
+    except ImportError:
+        HAS_EASYOCR = False
+        easyocr: Any = None
+        np: Any = None
+        torch: Any = None
 
 
 EASYOCR_SUPPORTED_LANGUAGE_CODES: Final[set[str]] = {
@@ -137,17 +154,28 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
         Raises:
             OCRError: If OCR processing fails.
         """
-        await self._init_easyocr(**kwargs)
+        use_cache = kwargs.pop("use_cache", True)
 
-        beam_width = kwargs.pop("beam_width")
+        cache_kwargs = None
+        if use_cache:
+            image_hash = generate_image_hash(image)
+            cache_kwargs = build_cache_kwargs("easyocr", kwargs, image_hash=image_hash)
 
-        kwargs.pop("language", None)
-        kwargs.pop("use_gpu", None)
-        kwargs.pop("device", None)
-        kwargs.pop("gpu_memory_limit", None)
-        kwargs.pop("fallback_to_cpu", None)
+            cached_result = await handle_cache_lookup_async(cache_kwargs)
+            if cached_result:
+                return cached_result
 
         try:
+            await self._init_easyocr(**kwargs)
+
+            beam_width = kwargs.pop("beam_width", 5)
+
+            kwargs.pop("language", None)
+            kwargs.pop("use_gpu", None)
+            kwargs.pop("device", None)
+            kwargs.pop("gpu_memory_limit", None)
+            kwargs.pop("fallback_to_cpu", None)
+
             result = await run_sync(
                 self._reader.readtext,
                 np.array(image),
@@ -155,8 +183,15 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
                 **kwargs,
             )
 
-            return self._process_easyocr_result(result, image)
+            extraction_result = self._process_easyocr_result(result, image)
+
+            if use_cache and cache_kwargs:
+                await cache_and_complete_async(extraction_result, cache_kwargs, use_cache)
+
+            return extraction_result
         except Exception as e:
+            if use_cache and cache_kwargs:
+                mark_processing_complete(cache_kwargs)
             raise OCRError(f"Failed to OCR using EasyOCR: {e}") from e
 
     async def process_file(self, path: Path, **kwargs: Unpack[EasyOCRConfig]) -> ExtractionResult:
@@ -172,11 +207,31 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
         Raises:
             OCRError: If file loading or OCR processing fails.
         """
-        await self._init_easyocr(**kwargs)
+        use_cache = kwargs.pop("use_cache", True)
+
+        cache_kwargs = None
+        if use_cache:
+            file_info = get_file_info(path)
+            cache_kwargs = build_cache_kwargs("easyocr", kwargs, file_info=file_info)
+
+            cached_result = await handle_cache_lookup_async(cache_kwargs)
+            if cached_result:
+                return cached_result
+
         try:
+            await self._init_easyocr(**kwargs)
             image = await run_sync(Image.open, path)
-            return await self.process_image(image, **kwargs)
+
+            kwargs["use_cache"] = False
+            extraction_result = await self.process_image(image, **kwargs)
+
+            if use_cache and cache_kwargs:
+                await cache_and_complete_async(extraction_result, cache_kwargs, use_cache)
+
+            return extraction_result
         except Exception as e:
+            if use_cache and cache_kwargs:
+                mark_processing_complete(cache_kwargs)
             raise OCRError(f"Failed to load or process image using EasyOCR: {e}") from e
 
     @staticmethod
@@ -374,24 +429,42 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
         Raises:
             OCRError: If OCR processing fails.
         """
-        self._init_easyocr_sync(**kwargs)
+        use_cache = kwargs.pop("use_cache", True)
 
-        beam_width = kwargs.pop("beam_width")
-        kwargs.pop("language", None)
-        kwargs.pop("use_gpu", None)
-        kwargs.pop("device", None)
-        kwargs.pop("gpu_memory_limit", None)
-        kwargs.pop("fallback_to_cpu", None)
+        cache_kwargs = None
+        if use_cache:
+            image_hash = generate_image_hash(image)
+            cache_kwargs = build_cache_kwargs("easyocr", kwargs, image_hash=image_hash)
+
+            cached_result = handle_cache_lookup_sync(cache_kwargs)
+            if cached_result:
+                return cached_result
 
         try:
+            self._init_easyocr_sync(**kwargs)
+
+            beam_width = kwargs.pop("beam_width", 5)
+            kwargs.pop("language", None)
+            kwargs.pop("use_gpu", None)
+            kwargs.pop("device", None)
+            kwargs.pop("gpu_memory_limit", None)
+            kwargs.pop("fallback_to_cpu", None)
+
             result = self._reader.readtext(
                 np.array(image),
                 beamWidth=beam_width,
                 **kwargs,
             )
 
-            return self._process_easyocr_result(result, image)
+            extraction_result = self._process_easyocr_result(result, image)
+
+            if use_cache and cache_kwargs:
+                cache_and_complete_sync(extraction_result, cache_kwargs, use_cache)
+
+            return extraction_result
         except Exception as e:
+            if use_cache and cache_kwargs:
+                mark_processing_complete(cache_kwargs)
             raise OCRError(f"Failed to OCR using EasyOCR: {e}") from e
 
     def process_file_sync(self, path: Path, **kwargs: Unpack[EasyOCRConfig]) -> ExtractionResult:
@@ -407,11 +480,31 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
         Raises:
             OCRError: If file loading or OCR processing fails.
         """
-        self._init_easyocr_sync(**kwargs)
+        use_cache = kwargs.pop("use_cache", True)
+
+        cache_kwargs = None
+        if use_cache:
+            file_info = get_file_info(path)
+            cache_kwargs = build_cache_kwargs("easyocr", kwargs, file_info=file_info)
+
+            cached_result = handle_cache_lookup_sync(cache_kwargs)
+            if cached_result:
+                return cached_result
+
         try:
+            self._init_easyocr_sync(**kwargs)
             image = Image.open(path)
-            return self.process_image_sync(image, **kwargs)
+
+            kwargs["use_cache"] = False
+            extraction_result = self.process_image_sync(image, **kwargs)
+
+            if use_cache and cache_kwargs:
+                cache_and_complete_sync(extraction_result, cache_kwargs, use_cache)
+
+            return extraction_result
         except Exception as e:
+            if use_cache and cache_kwargs:
+                mark_processing_complete(cache_kwargs)
             raise OCRError(f"Failed to load or process image using EasyOCR: {e}") from e
 
     @classmethod

@@ -20,12 +20,15 @@ if TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
 
+_original_import = __import__
+
+
 def raise_import_error(name: str, *args: Any, **kwargs: Any) -> Any:
     if name == "easyocr":
         raise ImportError("No module named 'easyocr'")
     if name == "torch":
         raise ImportError("No module named 'torch'")
-    return __import__(name, *args, **kwargs)
+    return _original_import(name, *args, **kwargs)
 
 
 @pytest.fixture
@@ -37,19 +40,6 @@ def backend() -> EasyOCRBackend:
 @pytest.fixture
 def config_dict() -> dict[str, Any]:
     return asdict(EasyOCRConfig())
-
-
-@pytest.fixture
-def mock_easyocr_reader() -> Mock:
-    mock_reader = Mock()
-    mock_reader.readtext.return_value = [
-        (
-            [[0, 0], [100, 0], [100, 20], [0, 20]],
-            "Sample OCR text",
-            0.95,
-        )
-    ]
-    return mock_reader
 
 
 @pytest.fixture(autouse=True)
@@ -174,71 +164,70 @@ def test_is_gpu_available() -> None:
 
 @pytest.mark.anyio
 async def test_init_easyocr_missing_dependency() -> None:
-    with patch(
-        "builtins.__import__", side_effect=lambda name, *args, **kwargs: raise_import_error(name, *args, **kwargs)
-    ):
-        backend = EasyOCRBackend()
-        with pytest.raises(MissingDependencyError) as excinfo:
-            await backend._init_easyocr(language="en")
+    with patch("kreuzberg._ocr._easyocr.HAS_EASYOCR", False):
+        with patch("kreuzberg._ocr._easyocr.easyocr", None):
+            backend = EasyOCRBackend()
+            with pytest.raises(MissingDependencyError) as excinfo:
+                await backend._init_easyocr(language="en")
 
-        error_message = str(excinfo.value)
-        assert "easyocr" in error_message
-        assert "required" in error_message
-        assert "kreuzberg" in error_message
+            error_message = str(excinfo.value)
+            assert "easyocr" in error_message
+            assert "required" in error_message
+            assert "kreuzberg" in error_message
 
 
 @pytest.mark.anyio
-async def test_init_easyocr(mock_easyocr_reader: Mock) -> None:
+async def test_init_easyocr(mocker: MockerFixture) -> None:
+    """Test that EasyOCR is initialized correctly."""
+    mock_reader = Mock()
     mock_easyocr = Mock()
-    mock_reader_class = Mock(return_value=mock_easyocr_reader)
-    mock_easyocr.Reader = mock_reader_class
+    mock_easyocr.Reader = Mock(return_value=mock_reader)
 
-    with (
-        patch.dict("sys.modules", {"easyocr": mock_easyocr}),
-        patch("kreuzberg._ocr._easyocr.run_sync", return_value=mock_easyocr_reader) as run_sync_mock,
-    ):
+    with patch("kreuzberg._ocr._easyocr.easyocr", mock_easyocr):
         backend = EasyOCRBackend()
         await backend._init_easyocr(language="en")
 
-        run_sync_mock.assert_called_once()
-        assert run_sync_mock.call_args[0][0] == mock_easyocr.Reader
-        assert run_sync_mock.call_args[0][1] == ["en"]
-        assert "verbose" in run_sync_mock.call_args[1]
-        assert run_sync_mock.call_args[1]["verbose"] is False
+        mock_easyocr.Reader.assert_called_once()
+        call_args = mock_easyocr.Reader.call_args
+        assert call_args[0][0] == ["en"]
+        assert call_args[1]["verbose"] is False
+        assert backend._reader is mock_reader
 
 
 @pytest.mark.anyio
-async def test_init_easyocr_comma_separated_languages(mock_easyocr_reader: Mock) -> None:
+async def test_init_easyocr_comma_separated_languages(mocker: MockerFixture) -> None:
+    """Test EasyOCR initialization with comma-separated languages."""
+    mock_reader = Mock()
     mock_easyocr = Mock()
-    mock_reader_class = Mock(return_value=mock_easyocr_reader)
-    mock_easyocr.Reader = mock_reader_class
+    mock_easyocr.Reader = Mock(return_value=mock_reader)
 
-    with (
-        patch.dict("sys.modules", {"easyocr": mock_easyocr}),
-        patch("kreuzberg._ocr._easyocr.run_sync", return_value=mock_easyocr_reader) as run_sync_mock,
-    ):
+    with patch("kreuzberg._ocr._easyocr.easyocr", mock_easyocr):
         EasyOCRBackend._reader = None
         backend = EasyOCRBackend()
 
         await backend._init_easyocr(language="en,ch_sim")
-        assert run_sync_mock.call_args[0][1] == ["en", "ch_sim"]
+
+        mock_easyocr.Reader.assert_called_once()
+        call_args = mock_easyocr.Reader.call_args
+        assert call_args[0][0] == ["en", "ch_sim"]
 
 
 @pytest.mark.anyio
-async def test_init_easyocr_language_list(mock_easyocr_reader: Mock) -> None:
+async def test_init_easyocr_language_list(mocker: MockerFixture) -> None:
+    """Test EasyOCR initialization with language list."""
+    mock_reader = Mock()
     mock_easyocr = Mock()
-    mock_reader_class = Mock(return_value=mock_easyocr_reader)
-    mock_easyocr.Reader = mock_reader_class
+    mock_easyocr.Reader = Mock(return_value=mock_reader)
 
-    with (
-        patch.dict("sys.modules", {"easyocr": mock_easyocr}),
-        patch("kreuzberg._ocr._easyocr.run_sync", return_value=mock_easyocr_reader) as run_sync_mock,
-    ):
+    with patch("kreuzberg._ocr._easyocr.easyocr", mock_easyocr):
         EasyOCRBackend._reader = None
         backend = EasyOCRBackend()
 
         await backend._init_easyocr(language=["en", "ch_sim"])
-        assert run_sync_mock.call_args[0][1] == ["en", "ch_sim"]
+
+        mock_easyocr.Reader.assert_called_once()
+        call_args = mock_easyocr.Reader.call_args
+        assert call_args[0][0] == ["en", "ch_sim"]
 
 
 @pytest.mark.anyio
@@ -252,71 +241,112 @@ async def test_init_easyocr_error(mocker: MockerFixture) -> None:
 
 
 @pytest.mark.anyio
-async def test_process_image(backend: EasyOCRBackend, mock_easyocr_reader: Mock, config_dict: dict[str, Any]) -> None:
-    image = Image.new("RGB", (100, 100))
+async def test_process_image(backend: EasyOCRBackend) -> None:
+    """Test basic image processing with EasyOCR."""
+    from PIL import ImageDraw
 
-    with patch.object(backend, "_init_easyocr", return_value=None):
-        backend._reader = mock_easyocr_reader  # type: ignore[misc]
+    image = Image.new("RGB", (300, 80), "white")
+    draw = ImageDraw.Draw(image)
+    draw.text((10, 20), "Hello EasyOCR", fill="black")
+    draw.text((10, 50), "Test Line 2", fill="black")
 
-        with patch("kreuzberg._ocr._easyocr.run_sync", return_value=mock_easyocr_reader.readtext.return_value):
-            result = await backend.process_image(image, **config_dict)
+    mock_reader = Mock()
+    mock_result = [
+        ([[10, 20], [120, 20], [120, 40], [10, 40]], "Hello EasyOCR", 0.95),
+        ([[10, 50], [100, 50], [100, 70], [10, 70]], "Test Line 2", 0.90),
+    ]
 
-            assert isinstance(result, ExtractionResult)
-            assert "Sample OCR text" in result.content
-            assert result.mime_type == "text/plain"
-            assert isinstance(result.metadata, dict)
-            assert result.metadata["width"] == 100
-            assert result.metadata["height"] == 100
+    with patch.object(backend, "_init_easyocr"):
+        EasyOCRBackend._reader = mock_reader
+        with patch("kreuzberg._ocr._easyocr.run_sync", return_value=mock_result):
+            result = await backend.process_image(image, use_cache=False)
+
+        assert isinstance(result, ExtractionResult)
+        assert "Hello EasyOCR" in result.content
+        assert "Test Line 2" in result.content
+        assert result.mime_type == "text/plain"
+        assert result.metadata["width"] == 300
+        assert result.metadata["height"] == 80
 
 
 @pytest.mark.anyio
-async def test_process_image_error(backend: EasyOCRBackend, config_dict: dict[str, Any]) -> None:
-    image = Image.new("RGB", (100, 100))
+async def test_process_image_error(backend: EasyOCRBackend) -> None:
+    """Test error handling during image processing."""
+    from PIL import ImageDraw
 
-    with patch.object(backend, "_init_easyocr", return_value=None):
-        backend._reader = Mock()  # type: ignore[misc]
+    image = Image.new("RGB", (100, 50), "white")
+    draw = ImageDraw.Draw(image)
+    draw.text((10, 10), "Error Test", fill="black")
 
-        error_message = "OCR processing failed"
-        with patch("kreuzberg._ocr._easyocr.run_sync", side_effect=Exception(error_message)):
-            with pytest.raises(OCRError) as excinfo:
-                await backend.process_image(image, **config_dict)
+    with patch.object(backend, "_init_easyocr"):
+        EasyOCRBackend._reader = Mock()
+        EasyOCRBackend._reader.readtext = Mock(side_effect=Exception("OCR processing failed"))
 
-            assert "Failed to OCR using EasyOCR" in str(excinfo.value)
+        with pytest.raises(OCRError) as excinfo:
+            await backend.process_image(image, use_cache=False)
+
+        assert "Failed to OCR using EasyOCR" in str(excinfo.value)
 
 
 @pytest.mark.anyio
 async def test_process_file(backend: EasyOCRBackend, tmp_path: Path) -> None:
-    test_image = Image.new("RGB", (100, 100))
+    """Test processing a file with EasyOCR."""
+    from PIL import ImageDraw
+
+    test_image = Image.new("RGB", (200, 60), "white")
+    draw = ImageDraw.Draw(test_image)
+    draw.text((10, 10), "File Text 1", fill="black")
+    draw.text((10, 35), "File Text 2", fill="black")
+
     image_path = tmp_path / "test_image.png"
     test_image.save(image_path)
 
-    expected_result = ExtractionResult(
-        content="Sample OCR text", mime_type="text/plain", metadata={"width": 100, "height": 100}, chunks=[]
-    )
+    mock_reader = Mock()
+    mock_result = [
+        ([[10, 10], [100, 10], [100, 30], [10, 30]], "File Text 1", 0.95),
+        ([[10, 35], [100, 35], [100, 55], [10, 55]], "File Text 2", 0.90),
+    ]
 
-    with (
-        patch.object(backend, "process_image", return_value=expected_result),
-        patch.object(backend, "_init_easyocr", return_value=None),
-    ):
-        result = await backend.process_file(image_path, language="en")
+    with patch.object(backend, "_init_easyocr"):
+        EasyOCRBackend._reader = mock_reader
 
-        assert result == expected_result
-        backend.process_image.assert_called_once()  # type: ignore[attr-defined]
+        async def mock_run_sync(func, *args, **kwargs):  # type: ignore[no-untyped-def]
+            if (
+                hasattr(func, "__module__")
+                and hasattr(func, "__name__")
+                and func.__module__ == "PIL.Image"
+                and func.__name__ == "open"
+            ):
+                return Image.open(*args, **kwargs)
+            return mock_result
+
+        with patch("kreuzberg._ocr._easyocr.run_sync", side_effect=mock_run_sync):
+            result = await backend.process_file(image_path, language="en")
+
+        assert isinstance(result, ExtractionResult)
+        assert "File Text 1" in result.content
+        assert "File Text 2" in result.content
+        assert result.metadata["width"] == 200
+        assert result.metadata["height"] == 60
 
 
 @pytest.mark.anyio
 async def test_process_file_error(backend: EasyOCRBackend, tmp_path: Path) -> None:
-    test_image = Image.new("RGB", (100, 100))
-    image_path = tmp_path / "test_image.png"
+    """Test error handling during file processing."""
+    from PIL import ImageDraw
+
+    test_image = Image.new("RGB", (100, 50), "white")
+    draw = ImageDraw.Draw(test_image)
+    draw.text((10, 10), "Error", fill="black")
+
+    image_path = tmp_path / "error_test.png"
     test_image.save(image_path)
 
-    with patch.object(backend, "_init_easyocr", return_value=None):
-        error_message = "Failed to load image"
-        with patch.object(backend, "process_image", side_effect=Exception(error_message)):
-            with pytest.raises(OCRError) as excinfo:
-                await backend.process_file(image_path, language="en")
+    with patch("kreuzberg._ocr._easyocr.Image.open", side_effect=Exception("Failed to load image")):
+        with pytest.raises(OCRError) as excinfo:
+            await backend.process_file(image_path, language="en")
 
-            assert "Failed to load or process image using EasyOCR" in str(excinfo.value)
+        assert "Failed to load or process image using EasyOCR" in str(excinfo.value)
 
 
 @pytest.mark.anyio
@@ -376,14 +406,14 @@ def test_is_gpu_available_with_torch() -> None:
     mock_torch = Mock()
     mock_torch.cuda.is_available.return_value = True
 
-    with patch.dict("sys.modules", {"torch": mock_torch}):
+    with patch("kreuzberg._ocr._easyocr.torch", mock_torch):
         result = EasyOCRBackend._is_gpu_available()
         assert result is True
         mock_torch.cuda.is_available.assert_called_once()
 
 
 def test_is_gpu_available_without_torch() -> None:
-    with patch("builtins.__import__", side_effect=ImportError("No module named 'torch'")):
+    with patch("kreuzberg._ocr._easyocr.torch", None):
         result = EasyOCRBackend._is_gpu_available()
         assert result is False
 
@@ -450,34 +480,41 @@ async def test_init_easyocr_already_initialized() -> None:
 
 
 def test_process_image_sync(backend: EasyOCRBackend) -> None:
-    from unittest.mock import Mock, patch
+    """Test synchronous image processing."""
+    from PIL import ImageDraw
 
-    image = Image.new("RGB", (100, 100))
+    image = Image.new("RGB", (150, 60), "white")
+    draw = ImageDraw.Draw(image)
+    draw.text((10, 20), "Sync Test", fill="black")
 
     mock_reader = Mock()
-    mock_reader.readtext.return_value = [("Sample OCR text", 0.95)]
+    mock_reader.readtext.return_value = [([[10, 20], [80, 20], [80, 40], [10, 40]], "Sync Test", 0.95)]
 
     with patch.object(backend, "_init_easyocr_sync"), patch.object(backend, "_reader", mock_reader):
         result = backend.process_image_sync(image, beam_width=5, language="en")
 
         assert isinstance(result, ExtractionResult)
-        assert result.content.strip() == "Sample OCR text"
-        assert result.metadata["width"] == 100
-        assert result.metadata["height"] == 100
+        assert "Sync Test" in result.content
+        assert result.metadata["width"] == 150
+        assert result.metadata["height"] == 60
 
 
 def test_process_file_sync(backend: EasyOCRBackend, tmp_path: Path) -> None:
-    from unittest.mock import Mock, patch
+    """Test synchronous file processing."""
+    from PIL import ImageDraw
 
-    test_image = Image.new("RGB", (100, 100))
-    image_path = tmp_path / "test_image.png"
+    test_image = Image.new("RGB", (150, 60), "white")
+    draw = ImageDraw.Draw(test_image)
+    draw.text((10, 20), "File Sync", fill="black")
+
+    image_path = tmp_path / "test_sync.png"
     test_image.save(image_path)
 
     mock_reader = Mock()
-    mock_reader.readtext.return_value = [("Sample file text", 0.90)]
+    mock_reader.readtext.return_value = [([[10, 20], [80, 20], [80, 40], [10, 40]], "File Sync", 0.90)]
 
     with patch.object(backend, "_init_easyocr_sync"), patch.object(backend, "_reader", mock_reader):
         result = backend.process_file_sync(image_path, beam_width=5, language="en")
 
         assert isinstance(result, ExtractionResult)
-        assert result.content.strip() == "Sample file text"
+        assert "File Sync" in result.content

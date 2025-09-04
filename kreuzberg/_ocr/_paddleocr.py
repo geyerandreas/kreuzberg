@@ -11,6 +11,16 @@ from kreuzberg._mime_types import PLAIN_TEXT_MIME_TYPE
 from kreuzberg._ocr._base import OCRBackend
 from kreuzberg._types import ExtractionResult, Metadata, PaddleOCRConfig
 from kreuzberg._utils._device import DeviceInfo, validate_device_request
+from kreuzberg._utils._ocr_cache import (
+    build_cache_kwargs,
+    cache_and_complete_async,
+    cache_and_complete_sync,
+    generate_image_hash,
+    get_file_info,
+    handle_cache_lookup_async,
+    handle_cache_lookup_sync,
+    mark_processing_complete,
+)
 from kreuzberg._utils._string import normalize_spaces
 from kreuzberg._utils._sync import run_sync
 from kreuzberg.exceptions import MissingDependencyError, OCRError, ValidationError
@@ -23,15 +33,21 @@ try:  # pragma: no cover
 except ImportError:  # pragma: no cover
     from typing_extensions import Unpack
 
-try:
+if TYPE_CHECKING:
     import numpy as np
     from paddleocr import PaddleOCR
 
-    HAS_PADDLEOCR = True
-except ImportError:
-    HAS_PADDLEOCR = False
-    np = None
-    PaddleOCR = None
+HAS_PADDLEOCR: bool
+if not TYPE_CHECKING:
+    try:
+        import numpy as np
+        from paddleocr import PaddleOCR
+
+        HAS_PADDLEOCR = True
+    except ImportError:
+        HAS_PADDLEOCR = False
+        np: Any = None
+        PaddleOCR: Any = None
 
 
 PADDLEOCR_SUPPORTED_LANGUAGE_CODES: Final[set[str]] = {"ch", "en", "french", "german", "japan", "korean"}
@@ -53,16 +69,36 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         Raises:
             OCRError: If OCR processing fails.
         """
-        await self._init_paddle_ocr(**kwargs)
+        use_cache = kwargs.pop("use_cache", True)
 
-        if image.mode != "RGB":
-            image = image.convert("RGB")
+        cache_kwargs = None
+        if use_cache:
+            image_hash = generate_image_hash(image)
+            cache_kwargs = build_cache_kwargs("paddleocr", kwargs, image_hash=image_hash)
 
-        image_np = np.array(image)
+            cached_result = await handle_cache_lookup_async(cache_kwargs)
+            if cached_result:
+                return cached_result
+
         try:
-            result = await run_sync(self._paddle_ocr.ocr, image_np, cls=kwargs.get("use_angle_cls", True))
-            return self._process_paddle_result(result, image)
+            await self._init_paddle_ocr(**kwargs)
+
+            if image.mode != "RGB":
+                image = image.convert("RGB")
+
+            image_np = np.array(image)
+            use_textline_orientation = kwargs.get("use_textline_orientation", kwargs.get("use_angle_cls", True))
+            result = await run_sync(self._paddle_ocr.ocr, image_np, cls=use_textline_orientation)
+
+            extraction_result = self._process_paddle_result(result, image)
+
+            if use_cache and cache_kwargs:
+                await cache_and_complete_async(extraction_result, cache_kwargs, use_cache)
+
+            return extraction_result
         except Exception as e:
+            if use_cache and cache_kwargs:
+                mark_processing_complete(cache_kwargs)
             raise OCRError(f"Failed to OCR using PaddleOCR: {e}") from e
 
     async def process_file(self, path: Path, **kwargs: Unpack[PaddleOCRConfig]) -> ExtractionResult:
@@ -78,11 +114,31 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         Raises:
             OCRError: If file loading or OCR processing fails.
         """
-        await self._init_paddle_ocr(**kwargs)
+        use_cache = kwargs.pop("use_cache", True)
+
+        cache_kwargs = None
+        if use_cache:
+            file_info = get_file_info(path)
+            cache_kwargs = build_cache_kwargs("paddleocr", kwargs, file_info=file_info)
+
+            cached_result = await handle_cache_lookup_async(cache_kwargs)
+            if cached_result:
+                return cached_result
+
         try:
+            await self._init_paddle_ocr(**kwargs)
             image = await run_sync(Image.open, path)
-            return await self.process_image(image, **kwargs)
+
+            kwargs["use_cache"] = False
+            extraction_result = await self.process_image(image, **kwargs)
+
+            if use_cache and cache_kwargs:
+                await cache_and_complete_async(extraction_result, cache_kwargs, use_cache)
+
+            return extraction_result
         except Exception as e:
+            if use_cache and cache_kwargs:
+                mark_processing_complete(cache_kwargs)
             raise OCRError(f"Failed to load or process image using PaddleOCR: {e}") from e
 
     @staticmethod
@@ -193,22 +249,29 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
 
         language = cls._validate_language_code(kwargs.pop("language", "en"))
 
-        device_info = cls._resolve_device_config(**kwargs)
-        use_gpu = device_info.device_type == "cuda"
+        cls._resolve_device_config(**kwargs)
 
-        has_gpu_package = bool(find_spec("paddlepaddle_gpu"))
-        kwargs.setdefault("use_angle_cls", True)
-        kwargs["use_gpu"] = use_gpu and has_gpu_package
-        kwargs.setdefault("enable_mkldnn", cls._is_mkldnn_supported() and not (use_gpu and has_gpu_package))
-        kwargs.setdefault("det_db_thresh", 0.3)
-        kwargs.setdefault("det_db_box_thresh", 0.5)
-        kwargs.setdefault("det_db_unclip_ratio", 1.6)
+        bool(find_spec("paddlepaddle_gpu"))
 
-        if device_info.device_type == "cuda" and kwargs.get("gpu_memory_limit"):
-            kwargs["gpu_mem"] = int(kwargs["gpu_memory_limit"] * 1024)
+        use_angle_cls = kwargs.pop("use_angle_cls", True)
+        kwargs.setdefault("use_textline_orientation", use_angle_cls)
+
+        det_db_thresh = kwargs.pop("det_db_thresh", 0.3)
+        det_db_box_thresh = kwargs.pop("det_db_box_thresh", 0.5)
+        det_db_unclip_ratio = kwargs.pop("det_db_unclip_ratio", 1.6)
+
+        kwargs.setdefault("text_det_thresh", det_db_thresh)
+        kwargs.setdefault("text_det_box_thresh", det_db_box_thresh)
+        kwargs.setdefault("text_det_unclip_ratio", det_db_unclip_ratio)
+
+        kwargs.pop("use_gpu", None)
+        kwargs.pop("gpu_mem", None)
+        kwargs.pop("gpu_memory_limit", None)
+
+        kwargs.setdefault("enable_mkldnn", cls._is_mkldnn_supported())
 
         try:
-            cls._paddle_ocr = await run_sync(PaddleOCR, lang=language, show_log=False, **kwargs)
+            cls._paddle_ocr = await run_sync(PaddleOCR, lang=language, **kwargs)
         except Exception as e:
             raise OCRError(f"Failed to initialize PaddleOCR: {e}") from e
 
@@ -305,16 +368,36 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         Raises:
             OCRError: If OCR processing fails.
         """
-        self._init_paddle_ocr_sync(**kwargs)
+        use_cache = kwargs.pop("use_cache", True)
 
-        if image.mode != "RGB":
-            image = image.convert("RGB")
+        cache_kwargs = None
+        if use_cache:
+            image_hash = generate_image_hash(image)
+            cache_kwargs = build_cache_kwargs("paddleocr", kwargs, image_hash=image_hash)
 
-        image_np = np.array(image)
+            cached_result = handle_cache_lookup_sync(cache_kwargs)
+            if cached_result:
+                return cached_result
+
         try:
-            result = self._paddle_ocr.ocr(image_np, cls=kwargs.get("use_angle_cls", True))
-            return self._process_paddle_result(result, image)
+            self._init_paddle_ocr_sync(**kwargs)
+
+            if image.mode != "RGB":
+                image = image.convert("RGB")
+
+            image_np = np.array(image)
+            use_textline_orientation = kwargs.get("use_textline_orientation", kwargs.get("use_angle_cls", True))
+            result = self._paddle_ocr.ocr(image_np, cls=use_textline_orientation)
+
+            extraction_result = self._process_paddle_result(result, image)
+
+            if use_cache and cache_kwargs:
+                cache_and_complete_sync(extraction_result, cache_kwargs, use_cache)
+
+            return extraction_result
         except Exception as e:
+            if use_cache and cache_kwargs:
+                mark_processing_complete(cache_kwargs)
             raise OCRError(f"Failed to OCR using PaddleOCR: {e}") from e
 
     def process_file_sync(self, path: Path, **kwargs: Unpack[PaddleOCRConfig]) -> ExtractionResult:
@@ -330,11 +413,31 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         Raises:
             OCRError: If file loading or OCR processing fails.
         """
-        self._init_paddle_ocr_sync(**kwargs)
+        use_cache = kwargs.pop("use_cache", True)
+
+        cache_kwargs = None
+        if use_cache:
+            file_info = get_file_info(path)
+            cache_kwargs = build_cache_kwargs("paddleocr", kwargs, file_info=file_info)
+
+            cached_result = handle_cache_lookup_sync(cache_kwargs)
+            if cached_result:
+                return cached_result
+
         try:
+            self._init_paddle_ocr_sync(**kwargs)
             image = Image.open(path)
-            return self.process_image_sync(image, **kwargs)
+
+            kwargs["use_cache"] = False
+            extraction_result = self.process_image_sync(image, **kwargs)
+
+            if use_cache and cache_kwargs:
+                cache_and_complete_sync(extraction_result, cache_kwargs, use_cache)
+
+            return extraction_result
         except Exception as e:
+            if use_cache and cache_kwargs:
+                mark_processing_complete(cache_kwargs)
             raise OCRError(f"Failed to load or process image using PaddleOCR: {e}") from e
 
     @classmethod
@@ -358,21 +461,28 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
 
         language = cls._validate_language_code(kwargs.pop("language", "en"))
 
-        device_info = cls._resolve_device_config(**kwargs)
-        use_gpu = device_info.device_type == "cuda"
+        cls._resolve_device_config(**kwargs)
 
-        has_gpu_package = bool(find_spec("paddlepaddle_gpu"))
-        kwargs.setdefault("use_angle_cls", True)
-        kwargs["use_gpu"] = use_gpu and has_gpu_package
-        kwargs.setdefault("enable_mkldnn", cls._is_mkldnn_supported() and not (use_gpu and has_gpu_package))
-        kwargs.setdefault("det_db_thresh", 0.3)
-        kwargs.setdefault("det_db_box_thresh", 0.5)
-        kwargs.setdefault("det_db_unclip_ratio", 1.6)
+        bool(find_spec("paddlepaddle_gpu"))
 
-        if device_info.device_type == "cuda" and kwargs.get("gpu_memory_limit"):
-            kwargs["gpu_mem"] = int(kwargs["gpu_memory_limit"] * 1024)
+        use_angle_cls = kwargs.pop("use_angle_cls", True)
+        kwargs.setdefault("use_textline_orientation", use_angle_cls)
+
+        det_db_thresh = kwargs.pop("det_db_thresh", 0.3)
+        det_db_box_thresh = kwargs.pop("det_db_box_thresh", 0.5)
+        det_db_unclip_ratio = kwargs.pop("det_db_unclip_ratio", 1.6)
+
+        kwargs.setdefault("text_det_thresh", det_db_thresh)
+        kwargs.setdefault("text_det_box_thresh", det_db_box_thresh)
+        kwargs.setdefault("text_det_unclip_ratio", det_db_unclip_ratio)
+
+        kwargs.pop("use_gpu", None)
+        kwargs.pop("gpu_mem", None)
+        kwargs.pop("gpu_memory_limit", None)
+
+        kwargs.setdefault("enable_mkldnn", cls._is_mkldnn_supported())
 
         try:
-            cls._paddle_ocr = PaddleOCR(lang=language, show_log=False, **kwargs)
+            cls._paddle_ocr = PaddleOCR(lang=language, **kwargs)
         except Exception as e:
             raise OCRError(f"Failed to initialize PaddleOCR: {e}") from e

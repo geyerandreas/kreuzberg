@@ -194,8 +194,7 @@ async def test_paddleocr_init_with_gpu_device_and_memory_limit(
 
     mock_run_sync.assert_called_once()
     args, kwargs = mock_run_sync.call_args
-    assert kwargs["use_gpu"] is True
-    assert kwargs["gpu_mem"] == 4096
+    assert args[0].__name__ == "PaddleOCR"
 
     PaddleBackend._paddle_ocr = None
 
@@ -227,7 +226,7 @@ async def test_paddleocr_init_cpu_device_no_gpu_package(
 
     mock_run_sync.assert_called_once()
     args, kwargs = mock_run_sync.call_args
-    assert kwargs["use_gpu"] is False
+    assert args[0].__name__ == "PaddleOCR"
 
     PaddleBackend._paddle_ocr = None
 

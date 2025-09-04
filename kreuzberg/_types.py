@@ -195,11 +195,11 @@ class PaddleOCRConfig(ConfigDict):
     det_algorithm: Literal["DB", "EAST", "SAST", "PSE", "FCE", "PAN", "CT", "DB++", "Layout"] = "DB"
     """Detection algorithm."""
     det_db_box_thresh: float = 0.5
-    """Score threshold for detected boxes. Boxes below this value are discarded."""
+    """DEPRECATED in PaddleOCR 3.2.0+: Use 'text_det_box_thresh' instead. Score threshold for detected boxes."""
     det_db_thresh: float = 0.3
-    """Binarization threshold for DB output map."""
+    """DEPRECATED in PaddleOCR 3.2.0+: Use 'text_det_thresh' instead. Binarization threshold for DB output map."""
     det_db_unclip_ratio: float = 2.0
-    """Expansion ratio for detected text boxes."""
+    """DEPRECATED in PaddleOCR 3.2.0+: Use 'text_det_unclip_ratio' instead. Expansion ratio for detected text boxes."""
     det_east_cover_thresh: float = 0.1
     """Score threshold for EAST output boxes."""
     det_east_nms_thresh: float = 0.2
@@ -215,7 +215,7 @@ class PaddleOCRConfig(ConfigDict):
     enable_mkldnn: bool = False
     """Whether to enable MKL-DNN acceleration (Intel CPU only)."""
     gpu_mem: int = 8000
-    """GPU memory size (in MB) to use for initialization."""
+    """DEPRECATED in PaddleOCR 3.2.0+: Parameter no longer supported. GPU memory size (in MB) to use for initialization."""
     language: str = "en"
     """Language to use for OCR."""
     max_text_length: int = 25
@@ -245,19 +245,28 @@ class PaddleOCRConfig(ConfigDict):
     table: bool = True
     """Whether to enable table recognition."""
     use_angle_cls: bool = True
-    """Whether to use text orientation classification model."""
+    """DEPRECATED in PaddleOCR 3.2.0+: Use 'use_textline_orientation' instead. Whether to use text orientation classification model."""
     use_gpu: bool = False
-    """Whether to use GPU for inference. DEPRECATED: Use 'device' parameter instead."""
+    """DEPRECATED in PaddleOCR 3.2.0+: Parameter no longer supported. Use hardware acceleration flags instead."""
     device: DeviceType = "auto"
     """Device to use for inference. Options: 'cpu', 'cuda', 'auto'. Note: MPS not supported by PaddlePaddle."""
     gpu_memory_limit: float | None = None
-    """Maximum GPU memory to use in GB. None for no limit."""
+    """DEPRECATED in PaddleOCR 3.2.0+: Parameter no longer supported. Maximum GPU memory to use in GB."""
     fallback_to_cpu: bool = True
     """Whether to fallback to CPU if requested device is unavailable."""
     use_space_char: bool = True
     """Whether to recognize spaces."""
     use_zero_copy_run: bool = False
     """Whether to enable zero_copy_run for inference optimization."""
+
+    text_det_thresh: float = 0.3
+    """Binarization threshold for text detection output map (replaces det_db_thresh)."""
+    text_det_box_thresh: float = 0.5
+    """Score threshold for detected text boxes (replaces det_db_box_thresh)."""
+    text_det_unclip_ratio: float = 2.0
+    """Expansion ratio for detected text boxes (replaces det_db_unclip_ratio)."""
+    use_textline_orientation: bool = True
+    """Whether to use text line orientation classification model (replaces use_angle_cls)."""
 
 
 @dataclass(unsafe_hash=True, frozen=True, slots=True)

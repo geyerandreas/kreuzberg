@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from kreuzberg._ocr._tesseract import TesseractBackend
 from kreuzberg._types import PSMMode, TesseractConfig
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 
 @pytest.fixture
@@ -51,18 +49,46 @@ def simple_table_image(tmp_path: Path) -> Path:
 
 
 @pytest.mark.anyio
-async def test_tsv_output_format(tesseract_backend: TesseractBackend, simple_table_image: Path) -> None:
+async def test_tsv_output_format(tesseract_backend: TesseractBackend, simple_table_image: Path, tmp_path: Path) -> None:
     with patch("kreuzberg._ocr._tesseract.TesseractBackend._version_checked", True):
-        with patch("kreuzberg._ocr._tesseract.run_process") as mock_run:
+
+        async def mock_run_process(command: list[str], **kwargs: Any) -> MagicMock:
             mock_result = MagicMock()
             mock_result.returncode = 0
-            mock_result.stdout = b"""level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext
-5\t1\t1\t1\t1\t1\t50\t50\t100\t30\t95.0\tTest"""
             mock_result.stderr = b""
-            mock_run.return_value = mock_result
 
+            if "--version" in command:
+                mock_result.stdout = b"tesseract 5.0.0"
+            elif len(command) >= 3 and command[0].endswith("tesseract"):
+                output_base = command[2]
+
+                if "tsv" in command:
+                    tsv_content = """level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext
+5\t1\t1\t1\t1\t1\t50\t50\t100\t30\t95.0\tTest"""
+                    Path(f"{output_base}.tsv").write_text(tsv_content)
+                elif "hocr" in command:
+                    hocr_content = """<?xml version="1.0" encoding="UTF-8"?>
+<html>
+ <body>
+  <div class='ocr_page' title='bbox 0 0 800 400'>
+   <span class='ocrx_word' title='bbox 50 50 150 80; x_wconf 95'>Test</span>
+  </div>
+ </body>
+</html>"""
+                    Path(f"{output_base}.hocr").write_text(hocr_content)
+                else:
+                    Path(f"{output_base}.txt").write_text("Test")
+
+                mock_result.stdout = b""
+            else:
+                mock_result.stdout = b""
+
+            return mock_result
+
+        with patch("kreuzberg._ocr._tesseract.run_process", side_effect=mock_run_process):
             result = await tesseract_backend.process_file(simple_table_image)
             assert result is not None
+            assert "Test" in result.content
 
 
 def test_parse_tsv_output(mock_tsv_output: str) -> None:
