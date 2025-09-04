@@ -1,0 +1,16 @@
+{
+  "base": {
+    "exists": true,
+    "cli_help": true,
+    "cli_version": true,
+    "api_health": true,
+    "extract_txt": false,
+    "extract_pdf": false,
+    "extract_docx": false,
+    "ocr": false,
+    "api_extract": true,
+    "volume_security": true,
+    "resource_limits": true,
+    "malicious_input": true
+  }
+}

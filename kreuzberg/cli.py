@@ -265,7 +265,7 @@ def cli(ctx: click.Context) -> None:
 @click.option("--easyocr-languages", help="EasyOCR language codes (comma-separated, e.g., 'en,de')")
 @click.option("--paddleocr-languages", help="PaddleOCR language codes (comma-separated, e.g., 'en,german')")
 @click.pass_context
-def extract(ctx: click.Context) -> None:
+def extract(ctx: click.Context, /, **kwargs: Any) -> None:
     """Extract text from a document.
 
     FILE can be a path to a document or '-' to read from stdin.
@@ -279,7 +279,7 @@ def extract(ctx: click.Context) -> None:
 
         extraction_config = build_extraction_config(file_config, cli_args)
 
-        result = _perform_extraction(params["file"], extraction_config, params["verbose"])
+        result = _perform_extraction(kwargs.get("file"), extraction_config, params["verbose"])
 
         _write_output(result, params["output"], params["show_metadata"], params["output_format"], params["verbose"])
 
