@@ -70,7 +70,6 @@ async def test_is_mkldnn_supported(mocker: MockerFixture) -> None:
 
 @pytest.mark.anyio
 async def test_init_paddle_ocr(backend: PaddleBackend, mock_find_spec: Mock, mocker: MockerFixture) -> None:
-    """Test that PaddleOCR is initialized only once."""
     PaddleBackend._paddle_ocr = None
 
     mock_paddleocr = mocker.patch("kreuzberg._ocr._paddleocr.PaddleOCR")
@@ -92,7 +91,6 @@ async def test_init_paddle_ocr(backend: PaddleBackend, mock_find_spec: Mock, moc
 async def test_init_paddle_ocr_with_gpu_package(
     backend: PaddleBackend, mock_find_spec: Mock, mocker: MockerFixture
 ) -> None:
-    """Test PaddleOCR initialization with GPU package."""
     PaddleBackend._paddle_ocr = None
 
     mocker.patch("kreuzberg._ocr._paddleocr.find_spec", side_effect=lambda x: True if x == "paddlepaddle_gpu" else None)
@@ -118,7 +116,6 @@ async def test_init_paddle_ocr_with_gpu_package(
 async def test_init_paddle_ocr_with_language(
     backend: PaddleBackend, mock_find_spec: Mock, mocker: MockerFixture
 ) -> None:
-    """Test PaddleOCR initialization with language parameter."""
     PaddleBackend._paddle_ocr = None
 
     mock_paddleocr = mocker.patch("kreuzberg._ocr._paddleocr.PaddleOCR")
@@ -137,7 +134,6 @@ async def test_init_paddle_ocr_with_language(
 async def test_init_paddle_ocr_with_custom_options(
     backend: PaddleBackend, mock_find_spec: Mock, mocker: MockerFixture
 ) -> None:
-    """Test PaddleOCR initialization with custom options and deprecated parameters."""
     PaddleBackend._paddle_ocr = None
 
     mock_paddleocr = mocker.patch("kreuzberg._ocr._paddleocr.PaddleOCR")
@@ -175,7 +171,6 @@ async def test_init_paddle_ocr_with_custom_options(
 async def test_init_paddle_ocr_with_model_dirs(
     backend: PaddleBackend, mock_find_spec: Mock, mocker: MockerFixture
 ) -> None:
-    """Test PaddleOCR initialization with model directories."""
     PaddleBackend._paddle_ocr = None
 
     mock_paddleocr = mocker.patch("kreuzberg._ocr._paddleocr.PaddleOCR")
@@ -227,7 +222,6 @@ async def test_init_paddle_ocr_initialization_error(backend: PaddleBackend, mock
 
 @pytest.mark.anyio
 async def test_process_image(backend: PaddleBackend) -> None:
-    """Test basic image processing with PaddleOCR."""
     from PIL import ImageDraw
 
     image = Image.new("RGB", (400, 100), "white")
@@ -251,7 +245,6 @@ async def test_process_image(backend: PaddleBackend) -> None:
 
 @pytest.mark.anyio
 async def test_process_image_with_options(backend: PaddleBackend) -> None:
-    """Test image processing with custom options and deprecated parameters."""
     from PIL import ImageDraw
 
     image = Image.new("RGB", (300, 80), "white")
@@ -286,7 +279,6 @@ async def test_process_image_with_options(backend: PaddleBackend) -> None:
 
 @pytest.mark.anyio
 async def test_process_image_error(backend: PaddleBackend) -> None:
-    """Test error handling during image processing."""
     from PIL import ImageDraw
 
     image = Image.new("RGB", (100, 50), "white")
@@ -305,7 +297,6 @@ async def test_process_image_error(backend: PaddleBackend) -> None:
 
 @pytest.mark.anyio
 async def test_process_file(backend: PaddleBackend, tmp_path: Path) -> None:
-    """Test processing a file with PaddleOCR."""
     from PIL import ImageDraw
 
     image = Image.new("RGB", (200, 60), "white")
@@ -336,7 +327,6 @@ async def test_process_file(backend: PaddleBackend, tmp_path: Path) -> None:
 
 @pytest.mark.anyio
 async def test_process_file_with_options(backend: PaddleBackend, tmp_path: Path) -> None:
-    """Test processing a file with custom options."""
     from PIL import ImageDraw
 
     image = Image.new("RGB", (200, 60), "white")
@@ -378,7 +368,6 @@ async def test_process_file_with_options(backend: PaddleBackend, tmp_path: Path)
 
 @pytest.mark.anyio
 async def test_process_file_error(backend: PaddleBackend, tmp_path: Path) -> None:
-    """Test error handling during file processing."""
     from PIL import ImageDraw
 
     image = Image.new("RGB", (100, 50), "white")
@@ -603,7 +592,6 @@ def test_validate_language_code_invalid(invalid_language_code: str) -> None:
 
 @pytest.mark.anyio
 async def test_process_image_grayscale_conversion() -> None:
-    """Test that grayscale images are converted to RGB before processing."""
     from PIL import ImageDraw
 
     backend = PaddleBackend()
@@ -665,7 +653,6 @@ def test_process_paddle_result_image_size_fallback() -> None:
 
 @pytest.mark.anyio
 async def test_init_paddle_ocr_deprecated_params() -> None:
-    """Test that deprecated parameters are properly mapped to new ones."""
     from unittest.mock import Mock, patch
 
     PaddleBackend._paddle_ocr = None

@@ -1,0 +1,34 @@
+# Production Configuration - Optimized with Official Kreuzberg TesseractConfig
+# Based on official Kreuzberg documentation and PSM optimization strategies
+
+# Basic extraction settings
+force_ocr = true                     # Force OCR for consistent results
+chunk_content = false                # Disabled per user testing - prevents unwanted chunks
+extract_tables = false               # Disabled in core image
+extract_entities = false             # Disabled in core image
+extract_keywords = false             # Disabled in core image
+ocr_backend = "tesseract"            # Only available backend in core image
+auto_detect_language = false        # Disabled in core image
+auto_detect_document_type = false    # Enable for smart processing
+# document_classification_mode = "text"
+# type_confidence_threshold = 0.6     # Balanced threshold
+
+# CPU-Optimized Kreuzberg TesseractConfig - Business Documents
+[tesseract]
+language = "eng"                                    # English language model
+psm = 4                                            # Single column variable sizes - BEST for business PDFs
+# PSM 4 is optimal for:
+# - Business documents with mixed formatting
+# - PDFs with headers, paragraphs, and footers
+# - Documents with varying text sizes
+# - Balance between speed and accuracy
+
+# Official Kreuzberg performance optimizations (verified against API docs) - I believe this is the default values based on https://kreuzberg.dev/api-reference/types/?h=document_classification_mode#kreuzberg.TesseractConfig
+# classify_use_pre_adapted_templates = true          # Improves recognition accuracy (official recommendation)
+# language_model_ngram_on = false                    # OFF for modern business documents (official recommendation)
+# tessedit_enable_dict_correction = true            # Dictionary correction for accuracy
+# tessedit_char_whitelist = ""                      # Allow all characters - can restrict for structured docs
+# tessedit_dont_blkrej_good_wds = true              # Don't reject good words
+# tessedit_dont_rowrej_good_wds = true              # Don't reject good words in rows
+# tessedit_use_primary_params_model = true          # Forces use of primary parameters model
+# textord_space_size_is_variable = true             # Handle variable spacing in business docs
