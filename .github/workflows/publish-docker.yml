@@ -28,6 +28,7 @@ jobs:
     needs: test-images
     if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'release' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     permissions:
       contents: read
       packages: write
