@@ -258,6 +258,27 @@ Error responses include:
 }
 ```
 
+### Debugging 500 Errors
+
+For detailed error information when 500 Internal Server Errors occur, set the `DEBUG` environment variable:
+
+```bash
+# Enable debug mode for detailed 500 error responses
+DEBUG=1 litestar --app kreuzberg._api.main:app run
+
+# Or with uvicorn
+DEBUG=1 uvicorn kreuzberg._api.main:app --host 0.0.0.0 --port 8000
+```
+
+When `DEBUG=1` is set, 500 errors will include:
+
+- Full stack traces
+- Detailed error context
+- Internal state information
+- Request debugging details
+
+⚠️ **Warning**: Only enable debug mode in development environments. Debug information may expose sensitive details and should never be used in production.
+
 ## Features
 
 - **Runtime Configuration**: Configure extraction via query parameters and HTTP headers
@@ -301,6 +322,7 @@ For production use, consider:
 1. **Monitoring**: Enable OpenTelemetry exporters
 1. **Rate Limiting**: Add rate limiting middleware
 1. **Authentication**: Add authentication middleware if needed
+1. **Security**: Ensure `DEBUG` environment variable is not set
 
 Example production command:
 
