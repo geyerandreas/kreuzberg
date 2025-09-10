@@ -178,7 +178,6 @@ async def test_init_easyocr_missing_dependency() -> None:
 
 @pytest.mark.anyio
 async def test_init_easyocr(mocker: MockerFixture) -> None:
-    """Test that EasyOCR is initialized correctly."""
     mock_reader = Mock()
     mock_easyocr = Mock()
     mock_easyocr.Reader = Mock(return_value=mock_reader)
@@ -196,7 +195,6 @@ async def test_init_easyocr(mocker: MockerFixture) -> None:
 
 @pytest.mark.anyio
 async def test_init_easyocr_comma_separated_languages(mocker: MockerFixture) -> None:
-    """Test EasyOCR initialization with comma-separated languages."""
     mock_reader = Mock()
     mock_easyocr = Mock()
     mock_easyocr.Reader = Mock(return_value=mock_reader)
@@ -214,7 +212,6 @@ async def test_init_easyocr_comma_separated_languages(mocker: MockerFixture) -> 
 
 @pytest.mark.anyio
 async def test_init_easyocr_language_list(mocker: MockerFixture) -> None:
-    """Test EasyOCR initialization with language list."""
     mock_reader = Mock()
     mock_easyocr = Mock()
     mock_easyocr.Reader = Mock(return_value=mock_reader)
@@ -242,7 +239,6 @@ async def test_init_easyocr_error(mocker: MockerFixture) -> None:
 
 @pytest.mark.anyio
 async def test_process_image(backend: EasyOCRBackend) -> None:
-    """Test basic image processing with EasyOCR."""
     from PIL import ImageDraw
 
     image = Image.new("RGB", (300, 80), "white")
@@ -271,7 +267,6 @@ async def test_process_image(backend: EasyOCRBackend) -> None:
 
 @pytest.mark.anyio
 async def test_process_image_error(backend: EasyOCRBackend) -> None:
-    """Test error handling during image processing."""
     from PIL import ImageDraw
 
     image = Image.new("RGB", (100, 50), "white")
@@ -290,7 +285,6 @@ async def test_process_image_error(backend: EasyOCRBackend) -> None:
 
 @pytest.mark.anyio
 async def test_process_file(backend: EasyOCRBackend, tmp_path: Path) -> None:
-    """Test processing a file with EasyOCR."""
     from PIL import ImageDraw
 
     test_image = Image.new("RGB", (200, 60), "white")
@@ -332,7 +326,6 @@ async def test_process_file(backend: EasyOCRBackend, tmp_path: Path) -> None:
 
 @pytest.mark.anyio
 async def test_process_file_error(backend: EasyOCRBackend, tmp_path: Path) -> None:
-    """Test error handling during file processing."""
     from PIL import ImageDraw
 
     test_image = Image.new("RGB", (100, 50), "white")
@@ -480,7 +473,6 @@ async def test_init_easyocr_already_initialized() -> None:
 
 
 def test_process_image_sync(backend: EasyOCRBackend) -> None:
-    """Test synchronous image processing."""
     from PIL import ImageDraw
 
     image = Image.new("RGB", (150, 60), "white")
@@ -500,7 +492,6 @@ def test_process_image_sync(backend: EasyOCRBackend) -> None:
 
 
 def test_process_file_sync(backend: EasyOCRBackend, tmp_path: Path) -> None:
-    """Test synchronous file processing."""
     from PIL import ImageDraw
 
     test_image = Image.new("RGB", (150, 60), "white")

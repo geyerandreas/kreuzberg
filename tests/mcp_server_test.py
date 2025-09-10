@@ -548,13 +548,13 @@ def test_extract_structured_with_tables(tmp_path: Path) -> None:
     test_file.write_text("Simple test content")
 
     with patch("kreuzberg._mcp.server.extract_file_sync") as mock_extract:
-        import pandas as pd
+        import polars as pl
         from PIL import Image
 
         from kreuzberg._types import ExtractionResult, TableData
 
         mock_image = Image.new("RGB", (100, 100), "white")
-        mock_df = pd.DataFrame([["A", "B"], ["1", "2"]])
+        mock_df = pl.DataFrame([["A", "B"], ["1", "2"]])
         mock_table = TableData(cropped_image=mock_image, df=mock_df, page_number=1, text="| A | B |\n| 1 | 2 |")
 
         mock_result = ExtractionResult(

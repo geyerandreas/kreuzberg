@@ -5,7 +5,7 @@ requires = [ "hatchling" ]
 
 [project]
 name = "kreuzberg"
-version = "3.13.2"
+version = "3.13.3"
 description = "Document intelligence framework for Python - Extract text, metadata, and structured data from diverse file formats"
 readme = "README.md"
 keywords = [
@@ -213,7 +213,7 @@ lint.pylint.max-branches = 15
 lint.pylint.max-returns = 10
 
 [tool.codespell]
-ignore-words-list = "inh,te,tha,vie"
+ignore-words-list = "addin,inh,te,tha,vie"
 
 [tool.pyproject-fmt]
 keep_full_version = true

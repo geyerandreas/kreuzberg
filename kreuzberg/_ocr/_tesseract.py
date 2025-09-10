@@ -280,6 +280,9 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         }
 
     async def _execute_tesseract(self, path: Path, output_base: str, run_config: dict[str, Any]) -> None:
+        psm_value = run_config["psm"]
+        psm_str = str(psm_value.value) if hasattr(psm_value, "value") else str(psm_value)
+
         command = [
             "tesseract",
             str(path),
@@ -287,7 +290,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             "-l",
             run_config["language"],
             "--psm",
-            str(run_config["psm"].value),
+            psm_str,
             "--oem",
             "1",
             "--loglevel",
@@ -1089,8 +1092,16 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             }
 
     def _build_tesseract_command(
-        self, path: Path, output_base: str, language: str, psm: PSMMode, output_format: str = "text", **kwargs: Any
+        self,
+        path: Path,
+        output_base: str,
+        language: str,
+        psm: PSMMode | int,
+        output_format: str = "text",
+        **kwargs: Any,
     ) -> list[str]:
+        psm_str = str(psm.value) if hasattr(psm, "value") else str(psm)
+
         command = [
             "tesseract",
             str(path),
@@ -1098,7 +1109,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             "-l",
             language,
             "--psm",
-            str(psm.value),
+            psm_str,
             "--oem",
             "1",
             "--loglevel",

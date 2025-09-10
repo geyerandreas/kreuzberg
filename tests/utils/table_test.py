@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, cast
 
-import pandas as pd
+import polars as pl
 import pytest
 
 from kreuzberg._utils._table import (
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def sample_table_data() -> dict[str, Any]:
-    df = pd.DataFrame(
+    df = pl.DataFrame(
         {
             "Name": ["Alice", "Bob", "Charlie"],
             "Age": [25, 30, 35],
@@ -32,24 +32,24 @@ def sample_table_data() -> dict[str, Any]:
 
 @pytest.fixture
 def numeric_table_data() -> dict[str, Any]:
-    df = pd.DataFrame({"Revenue": [1000.50, 2500.75, 1800.25], "Profit": [150, 300, 200], "Margin": [15.0, 12.0, 11.1]})
+    df = pl.DataFrame({"Revenue": [1000.50, 2500.75, 1800.25], "Profit": [150, 300, 200], "Margin": [15.0, 12.0, 11.1]})
     return {"df": df, "text": "Financial data", "page_number": 2}
 
 
 @pytest.fixture
 def empty_table_data() -> dict[str, Any]:
-    return {"df": pd.DataFrame(), "text": "Empty table", "page_number": 3}
+    return {"df": pl.DataFrame(), "text": "Empty table", "page_number": 3}
 
 
 @pytest.fixture
 def table_with_nulls() -> dict[str, Any]:
-    df = pd.DataFrame({"Item": ["A", "B", None, "D"], "Value": [10, None, 30, 40], "Category": ["X", "Y", "Z", None]})
+    df = pl.DataFrame({"Item": ["A", "B", None, "D"], "Value": [10, None, 30, 40], "Category": ["X", "Y", "Z", None]})
     return {"df": df, "text": "Table with nulls", "page_number": 4}
 
 
 @pytest.fixture
 def mixed_type_table() -> dict[str, Any]:
-    df = pd.DataFrame(
+    df = pl.DataFrame(
         {
             "ID": ["001", "002", "003"],
             "Amount": ["$1,234.56", "2,500", "3.14"],
@@ -156,7 +156,7 @@ def test_enhance_table_markdown_with_nulls(table_with_nulls: dict[str, Any]) -> 
 
 
 def test_enhance_table_markdown_with_pipes() -> None:
-    df = pd.DataFrame({"Text": ["Hello|World", "Test|Data"], "Value": [1, 2]})
+    df = pl.DataFrame({"Text": ["Hello|World", "Test|Data"], "Value": [1, 2]})
     table_data = {"df": df}
 
     result = enhance_table_markdown(cast("TableData", table_data))
@@ -220,8 +220,8 @@ def test_generate_table_summary_no_df() -> None:
 
 
 def test_generate_table_summary_same_page() -> None:
-    table1 = {"df": pd.DataFrame({"A": [1]}), "page_number": 1}
-    table2 = {"df": pd.DataFrame({"B": [2]}), "page_number": 1}
+    table1 = {"df": pl.DataFrame({"A": [1]}), "page_number": 1}
+    table2 = {"df": pl.DataFrame({"B": [2]}), "page_number": 1}
 
     result = generate_table_summary([cast("TableData", table1), cast("TableData", table2)])
 
@@ -294,56 +294,56 @@ def test_is_numeric_column_detection(mixed_type_table: dict[str, Any]) -> None:
 def test_is_numeric_column_edge_cases() -> None:
     from kreuzberg._utils._table import _is_numeric_column
 
-    empty_series = pd.Series([], dtype=object)
+    empty_series = pl.Series([], dtype=pl.Object)
     assert not _is_numeric_column(empty_series)
 
-    null_series = pd.Series([None, None, None])
+    null_series = pl.Series([None, None, None])
     assert not _is_numeric_column(null_series)
 
-    int_series = pd.Series([1, 2, 3], dtype="int64")
+    int_series = pl.Series([1, 2, 3], dtype=pl.Int64)
     assert _is_numeric_column(int_series)
 
-    float_series = pd.Series([1.1, 2.2, 3.3], dtype="float64")
+    float_series = pl.Series([1.1, 2.2, 3.3], dtype=pl.Float64)
     assert _is_numeric_column(float_series)
 
-    mixed_series = pd.Series(["1", "2", "3", "not_a_number"])
+    mixed_series = pl.Series(["1", "2", "3", "not_a_number"])
     assert _is_numeric_column(mixed_series)
 
-    mostly_text = pd.Series(["a", "b", "c", "1"])
+    mostly_text = pl.Series(["a", "b", "c", "1"])
     assert not _is_numeric_column(mostly_text)
 
 
 def test_is_numeric_column_large_series() -> None:
     from kreuzberg._utils._table import _is_numeric_column
 
-    large_series = pd.Series([str(i) for i in range(2000)] + ["text"] * 100)
+    large_series = pl.Series([str(i) for i in range(2000)] + ["text"] * 100)
     assert _is_numeric_column(large_series)
 
 
 def test_is_numeric_column_special_formats() -> None:
     from kreuzberg._utils._table import _is_numeric_column
 
-    currency_series = pd.Series(["$1,234.56", "$2,500.00", "$999.99"])
+    currency_series = pl.Series(["$1,234.56", "$2,500.00", "$999.99"])
     assert _is_numeric_column(currency_series)
 
-    percent_series = pd.Series(["15%", "20.5%", "8%"])
+    percent_series = pl.Series(["15%", "20.5%", "8%"])
     assert _is_numeric_column(percent_series)
 
-    scientific_series = pd.Series(["1.23e10", "4.56E-5", "7.89e+3"])
+    scientific_series = pl.Series(["1.23e10", "4.56E-5", "7.89e+3"])
     assert _is_numeric_column(scientific_series)
 
 
 def test_is_numeric_column_error_handling() -> None:
     from kreuzberg._utils._table import _is_numeric_column
 
-    problematic_series = pd.Series([float("inf"), float("-inf"), float("nan"), "1", "2"])
+    problematic_series = pl.Series([float("inf"), float("-inf"), float("nan"), "1", "2"])
 
     result = _is_numeric_column(problematic_series)
     assert isinstance(result, bool)
 
 
 def test_table_formatting_edge_cases() -> None:
-    df = pd.DataFrame({"Whole Numbers": [1.0, 2.0, 3.0], "Decimals": [1.23, 4.56, 7.89]})
+    df = pl.DataFrame({"Whole Numbers": [1.0, 2.0, 3.0], "Decimals": [1.23, 4.56, 7.89]})
     table_data = {"df": df}
 
     result = enhance_table_markdown(cast("TableData", table_data))

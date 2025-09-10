@@ -26,13 +26,11 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 def sample_image() -> Image.Image:
-    """Create a sample PIL image for testing."""
     return Image.new("RGB", (100, 100), color="red")
 
 
 @pytest.fixture
 def sample_extraction_result() -> ExtractionResult:
-    """Create a sample extraction result for testing."""
     return ExtractionResult(
         content="Sample OCR text",
         mime_type="text/plain",
@@ -43,7 +41,6 @@ def sample_extraction_result() -> ExtractionResult:
 
 @pytest.fixture
 def temp_file() -> Generator[Path, None, None]:
-    """Create a temporary file for testing."""
     with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp:
         tmp.write(b"test content")
         tmp_path = Path(tmp.name)
@@ -54,10 +51,7 @@ def temp_file() -> Generator[Path, None, None]:
 
 
 class TestGetFileInfo:
-    """Test file info generation."""
-
     def test_get_file_info_existing_file(self, temp_file: Path) -> None:
-        """Test getting file info for existing file."""
         file_info = get_file_info(temp_file)
 
         assert file_info["path"] == str(temp_file.resolve())
@@ -65,7 +59,6 @@ class TestGetFileInfo:
         assert file_info["mtime"] > 0
 
     def test_get_file_info_nonexistent_file(self) -> None:
-        """Test getting file info for nonexistent file."""
         nonexistent = Path("/nonexistent/file.txt")
         file_info = get_file_info(nonexistent)
 
@@ -75,10 +68,7 @@ class TestGetFileInfo:
 
 
 class TestGenerateImageHash:
-    """Test image hash generation."""
-
     def test_generate_image_hash_consistent(self, sample_image: Image.Image) -> None:
-        """Test that hash generation is consistent."""
         hash1 = generate_image_hash(sample_image)
         hash2 = generate_image_hash(sample_image)
 
@@ -87,7 +77,6 @@ class TestGenerateImageHash:
         assert isinstance(hash1, str)
 
     def test_generate_image_hash_different_images(self) -> None:
-        """Test that different images produce different hashes."""
         image1 = Image.new("RGB", (100, 100), color="red")
         image2 = Image.new("RGB", (100, 100), color="blue")
 
@@ -97,7 +86,6 @@ class TestGenerateImageHash:
         assert hash1 != hash2
 
     def test_generate_image_hash_mode_conversion(self) -> None:
-        """Test that mode conversion produces consistent hashes."""
         image_cmyk = Image.new("CMYK", (100, 100), color=(255, 0, 0, 0))
 
         hash_cmyk = generate_image_hash(image_cmyk)
@@ -109,10 +97,7 @@ class TestGenerateImageHash:
 
 
 class TestBuildCacheKwargs:
-    """Test cache kwargs building."""
-
     def test_build_cache_kwargs_basic(self) -> None:
-        """Test basic cache kwargs building."""
         config = {"language": "eng", "confidence": 0.8}
         kwargs = build_cache_kwargs("tesseract", config)
 
@@ -124,7 +109,6 @@ class TestBuildCacheKwargs:
         assert kwargs == expected
 
     def test_build_cache_kwargs_with_image_hash(self) -> None:
-        """Test cache kwargs with image hash."""
         config = {"language": "eng"}
         image_hash = "abc123def456"
 
@@ -135,7 +119,6 @@ class TestBuildCacheKwargs:
         assert "ocr_config" in kwargs
 
     def test_build_cache_kwargs_with_file_info(self, temp_file: Path) -> None:
-        """Test cache kwargs with file info."""
         config = {"language": "eng"}
         file_info = get_file_info(temp_file)
 
@@ -147,11 +130,8 @@ class TestBuildCacheKwargs:
 
 
 class TestHandleCacheLookupAsync:
-    """Test async cache lookup handling."""
-
     @pytest.mark.anyio
     async def test_cache_hit(self, sample_extraction_result: ExtractionResult) -> None:
-        """Test cache hit scenario."""
         cache_kwargs = {"test": "value"}
 
         with patch("kreuzberg._utils._ocr_cache.get_ocr_cache") as mock_get_cache:
@@ -166,7 +146,6 @@ class TestHandleCacheLookupAsync:
 
     @pytest.mark.anyio
     async def test_cache_miss_no_processing(self) -> None:
-        """Test cache miss with no concurrent processing."""
         cache_kwargs = {"test": "value"}
 
         with patch("kreuzberg._utils._ocr_cache.get_ocr_cache") as mock_get_cache:
@@ -183,7 +162,6 @@ class TestHandleCacheLookupAsync:
 
     @pytest.mark.anyio
     async def test_cache_miss_with_processing(self, sample_extraction_result: ExtractionResult) -> None:
-        """Test cache miss with concurrent processing that completes."""
         cache_kwargs = {"test": "value"}
 
         with patch("kreuzberg._utils._ocr_cache.get_ocr_cache") as mock_get_cache:
@@ -204,10 +182,7 @@ class TestHandleCacheLookupAsync:
 
 
 class TestHandleCacheLookupSync:
-    """Test sync cache lookup handling."""
-
     def test_cache_hit(self, sample_extraction_result: ExtractionResult) -> None:
-        """Test cache hit scenario."""
         cache_kwargs = {"test": "value"}
 
         with patch("kreuzberg._utils._ocr_cache.get_ocr_cache") as mock_get_cache:
@@ -221,7 +196,6 @@ class TestHandleCacheLookupSync:
             mock_cache.get.assert_called_once_with(**cache_kwargs)
 
     def test_cache_miss_no_processing(self) -> None:
-        """Test cache miss with no concurrent processing."""
         cache_kwargs = {"test": "value"}
 
         with patch("kreuzberg._utils._ocr_cache.get_ocr_cache") as mock_get_cache:
@@ -237,11 +211,8 @@ class TestHandleCacheLookupSync:
 
 
 class TestCacheAndCompleteAsync:
-    """Test async cache and complete operations."""
-
     @pytest.mark.anyio
     async def test_cache_enabled(self, sample_extraction_result: ExtractionResult) -> None:
-        """Test caching when enabled."""
         cache_kwargs = {"test": "value"}
 
         with patch("kreuzberg._utils._ocr_cache.get_ocr_cache") as mock_get_cache:
@@ -257,7 +228,6 @@ class TestCacheAndCompleteAsync:
 
     @pytest.mark.anyio
     async def test_cache_disabled(self, sample_extraction_result: ExtractionResult) -> None:
-        """Test when caching is disabled."""
         cache_kwargs = {"test": "value"}
 
         with patch("kreuzberg._utils._ocr_cache.get_ocr_cache") as mock_get_cache:
@@ -273,10 +243,7 @@ class TestCacheAndCompleteAsync:
 
 
 class TestCacheAndCompleteSync:
-    """Test sync cache and complete operations."""
-
     def test_cache_enabled(self, sample_extraction_result: ExtractionResult) -> None:
-        """Test caching when enabled."""
         cache_kwargs = {"test": "value"}
 
         with patch("kreuzberg._utils._ocr_cache.get_ocr_cache") as mock_get_cache:
@@ -291,7 +258,6 @@ class TestCacheAndCompleteSync:
             mock_cache.mark_complete.assert_called_once_with(**cache_kwargs)
 
     def test_cache_disabled(self, sample_extraction_result: ExtractionResult) -> None:
-        """Test when caching is disabled."""
         cache_kwargs = {"test": "value"}
 
         with patch("kreuzberg._utils._ocr_cache.get_ocr_cache") as mock_get_cache:
@@ -307,10 +273,7 @@ class TestCacheAndCompleteSync:
 
 
 class TestMarkProcessingComplete:
-    """Test mark processing complete utility."""
-
     def test_mark_processing_complete(self) -> None:
-        """Test marking processing as complete."""
         cache_kwargs = {"test": "value"}
 
         with patch("kreuzberg._utils._ocr_cache.get_ocr_cache") as mock_get_cache:

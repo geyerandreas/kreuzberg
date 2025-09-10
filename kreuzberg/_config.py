@@ -162,6 +162,10 @@ def load_config_from_file(config_path: Path) -> dict[str, Any]:
     if config_path.name == "pyproject.toml":
         return data.get("tool", {}).get("kreuzberg", {})  # type: ignore[no-any-return]
 
+    # For any other TOML file, check if it has [tool.kreuzberg] section
+    if "tool" in data and "kreuzberg" in data["tool"]:
+        return data["tool"]["kreuzberg"]  # type: ignore[no-any-return]
+
     return data  # type: ignore[no-any-return]
 
 

@@ -295,7 +295,6 @@ async def test_integration_process_image(backend: TesseractBackend, ocr_image: P
 async def test_process_file_linux(
     backend: TesseractBackend, mocker: MockerFixture, tmp_path: Path, fresh_cache: None
 ) -> None:
-    """Test that OMP_THREAD_LIMIT is set on Linux to avoid OpenMP issues."""
     mocker.patch("sys.platform", "linux")
 
     test_file = tmp_path / "test.png"
@@ -883,7 +882,6 @@ def test_tesseract_sync_methods_validate_tesseract_version_sync_not_found(
 async def test_tesseract_environment_variables_linux_omp_thread_limit(
     backend: TesseractBackend, mocker: MockerFixture, tmp_path: Path
 ) -> None:
-    """Test that OMP_THREAD_LIMIT is set to 1 on Linux for image processing."""
     mocker.patch("sys.platform", "linux")
 
     async def mock_run_process(*args: Any, **kwargs: Any) -> Mock:

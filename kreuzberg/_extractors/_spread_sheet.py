@@ -34,8 +34,22 @@ CellValue = int | float | str | bool | time | date | datetime | timedelta
 class SpreadSheetExtractor(Extractor):
     SUPPORTED_MIME_TYPES = SPREADSHEET_MIME_TYPES
 
+    def _get_file_extension(self) -> str:
+        """Get the appropriate file extension based on MIME type."""
+        mime_to_ext = {
+            "application/vnd.ms-excel": ".xls",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
+            "application/vnd.ms-excel.sheet.macroEnabled.12": ".xlsm",
+            "application/vnd.ms-excel.sheet.binary.macroEnabled.12": ".xlsb",
+            "application/vnd.ms-excel.addin.macroEnabled.12": ".xlam",
+            "application/vnd.ms-excel.template.macroEnabled.12": ".xltm",
+            "application/vnd.oasis.opendocument.spreadsheet": ".ods",
+        }
+        return mime_to_ext.get(self.mime_type, ".xlsx")
+
     async def extract_bytes_async(self, content: bytes) -> ExtractionResult:
-        xlsx_path, unlink = await create_temp_file(".xlsx")
+        file_extension = self._get_file_extension()
+        xlsx_path, unlink = await create_temp_file(file_extension)
         await AsyncPath(xlsx_path).write_bytes(content)
         try:
             return await self.extract_path_async(xlsx_path)
@@ -72,7 +86,8 @@ class SpreadSheetExtractor(Extractor):
             ) from e
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
-        fd, temp_path = tempfile.mkstemp(suffix=".xlsx")
+        file_extension = self._get_file_extension()
+        fd, temp_path = tempfile.mkstemp(suffix=file_extension)
 
         try:
             with os.fdopen(fd, "wb") as f:

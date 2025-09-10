@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import traceback
 from functools import lru_cache
 from json import dumps, loads
 from typing import TYPE_CHECKING, Annotated, Any, Literal
@@ -69,6 +70,33 @@ def exception_handler(request: Request[Any, Any, Any], exception: KreuzbergError
     )
 
 
+def general_exception_handler(request: Request[Any, Any, Any], exception: Exception) -> Response[Any]:
+    """Temporary handler to catch ALL exceptions for debugging."""
+    error_type = type(exception).__name__
+    error_message = str(exception)
+    traceback_str = traceback.format_exc()
+
+    if request.app.logger:
+        request.app.logger.error(
+            "Unhandled exception",
+            method=request.method,
+            url=str(request.url),
+            error_type=error_type,
+            message=error_message,
+            traceback=traceback_str,
+        )
+
+    return Response(
+        content={
+            "error_type": error_type,
+            "message": error_message,
+            "traceback": traceback_str,
+            "debug": "This is a temporary debug handler",
+        },
+        status_code=HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+
+
 def _convert_value_type(current_value: Any, new_value: Any) -> Any:
     if isinstance(current_value, bool):
         if isinstance(new_value, str):
@@ -121,6 +149,15 @@ def _merge_configs_cached(
     return ExtractionConfig(**config_dict)
 
 
+def _make_hashable(obj: Any) -> Any:
+    """Convert nested dicts/lists to hashable tuples."""
+    if isinstance(obj, dict):
+        return tuple(sorted((k, _make_hashable(v)) for k, v in obj.items()))
+    if isinstance(obj, list):
+        return tuple(_make_hashable(item) for item in obj)
+    return obj
+
+
 def merge_configs(
     static_config: ExtractionConfig | None,
     query_params: dict[str, Any],
@@ -128,7 +165,7 @@ def merge_configs(
 ) -> ExtractionConfig:
     """Merge configurations with precedence: header > query > static > default."""
     query_tuple = tuple(sorted(query_params.items())) if query_params else ()
-    header_tuple = tuple(sorted(header_config.items())) if header_config else None
+    header_tuple = _make_hashable(header_config) if header_config else None
 
     return _merge_configs_cached(static_config, query_tuple, header_tuple)
 
@@ -211,8 +248,9 @@ async def get_configuration() -> dict[str, Any]:
 app = Litestar(
     route_handlers=[handle_files_upload, health_check, get_configuration],
     plugins=[OpenTelemetryPlugin(OpenTelemetryConfig())],
-    logging_config=StructLoggingConfig(),
+    logging_config=StructLoggingConfig(),  # Use default config
     exception_handlers={
         KreuzbergError: exception_handler,
+        Exception: general_exception_handler,  # Catch all exceptions for debugging
     },
 )

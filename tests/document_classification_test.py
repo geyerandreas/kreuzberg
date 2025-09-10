@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-import pandas as pd
+import polars as pl
 import pytest
 
 from kreuzberg._document_classification import (
@@ -157,7 +157,7 @@ def test_classify_document_with_exclusions() -> None:
 
 
 def test_classify_document_from_layout_basic() -> None:
-    layout_df = pd.DataFrame(
+    layout_df = pl.DataFrame(
         {
             "text": ["INVOICE", "#12345", "Total:", "$100.00"],
             "top": [10, 30, 100, 120],
@@ -195,7 +195,7 @@ def test_classify_document_from_layout_no_layout() -> None:
 
 
 def test_classify_document_from_layout_empty_layout() -> None:
-    layout_df = pd.DataFrame()
+    layout_df = pl.DataFrame()
 
     result = ExtractionResult(
         content="INVOICE #12345",
@@ -212,7 +212,7 @@ def test_classify_document_from_layout_empty_layout() -> None:
 
 
 def test_classify_document_from_layout_missing_columns() -> None:
-    layout_df = pd.DataFrame({"text": ["Test"], "missing_columns": [1]})
+    layout_df = pl.DataFrame({"text": ["Test"], "missing_columns": [1]})
 
     result = ExtractionResult(
         content="Test content",
@@ -229,7 +229,7 @@ def test_classify_document_from_layout_missing_columns() -> None:
 
 
 def test_classify_document_from_layout_no_pattern_matches() -> None:
-    layout_df = pd.DataFrame(
+    layout_df = pl.DataFrame(
         {
             "text": ["Generic text", "No patterns here", "Just regular content"],
             "top": [10, 50, 100],
@@ -252,7 +252,7 @@ def test_classify_document_from_layout_no_pattern_matches() -> None:
 
 
 def test_classify_document_from_layout_header_patterns() -> None:
-    layout_df = pd.DataFrame(
+    layout_df = pl.DataFrame(
         {
             "text": ["INVOICE", "Company Name", "Item description", "Total: $100"],
             "top": [10, 40, 200, 250],
@@ -276,7 +276,7 @@ def test_classify_document_from_layout_header_patterns() -> None:
 
 
 def test_classify_document_from_layout_position_scoring() -> None:
-    layout_df = pd.DataFrame(
+    layout_df = pl.DataFrame(
         {
             "text": ["receipt", "store info", "items", "total"],
             "top": [5, 30, 200, 300],
@@ -314,7 +314,7 @@ def test_auto_detect_document_type_from_content() -> None:
 
 
 def test_auto_detect_document_type_from_layout() -> None:
-    layout_df = pd.DataFrame(
+    layout_df = pl.DataFrame(
         {
             "text": ["RECEIPT", "Store: ABC Shop", "Item: Coffee", "Total: $5.00"],
             "top": [10, 30, 100, 120],
@@ -588,7 +588,7 @@ def test_classify_document_from_layout_comprehensive_no_layout_detailed() -> Non
 
 
 def test_classify_document_from_layout_comprehensive_empty_layout_detailed() -> None:
-    empty_df = pd.DataFrame()
+    empty_df = pl.DataFrame()
     result = ExtractionResult(content="Test content", mime_type="text/plain", metadata={}, layout=empty_df)
     config = ExtractionConfig(auto_detect_document_type=True)
 
@@ -599,7 +599,7 @@ def test_classify_document_from_layout_comprehensive_empty_layout_detailed() -> 
 
 
 def test_classify_document_from_layout_comprehensive_missing_columns_detailed() -> None:
-    layout_df = pd.DataFrame({"text": ["some text"], "left": [10]})
+    layout_df = pl.DataFrame({"text": ["some text"], "left": [10]})
     result = ExtractionResult(content="Test content", mime_type="text/plain", metadata={}, layout=layout_df)
     config = ExtractionConfig(auto_detect_document_type=True)
 
@@ -610,7 +610,7 @@ def test_classify_document_from_layout_comprehensive_missing_columns_detailed() 
 
 
 def test_classify_document_from_layout_invoice(mocker: MockerFixture) -> None:
-    layout_df = pd.DataFrame(
+    layout_df = pl.DataFrame(
         {
             "text": ["INVOICE", "Invoice Number: 12345", "Total Amount: $500"],
             "top": [10, 50, 100],
@@ -633,7 +633,7 @@ def test_classify_document_from_layout_invoice(mocker: MockerFixture) -> None:
 
 
 def test_classify_document_from_layout_translation_error(mocker: MockerFixture) -> None:
-    layout_df = pd.DataFrame({"text": ["INVOICE", "Total Amount: $500"], "top": [10, 50], "height": [20, 15]})
+    layout_df = pl.DataFrame({"text": ["INVOICE", "Total Amount: $500"], "top": [10, 50], "height": [20, 15]})
 
     result = ExtractionResult(content="Test content", mime_type="text/plain", metadata={}, layout=layout_df)
     config = ExtractionConfig(auto_detect_document_type=True, document_type_confidence_threshold=0.3)
@@ -648,7 +648,7 @@ def test_classify_document_from_layout_translation_error(mocker: MockerFixture) 
 
 
 def test_classify_document_from_layout_header_bonus() -> None:
-    layout_df = pd.DataFrame(
+    layout_df = pl.DataFrame(
         {
             "text": ["INVOICE"],
             "top": [5],
@@ -726,7 +726,7 @@ def test_auto_detect_document_type_vision_mode_with_file(mocker: MockerFixture) 
         content="OCR extracted text",
         mime_type="text/plain",
         metadata={},
-        layout=pd.DataFrame({"text": ["INVOICE", "Total: $100"], "top": [10, 50], "height": [20, 15]}),
+        layout=pl.DataFrame({"text": ["INVOICE", "Total: $100"], "top": [10, 50], "height": [20, 15]}),
     )
 
     mock_ocr_backend = mocker.Mock()
@@ -762,7 +762,7 @@ def test_auto_detect_document_type_vision_mode_no_file(mocker: MockerFixture) ->
 
 
 def test_auto_detect_document_type_with_existing_layout(mocker: MockerFixture) -> None:
-    layout_df = pd.DataFrame({"text": ["CONTRACT", "Agreement between parties"], "top": [10, 50], "height": [20, 15]})
+    layout_df = pl.DataFrame({"text": ["CONTRACT", "Agreement between parties"], "top": [10, 50], "height": [20, 15]})
 
     result = ExtractionResult(content="Contract content", mime_type="text/plain", metadata={}, layout=layout_df)
 
