@@ -235,10 +235,26 @@ jobs:
           # Install lcov for combining reports
           sudo apt-get update && sudo apt-get install -y lcov
 
-          # Combine all lcov files
-          lcov --rc lcov_branch_coverage=1 \
-            $(find . -name "coverage-*.lcov" -printf "-a %p ") \
-            -o coverage.lcov
+          # List available coverage files
+          echo "Available coverage files:"
+          find . -name "coverage-*.lcov" -type f || echo "No coverage files found"
+
+          # Combine all lcov files if they exist
+          coverage_files=($(find . -name "coverage-*.lcov" -type f))
+          if [ ${#coverage_files[@]} -gt 0 ]; then
+            echo "Combining ${#coverage_files[@]} coverage files..."
+            if [ ${#coverage_files[@]} -eq 1 ]; then
+              # Only one file, just copy it
+              cp "${coverage_files[0]}" coverage.lcov
+            else
+              # Multiple files, combine them
+              lcov --rc branch_coverage=1 $(printf " -a %s" "${coverage_files[@]}") -o coverage.lcov
+            fi
+          else
+            echo "No coverage files to combine, creating empty coverage.lcov"
+            echo "TN:" > coverage.lcov
+            echo "end_of_record" >> coverage.lcov
+          fi
 
       - name: Upload Coverage to DeepSource
         if: always()
