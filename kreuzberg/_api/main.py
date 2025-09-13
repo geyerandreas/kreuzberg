@@ -293,7 +293,7 @@ async def get_configuration() -> ConfigurationResponse:
 
 openapi_config = OpenAPIConfig(
     title="Kreuzberg API",
-    version="3.13.4",
+    version="3.14.0",
     description="Document intelligence framework API for extracting text, metadata, and structured data from diverse file formats",
     contact=Contact(
         name="Kreuzberg",
