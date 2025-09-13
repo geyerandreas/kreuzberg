@@ -135,7 +135,7 @@ async def extract_tables_from_pdf():
         print(f"Table {i+1} on page {table['page_number']}:")
         print(table["text"])  # Markdown formatted table
 
-        # Work with the pandas DataFrame
+        # Work with the polars DataFrame
         df = table["df"]
         print(f"Table shape: {df.shape}")
 

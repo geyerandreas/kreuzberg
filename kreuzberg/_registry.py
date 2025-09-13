@@ -28,6 +28,13 @@ if TYPE_CHECKING:
 
 
 class ExtractorRegistry:
+    """Registry for managing document extractors.
+
+    This class maintains a registry of extractors for different file types and provides
+    functionality to get the appropriate extractor for a given MIME type, as well as
+    add or remove custom extractors.
+    """
+
     _default_extractors: ClassVar[list[type[Extractor]]] = [
         PDFExtractor,
         OfficeDocumentExtractor,
@@ -51,6 +58,15 @@ class ExtractorRegistry:
     @classmethod
     @lru_cache
     def get_extractor(cls, mime_type: str | None, config: ExtractionConfig) -> Extractor | None:
+        """Get an appropriate extractor for the given MIME type.
+
+        Args:
+            mime_type: The MIME type to find an extractor for.
+            config: The extraction configuration.
+
+        Returns:
+            An extractor instance if one supports the MIME type, None otherwise.
+        """
         extractors: list[type[Extractor]] = [
             *cls._registered_extractors,
             *cls._default_extractors,
@@ -64,11 +80,21 @@ class ExtractorRegistry:
 
     @classmethod
     def add_extractor(cls, extractor: type[Extractor]) -> None:
+        """Add a custom extractor to the registry.
+
+        Args:
+            extractor: The extractor class to add to the registry.
+        """
         cls._registered_extractors.append(extractor)
         cls.get_extractor.cache_clear()
 
     @classmethod
     def remove_extractor(cls, extractor: type[Extractor]) -> None:
+        """Remove a custom extractor from the registry.
+
+        Args:
+            extractor: The extractor class to remove from the registry.
+        """
         try:
             cls._registered_extractors.remove(extractor)
             cls.get_extractor.cache_clear()
