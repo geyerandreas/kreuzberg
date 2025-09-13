@@ -130,6 +130,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/04/eb/f4151e0c7377a6e08a38108609ba5cede57986802757848688aeedd1b9e8/beautifulsoup4-4.13.5-py3-none-any.whl", hash = "sha256:642085eaa22233aceadff9c69651bc51e8bf3f874fb6d7104ece2beb24b47c4a", size = 105113, upload-time = "2025-08-24T14:06:14.884Z" },
 ]
 
+[package.optional-dependencies]
+lxml = [
+    { name = "lxml" },
+]
+
 [[package]]
 name = "blis"
 version = "1.3.0"
@@ -982,7 +987,7 @@ name = "exceptiongroup"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0b/9f/a65090624ecf468cdca03533906e7c69ed7588582240cfe7cc9e770b50eb/exceptiongroup-1.3.0.tar.gz", hash = "sha256:b241f5885f560bc56a59ee63ca4c6a8bfa46ae4ad651af316d4e81817bb9fd88", size = 29749, upload-time = "2025-05-10T17:42:51.123Z" }
 wheels = [
@@ -1287,20 +1292,20 @@ wheels = [
 
 [[package]]
 name = "html-to-markdown"
-version = "1.10.0"
+version = "1.11.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "nh3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/38/51/be53439a5b22f3a583b4f6a782af02c41c60dbd86261a1057c0b21cd4e4a/html_to_markdown-1.10.0.tar.gz", hash = "sha256:fd0d1bc3b235e664058862760dcb68acfa9c80d3e67635bcdf3b0227dc28ed7b", size = 35596, upload-time = "2025-09-08T16:07:10.054Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/3a/ed/64340f8e71a0268c0c8c16f2c4db06dd5251ee40b9bd8dadd2a6b0bbe003/html_to_markdown-1.11.0.tar.gz", hash = "sha256:45a6b020e17ad98df1fcb2e12553a5897f78a2f6555b5a85756bde5942e14268", size = 35645, upload-time = "2025-09-13T10:02:05.61Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/98/85a1cc78bac210d9cac68a42e0f363ef9a3a405730058fa4121eaa3bc9b1/html_to_markdown-1.10.0-py3-none-any.whl", hash = "sha256:597c9d681767dcbb0b1e0eed607588e9229aef3516710a7d4c6d3928cf5ecf29", size = 32032, upload-time = "2025-09-08T16:07:08.858Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/4c/8ee387e8bdc72b7acfafdc8f8f7eb5861cb0318927ca42d2313379d99832/html_to_markdown-1.11.0-py3-none-any.whl", hash = "sha256:cccf632d1ee05b1f136bc3034219d4cc0e480a318cb6d7fbac4032afb2828fd1", size = 32155, upload-time = "2025-09-13T10:02:03.764Z" },
 ]
 
 [package.optional-dependencies]
 lxml = [
-    { name = "lxml" },
+    { name = "beautifulsoup4", extra = ["lxml"] },
 ]
 
 [[package]]
@@ -1772,7 +1777,7 @@ requires-dist = [
     { name = "exceptiongroup", marker = "python_full_version < '3.11'", specifier = ">=1.2.2" },
     { name = "fast-langdetect", marker = "extra == 'langdetect'", specifier = ">=0.3.2" },
     { name = "gmft", marker = "extra == 'gmft'", specifier = ">=0.4.2" },
-    { name = "html-to-markdown", extras = ["lxml"], specifier = ">=1.10.0" },
+    { name = "html-to-markdown", extras = ["lxml"], specifier = ">=1.11.0" },
     { name = "keybert", marker = "extra == 'entity-extraction'", specifier = ">=0.9.0" },
     { name = "kreuzberg", extras = ["additional-extensions", "api", "chunking", "cli", "crypto", "document-classification", "easyocr", "entity-extraction", "gmft", "langdetect", "paddleocr"], marker = "extra == 'all'" },
     { name = "litestar", extras = ["standard", "structlog", "opentelemetry"], marker = "extra == 'api'", specifier = ">=2.17.0" },
@@ -3905,11 +3910,11 @@ wheels = [
 
 [[package]]
 name = "pyparsing"
-version = "3.2.3"
+version = "3.2.4"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/bb/22/f1129e69d94ffff626bdb5c835506b3a5b4f3d070f17ea295e12c2c6f60f/pyparsing-3.2.3.tar.gz", hash = "sha256:b9c13f1ab8b3b542f72e28f634bad4de758ab3ce4546e4301970ad6fa77c38be", size = 1088608, upload-time = "2025-03-25T05:01:28.114Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/98/c9/b4594e6a81371dfa9eb7a2c110ad682acf985d96115ae8b25a1d63b4bf3b/pyparsing-3.2.4.tar.gz", hash = "sha256:fff89494f45559d0f2ce46613b419f632bbb6afbdaed49696d322bcf98a58e99", size = 1098809, upload-time = "2025-09-13T05:47:19.732Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/05/e7/df2285f3d08fee213f2d041540fa4fc9ca6c2d44cf36d3a035bf2a8d2bcc/pyparsing-3.2.3-py3-none-any.whl", hash = "sha256:a749938e02d6fd0b59b356ca504a24982314bb090c383e3cf201c95ef7e2bfcf", size = 111120, upload-time = "2025-03-25T05:01:24.908Z" },
+    { url = "https://files.pythonhosted.org/packages/53/b8/fbab973592e23ae313042d450fc26fa24282ebffba21ba373786e1ce63b4/pyparsing-3.2.4-py3-none-any.whl", hash = "sha256:91d0fcde680d42cd031daf3a6ba20da3107e08a75de50da58360e7d94ab24d36", size = 113869, upload-time = "2025-09-13T05:47:17.863Z" },
 ]
 
 [[package]]
@@ -5221,15 +5226,15 @@ wheels = [
 
 [[package]]
 name = "starlette"
-version = "0.47.3"
+version = "0.48.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/15/b9/cc3017f9a9c9b6e27c5106cc10cc7904653c3eec0729793aec10479dd669/starlette-0.47.3.tar.gz", hash = "sha256:6bc94f839cc176c4858894f1f8908f0ab79dfec1a6b8402f6da9be26ebea52e9", size = 2584144, upload-time = "2025-08-24T13:36:42.122Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a7/a5/d6f429d43394057b67a6b5bbe6eae2f77a6bf7459d961fdb224bf206eee6/starlette-0.48.0.tar.gz", hash = "sha256:7e8cee469a8ab2352911528110ce9088fdc6a37d9876926e73da7ce4aa4c7a46", size = 2652949, upload-time = "2025-09-13T08:41:05.699Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ce/fd/901cfa59aaa5b30a99e16876f11abe38b59a1a2c51ffb3d7142bb6089069/starlette-0.47.3-py3-none-any.whl", hash = "sha256:89c0778ca62a76b826101e7c709e70680a1699ca7da6b44d38eb0a7e61fe4b51", size = 72991, upload-time = "2025-08-24T13:36:40.887Z" },
+    { url = "https://files.pythonhosted.org/packages/be/72/2db2f49247d0a18b4f1bb9a5a39a0162869acf235f3a96418363947b3d46/starlette-0.48.0-py3-none-any.whl", hash = "sha256:0764ca97b097582558ecb498132ed0c7d942f233f365b86ba37770e026510659", size = 73736, upload-time = "2025-09-13T08:41:03.869Z" },
 ]
 
 [[package]]
