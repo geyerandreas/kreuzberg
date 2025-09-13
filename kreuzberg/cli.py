@@ -62,7 +62,22 @@ def format_extraction_result(result: ExtractionResult, show_metadata: bool, outp
         if show_metadata:
             output_data["metadata"] = result.metadata
         if result.tables:
-            output_data["tables"] = result.tables
+            # Convert tables to JSON-serializable format
+            json_tables = []
+            for table in result.tables:
+                json_table = {
+                    "page_number": table.get("page_number"),
+                    "text": table.get("text"),
+                }
+                # Optionally include DataFrame as CSV string
+                if "df" in table and table["df"] is not None:
+                    df = table["df"]
+                    if hasattr(df, "write_csv"):
+                        json_table["data_csv"] = df.write_csv()
+                    elif hasattr(df, "to_csv"):
+                        json_table["data_csv"] = df.to_csv(index=False)
+                json_tables.append(json_table)
+            output_data["tables"] = json_tables
         if result.chunks:
             output_data["chunks"] = result.chunks
         return json.dumps(output_data, indent=2, ensure_ascii=False)
@@ -77,7 +92,12 @@ def format_extraction_result(result: ExtractionResult, show_metadata: bool, outp
         output_parts.append("\n\n--- TABLES ---")
         for i, table in enumerate(result.tables):
             output_parts.append(f"\nTable {i + 1}:")
-            output_parts.append(json.dumps(table, indent=2, ensure_ascii=False))
+            # Create JSON-serializable version of table
+            json_table = {
+                "page_number": table.get("page_number"),
+                "text": table.get("text"),
+            }
+            output_parts.append(json.dumps(json_table, indent=2, ensure_ascii=False))
 
     return "\n".join(output_parts)
 

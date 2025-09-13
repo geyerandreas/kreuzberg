@@ -4,7 +4,7 @@ import io
 import multiprocessing as mp
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import anyio
 import psutil
@@ -173,7 +173,7 @@ class ProcessPoolManager:
                     self._active_tasks -= 1
 
         async with anyio.create_task_group() as tg:
-            results: list[T] = [None] * len(arg_batches)  # type: ignore[list-item]
+            results: list[T | None] = [None] * len(arg_batches)
 
             async def run_task(idx: int, args: tuple[Any, ...]) -> None:
                 results[idx] = await submit_single(args)
@@ -181,7 +181,7 @@ class ProcessPoolManager:
             for idx, args in enumerate(arg_batches):
                 tg.start_soon(run_task, idx, args)
 
-        return results
+        return cast("list[T]", results)
 
     def get_system_info(self) -> dict[str, Any]:
         memory = psutil.virtual_memory()

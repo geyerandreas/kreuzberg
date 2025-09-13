@@ -426,12 +426,12 @@ def batch_extract_file_sync(
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_index = {executor.submit(extract_single, fp): i for i, fp in enumerate(file_paths)}
 
-        results: list[ExtractionResult] = [None] * len(file_paths)  # type: ignore[list-item]
+        results: list[ExtractionResult | None] = [None] * len(file_paths)
         for future in as_completed(future_to_index):
             index, result = future.result()
             results[index] = result
 
-    return results
+    return cast("list[ExtractionResult]", results)
 
 
 def batch_extract_bytes_sync(
@@ -479,9 +479,9 @@ def batch_extract_bytes_sync(
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         future_to_index = {executor.submit(extract_single, (i, content)): i for i, content in enumerate(contents)}
 
-        results: list[ExtractionResult] = [None] * len(contents)  # type: ignore[list-item]
+        results: list[ExtractionResult | None] = [None] * len(contents)
         for future in as_completed(future_to_index):
             index, result = future.result()
             results[index] = result
 
-    return results
+    return cast("list[ExtractionResult]", results)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import platform
 import warnings
 from importlib.util import find_spec
@@ -36,18 +37,31 @@ except ImportError:  # pragma: no cover
 if TYPE_CHECKING:
     import numpy as np
     from paddleocr import PaddleOCR
+else:
+    np: Any = None
+    PaddleOCR: Any = None
 
-HAS_PADDLEOCR: bool
-if not TYPE_CHECKING:
+HAS_PADDLEOCR: bool = False
+
+
+def _import_paddleocr() -> tuple[Any, Any]:
+    global HAS_PADDLEOCR, np, PaddleOCR
+
+    if HAS_PADDLEOCR:
+        return np, PaddleOCR
+
     try:
-        import numpy as np
-        from paddleocr import PaddleOCR
+        os.environ.setdefault("HUB_DATASET_ENDPOINT", "https://modelscope.cn/api/v1/datasets")
 
+        import numpy as _np  # noqa: PLC0415, ICN001
+        from paddleocr import PaddleOCR as _PaddleOCR  # noqa: PLC0415
+
+        np = _np
+        PaddleOCR = _PaddleOCR
         HAS_PADDLEOCR = True
+        return np, PaddleOCR
     except ImportError:
-        HAS_PADDLEOCR = False
-        np: Any = None
-        PaddleOCR: Any = None
+        return None, None
 
 
 PADDLEOCR_SUPPORTED_LANGUAGE_CODES: Final[set[str]] = {"ch", "en", "french", "german", "japan", "korean"}
@@ -74,7 +88,12 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
             if image.mode != "RGB":
                 image = image.convert("RGB")
 
-            image_np = np.array(image)
+            _np, _ = _import_paddleocr()
+            if _np is None:
+                raise MissingDependencyError.create_for_package(
+                    dependency_group="paddleocr", functionality="PaddleOCR as an OCR backend", package_name="paddleocr"
+                )
+            image_np = _np.array(image)
             use_textline_orientation = kwargs.get("use_textline_orientation", kwargs.get("use_angle_cls", True))
             result = await run_sync(self._paddle_ocr.ocr, image_np, cls=use_textline_orientation)
 
@@ -195,7 +214,8 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         if cls._paddle_ocr is not None:
             return
 
-        if not HAS_PADDLEOCR or PaddleOCR is None:
+        _np, _paddle_ocr = _import_paddleocr()
+        if _paddle_ocr is None:
             raise MissingDependencyError.create_for_package(
                 dependency_group="paddleocr", functionality="PaddleOCR as an OCR backend", package_name="paddleocr"
             )
@@ -224,7 +244,7 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         kwargs.setdefault("enable_mkldnn", cls._is_mkldnn_supported())
 
         try:
-            cls._paddle_ocr = await run_sync(PaddleOCR, lang=language, **kwargs)
+            cls._paddle_ocr = await run_sync(_paddle_ocr, lang=language, **kwargs)
         except Exception as e:
             raise OCRError(f"Failed to initialize PaddleOCR: {e}") from e
 
@@ -304,7 +324,12 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
             if image.mode != "RGB":
                 image = image.convert("RGB")
 
-            image_np = np.array(image)
+            _np, _ = _import_paddleocr()
+            if _np is None:
+                raise MissingDependencyError.create_for_package(
+                    dependency_group="paddleocr", functionality="PaddleOCR as an OCR backend", package_name="paddleocr"
+                )
+            image_np = _np.array(image)
             use_textline_orientation = kwargs.get("use_textline_orientation", kwargs.get("use_angle_cls", True))
             result = self._paddle_ocr.ocr(image_np, cls=use_textline_orientation)
 
@@ -352,7 +377,8 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         if cls._paddle_ocr is not None:
             return
 
-        if not HAS_PADDLEOCR or PaddleOCR is None:
+        _np, _paddle_ocr = _import_paddleocr()
+        if _paddle_ocr is None:
             raise MissingDependencyError.create_for_package(
                 dependency_group="paddleocr", functionality="PaddleOCR as an OCR backend", package_name="paddleocr"
             )
@@ -381,6 +407,6 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         kwargs.setdefault("enable_mkldnn", cls._is_mkldnn_supported())
 
         try:
-            cls._paddle_ocr = PaddleOCR(lang=language, **kwargs)
+            cls._paddle_ocr = _paddle_ocr(lang=language, **kwargs)
         except Exception as e:
             raise OCRError(f"Failed to initialize PaddleOCR: {e}") from e

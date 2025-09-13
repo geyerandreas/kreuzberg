@@ -16,14 +16,6 @@ mcp = FastMCP("Kreuzberg Text Extraction")
 
 
 def _create_config_with_overrides(**kwargs: Any) -> ExtractionConfig:
-    """Create ExtractionConfig with discovered config as base and tool parameters as overrides.
-
-    Args:
-        **kwargs: Tool parameters to override defaults/discovered config.
-
-    Returns:
-        ExtractionConfig instance.
-    """
     base_config = discover_config()
 
     if base_config is None:
@@ -64,25 +56,6 @@ def extract_document(  # noqa: PLR0913
     keyword_count: int = 10,
     auto_detect_language: bool = False,
 ) -> dict[str, Any]:
-    """Extract text content from a document file.
-
-    Args:
-        file_path: Path to the document file
-        mime_type: MIME type of the document (auto-detected if not provided)
-        force_ocr: Force OCR even for text-based documents
-        chunk_content: Split content into chunks
-        extract_tables: Extract tables from the document
-        extract_entities: Extract named entities
-        extract_keywords: Extract keywords
-        ocr_backend: OCR backend to use (tesseract, easyocr, paddleocr)
-        max_chars: Maximum characters per chunk
-        max_overlap: Character overlap between chunks
-        keyword_count: Number of keywords to extract
-        auto_detect_language: Auto-detect document language
-
-    Returns:
-        Extracted content with metadata, tables, chunks, entities, and keywords
-    """
     config = _create_config_with_overrides(
         force_ocr=force_ocr,
         chunk_content=chunk_content,
@@ -115,25 +88,6 @@ def extract_bytes(  # noqa: PLR0913
     keyword_count: int = 10,
     auto_detect_language: bool = False,
 ) -> dict[str, Any]:
-    """Extract text content from document bytes.
-
-    Args:
-        content_base64: Base64-encoded document content
-        mime_type: MIME type of the document
-        force_ocr: Force OCR even for text-based documents
-        chunk_content: Split content into chunks
-        extract_tables: Extract tables from the document
-        extract_entities: Extract named entities
-        extract_keywords: Extract keywords
-        ocr_backend: OCR backend to use (tesseract, easyocr, paddleocr)
-        max_chars: Maximum characters per chunk
-        max_overlap: Character overlap between chunks
-        keyword_count: Number of keywords to extract
-        auto_detect_language: Auto-detect document language
-
-    Returns:
-        Extracted content with metadata, tables, chunks, entities, and keywords
-    """
     content_bytes = base64.b64decode(content_base64)
 
     config = _create_config_with_overrides(
@@ -158,15 +112,6 @@ def extract_simple(
     file_path: str,
     mime_type: str | None = None,
 ) -> str:
-    """Simple text extraction from a document file.
-
-    Args:
-        file_path: Path to the document file
-        mime_type: MIME type of the document (auto-detected if not provided)
-
-    Returns:
-        Extracted text content as a string
-    """
     config = _create_config_with_overrides()
     result = extract_file_sync(file_path, mime_type, config)
     return result.content
@@ -174,14 +119,12 @@ def extract_simple(
 
 @mcp.resource("config://default")
 def get_default_config() -> str:
-    """Get the default extraction configuration."""
     config = ExtractionConfig()
     return json.dumps(msgspec.to_builtins(config, order="deterministic"), indent=2)
 
 
 @mcp.resource("config://discovered")
 def get_discovered_config() -> str:
-    """Get the discovered configuration from config files."""
     config = discover_config()
     if config is None:
         return "No configuration file found"
@@ -190,13 +133,11 @@ def get_discovered_config() -> str:
 
 @mcp.resource("config://available-backends")
 def get_available_backends() -> str:
-    """Get available OCR backends."""
     return "tesseract, easyocr, paddleocr"
 
 
 @mcp.resource("extractors://supported-formats")
 def get_supported_formats() -> str:
-    """Get supported document formats."""
     return """
     Supported formats:
     - PDF documents
@@ -210,14 +151,6 @@ def get_supported_formats() -> str:
 
 @mcp.prompt()
 def extract_and_summarize(file_path: str) -> list[TextContent]:
-    """Extract text from a document and provide a summary prompt.
-
-    Args:
-        file_path: Path to the document file
-
-    Returns:
-        Extracted content with summarization prompt
-    """
     result = extract_file_sync(file_path, None, _create_config_with_overrides())
 
     return [
@@ -230,14 +163,6 @@ def extract_and_summarize(file_path: str) -> list[TextContent]:
 
 @mcp.prompt()
 def extract_structured(file_path: str) -> list[TextContent]:
-    """Extract text with structured analysis prompt.
-
-    Args:
-        file_path: Path to the document file
-
-    Returns:
-        Extracted content with structured analysis prompt
-    """
     config = _create_config_with_overrides(
         extract_entities=True,
         extract_keywords=True,
@@ -262,7 +187,6 @@ def extract_structured(file_path: str) -> list[TextContent]:
 
 
 def main() -> None:  # pragma: no cover
-    """Main entry point for the MCP server."""
     mcp.run()
 
 

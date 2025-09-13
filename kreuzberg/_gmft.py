@@ -9,11 +9,11 @@ import time
 import traceback
 from io import StringIO
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import anyio
 import msgspec
-import pandas as pd
+import polars as pl
 from PIL import Image
 
 from kreuzberg._types import GMFTConfig, TableData
@@ -25,7 +25,63 @@ if TYPE_CHECKING:
     from os import PathLike
 
     from gmft.detectors.base import CroppedTable
-    from pandas import DataFrame
+
+
+def _pandas_to_polars(pandas_df: Any) -> pl.DataFrame:
+    if pandas_df is None:
+        return pl.DataFrame()
+
+    try:
+        return pl.from_pandas(pandas_df)
+    except (TypeError, ValueError, AttributeError):
+        if hasattr(pandas_df, "columns") and hasattr(pandas_df.columns, "duplicated"):
+            mask = ~pandas_df.columns.duplicated()
+            pandas_df = pandas_df.loc[:, mask]
+            return pl.from_pandas(pandas_df)
+        return pl.DataFrame()
+
+
+def _dataframe_to_markdown(df: Any) -> str:
+    if df is None:
+        return ""
+
+    if isinstance(df, pl.DataFrame):
+        if df.is_empty():
+            return ""
+        return str(df)
+
+    if hasattr(df, "to_markdown"):
+        return cast("str", df.to_markdown())
+
+    return str(df)
+
+
+def _dataframe_to_csv(df: Any) -> str:
+    if df is None:
+        return ""
+
+    if isinstance(df, pl.DataFrame):
+        if df.is_empty():
+            return ""
+        return df.write_csv()
+
+    if hasattr(df, "to_csv"):
+        return cast("str", df.to_csv(index=False))
+
+    return ""
+
+
+def _is_dataframe_empty(df: Any) -> bool:
+    if df is None:
+        return True
+
+    if isinstance(df, pl.DataFrame):
+        return df.is_empty()
+
+    if hasattr(df, "empty"):
+        return cast("bool", df.empty)
+
+    return True
 
 
 async def extract_tables(
@@ -111,7 +167,7 @@ async def extract_tables(
             )
             doc = await run_sync(PyPDFium2Document, str(file_path))
             cropped_tables: list[CroppedTable] = []
-            dataframes: list[DataFrame] = []
+            dataframes: list[pl.DataFrame] = []
             try:
                 for page in doc:
                     cropped_tables.extend(await run_sync(detector.extract, page))
@@ -124,8 +180,8 @@ async def extract_tables(
                     TableData(
                         cropped_image=cropped_table.image(),
                         page_number=cropped_table.page.page_number,
-                        text=data_frame.to_markdown(),
-                        df=data_frame,
+                        text=_dataframe_to_markdown(data_frame),
+                        df=_pandas_to_polars(data_frame),
                     )
                     for data_frame, cropped_table in zip(dataframes, cropped_tables, strict=False)
                 ]
@@ -225,7 +281,7 @@ def extract_tables_sync(
                 TableData(
                     cropped_image=cropped_table.image(),
                     page_number=cropped_table.page.page_number,
-                    text=data_frame.to_markdown(),
+                    text=_dataframe_to_markdown(data_frame),
                     df=data_frame,
                 )
                 for data_frame, cropped_table in zip(dataframes, cropped_tables, strict=False)
@@ -295,26 +351,16 @@ def _extract_tables_in_process(
                 cropped_image.save(img_bytes, format="PNG")
                 img_bytes.seek(0)
 
-                if data_frame.empty:
-                    results.append(
-                        {
-                            "cropped_image_bytes": img_bytes.getvalue(),
-                            "page_number": cropped_table.page.page_number,
-                            "text": data_frame.to_markdown(),
-                            "df_columns": data_frame.columns.tolist(),
-                            "df_csv": None,
-                        }
-                    )
-                else:
-                    results.append(
-                        {
-                            "cropped_image_bytes": img_bytes.getvalue(),
-                            "page_number": cropped_table.page.page_number,
-                            "text": data_frame.to_markdown(),
-                            "df_columns": None,
-                            "df_csv": data_frame.to_csv(index=False),
-                        }
-                    )
+                csv_data = _dataframe_to_csv(data_frame) if not _is_dataframe_empty(data_frame) else ""
+                results.append(
+                    {
+                        "cropped_image_bytes": img_bytes.getvalue(),
+                        "page_number": cropped_table.page.page_number,
+                        "text": _dataframe_to_markdown(data_frame),
+                        "df_columns": data_frame.columns.tolist(),
+                        "df_csv": csv_data if csv_data else None,
+                    }
+                )
 
             result_queue.put((True, results))
 
@@ -381,10 +427,10 @@ def _extract_tables_isolated(
             for table_dict in result:
                 img = Image.open(io.BytesIO(table_dict["cropped_image_bytes"]))
 
-                if table_dict["df_csv"] is None:
-                    df = pd.DataFrame(columns=table_dict["df_columns"])
+                if table_dict["df_csv"] is None or table_dict["df_csv"] == "":
+                    df = pl.DataFrame()
                 else:
-                    df = pd.read_csv(StringIO(table_dict["df_csv"]))
+                    df = pl.read_csv(StringIO(table_dict["df_csv"]), truncate_ragged_lines=True)
 
                 tables.append(
                     TableData(
@@ -468,10 +514,10 @@ async def _extract_tables_isolated_async(
             for table_dict in result:
                 img = Image.open(io.BytesIO(table_dict["cropped_image_bytes"]))
 
-                if table_dict["df_csv"] is None:
-                    df = pd.DataFrame(columns=table_dict["df_columns"])
+                if table_dict["df_csv"] is None or table_dict["df_csv"] == "":
+                    df = pl.DataFrame()
                 else:
-                    df = pd.read_csv(StringIO(table_dict["df_csv"]))
+                    df = pl.read_csv(StringIO(table_dict["df_csv"]), truncate_ragged_lines=True)
 
                 tables.append(
                     TableData(

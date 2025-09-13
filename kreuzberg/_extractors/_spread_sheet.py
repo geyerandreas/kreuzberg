@@ -35,7 +35,6 @@ class SpreadSheetExtractor(Extractor):
     SUPPORTED_MIME_TYPES = SPREADSHEET_MIME_TYPES
 
     def _get_file_extension(self) -> str:
-        """Get the appropriate file extension based on MIME type."""
         mime_to_ext = {
             "application/vnd.ms-excel": ".xls",
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",

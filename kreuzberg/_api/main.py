@@ -71,7 +71,6 @@ def exception_handler(request: Request[Any, Any, Any], exception: KreuzbergError
 
 
 def general_exception_handler(request: Request[Any, Any, Any], exception: Exception) -> Response[Any]:
-    """Temporary handler to catch ALL exceptions for debugging."""
     error_type = type(exception).__name__
     error_message = str(exception)
     traceback_str = traceback.format_exc()
@@ -127,7 +126,6 @@ def _merge_configs_cached(
     query_params: tuple[tuple[str, Any], ...],
     header_config: tuple[tuple[str, Any], ...] | None,
 ) -> ExtractionConfig:
-    """Cached implementation of merge_configs with hashable parameters."""
     base_config = static_config or ExtractionConfig()
     config_dict = base_config.to_dict()
 
@@ -150,7 +148,6 @@ def _merge_configs_cached(
 
 
 def _make_hashable(obj: Any) -> Any:
-    """Convert nested dicts/lists to hashable tuples."""
     if isinstance(obj, dict):
         return tuple(sorted((k, _make_hashable(v)) for k, v in obj.items()))
     if isinstance(obj, list):
@@ -163,7 +160,6 @@ def merge_configs(
     query_params: dict[str, Any],
     header_config: dict[str, Any] | None,
 ) -> ExtractionConfig:
-    """Merge configurations with precedence: header > query > static > default."""
     query_tuple = tuple(sorted(query_params.items())) if query_params else ()
     header_tuple = _make_hashable(header_config) if header_config else None
 
@@ -186,15 +182,6 @@ async def handle_files_upload(  # noqa: PLR0913
     auto_detect_language: str | bool | None = None,
     pdf_password: str | None = None,
 ) -> list[ExtractionResult]:
-    """Extracts text content from uploaded files with optional runtime configuration.
-
-    Configuration can be provided via:
-    1. Query parameters for common settings
-    2. X-Extraction-Config header for complex nested configurations (JSON format)
-    3. Static configuration file (kreuzberg.toml or pyproject.toml)
-
-    Precedence: Header config > Query params > Static config > Defaults
-    """
     static_config = discover_config()
 
     query_params = {
@@ -228,13 +215,11 @@ async def handle_files_upload(  # noqa: PLR0913
 
 @get("/health", operation_id="HealthCheck")
 async def health_check() -> dict[str, str]:
-    """A simple health check endpoint."""
     return {"status": "ok"}
 
 
 @get("/config", operation_id="GetConfiguration")
 async def get_configuration() -> dict[str, Any]:
-    """Get the current configuration."""
     config = discover_config()
     if config is None:
         return {"message": "No configuration file found", "config": None}
@@ -248,9 +233,9 @@ async def get_configuration() -> dict[str, Any]:
 app = Litestar(
     route_handlers=[handle_files_upload, health_check, get_configuration],
     plugins=[OpenTelemetryPlugin(OpenTelemetryConfig())],
-    logging_config=StructLoggingConfig(),  # Use default config
+    logging_config=StructLoggingConfig(),
     exception_handlers={
         KreuzbergError: exception_handler,
-        Exception: general_exception_handler,  # Catch all exceptions for debugging
+        Exception: general_exception_handler,
     },
 )

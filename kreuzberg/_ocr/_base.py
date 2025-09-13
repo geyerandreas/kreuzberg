@@ -5,6 +5,7 @@ from typing import Generic, TypeVar
 from PIL.Image import Image
 
 from kreuzberg._types import ExtractionResult
+from kreuzberg._utils._sync import run_taskgroup
 
 try:  # pragma: no cover
     from typing import Unpack  # type: ignore[attr-defined]
@@ -32,8 +33,6 @@ class OCRBackend(ABC, Generic[T]):
         return [self.process_file_sync(path, **kwargs) for path in paths]  # pragma: no cover
 
     async def process_batch(self, paths: list[Path], **kwargs: Unpack[T]) -> list[ExtractionResult]:
-        from kreuzberg._utils._sync import run_taskgroup  # noqa: PLC0415
-
         tasks = [self.process_file(path, **kwargs) for path in paths]
         return await run_taskgroup(*tasks)  # pragma: no cover
 

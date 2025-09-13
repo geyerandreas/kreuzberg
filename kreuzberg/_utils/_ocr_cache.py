@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import anyio
@@ -9,17 +10,13 @@ import anyio
 from kreuzberg._utils._cache import get_ocr_cache
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from PIL.Image import Image as PILImage
 
     from kreuzberg._types import ExtractionResult
 
 
 def get_file_info(path: Path) -> dict[str, Any]:
-    from pathlib import Path as PathType  # noqa: PLC0415
-
-    path_obj = PathType(path) if not isinstance(path, PathType) else path
+    path_obj = path if isinstance(path, Path) else Path(path)
 
     try:
         stat = path_obj.stat()

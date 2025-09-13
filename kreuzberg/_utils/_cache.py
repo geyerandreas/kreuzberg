@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import os
 import threading
 import time
 from contextlib import suppress
 from io import StringIO
 from pathlib import Path
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, cast
 
+import polars as pl
 from anyio import Path as AsyncPath
 
 from kreuzberg._types import ExtractionResult
@@ -79,10 +81,18 @@ class KreuzbergCache(Generic[T]):
             for item in result:
                 if isinstance(item, dict) and "df" in item:
                     serialized_item = {k: v for k, v in item.items() if k != "df"}
-                    if hasattr(item["df"], "to_csv"):
-                        serialized_item["df_csv"] = item["df"].to_csv(index=False)
+                    if item["df"] is not None:
+                        buffer = io.BytesIO()
+                        if hasattr(item["df"], "write_parquet"):
+                            item["df"].write_parquet(buffer)
+                            serialized_item["df_parquet"] = buffer.getvalue()
+                        elif hasattr(item["df"], "write_csv"):
+                            item["df"].write_csv(buffer)
+                            serialized_item["df_parquet"] = buffer.getvalue()
+                        else:
+                            serialized_item["df_parquet"] = None
                     else:
-                        serialized_item["df_csv"] = str(item["df"])
+                        serialized_item["df_parquet"] = None
                     serialized_data.append(serialized_item)
                 else:
                     serialized_data.append(item)
@@ -94,22 +104,34 @@ class KreuzbergCache(Generic[T]):
         data = cached_data["data"]
 
         if cached_data.get("type") == "TableDataList" and isinstance(data, list):
-            import pandas as pd  # noqa: PLC0415
-
             deserialized_data = []
             for item in data:
-                if isinstance(item, dict) and "df_csv" in item:
-                    deserialized_item = {k: v for k, v in item.items() if k != "df_csv"}
-                    deserialized_item["df"] = pd.read_csv(StringIO(item["df_csv"]))
+                if isinstance(item, dict) and ("df_parquet" in item or "df_csv" in item):
+                    deserialized_item = {k: v for k, v in item.items() if k not in ("df_parquet", "df_csv")}
+
+                    if "df_parquet" in item:
+                        if item["df_parquet"] is None:
+                            deserialized_item["df"] = pl.DataFrame()
+                        else:
+                            buffer = io.BytesIO(item["df_parquet"])
+                            try:
+                                deserialized_item["df"] = pl.read_parquet(buffer)
+                            except Exception:  # noqa: BLE001
+                                deserialized_item["df"] = pl.DataFrame()
+                    elif "df_csv" in item:
+                        if item["df_csv"] is None or item["df_csv"] == "" or item["df_csv"] == "\n":
+                            deserialized_item["df"] = pl.DataFrame()
+                        else:
+                            deserialized_item["df"] = pl.read_csv(StringIO(item["df_csv"]))
                     deserialized_data.append(deserialized_item)
                 else:
                     deserialized_data.append(item)
-            return deserialized_data  # type: ignore[return-value]
+            return cast("T", deserialized_data)
 
         if cached_data.get("type") == "ExtractionResult" and isinstance(data, dict):
-            return ExtractionResult(**data)  # type: ignore[return-value]
+            return cast("T", ExtractionResult(**data))
 
-        return data  # type: ignore[no-any-return]
+        return cast("T", data)
 
     def _cleanup_cache(self) -> None:
         try:
