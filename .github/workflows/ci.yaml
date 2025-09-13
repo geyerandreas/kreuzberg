@@ -193,7 +193,62 @@ jobs:
           sudo apt-get install -y tesseract-ocr tesseract-ocr-deu pandoc
 
       - name: Run Tests - ${{ matrix.test-category.name }}
-        run: uv run pytest $(echo "${{ matrix.test-category.path }}" | tr ',' ' ') -v --reruns 1 --reruns-delay 1
+        run: uv run pytest $(echo "${{ matrix.test-category.path }}" | tr ',' ' ') -v --reruns 1 --reruns-delay 1 --cov=kreuzberg --cov-append --cov-report=lcov:coverage-${{ matrix.test-category.name }}.lcov
+
+      - name: Upload Coverage Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.test-category.name }}-${{ github.sha }}
+          path: coverage-${{ matrix.test-category.name }}.lcov
+          retention-days: 1
+
+  coverage-pr:
+    needs: test-pr
+    if: github.event_name == 'pull_request' && always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download Coverage Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-*-${{ github.sha }}
+          merge-multiple: true
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Install Dependencies
+        run: uv sync --dev
+
+      - name: Combine Coverage Reports
+        run: |
+          # Install lcov for combining reports
+          sudo apt-get update && sudo apt-get install -y lcov
+
+          # Combine all lcov files
+          lcov --rc lcov_branch_coverage=1 \
+            $(find . -name "coverage-*.lcov" -printf "-a %p ") \
+            -o coverage.lcov
+
+      - name: Upload Coverage to DeepSource
+        if: always()
+        env:
+          DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
+        run: |
+          # Install DeepSource CLI
+          curl -fsSL https://deepsource.io/cli | sh
+          # Upload coverage report
+          ./bin/deepsource report --analyzer test-coverage --key python --value-file ./coverage.lcov
 
   test-full:
     needs: validate
