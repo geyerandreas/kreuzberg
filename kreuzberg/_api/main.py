@@ -12,15 +12,19 @@ from kreuzberg import (
     EasyOCRConfig,
     ExtractionConfig,
     ExtractionResult,
+    GMFTConfig,
     KreuzbergError,
+    LanguageDetectionConfig,
     MissingDependencyError,
     PaddleOCRConfig,
     ParsingError,
+    SpacyEntityExtractionConfig,
     TesseractConfig,
     ValidationError,
     batch_extract_bytes,
 )
 from kreuzberg._config import discover_config
+from kreuzberg._types import HTMLToMarkdownConfig
 
 if TYPE_CHECKING:
     from litestar.datastructures import UploadFile
@@ -161,6 +165,22 @@ def _merge_configs_cached(
     if "ocr_config" in config_dict and isinstance(config_dict["ocr_config"], dict):
         ocr_backend = config_dict.get("ocr_backend")
         config_dict["ocr_config"] = _create_ocr_config(ocr_backend, config_dict["ocr_config"])
+
+    if "gmft_config" in config_dict and isinstance(config_dict["gmft_config"], dict):
+        config_dict["gmft_config"] = GMFTConfig(**config_dict["gmft_config"])
+
+    if "language_detection_config" in config_dict and isinstance(config_dict["language_detection_config"], dict):
+        config_dict["language_detection_config"] = LanguageDetectionConfig(**config_dict["language_detection_config"])
+
+    if "spacy_entity_extraction_config" in config_dict and isinstance(
+        config_dict["spacy_entity_extraction_config"], dict
+    ):
+        config_dict["spacy_entity_extraction_config"] = SpacyEntityExtractionConfig(
+            **config_dict["spacy_entity_extraction_config"]
+        )
+
+    if "html_to_markdown_config" in config_dict and isinstance(config_dict["html_to_markdown_config"], dict):
+        config_dict["html_to_markdown_config"] = HTMLToMarkdownConfig(**config_dict["html_to_markdown_config"])
 
     return ExtractionConfig(**config_dict)
 

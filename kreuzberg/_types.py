@@ -349,7 +349,7 @@ class GMFTConfig(ConfigDict):
     """
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(unsafe_hash=True, frozen=True, slots=True)
 class LanguageDetectionConfig(ConfigDict):
     low_memory: bool = True
     """If True, uses a smaller model (~200MB). If False, uses a larger, more accurate model.
@@ -751,7 +751,7 @@ PostProcessingHook = Callable[[ExtractionResult], ExtractionResult | Awaitable[E
 ValidationHook = Callable[[ExtractionResult], None | Awaitable[None]]
 
 
-@dataclass(unsafe_hash=True, slots=True)
+@dataclass(unsafe_hash=True, frozen=True, slots=True)
 class ExtractionConfig(ConfigDict):
     force_ocr: bool = False
     """Whether to force OCR."""
