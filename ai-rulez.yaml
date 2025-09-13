@@ -437,14 +437,68 @@ rules:
     name: Error Handling
     priority: medium
   - content: |
-      - Test files in `tests/test_source_files/` for various formats
-      - Mock OCR responses for predictable testing
-      - Both sync and async test variants
-      - Comprehensive error case coverage
-      - OCR tests marked as `xfail` in CI environments for resilience
-      - Integration tests use timeouts and retry logic where appropriate
+      ### File Organization and Naming
+      - **Test files MUST end with `_test.py`** - No exceptions
+      - **Logical directory structure**:
+        ```
+        tests/
+        ├── core/           # Core functionality (extraction, config, types)
+        ├── features/       # Feature-specific (chunking, language detection)
+        ├── integration/    # Integration tests (API, real file processing)
+        ├── interfaces/     # User interfaces (CLI, MCP)
+        ├── extractors/     # File format extractors (PDF, image, etc.)
+        ├── ocr/           # OCR backend tests
+        ├── utils/         # Utility function tests
+        └── e2e/           # End-to-end tests
+        ```
+
+      ### Test Structure and Patterns
+      - **Only function-based tests** - No class-based test methods
+      - **Test naming**: `test_<function>_<scenario>_<expected_outcome>`
+        - ✅ `test_extract_pdf_with_ocr_returns_text()`
+        - ✅ `test_extract_file_raises_validation_error_when_file_missing()`
+        - ❌ `test_basic_extraction()` (too vague)
+      - **Async/sync variants**: Test both async and sync versions where applicable
+      - **Parameterized tests**: Use `@pytest.mark.parametrize` for multiple scenarios
+
+      ### Mocking Guidelines
+      - **NEVER mock anyio/asyncio** - Only mock external dependencies
+      - **Mock external services**: OCR engines, file system operations, network calls
+      - **Use real objects when possible**: Prefer `tmp_path` over mocking file operations
+      - **Mock sparingly**: Only when necessary for isolation or performance
+      - **Add comments for legitimate mocks**: Explain why mocking is required
+        ```python
+        # Mock OCR backend for predictable testing ~keep
+        mock_ocr = mocker.patch("kreuzberg._ocr.get_backend")
+        ```
+
+      ### Fixtures and Test Data
+      - **Session-scoped fixtures** for stateless objects (extractors, configs)
+      - **Shared fixtures** in `tests/conftest.py` for common test data
+      - **Test files** in `tests/test_source_files/` for various formats
+      - **Temporary files** using pytest's `tmp_path` fixture
+
+      ### Test Coverage and Quality
+      - **95% minimum coverage** requirement
+      - **Test all error paths** - Every exception should be tested
+      - **Edge cases**: Empty inputs, large files, malformed data
+      - **Performance considerations**: Mark slow tests appropriately
+      - **CI resilience**: OCR tests marked as `xfail` in CI environments
+
+      ### Test Helpers and Utilities
+      - **Shared assertions** in `tests/extractors/test_helpers.py`:
+        - `assert_valid_extraction_result()` - Standard result validation
+        - `assert_extraction_error()` - Error case validation
+        - `assert_ocr_result()` - OCR-specific validation
+      - **Avoid repetitive assertions** - Use helper functions
+
+      ### Integration vs Unit Tests
+      - **Unit tests**: Fast, isolated, mock external dependencies
+      - **Integration tests**: Real file processing, external services, end-to-end flows
+      - **Separation**: Integration tests in `tests/integration/` directory
+      - **Timeouts**: Integration tests use timeouts and retry logic
     name: Testing Patterns
-    priority: low
+    priority: critical
   - content: |
       ### GitHub Actions Workflows
       - **Release**: Automated PyPI publishing via GitHub releases, triggers Docker builds

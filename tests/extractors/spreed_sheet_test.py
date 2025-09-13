@@ -273,6 +273,7 @@ async def test_extract_bytes_async_exception_cleanup(extractor: SpreadSheetExtra
 
     mocker.patch("kreuzberg._extractors._spread_sheet.create_temp_file", return_value=(mock_path, mock_unlink))
 
+    # Mock AsyncPath.write_bytes for extract_bytes_async exception cleanup test - legitimately needed ~keep
     mock_write_bytes = mocker.AsyncMock()
     mocker.patch("kreuzberg._extractors._spread_sheet.AsyncPath.write_bytes", mock_write_bytes)
 
@@ -739,6 +740,7 @@ async def test_spreadsheet_convert_sheet_to_text_csv_processing_edge_cases(
     mock_unlink = mocker.AsyncMock()
     mocker.patch("kreuzberg._extractors._spread_sheet.create_temp_file", return_value=(temp_path, mock_unlink))
 
+    # Mock AsyncPath.write_text for CSV conversion test - legitimately needed to test sheet-to-CSV conversion ~keep
     mock_write_text = mocker.AsyncMock()
     mocker.patch("kreuzberg._extractors._spread_sheet.AsyncPath.write_text", mock_write_text)
 
@@ -768,6 +770,7 @@ async def test_spreadsheet_convert_sheet_to_text_uneven_rows(
     temp_path = "/tmp/test.csv"
     mock_unlink = mocker.AsyncMock()
     mocker.patch("kreuzberg._extractors._spread_sheet.create_temp_file", return_value=(temp_path, mock_unlink))
+    # Mock AsyncPath.write_text for uneven sheet test - legitimately needed to test sheet-to-CSV conversion ~keep
     mocker.patch("kreuzberg._extractors._spread_sheet.AsyncPath.write_text", mocker.AsyncMock())
 
     result = await extractor._convert_sheet_to_text(mock_workbook, "uneven_sheet")
@@ -796,6 +799,7 @@ async def test_spreadsheet_convert_sheet_to_text_all_none_cells(
     temp_path = "/tmp/test.csv"
     mock_unlink = mocker.AsyncMock()
     mocker.patch("kreuzberg._extractors._spread_sheet.create_temp_file", return_value=(temp_path, mock_unlink))
+    # Mock AsyncPath.write_text for None sheet test - legitimately needed to test sheet-to-CSV conversion ~keep
     mocker.patch("kreuzberg._extractors._spread_sheet.AsyncPath.write_text", mocker.AsyncMock())
 
     result = await extractor._convert_sheet_to_text(mock_workbook, "none_sheet")

@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 IS_CI = os.environ.get("CI", "false").lower() == "true"
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def extractor() -> PDFExtractor:
     return PDFExtractor(mime_type="application/pdf", config=DEFAULT_CONFIG)
 
@@ -419,13 +419,13 @@ def test_pdf_password_attempts_with_parse_with_password_attempts(test_article: P
     assert len(document.pages) > 0
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def pdf_extractor() -> PDFExtractor:
     config = ExtractionConfig()
     return PDFExtractor("application/pdf", config)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def sample_pdf_content() -> bytes:
     return b"""%PDF-1.4
 1 0 obj
@@ -541,6 +541,7 @@ async def test_pdf_extract_bytes_async_basic(
     mock_create_temp_file = mocker.patch("kreuzberg._extractors._pdf.create_temp_file")
     mock_create_temp_file.return_value = ("/tmp/test.pdf", mocker.AsyncMock())
 
+    # Mock AsyncPath.write_bytes for extract_bytes_async - legitimately needed to test byte-to-file conversion ~keep
     mock_async_path = mocker.patch("kreuzberg._extractors._pdf.AsyncPath")
     mock_async_path.return_value.write_bytes = mocker.AsyncMock()
 
@@ -594,8 +595,7 @@ async def test_pdf_extract_path_async_searchable_text(
     test_file = tmp_path / "test.pdf"
     test_file.write_bytes(b"dummy pdf content")
 
-    mock_async_path = mocker.patch("kreuzberg._extractors._pdf.AsyncPath")
-    mock_async_path.return_value.read_bytes = mocker.AsyncMock(return_value=b"dummy pdf content")
+    # Use real file reading instead of mocking AsyncPath.read_bytes ~keep
 
     mock_extract_searchable = mocker.patch.object(pdf_extractor, "_extract_pdf_searchable_text")
     mock_extract_searchable.return_value = "Extracted searchable text"
@@ -622,9 +622,6 @@ async def test_pdf_extract_path_async_force_ocr(
     test_file = tmp_path / "test.pdf"
     test_file.write_bytes(b"dummy pdf content")
 
-    mock_async_path = mocker.patch("kreuzberg._extractors._pdf.AsyncPath")
-    mock_async_path.return_value.read_bytes = mocker.AsyncMock(return_value=b"dummy pdf content")
-
     mock_extract_ocr = mocker.patch.object(pdf_extractor, "_extract_pdf_text_with_ocr")
     mock_extract_ocr.return_value = ExtractionResult(
         content="OCR extracted text", mime_type="text/plain", metadata={}, chunks=[]
@@ -650,9 +647,6 @@ async def test_pdf_extract_path_async_with_tables(
 
     test_file = tmp_path / "test.pdf"
     test_file.write_bytes(b"dummy pdf content")
-
-    mock_async_path = mocker.patch("kreuzberg._extractors._pdf.AsyncPath")
-    mock_async_path.return_value.read_bytes = mocker.AsyncMock(return_value=b"dummy pdf content")
 
     mock_extract_searchable = mocker.patch.object(pdf_extractor, "_extract_pdf_searchable_text")
     mock_extract_searchable.return_value = "Text with tables"
@@ -687,9 +681,6 @@ async def test_pdf_extract_path_async_searchable_fails(
     test_file = tmp_path / "test.pdf"
     test_file.write_bytes(b"dummy pdf content")
 
-    mock_async_path = mocker.patch("kreuzberg._extractors._pdf.AsyncPath")
-    mock_async_path.return_value.read_bytes = mocker.AsyncMock(return_value=b"dummy pdf content")
-
     mock_extract_searchable = mocker.patch.object(pdf_extractor, "_extract_pdf_searchable_text")
     mock_extract_searchable.side_effect = ParsingError("PDF parsing failed")
 
@@ -719,9 +710,6 @@ async def test_pdf_extract_path_async_no_extraction_possible(
 
     test_file = tmp_path / "test.pdf"
     test_file.write_bytes(b"dummy pdf content")
-
-    mock_async_path = mocker.patch("kreuzberg._extractors._pdf.AsyncPath")
-    mock_async_path.return_value.read_bytes = mocker.AsyncMock(return_value=b"dummy pdf content")
 
     mock_extract_searchable = mocker.patch.object(pdf_extractor, "_extract_pdf_searchable_text")
     mock_extract_searchable.side_effect = ParsingError("PDF parsing failed")
@@ -880,9 +868,6 @@ async def test_pdf_extract_path_async_table_import_error(
 
     test_file = tmp_path / "test.pdf"
     test_file.write_bytes(b"dummy pdf content")
-
-    mock_async_path = mocker.patch("kreuzberg._extractors._pdf.AsyncPath")
-    mock_async_path.return_value.read_bytes = mocker.AsyncMock(return_value=b"dummy pdf content")
 
     mock_extract_searchable = mocker.patch.object(pdf_extractor, "_extract_pdf_searchable_text")
     mock_extract_searchable.return_value = "Text content"

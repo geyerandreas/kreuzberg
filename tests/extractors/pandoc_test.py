@@ -241,6 +241,7 @@ def mock_temp_file(mocker: MockerFixture) -> None:
 
 @pytest.fixture
 def mock_async_path(mocker: MockerFixture) -> None:
+    # Mock AsyncPath operations for pandoc tests - legitimately needed due to complex temp file workflows ~keep
     mock_path = mocker.patch("kreuzberg._extractors._pandoc.AsyncPath")
     mock_path.return_value.read_text = mocker.AsyncMock(return_value="Test content")
     mock_path.return_value.write_bytes = mocker.AsyncMock()

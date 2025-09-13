@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from pytest_mock import MockerFixture
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def backend() -> TesseractBackend:
     return TesseractBackend()
 

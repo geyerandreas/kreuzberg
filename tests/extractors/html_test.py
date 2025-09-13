@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def extractor() -> HTMLExtractor:
     return HTMLExtractor(mime_type="text/html", config=DEFAULT_CONFIG)
 

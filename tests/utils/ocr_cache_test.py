@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import tempfile
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -170,15 +171,15 @@ class TestHandleCacheLookupAsync:
             mock_cache.aget.side_effect = [None, sample_extraction_result]
             mock_cache.is_processing.return_value = True
 
-            mock_event = MagicMock()
-            mock_cache.mark_processing.return_value = mock_event
+            # anyio.to_thread.run_sync is used legitimately to wait for cache processing completion ~keep
+            real_event = threading.Event()
+            real_event.set()
+            mock_cache.mark_processing.return_value = real_event
             mock_get_cache.return_value = mock_cache
 
-            with patch("anyio.to_thread.run_sync") as mock_run_sync:
-                result = await handle_cache_lookup_async(cache_kwargs)
+            result = await handle_cache_lookup_async(cache_kwargs)
 
-                assert result == sample_extraction_result
-                mock_run_sync.assert_called_once_with(mock_event.wait)
+            assert result == sample_extraction_result
 
 
 class TestHandleCacheLookupSync:

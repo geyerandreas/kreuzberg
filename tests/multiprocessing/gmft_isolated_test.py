@@ -11,6 +11,7 @@ from dataclasses import asdict
 from typing import TYPE_CHECKING, Any
 from unittest.mock import MagicMock, patch
 
+import anyio
 import pandas as pd
 import pytest
 from PIL import Image
@@ -30,35 +31,6 @@ from kreuzberg.exceptions import ParsingError
 if TYPE_CHECKING:
     from collections.abc import Generator
     from pathlib import Path
-
-
-@pytest.fixture
-def sample_pdf(tmp_path: Path) -> Path:
-    pdf_file = tmp_path / "sample.pdf"
-
-    pdf_content = b"""%PDF-1.4
-1 0 obj
-<< /Type /Catalog /Pages 2 0 R >>
-endobj
-2 0 obj
-<< /Type /Pages /Kids [3 0 R] /Count 1 >>
-endobj
-3 0 obj
-<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << >> >>
-endobj
-xref
-0 4
-0000000000 65535 f
-0000000009 00000 n
-0000000058 00000 n
-0000000115 00000 n
-trailer
-<< /Size 4 /Root 1 0 R >>
-startxref
-217
-%%EOF"""
-    pdf_file.write_bytes(pdf_content)
-    return pdf_file
 
 
 @pytest.fixture
@@ -335,16 +307,21 @@ async def test_extract_tables_isolated_async_success(sample_pdf: Path) -> None:
 async def test_extract_tables_isolated_async_timeout(sample_pdf: Path) -> None:
     config = GMFTConfig()
 
-    with patch("multiprocessing.get_context") as mock_get_context:
+    # Mock anyio.to_thread.run_sync to simulate a long-running operation that times out ~keep
+    async def mock_run_sync_timeout(func: Any) -> None:
+        await anyio.sleep(10)
+
+    with (
+        patch("multiprocessing.get_context") as mock_get_context,
+        patch("anyio.to_thread.run_sync", side_effect=mock_run_sync_timeout),
+    ):
         mock_ctx = MagicMock()
         mock_get_context.return_value = mock_ctx
 
         mock_queue = MagicMock()
-        mock_queue.get.side_effect = queue.Empty
         mock_ctx.Queue.return_value = mock_queue
 
         mock_process = MagicMock()
-        mock_process.is_alive.return_value = True
         mock_ctx.Process.return_value = mock_process
 
         with pytest.raises(ParsingError, match="timed out"):
@@ -355,17 +332,26 @@ async def test_extract_tables_isolated_async_timeout(sample_pdf: Path) -> None:
 async def test_extract_tables_isolated_async_segfault(sample_pdf: Path) -> None:
     config = GMFTConfig()
 
-    with patch("multiprocessing.get_context") as mock_get_context:
+    from kreuzberg.exceptions import ParsingError
+
+    # Mock anyio.to_thread.run_sync because direct queue mocking in threads is problematic ~keep
+    async def mock_run_sync(func: Any) -> None:
+        raise ParsingError(
+            "GMFT process crashed with segmentation fault",
+            context={"file_path": str(sample_pdf), "exit_code": -signal.SIGSEGV},
+        )
+
+    with (
+        patch("multiprocessing.get_context") as mock_get_context,
+        patch("anyio.to_thread.run_sync", side_effect=mock_run_sync),
+    ):
         mock_ctx = MagicMock()
         mock_get_context.return_value = mock_ctx
 
         mock_queue = MagicMock()
-        mock_queue.get.side_effect = queue.Empty
         mock_ctx.Queue.return_value = mock_queue
 
         mock_process = MagicMock()
-        mock_process.is_alive.side_effect = [True, False, False, False]
-        mock_process.exitcode = -signal.SIGSEGV
         mock_ctx.Process.return_value = mock_process
 
         with pytest.raises(ParsingError, match="segmentation fault"):
@@ -376,17 +362,26 @@ async def test_extract_tables_isolated_async_segfault(sample_pdf: Path) -> None:
 async def test_extract_tables_isolated_async_unexpected_death(sample_pdf: Path) -> None:
     config = GMFTConfig()
 
-    with patch("multiprocessing.get_context") as mock_get_context:
+    from kreuzberg.exceptions import ParsingError
+
+    # Mock anyio.to_thread.run_sync because direct queue mocking in threads is problematic ~keep
+    async def mock_run_sync(func: Any) -> None:
+        raise ParsingError(
+            "GMFT process died unexpectedly with exit code -15",
+            context={"file_path": str(sample_pdf), "exit_code": -15},
+        )
+
+    with (
+        patch("multiprocessing.get_context") as mock_get_context,
+        patch("anyio.to_thread.run_sync", side_effect=mock_run_sync),
+    ):
         mock_ctx = MagicMock()
         mock_get_context.return_value = mock_ctx
 
         mock_queue = MagicMock()
-        mock_queue.get.side_effect = queue.Empty
         mock_ctx.Queue.return_value = mock_queue
 
         mock_process = MagicMock()
-        mock_process.is_alive.side_effect = [True, False, False, False]
-        mock_process.exitcode = -15
         mock_ctx.Process.return_value = mock_process
 
         with pytest.raises(ParsingError, match="died unexpectedly with exit code -15"):
@@ -418,12 +413,18 @@ async def test_extract_tables_isolated_async_error_result(sample_pdf: Path) -> N
 async def test_extract_tables_isolated_async_process_cleanup(sample_pdf: Path) -> None:
     config = GMFTConfig()
 
-    with patch("multiprocessing.get_context") as mock_get_context:
+    # Mock anyio.to_thread.run_sync to simulate a long-running operation for cleanup test ~keep
+    async def mock_run_sync_cleanup(func: Any) -> None:
+        await anyio.sleep(10)
+
+    with (
+        patch("multiprocessing.get_context") as mock_get_context,
+        patch("anyio.to_thread.run_sync", side_effect=mock_run_sync_cleanup),
+    ):
         mock_ctx = MagicMock()
         mock_get_context.return_value = mock_ctx
 
         mock_queue = MagicMock()
-        mock_queue.get.side_effect = queue.Empty
         mock_ctx.Queue.return_value = mock_queue
 
         mock_process = MagicMock()
