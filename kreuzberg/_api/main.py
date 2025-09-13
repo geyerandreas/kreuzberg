@@ -1,11 +1,15 @@
 from __future__ import annotations
 
+import base64
+import io
 import traceback
 from functools import lru_cache
 from json import dumps, loads
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 import msgspec
+import polars as pl
+from PIL import Image
 from typing_extensions import TypedDict
 
 from kreuzberg import (
@@ -311,6 +315,19 @@ async def get_configuration() -> ConfigurationResponse:
     }
 
 
+def _polars_dataframe_encoder(obj: Any) -> Any:
+    """Convert polars DataFrame to dict for JSON serialization."""
+    return obj.to_dicts()
+
+
+def _pil_image_encoder(obj: Any) -> str:
+    """Convert PIL Image to base64 string for JSON serialization."""
+    buffer = io.BytesIO()
+    obj.save(buffer, format="PNG")
+    img_str = base64.b64encode(buffer.getvalue()).decode()
+    return f"data:image/png;base64,{img_str}"
+
+
 openapi_config = OpenAPIConfig(
     title="Kreuzberg API",
     version="3.14.0",
@@ -327,6 +344,12 @@ openapi_config = OpenAPIConfig(
     create_examples=True,
 )
 
+# Type encoders for custom serialization
+type_encoders = {
+    pl.DataFrame: _polars_dataframe_encoder,
+    Image.Image: _pil_image_encoder,
+}
+
 app = Litestar(
     route_handlers=[handle_files_upload, health_check, get_configuration],
     plugins=[OpenTelemetryPlugin(OpenTelemetryConfig())],
@@ -336,5 +359,6 @@ app = Litestar(
         KreuzbergError: exception_handler,
         Exception: general_exception_handler,
     },
+    type_encoders=type_encoders,
     request_max_body_size=1024 * 1024 * 1024,  # 1GB limit for large file uploads
 )
