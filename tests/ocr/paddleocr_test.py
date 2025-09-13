@@ -70,15 +70,12 @@ async def test_is_mkldnn_supported(mocker: MockerFixture) -> None:
 
 @pytest.mark.anyio
 async def test_init_paddle_ocr(backend: PaddleBackend, mock_find_spec: Mock, mocker: MockerFixture) -> None:
-    # Ensure clean state
     PaddleBackend._paddle_ocr = None
 
-    # Mock the import function to return the mocked PaddleOCR
     mock_paddleocr = Mock()
     mock_instance = Mock()
     mock_paddleocr.return_value = mock_instance
 
-    # Mock _import_paddleocr to return our mocked PaddleOCR
     mocker.patch("kreuzberg._ocr._paddleocr._import_paddleocr", return_value=(Mock(), mock_paddleocr))
 
     await backend._init_paddle_ocr()

@@ -21,6 +21,7 @@ from kreuzberg._ocr import get_ocr_backend
 from kreuzberg._playa import extract_pdf_metadata, extract_pdf_metadata_sync
 from kreuzberg._types import EasyOCRConfig, ExtractionResult, Metadata, OcrBackendType, PaddleOCRConfig, TesseractConfig
 from kreuzberg._utils._errors import create_error_context, should_retry
+from kreuzberg._utils._image_preprocessing import calculate_optimal_dpi
 from kreuzberg._utils._pdf_lock import pypdfium_file_lock
 from kreuzberg._utils._string import normalize_spaces
 from kreuzberg._utils._sync import run_sync, run_taskgroup_batched
@@ -170,7 +171,26 @@ class PDFExtractor(Extractor):
             try:
                 with pypdfium_file_lock(input_file):
                     document = await run_sync(pypdfium2.PdfDocument, str(input_file))
-                    return [page.render(scale=200 / 72).to_pil() for page in cast("pypdfium2.PdfDocument", document)]
+                    images = []
+                    for page in cast("pypdfium2.PdfDocument", document):
+                        width, height = page.get_size()
+
+                        if self.config.auto_adjust_dpi:
+                            optimal_dpi = calculate_optimal_dpi(
+                                page_width=width,
+                                page_height=height,
+                                target_dpi=self.config.target_dpi,
+                                max_dimension=self.config.max_image_dimension,
+                                min_dpi=self.config.min_dpi,
+                                max_dpi=self.config.max_dpi,
+                            )
+                        else:
+                            optimal_dpi = self.config.target_dpi
+
+                        scale = optimal_dpi / 72.0
+
+                        images.append(page.render(scale=scale).to_pil())
+                    return images
             except pypdfium2.PdfiumError as e:  # noqa: PERF203
                 last_error = e
                 if not should_retry(e, attempt + 1):

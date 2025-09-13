@@ -7,10 +7,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from anyio import Path as AsyncPath
+from PIL import Image
 
 from kreuzberg._extractors._base import Extractor
 from kreuzberg._mime_types import IMAGE_MIME_TYPES
 from kreuzberg._ocr import get_ocr_backend
+from kreuzberg._utils._image_preprocessing import normalize_image_dpi
+from kreuzberg._utils._sync import run_sync
 from kreuzberg._utils._tmp import create_temp_file
 from kreuzberg.exceptions import ValidationError
 
@@ -57,7 +60,15 @@ class ImageExtractor(Extractor):
         if self.config.ocr_backend is None:
             raise ValidationError("ocr_backend is None, cannot perform OCR")
 
-        result = await get_ocr_backend(self.config.ocr_backend).process_file(path, **self.config.get_config_dict())
+        image = await run_sync(Image.open, str(path))
+        normalized_image, preprocessing_metadata = normalize_image_dpi(image, self.config)
+
+        backend = get_ocr_backend(self.config.ocr_backend)
+        result = await backend.process_image(normalized_image, **self.config.get_config_dict())
+
+        if preprocessing_metadata:
+            result.metadata["image_preprocessing"] = preprocessing_metadata
+
         return self._apply_quality_processing(result)
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
@@ -77,8 +88,15 @@ class ImageExtractor(Extractor):
         if self.config.ocr_backend is None:
             raise ValidationError("ocr_backend is None, cannot perform OCR")
 
+        image = Image.open(str(path))
+        normalized_image, preprocessing_metadata = normalize_image_dpi(image, self.config)
+
         backend = get_ocr_backend(self.config.ocr_backend)
-        result = backend.process_file_sync(path, **self.config.get_config_dict())
+        result = backend.process_image_sync(normalized_image, **self.config.get_config_dict())
+
+        if preprocessing_metadata:
+            result.metadata["image_preprocessing"] = preprocessing_metadata
+
         return self._apply_quality_processing(result)
 
     def _get_extension_from_mime_type(self, mime_type: str) -> str:

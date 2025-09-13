@@ -62,14 +62,12 @@ def format_extraction_result(result: ExtractionResult, show_metadata: bool, outp
         if show_metadata:
             output_data["metadata"] = result.metadata
         if result.tables:
-            # Convert tables to JSON-serializable format
             json_tables = []
             for table in result.tables:
                 json_table = {
                     "page_number": table.get("page_number"),
                     "text": table.get("text"),
                 }
-                # Optionally include DataFrame as CSV string
                 if "df" in table and table["df"] is not None:
                     df = table["df"]
                     if hasattr(df, "write_csv"):
@@ -92,7 +90,6 @@ def format_extraction_result(result: ExtractionResult, show_metadata: bool, outp
         output_parts.append("\n\n--- TABLES ---")
         for i, table in enumerate(result.tables):
             output_parts.append(f"\nTable {i + 1}:")
-            # Create JSON-serializable version of table
             json_table = {
                 "page_number": table.get("page_number"),
                 "text": table.get("text"),

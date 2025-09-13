@@ -277,7 +277,6 @@ jobs:
             system-deps: true
             timeout: 25
         exclude:
-          # Run core tests on all combinations, but limit other categories for efficiency
           - test-category: {name: "extractors"}
             python: "3.11"
           - test-category: {name: "extractors"}

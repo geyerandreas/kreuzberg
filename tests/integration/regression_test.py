@@ -9,7 +9,7 @@ from kreuzberg import batch_extract_file, extract_file
 from kreuzberg._types import ExtractionConfig, PSMMode, TesseractConfig
 from kreuzberg.extraction import extract_file_sync
 
-TEST_DATA_DIR = Path(__file__).parent / "test_source_files"
+TEST_DATA_DIR = Path(__file__).parent.parent / "test_source_files"
 
 
 @pytest.mark.parametrize(
@@ -118,7 +118,7 @@ async def test_batch_extract_bytes_regression() -> None:
     google_doc_path = TEST_DATA_DIR / "google-doc-document.pdf"
     pdf_content = google_doc_path.read_bytes()
 
-    xls_path = TEST_DATA_DIR / "test.xls"
+    xls_path = TEST_DATA_DIR / "test-excel.xls"
     xls_content = xls_path.read_bytes()
 
     files_data = [

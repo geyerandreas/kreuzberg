@@ -138,7 +138,7 @@ def xerox_pdf() -> Path:
 
 @pytest.fixture(scope="session")
 def test_xls() -> Path:
-    return test_source_files_folder / "testXls.xls"
+    return test_source_files_folder / "test-excel.xls"
 
 
 @pytest.fixture

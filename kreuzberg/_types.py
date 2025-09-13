@@ -4,7 +4,7 @@ import sys
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Literal, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
 
 import msgspec
 
@@ -508,6 +508,35 @@ class TableData(TypedDict):
     """The table text as a markdown string."""
 
 
+class ImagePreprocessingMetadata(NamedTuple):
+    """Metadata about image preprocessing operations for OCR."""
+
+    original_dimensions: tuple[int, int]
+    """Original image dimensions (width, height) in pixels."""
+    original_dpi: tuple[float, float]
+    """Original image DPI (horizontal, vertical)."""
+    target_dpi: int
+    """Target DPI that was requested."""
+    scale_factor: float
+    """Scale factor applied to the image."""
+    auto_adjusted: bool
+    """Whether DPI was automatically adjusted due to size constraints."""
+    final_dpi: int | None = None
+    """Final DPI used after processing."""
+    new_dimensions: tuple[int, int] | None = None
+    """New image dimensions after processing (width, height) in pixels."""
+    resample_method: str | None = None
+    """Resampling method used (LANCZOS, BICUBIC, etc.)."""
+    skipped_resize: bool = False
+    """Whether resizing was skipped (no change needed)."""
+    dimension_clamped: bool = False
+    """Whether image was clamped to maximum dimension constraints."""
+    calculated_dpi: int | None = None
+    """DPI calculated during auto-adjustment."""
+    resize_error: str | None = None
+    """Error message if resizing failed."""
+
+
 class Metadata(TypedDict, total=False):
     authors: NotRequired[list[str]]
     """List of document authors."""
@@ -587,6 +616,8 @@ class Metadata(TypedDict, total=False):
     """Summary of table extraction results."""
     quality_score: NotRequired[float]
     """Quality score for extracted content (0.0-1.0)."""
+    image_preprocessing: NotRequired[ImagePreprocessingMetadata]
+    """Metadata about image preprocessing operations (DPI adjustments, scaling, etc.)."""
     source_format: NotRequired[str]
     """Source format of the extracted content."""
     error: NotRequired[str]
@@ -632,6 +663,7 @@ _VALID_METADATA_KEYS = {
     "table_count",
     "tables_summary",
     "quality_score",
+    "image_preprocessing",
 }
 
 
@@ -775,6 +807,16 @@ class ExtractionConfig(ConfigDict):
     """Configuration for HTML to Markdown conversion. If None, uses default settings."""
     use_cache: bool = True
     """Whether to use caching for extraction results. Set to False to disable all caching."""
+    target_dpi: int = 150
+    """Target DPI for OCR processing. Images and PDF pages will be scaled to this DPI for optimal OCR results."""
+    max_image_dimension: int = 25000
+    """Maximum allowed pixel dimension (width or height) for processed images to prevent memory issues."""
+    auto_adjust_dpi: bool = True
+    """Whether to automatically adjust DPI based on image dimensions to stay within max_image_dimension limits."""
+    min_dpi: int = 72
+    """Minimum DPI threshold when auto-adjusting DPI."""
+    max_dpi: int = 600
+    """Maximum DPI threshold when auto-adjusting DPI."""
 
     def __post_init__(self) -> None:
         if self.custom_entity_patterns is not None and isinstance(self.custom_entity_patterns, dict):
@@ -795,6 +837,27 @@ class ExtractionConfig(ConfigDict):
             raise ValidationError(
                 "incompatible 'ocr_config' value provided for 'ocr_backend'",
                 context={"ocr_backend": self.ocr_backend, "ocr_config": type(self.ocr_config).__name__},
+            )
+
+        # Validate DPI configuration
+        if self.target_dpi <= 0:
+            raise ValidationError("target_dpi must be positive", context={"target_dpi": self.target_dpi})
+        if self.min_dpi <= 0:
+            raise ValidationError("min_dpi must be positive", context={"min_dpi": self.min_dpi})
+        if self.max_dpi <= 0:
+            raise ValidationError("max_dpi must be positive", context={"max_dpi": self.max_dpi})
+        if self.min_dpi >= self.max_dpi:
+            raise ValidationError(
+                "min_dpi must be less than max_dpi", context={"min_dpi": self.min_dpi, "max_dpi": self.max_dpi}
+            )
+        if self.max_image_dimension <= 0:
+            raise ValidationError(
+                "max_image_dimension must be positive", context={"max_image_dimension": self.max_image_dimension}
+            )
+        if not (self.min_dpi <= self.target_dpi <= self.max_dpi):
+            raise ValidationError(
+                "target_dpi must be between min_dpi and max_dpi",
+                context={"target_dpi": self.target_dpi, "min_dpi": self.min_dpi, "max_dpi": self.max_dpi},
             )
 
     def get_config_dict(self) -> dict[str, Any]:
