@@ -134,16 +134,108 @@ jobs:
             .coverage
           retention-days: 7
 
-  test:
+  test-pr:
     needs: validate
-    if: always() && (needs.validate.result == 'success')
+    if: github.event_name == 'pull_request' && needs.validate.result == 'success'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        test-category:
+          - name: "core"
+            path: "tests/core,tests/utils"
+            system-deps: false
+            timeout: 15
+          - name: "extractors"
+            path: "tests/extractors"
+            system-deps: true
+            timeout: 20
+          - name: "integration"
+            path: "tests/integration,tests/api"
+            system-deps: true
+            timeout: 25
+          - name: "features"
+            path: "tests/features,tests/interfaces,tests/mcp,tests/multiprocessing,tests/ocr"
+            system-deps: true
+            timeout: 20
+    timeout-minutes: ${{ matrix.test-category.timeout }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Cache Python Dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            .venv
+          key: python-dependencies-ubuntu-latest-3.13-${{ matrix.test-category.name }}-${{ hashFiles('uv.lock') }}
+          restore-keys: |
+            python-dependencies-ubuntu-latest-3.13-
+
+      - name: Install Dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Install System Dependencies
+        if: matrix.test-category.system-deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-deu pandoc
+
+      - name: Run Tests - ${{ matrix.test-category.name }}
+        run: uv run pytest $(echo "${{ matrix.test-category.path }}" | tr ',' ' ') -v --reruns 1 --reruns-delay 1
+
+  test-full:
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.validate.result == 'success'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         python: ["3.10", "3.11", "3.12", "3.13"]
-    timeout-minutes: 120
+        test-category:
+          - name: "core"
+            path: "tests/core,tests/utils"
+            system-deps: false
+            timeout: 20
+          - name: "extractors"
+            path: "tests/extractors"
+            system-deps: true
+            timeout: 25
+          - name: "integration"
+            path: "tests/integration,tests/api"
+            system-deps: true
+            timeout: 30
+          - name: "features"
+            path: "tests/features,tests/interfaces,tests/mcp,tests/multiprocessing,tests/ocr"
+            system-deps: true
+            timeout: 25
+        exclude:
+          # Run core tests on all combinations, but limit other categories for efficiency
+          - test-category: {name: "extractors"}
+            python: "3.11"
+          - test-category: {name: "extractors"}
+            python: "3.12"
+          - test-category: {name: "integration"}
+            python: "3.11"
+          - test-category: {name: "integration"}
+            python: "3.12"
+          - test-category: {name: "features"}
+            python: "3.11"
+          - test-category: {name: "features"}
+            python: "3.12"
+    timeout-minutes: ${{ matrix.test-category.timeout }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -191,7 +283,7 @@ jobs:
           key: pytest-cache-${{ matrix.os }}-${{ matrix.python }}
 
       - name: Cache and Install Homebrew (macOS)
-        if: runner.os == 'macOS'
+        if: runner.os == 'macOS' && matrix.test-category.system-deps
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 10
@@ -205,7 +297,7 @@ jobs:
           shell: bash
 
       - name: Cache and Install APT Packages (Linux)
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' && matrix.test-category.system-deps
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 5
@@ -217,7 +309,7 @@ jobs:
           shell: bash
 
       - name: Install System Dependencies (Windows)
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.test-category.system-deps
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 10
@@ -232,12 +324,12 @@ jobs:
             pandoc --version
           shell: pwsh
 
-      - name: Run Tests (without coverage)
+      - name: Run Tests - ${{ matrix.test-category.name }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 15
-          max_attempts: 3
-          retry_wait_seconds: 10
+          timeout_minutes: 10
+          max_attempts: 2
+          retry_wait_seconds: 5
           command: |
-            uv run pytest -s -vvv --reruns 2 --reruns-delay 1
+            uv run pytest $(echo "${{ matrix.test-category.path }}" | tr ',' ' ') -v --reruns 1 --reruns-delay 1
           shell: bash
