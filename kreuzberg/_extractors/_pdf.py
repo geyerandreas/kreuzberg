@@ -8,6 +8,7 @@ import os
 import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict
+from itertools import count
 from multiprocessing import cpu_count
 from pathlib import Path
 from re import Pattern
@@ -21,6 +22,7 @@ from playa import parse
 from playa.document import Document
 from playa.image import get_image_suffix_and_writer
 
+from kreuzberg._constants import PDF_POINTS_PER_INCH
 from kreuzberg._extractors._base import Extractor
 from kreuzberg._mime_types import PDF_MIME_TYPE, PLAIN_TEXT_MIME_TYPE
 from kreuzberg._ocr import get_ocr_backend
@@ -262,12 +264,12 @@ class PDFExtractor(Extractor):
                 logger.warning("Failed to extract image on page %s: %s", page_num, e)
                 return None
 
-        jobs = []
-        img_counter = 1
-        for page_num, page in enumerate(doc.pages, 1):
-            for img_obj in page.images:
-                jobs.append((page_num, img_counter, img_obj))
-                img_counter += 1
+        img_counter = count(1)
+        jobs = [
+            (page_num, next(img_counter), img_obj)
+            for page_num, page in enumerate(doc.pages, 1)
+            for img_obj in page.images
+        ]
 
         if not jobs:
             return []
@@ -308,7 +310,7 @@ class PDFExtractor(Extractor):
                         else:
                             optimal_dpi = self.config.target_dpi
 
-                        scale = optimal_dpi / 72.0
+                        scale = optimal_dpi / PDF_POINTS_PER_INCH
 
                         images.append(page.render(scale=scale).to_pil())
                     return images
@@ -442,16 +444,21 @@ class PDFExtractor(Extractor):
                     else:
                         optimal_dpi = self.config.target_dpi
 
-                    scale = optimal_dpi / 72.0
+                    scale = optimal_dpi / PDF_POINTS_PER_INCH
 
                     bitmap = page.render(scale=scale)
                     pil_image = bitmap.to_pil()
 
                     fd, tmp = tempfile.mkstemp(suffix=".png")
-                    os.close(fd)
-                    tmp_path = Path(tmp)
-                    pil_image.save(tmp_path)
-                    temp_files.append(tmp_path)
+                    try:
+                        os.close(fd)
+                        tmp_path = Path(tmp)
+                        pil_image.save(tmp_path)
+                        temp_files.append(tmp_path)
+                    except Exception:
+                        with contextlib.suppress(OSError):
+                            os.close(fd)
+                        raise
 
                     pil_image.close()
                     bitmap.close()
@@ -495,35 +502,12 @@ class PDFExtractor(Extractor):
         return "\n\n".join(result.content for result in results)
 
     def _process_pdf_images_with_ocr_direct(self, images: list[Image]) -> str:
+        if not self.config.ocr_backend:
+            raise ValueError("OCR backend must be specified")
         backend = get_ocr_backend(self.config.ocr_backend)
+        config = self._prepare_ocr_config(self.config.ocr_backend)
 
-        match self.config.ocr_backend:
-            case "tesseract":
-                config = (
-                    self.config.ocr_config if isinstance(self.config.ocr_config, TesseractConfig) else TesseractConfig()
-                )
-                results = []
-                for image in images:
-                    result = backend.process_image_sync(image, **asdict(config))
-                    results.append(result)
-            case "paddleocr":
-                paddle_config = (
-                    self.config.ocr_config if isinstance(self.config.ocr_config, PaddleOCRConfig) else PaddleOCRConfig()
-                )
-                results = []
-                for image in images:
-                    result = backend.process_image_sync(image, **asdict(paddle_config))
-                    results.append(result)
-            case "easyocr":
-                easy_config = (
-                    self.config.ocr_config if isinstance(self.config.ocr_config, EasyOCRConfig) else EasyOCRConfig()
-                )
-                results = []
-                for image in images:
-                    result = backend.process_image_sync(image, **asdict(easy_config))
-                    results.append(result)
-            case _:
-                raise NotImplementedError(f"Direct image OCR not implemented for {self.config.ocr_backend}")
+        results = [backend.process_image_sync(image, **config) for image in images]
 
         return "\n\n".join(result.content for result in results)
 
@@ -537,9 +521,13 @@ class PDFExtractor(Extractor):
         for password in passwords:
             try:
                 return parse(content, max_workers=1, password=password)
-            except Exception as e:  # noqa: PERF203, BLE001
+            except (ValueError, TypeError, KeyError, RuntimeError) as e:  # noqa: PERF203
+                # Common parsing errors - continue with next password
                 last_exception = e
                 continue
+            except OSError as e:
+                # File/IO errors - likely corrupt PDF, propagate immediately
+                raise ParsingError(f"Failed to parse PDF: {e}") from e
 
         if last_exception:
             raise last_exception from None

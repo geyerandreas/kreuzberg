@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import io
 import traceback
+from functools import lru_cache
 from json import dumps, loads
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
@@ -33,6 +34,30 @@ from kreuzberg._types import HTMLToMarkdownConfig
 
 if TYPE_CHECKING:
     from litestar.datastructures import UploadFile
+
+
+class ExtractedImageDict(TypedDict):
+    """TypedDict for extracted image JSON representation."""
+
+    data: str
+    format: str
+    filename: str | None
+    page_number: int | None
+    dimensions: tuple[int, int] | None
+    colorspace: str | None
+    bits_per_component: int | None
+    is_mask: bool
+    description: str | None
+
+
+class ImageOCRResultDict(TypedDict):
+    """TypedDict for image OCR result JSON representation."""
+
+    image: ExtractedImageDict
+    ocr_result: Any  # ExtractionResult serialized
+    confidence_score: float | None
+    processing_time: float | None
+    skipped_reason: str | None
 
 
 class HealthResponse(TypedDict):
@@ -147,6 +172,7 @@ def _create_ocr_config(
     return config_dict
 
 
+@lru_cache(maxsize=256)
 def _merge_configs_cached(
     static_config: ExtractionConfig | None,
     query_params: tuple[tuple[str, Any], ...],
@@ -189,11 +215,31 @@ def _merge_configs_cached(
     return ExtractionConfig(**config_dict)
 
 
-def _make_hashable(obj: Any) -> Any:
+def _create_dimension_tuple(width: int | None, height: int | None) -> tuple[int, int] | None:
+    """Create a dimension tuple from width and height values.
+
+    Args:
+        width: Width value or None
+        height: Height value or None
+
+    Returns:
+        Tuple of (width, height) if both values are not None, otherwise None
+    """
+    if width is not None and height is not None:
+        return (width, height)
+    return None
+
+
+def _make_hashable(obj: Any, max_depth: int = 10, _current_depth: int = 0) -> Any:
+    if _current_depth >= max_depth:
+        return str(obj)
+
     if isinstance(obj, dict):
-        return tuple(sorted((k, _make_hashable(v)) for k, v in obj.items()))
+        return tuple(sorted((k, _make_hashable(v, max_depth, _current_depth + 1)) for k, v in obj.items()))
     if isinstance(obj, list):
-        return tuple(_make_hashable(item) for item in obj)
+        if len(obj) > 1000:
+            return (*tuple(_make_hashable(item, max_depth, _current_depth + 1) for item in obj[:1000]), "...")
+        return tuple(_make_hashable(item, max_depth, _current_depth + 1) for item in obj)
     return obj
 
 
@@ -279,16 +325,8 @@ async def handle_files_upload(  # noqa: PLR0913
     """
     static_config = discover_config()
 
-    min_dims = (
-        (image_ocr_min_width, image_ocr_min_height)
-        if image_ocr_min_width is not None and image_ocr_min_height is not None
-        else None
-    )
-    max_dims = (
-        (image_ocr_max_width, image_ocr_max_height)
-        if image_ocr_max_width is not None and image_ocr_max_height is not None
-        else None
-    )
+    min_dims = _create_dimension_tuple(image_ocr_min_width, image_ocr_min_height)
+    max_dims = _create_dimension_tuple(image_ocr_max_width, image_ocr_max_height)
 
     query_params = {
         "chunk_content": chunk_content,
@@ -365,29 +403,29 @@ def _pil_image_encoder(obj: Any) -> str:
     return f"data:image/png;base64,{img_str}"
 
 
-def _extracted_image_encoder(obj: ExtractedImage) -> dict[str, Any]:
+def _extracted_image_encoder(obj: ExtractedImage) -> ExtractedImageDict:
     encoded_data = base64.b64encode(obj.data).decode()
-    return {
-        "data": f"data:image/{obj.format};base64,{encoded_data}",
-        "format": obj.format,
-        "filename": obj.filename,
-        "page_number": obj.page_number,
-        "dimensions": obj.dimensions,
-        "colorspace": obj.colorspace,
-        "bits_per_component": obj.bits_per_component,
-        "is_mask": obj.is_mask,
-        "description": obj.description,
-    }
+    return ExtractedImageDict(
+        data=f"data:image/{obj.format};base64,{encoded_data}",
+        format=obj.format,
+        filename=obj.filename,
+        page_number=obj.page_number,
+        dimensions=obj.dimensions,
+        colorspace=obj.colorspace,
+        bits_per_component=obj.bits_per_component,
+        is_mask=obj.is_mask,
+        description=obj.description,
+    )
 
 
-def _image_ocr_result_encoder(obj: ImageOCRResult) -> dict[str, Any]:
-    return {
-        "image": obj.image,
-        "ocr_result": obj.ocr_result,
-        "confidence_score": obj.confidence_score,
-        "processing_time": obj.processing_time,
-        "skipped_reason": obj.skipped_reason,
-    }
+def _image_ocr_result_encoder(obj: ImageOCRResult) -> ImageOCRResultDict:
+    return ImageOCRResultDict(
+        image=_extracted_image_encoder(obj.image),
+        ocr_result=obj.ocr_result,
+        confidence_score=obj.confidence_score,
+        processing_time=obj.processing_time,
+        skipped_reason=obj.skipped_reason,
+    )
 
 
 openapi_config = OpenAPIConfig(

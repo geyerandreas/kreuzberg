@@ -129,7 +129,7 @@ sys.path.insert(0, '{Path.cwd()}')
 
             result = func()
 
-            _stdout, _stderr = process.communicate()
+            process.communicate()
 
             if process.returncode == 0 and flame_output.exists():
                 return result, flame_output
@@ -138,8 +138,9 @@ sys.path.insert(0, '{Path.cwd()}')
         finally:
             temp_script.unlink(missing_ok=True)
 
-    def _generate_function_call_code(self, _func: Callable[[], T]) -> str:
+    def _generate_function_call_code(self, func: Callable[[], T]) -> str:
         # sophisticated serialization for complex functions  # ~keep
+        _ = func
         return f"""
 # Placeholder for function execution
 # In a real implementation, this would serialize and execute the benchmark
@@ -150,7 +151,7 @@ time.sleep({self.config.duration_seconds})
 
 @contextmanager
 def profile_benchmark(
-    _flame_config: FlameGraphConfig | None = None,
+    flame_config: FlameGraphConfig | None = None,  # noqa: ARG001
 ) -> Generator[PerformanceProfiler, None, PerformanceMetrics]:
     profiler = PerformanceProfiler()
     profiler.start_monitoring()

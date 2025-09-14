@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 from PIL import Image
 
+from kreuzberg._constants import PDF_POINTS_PER_INCH
 from kreuzberg._types import ExtractionConfig, ImagePreprocessingMetadata
 
 if TYPE_CHECKING:
@@ -31,8 +32,8 @@ def calculate_optimal_dpi(
     Returns:
         Optimal DPI value that keeps image within max_dimension
     """
-    width_inches = page_width / 72.0
-    height_inches = page_height / 72.0
+    width_inches = page_width / PDF_POINTS_PER_INCH
+    height_inches = page_height / PDF_POINTS_PER_INCH
 
     target_width_pixels = int(width_inches * target_dpi)
     target_height_pixels = int(height_inches * target_dpi)
@@ -51,7 +52,7 @@ def calculate_optimal_dpi(
 
 def _extract_image_dpi(image: PILImage) -> tuple[tuple[float, float], float]:
     """Extract DPI information from image."""
-    current_dpi_info = image.info.get("dpi", (72.0, 72.0))
+    current_dpi_info = image.info.get("dpi", (PDF_POINTS_PER_INCH, PDF_POINTS_PER_INCH))
     if isinstance(current_dpi_info, (list, tuple)):
         original_dpi = (float(current_dpi_info[0]), float(current_dpi_info[1]))
         current_dpi = float(current_dpi_info[0])
@@ -82,8 +83,8 @@ def _calculate_target_dpi(
     """Calculate target DPI and whether it was auto-adjusted."""
     calculated_dpi = None
     if config.auto_adjust_dpi:
-        approx_width_points = original_width * 72.0 / current_dpi
-        approx_height_points = original_height * 72.0 / current_dpi
+        approx_width_points = original_width * PDF_POINTS_PER_INCH / current_dpi
+        approx_height_points = original_height * PDF_POINTS_PER_INCH / current_dpi
 
         optimal_dpi = calculate_optimal_dpi(
             approx_width_points,

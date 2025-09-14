@@ -30,6 +30,34 @@ if TYPE_CHECKING:
 DEFAULT_CONFIG: Final[ExtractionConfig] = ExtractionConfig()
 
 
+async def _handle_cache_async(path: Path, config: ExtractionConfig) -> ExtractionResult | None:
+    """Handle cache lookup and coordination with other processes.
+
+    Args:
+        path: Path to the file being processed
+        config: Extraction configuration
+
+    Returns:
+        Cached result if available, None otherwise
+    """
+    cache = get_document_cache()
+
+    # Try immediate cache hit
+    cached_result = cache.get(path, config)
+    if cached_result is not None:
+        return cached_result
+
+    # Wait if another process is handling this file
+    if cache.is_processing(path, config):
+        event = cache.mark_processing(path, config)
+        await anyio.to_thread.run_sync(event.wait)  # pragma: no cover
+
+        # Try cache again after waiting
+        return cache.get(path, config)  # pragma: no cover
+
+    return None
+
+
 def _validate_and_post_process_helper(
     result: ExtractionResult, config: ExtractionConfig, file_path: Path | None = None
 ) -> ExtractionResult:
@@ -152,20 +180,11 @@ async def extract_file(
     cache = get_document_cache()
     path = Path(file_path)
 
+    # Check cache if enabled
     if config.use_cache:
-        cached_result = cache.get(path, config)
+        cached_result = await _handle_cache_async(path, config)
         if cached_result is not None:
             return cached_result
-
-        if cache.is_processing(path, config):
-            event = cache.mark_processing(path, config)
-            await anyio.to_thread.run_sync(event.wait)  # pragma: no cover
-
-            # Try cache again after waiting for other process to complete  # ~keep
-            cached_result = cache.get(path, config)  # pragma: no cover
-            if cached_result is not None:  # pragma: no cover
-                return cached_result
-
         cache.mark_processing(path, config)
 
     try:
@@ -400,11 +419,11 @@ def batch_extract_file_sync(
 
     max_workers = min(len(file_paths), mp.cpu_count())
 
-    def extract_single(file_path: PathLike[str] | str) -> tuple[int, ExtractionResult]:
+    def extract_single(index: int, file_path: PathLike[str] | str) -> tuple[int, ExtractionResult]:
         """Extract single file with index for ordering."""
         try:
             return (
-                file_paths.index(file_path),
+                index,
                 extract_file_sync(file_path=Path(file_path), mime_type=None, config=config),
             )
         except Exception as e:  # noqa: BLE001
@@ -421,10 +440,10 @@ def batch_extract_file_sync(
                 },
                 chunks=[],
             )
-            return (file_paths.index(file_path), error_result)
+            return (index, error_result)
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_index = {executor.submit(extract_single, fp): i for i, fp in enumerate(file_paths)}
+        future_to_index = {executor.submit(extract_single, i, fp): i for i, fp in enumerate(file_paths)}
 
         results: list[ExtractionResult | None] = [None] * len(file_paths)
         for future in as_completed(future_to_index):
@@ -453,9 +472,8 @@ def batch_extract_bytes_sync(
 
     max_workers = min(len(contents), mp.cpu_count())
 
-    def extract_single(index_and_content: tuple[int, tuple[bytes, str]]) -> tuple[int, ExtractionResult]:
+    def extract_single(index: int, content: bytes, mime_type: str) -> tuple[int, ExtractionResult]:
         """Extract single content with index for ordering."""
-        index, (content, mime_type) = index_and_content
         try:
             return (index, extract_bytes_sync(content=content, mime_type=mime_type, config=config))
         except Exception as e:  # noqa: BLE001
@@ -477,7 +495,9 @@ def batch_extract_bytes_sync(
             return (index, error_result)
 
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_index = {executor.submit(extract_single, (i, content)): i for i, content in enumerate(contents)}
+        future_to_index = {
+            executor.submit(extract_single, i, content, mime_type): i for i, (content, mime_type) in enumerate(contents)
+        }
 
         results: list[ExtractionResult | None] = [None] * len(contents)
         for future in as_completed(future_to_index):

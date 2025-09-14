@@ -13,8 +13,6 @@
 *temp/
 .cache/
 .claude/
-.claude/agents/
-.clause/
 .coverage
 .coverage*
 .cursorrules
@@ -39,6 +37,7 @@
 __pycache__/
 AGENTS.md
 benchmark_results.json
+benchmarks/results/
 build/
 CLAUDE.md
 coverage.lcov
@@ -51,6 +50,7 @@ GEMINI.md
 htmlcov/
 node_modules/
 npm-debug.log*
+output.txt
 prompt_template.egg-info/
 requirements.txt
 share/python-wheels/
@@ -61,4 +61,5 @@ tests/e2e/test_report.json
 wheels/
 yarn-debug.log*
 yarn-error.log*
-output.txt
+todo.md
+TODO.md

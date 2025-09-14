@@ -350,6 +350,47 @@ class GMFTConfig(ConfigDict):
 
 
 @dataclass(unsafe_hash=True, frozen=True, slots=True)
+class ImageOCRConfig(ConfigDict):
+    """Configuration for OCR processing of extracted images."""
+
+    enabled: bool = False
+    """Whether to perform OCR on extracted images."""
+    backend: OcrBackendType | None = None
+    """OCR backend for image OCR. Falls back to main ocr_backend when None."""
+    backend_config: TesseractConfig | PaddleOCRConfig | EasyOCRConfig | None = None
+    """Backend-specific configuration for image OCR."""
+    min_dimensions: tuple[int, int] = (50, 50)
+    """Minimum (width, height) in pixels for image OCR eligibility."""
+    max_dimensions: tuple[int, int] = (10000, 10000)
+    """Maximum (width, height) in pixels for image OCR eligibility."""
+    allowed_formats: frozenset[str] = frozenset(
+        {
+            "jpg",
+            "jpeg",
+            "png",
+            "gif",
+            "bmp",
+            "tiff",
+            "tif",
+            "webp",
+            "jp2",
+            "jpx",
+            "jpm",
+            "mj2",
+            "pnm",
+            "pbm",
+            "pgm",
+            "ppm",
+        }
+    )
+    """Allowed image formats for OCR processing (lowercase, without dot)."""
+    batch_size: int = 4
+    """Number of images to process in parallel for OCR."""
+    timeout_seconds: int = 30
+    """Maximum time in seconds for OCR processing per image."""
+
+
+@dataclass(unsafe_hash=True, frozen=True, slots=True)
 class LanguageDetectionConfig(ConfigDict):
     low_memory: bool = True
     """If True, uses a smaller model (~200MB). If False, uses a larger, more accurate model.
@@ -789,16 +830,19 @@ class ExtractionConfig(ConfigDict):
     """Extract tables from OCR output using TSV format (Tesseract only)."""
     extract_images: bool = False
     """Whether to extract images from documents."""
-    ocr_extracted_images: bool = False
-    """Whether to perform OCR on extracted images."""
     deduplicate_images: bool = True
     """Whether to remove duplicate images using CRC32 checksums."""
+    image_ocr_config: ImageOCRConfig | None = None
+    """Configuration for OCR processing of extracted images."""
+    # Legacy fields for backward compatibility - will be deprecated
+    ocr_extracted_images: bool = False
+    """Deprecated: Use image_ocr_config.enabled instead."""
     image_ocr_backend: OcrBackendType | None = None
-    """Optional override OCR backend for image OCR; falls back to ocr_backend when None."""
+    """Deprecated: Use image_ocr_config.backend instead."""
     image_ocr_min_dimensions: tuple[int, int] = (50, 50)
-    """Minimum (width, height) in pixels for image OCR eligibility."""
+    """Deprecated: Use image_ocr_config.min_dimensions instead."""
     image_ocr_max_dimensions: tuple[int, int] = (10000, 10000)
-    """Maximum (width, height) in pixels for image OCR eligibility."""
+    """Deprecated: Use image_ocr_config.max_dimensions instead."""
     image_ocr_formats: frozenset[str] = frozenset(
         {
             "jpg",
@@ -819,7 +863,7 @@ class ExtractionConfig(ConfigDict):
             "ppm",
         }
     )
-    """Allowed image formats for OCR processing (lowercase, without dot)."""
+    """Deprecated: Use image_ocr_config.allowed_formats instead."""
     max_chars: int = DEFAULT_MAX_CHARACTERS
     """The size of each chunk in characters."""
     max_overlap: int = DEFAULT_MAX_OVERLAP
@@ -884,6 +928,47 @@ class ExtractionConfig(ConfigDict):
             object.__setattr__(self, "post_processing_hooks", tuple(self.post_processing_hooks))
         if self.validators is not None and isinstance(self.validators, list):
             object.__setattr__(self, "validators", tuple(self.validators))
+
+        # Handle backward compatibility for image OCR configuration
+        if self.image_ocr_config is None and (
+            self.ocr_extracted_images
+            or self.image_ocr_backend is not None
+            or self.image_ocr_min_dimensions != (50, 50)
+            or self.image_ocr_max_dimensions != (10000, 10000)
+            or self.image_ocr_formats
+            != frozenset(
+                {
+                    "jpg",
+                    "jpeg",
+                    "png",
+                    "gif",
+                    "bmp",
+                    "tiff",
+                    "tif",
+                    "webp",
+                    "jp2",
+                    "jpx",
+                    "jpm",
+                    "mj2",
+                    "pnm",
+                    "pbm",
+                    "pgm",
+                    "ppm",
+                }
+            )
+        ):
+            # Create ImageOCRConfig from legacy fields
+            object.__setattr__(
+                self,
+                "image_ocr_config",
+                ImageOCRConfig(
+                    enabled=self.ocr_extracted_images,
+                    backend=self.image_ocr_backend,
+                    min_dimensions=self.image_ocr_min_dimensions,
+                    max_dimensions=self.image_ocr_max_dimensions,
+                    allowed_formats=self.image_ocr_formats,
+                ),
+            )
 
         if self.ocr_backend is None and self.ocr_config is not None:
             raise ValidationError("'ocr_backend' is None but 'ocr_config' is provided")

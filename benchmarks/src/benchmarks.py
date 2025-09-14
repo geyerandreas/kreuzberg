@@ -44,10 +44,7 @@ class KreuzbergBenchmarks:
             ".yml",
             ".toml",
         ]
-        test_files: list[Path] = []
-
-        for ext in extensions:
-            test_files.extend(self.test_files_dir.glob(f"*{ext}"))
+        test_files = [file for ext in extensions for file in self.test_files_dir.glob(f"*{ext}")]
 
         return sorted(test_files)[:10]
 
