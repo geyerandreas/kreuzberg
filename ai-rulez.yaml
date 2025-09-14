@@ -385,6 +385,7 @@ rules:
       - NEVER proactively create documentation files (*.md) or README files
       - Only create documentation files if explicitly requested by the User
       - All builtin imports should be at the top level (except for cyclical or optional dependencies)
+      - All config dataclasses must be hashable, frozen, and use slots: `@dataclass(unsafe_hash=True, frozen=True, slots=True)`
       - When committing, always use the format specified in the CLAUDE.md
     name: Important Instructions
     priority: critical

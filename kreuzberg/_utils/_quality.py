@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from functools import reduce
+from itertools import chain
 from typing import Any
 
 _OCR_ARTIFACTS = {
@@ -97,7 +98,9 @@ def _calculate_script_penalty(text: str, total_chars: int) -> float:
     if total_chars == 0:
         return 0.0
 
-    script_chars = sum(len(match) for pattern in _SCRIPT_PATTERNS.values() for match in pattern.findall(text))
+    script_chars = sum(
+        len(match) for match in chain.from_iterable(pattern.findall(text) for pattern in _SCRIPT_PATTERNS.values())
+    )
 
     return min(1.0, script_chars / total_chars)
 
@@ -106,7 +109,9 @@ def _calculate_navigation_penalty(text: str, total_chars: int) -> float:
     if total_chars == 0:
         return 0.0
 
-    nav_chars = sum(len(match) for pattern in _NAVIGATION_PATTERNS.values() for match in pattern.findall(text))
+    nav_chars = sum(
+        len(match) for match in chain.from_iterable(pattern.findall(text) for pattern in _NAVIGATION_PATTERNS.values())
+    )
 
     return min(1.0, nav_chars / total_chars)
 

@@ -73,6 +73,11 @@ class ExtractionQualityMetrics:
     mime_type: str | None
     detected_languages: list[str] = field(default_factory=list)
     metadata_quality: MetadataQualityMetrics | None = None
+    has_images: bool = False
+    image_count: int = 0
+    image_formats: list[str] = field(default_factory=list)
+    total_image_size_mb: float = 0.0
+    average_image_dimensions: tuple[int, int] | None = None
 
 
 @dataclass(slots=True)
@@ -152,6 +157,11 @@ class BenchmarkSuite:
                         "has_ocr": r.extraction_quality.has_ocr,
                         "mime_type": r.extraction_quality.mime_type,
                         "detected_languages": r.extraction_quality.detected_languages,
+                        "has_images": r.extraction_quality.has_images,
+                        "image_count": r.extraction_quality.image_count,
+                        "image_formats": r.extraction_quality.image_formats,
+                        "total_image_size_mb": r.extraction_quality.total_image_size_mb,
+                        "average_image_dimensions": r.extraction_quality.average_image_dimensions,
                         "metadata_quality": {
                             "metadata_count": r.extraction_quality.metadata_quality.metadata_count,
                             "metadata_fields": r.extraction_quality.metadata_quality.metadata_fields,

@@ -7,14 +7,14 @@ import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 import psutil
 
 from .models import FlameGraphConfig, PerformanceMetrics
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
 
 T = TypeVar("T")
 
@@ -36,9 +36,7 @@ class PerformanceProfiler:
         self.gc_start = {gen: gc.get_count()[gen] for gen in range(3)}
 
         self.monitoring_active = True
-        self.monitoring_thread = threading.Thread(
-            target=self._monitor_resources, daemon=True
-        )
+        self.monitoring_thread = threading.Thread(target=self._monitor_resources, daemon=True)
         self.monitoring_thread.start()
 
     def stop_monitoring(self) -> PerformanceMetrics:
@@ -53,12 +51,8 @@ class PerformanceProfiler:
         return PerformanceMetrics(
             duration_seconds=duration,
             memory_peak_mb=max(self.memory_samples) if self.memory_samples else 0.0,
-            memory_average_mb=sum(self.memory_samples) / len(self.memory_samples)
-            if self.memory_samples
-            else 0.0,
-            cpu_percent_average=sum(self.cpu_samples) / len(self.cpu_samples)
-            if self.cpu_samples
-            else 0.0,
+            memory_average_mb=sum(self.memory_samples) / len(self.memory_samples) if self.memory_samples else 0.0,
+            cpu_percent_average=sum(self.cpu_samples) / len(self.cpu_samples) if self.cpu_samples else 0.0,
             cpu_percent_peak=max(self.cpu_samples) if self.cpu_samples else 0.0,
             gc_collections=gc_collections,
         )
@@ -74,7 +68,7 @@ class PerformanceProfiler:
                 self.cpu_samples.append(cpu_percent)
 
                 time.sleep(0.01)
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
+            except (psutil.NoSuchProcess, psutil.AccessDenied):  # noqa: PERF203
                 break
 
     @contextmanager
@@ -84,7 +78,7 @@ class PerformanceProfiler:
             yield
         finally:
             metrics = self.stop_monitoring()
-            return metrics
+            return metrics  # noqa: B012
 
 
 class FlameGraphProfiler:
@@ -131,13 +125,11 @@ sys.path.insert(0, '{Path.cwd()}')
 
             cmd.extend(["--", "python", str(temp_script)])
 
-            process = subprocess.Popen(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-            )
+            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
             result = func()
 
-            stdout, stderr = process.communicate()
+            process.communicate()
 
             if process.returncode == 0 and flame_output.exists():
                 return result, flame_output
@@ -148,6 +140,7 @@ sys.path.insert(0, '{Path.cwd()}')
 
     def _generate_function_call_code(self, func: Callable[[], T]) -> str:
         # sophisticated serialization for complex functions  # ~keep
+        _ = func
         return f"""
 # Placeholder for function execution
 # In a real implementation, this would serialize and execute the benchmark
@@ -157,9 +150,7 @@ time.sleep({self.config.duration_seconds})
 
 
 @contextmanager
-def profile_benchmark(
-    flame_config: FlameGraphConfig | None = None,
-) -> Generator[PerformanceProfiler, None, PerformanceMetrics]:
+def profile_benchmark() -> Generator[PerformanceProfiler, None, PerformanceMetrics]:
     profiler = PerformanceProfiler()
     profiler.start_monitoring()
 
@@ -167,4 +158,4 @@ def profile_benchmark(
         yield profiler
     finally:
         metrics = profiler.stop_monitoring()
-        return metrics
+        return metrics  # noqa: B012

@@ -14,4 +14,5 @@ if TYPE_CHECKING:
 def test_client() -> AsyncTestClient[Any]:
     from litestar.testing import AsyncTestClient
 
+    app.debug = True
     return AsyncTestClient(app=app)

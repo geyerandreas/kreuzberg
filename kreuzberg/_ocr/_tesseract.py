@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 import tempfile
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from io import StringIO
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Final
@@ -28,10 +29,10 @@ from kreuzberg._ocr._base import OCRBackend
 from kreuzberg._ocr._table_extractor import extract_words, reconstruct_table, to_markdown
 from kreuzberg._types import ExtractionResult, HTMLToMarkdownConfig, PSMMode, TableData, TesseractConfig
 from kreuzberg._utils._cache import get_ocr_cache
-from kreuzberg._utils._process_pool import ProcessPoolManager
+from kreuzberg._utils._process_pool import ProcessPoolManager, get_optimal_worker_count
 from kreuzberg._utils._string import normalize_spaces
 from kreuzberg._utils._sync import run_sync
-from kreuzberg._utils._tmp import create_temp_file
+from kreuzberg._utils._tmp import create_temp_file, temporary_file_sync
 from kreuzberg.exceptions import MissingDependencyError, OCRError, ValidationError
 
 if TYPE_CHECKING:
@@ -257,18 +258,19 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         if enable_table_detection and output_format == "text":
             output_format = "tsv"
 
-        if output_format == "markdown":
-            tesseract_format = "hocr"
-            ext = ".hocr"
-        elif output_format == "tsv":
-            tesseract_format = "tsv"
-            ext = ".tsv"
-        elif output_format == "hocr":
-            tesseract_format = "hocr"
-            ext = ".hocr"
-        else:
-            tesseract_format = "text"
-            ext = ".txt"
+        match output_format:
+            case "markdown":
+                tesseract_format = "hocr"
+                ext = ".hocr"
+            case "tsv":
+                tesseract_format = "tsv"
+                ext = ".tsv"
+            case "hocr":
+                tesseract_format = "hocr"
+                ext = ".hocr"
+            case _:
+                tesseract_format = "text"
+                ext = ".txt"
 
         return {
             "language": language,
@@ -344,11 +346,9 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         if output_format == "tsv":
             return self._extract_text_from_tsv(output)
         if output_format == "hocr":
-            return ExtractionResult(content=output, mime_type=HTML_MIME_TYPE, metadata={}, chunks=[])
+            return ExtractionResult(content=output, mime_type=HTML_MIME_TYPE, metadata={})
 
-        return ExtractionResult(
-            content=normalize_spaces(output), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[]
-        )
+        return ExtractionResult(content=normalize_spaces(output), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={})
 
     async def process_file(self, path: Path, **kwargs: Unpack[TesseractConfig]) -> ExtractionResult:
         use_cache = kwargs.pop("use_cache", True)
@@ -494,9 +494,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                     content += parts[11] + " "
             content = content.strip()
 
-        return ExtractionResult(
-            content=normalize_spaces(content), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[]
-        )
+        return ExtractionResult(content=normalize_spaces(content), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={})
 
     async def _process_hocr_to_markdown(
         self,
@@ -517,7 +515,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
         tables: list[TableData] = []
         if enable_table_detection:
-            soup = BeautifulSoup(hocr_content, "lxml")
+            soup = BeautifulSoup(hocr_content, "xml")
             tables = await self._extract_tables_from_hocr(
                 soup,
                 table_column_threshold,
@@ -539,7 +537,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             markdown_content = normalize_spaces(markdown_content)
         except (ValueError, TypeError, AttributeError):
             try:
-                soup = BeautifulSoup(hocr_content, "lxml")
+                soup = BeautifulSoup(hocr_content, "xml")
                 words = soup.find_all("span", class_="ocrx_word")
                 text_parts = []
                 for word in words:
@@ -690,7 +688,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
         except (ValueError, TypeError, AttributeError):
             try:
-                soup = BeautifulSoup(hocr_content, "lxml")
+                soup = BeautifulSoup(hocr_content, "xml")
                 words = soup.find_all("span", class_="ocrx_word")
                 text_parts = []
                 for word in words:
@@ -948,11 +946,9 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         if output_format == "tsv":
             return self._extract_text_from_tsv(output)
         if output_format == "hocr":
-            return ExtractionResult(content=output, mime_type=HTML_MIME_TYPE, metadata={}, chunks=[])
+            return ExtractionResult(content=output, mime_type=HTML_MIME_TYPE, metadata={})
 
-        return ExtractionResult(
-            content=normalize_spaces(output), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}, chunks=[]
-        )
+        return ExtractionResult(content=normalize_spaces(output), mime_type=PLAIN_TEXT_MIME_TYPE, metadata={})
 
     def process_image_sync(self, image: PILImage, **kwargs: Unpack[TesseractConfig]) -> ExtractionResult:
         use_cache = kwargs.pop("use_cache", True)
@@ -979,10 +975,8 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         ocr_cache = get_ocr_cache()
         try:
             self._validate_tesseract_version_sync()
-            with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp_file:
-                image_path = Path(tmp_file.name)
+            with temporary_file_sync(".png") as image_path:
                 save_image.save(str(image_path), format="PNG")
-            try:
                 kwargs_with_cache = {**kwargs, "use_cache": use_cache}
                 result = self.process_file_sync(image_path, **kwargs_with_cache)
 
@@ -990,9 +984,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                     ocr_cache.set(result, **cache_kwargs)
 
                 return result
-            finally:
-                if image_path.exists():
-                    image_path.unlink()
         finally:
             if use_cache:
                 ocr_cache.mark_complete(**cache_kwargs)
@@ -1091,6 +1082,55 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                 "size": 0,
                 "mtime": 0,
             }
+
+    def _result_from_dict(self, result_dict: dict[str, Any]) -> ExtractionResult:
+        """Convert a worker result dict to ExtractionResult."""
+        if result_dict.get("success"):
+            return ExtractionResult(
+                content=str(result_dict.get("text", "")),
+                mime_type=PLAIN_TEXT_MIME_TYPE,
+                metadata={},
+                chunks=[],
+            )
+        return ExtractionResult(
+            content=f"[OCR error: {result_dict.get('error', 'Unknown error')}]",
+            mime_type=PLAIN_TEXT_MIME_TYPE,
+            metadata={},
+            chunks=[],
+        )
+
+    def process_batch_sync(self, paths: list[Path], **kwargs: Unpack[TesseractConfig]) -> list[ExtractionResult]:
+        if not paths:
+            return []
+
+        results: list[ExtractionResult] = [
+            ExtractionResult(content="", mime_type=PLAIN_TEXT_MIME_TYPE, metadata={})
+        ] * len(paths)
+
+        run_config = self._prepare_tesseract_run_config(**kwargs)
+        config_dict: dict[str, Any] = {
+            **run_config["remaining_kwargs"],
+            "language": run_config["language"],
+            "psm": run_config["psm"],
+        }
+
+        optimal_workers = get_optimal_worker_count(len(paths), cpu_intensive=True)
+
+        with ProcessPoolExecutor(max_workers=optimal_workers) as pool:
+            future_to_idx = {
+                pool.submit(_process_image_with_tesseract, str(p), config_dict): idx for idx, p in enumerate(paths)
+            }
+            for future in as_completed(future_to_idx):
+                idx = future_to_idx[future]
+                try:
+                    result_dict = future.result()
+                    results[idx] = self._result_from_dict(result_dict)
+                except Exception as e:  # noqa: BLE001
+                    results[idx] = ExtractionResult(
+                        content=f"[OCR error: {e}]", mime_type=PLAIN_TEXT_MIME_TYPE, metadata={}
+                    )
+
+        return results
 
     def _build_tesseract_command(
         self,

@@ -10,8 +10,9 @@ from anyio import Path as AsyncPath
 from PIL import Image
 
 from kreuzberg._extractors._base import Extractor
-from kreuzberg._mime_types import IMAGE_MIME_TYPES
+from kreuzberg._mime_types import IMAGE_MIME_TO_EXT, IMAGE_MIME_TYPES
 from kreuzberg._ocr import get_ocr_backend
+from kreuzberg._types import ExtractedImage
 from kreuzberg._utils._image_preprocessing import normalize_image_dpi
 from kreuzberg._utils._sync import run_sync
 from kreuzberg._utils._tmp import create_temp_file
@@ -26,33 +27,17 @@ if TYPE_CHECKING:  # pragma: no cover
 class ImageExtractor(Extractor):
     SUPPORTED_MIME_TYPES: ClassVar[set[str]] = IMAGE_MIME_TYPES
 
-    IMAGE_MIME_TYPE_EXT_MAP: ClassVar[Mapping[str, str]] = {
-        "image/bmp": "bmp",
-        "image/x-bmp": "bmp",
-        "image/x-ms-bmp": "bmp",
-        "image/gif": "gif",
-        "image/jpeg": "jpg",
-        "image/pjpeg": "jpg",
-        "image/png": "png",
-        "image/tiff": "tiff",
-        "image/x-tiff": "tiff",
-        "image/jp2": "jp2",
-        "image/jpx": "jpx",
-        "image/jpm": "jpm",
-        "image/mj2": "mj2",
-        "image/webp": "webp",
-        "image/x-portable-anymap": "pnm",
-        "image/x-portable-bitmap": "pbm",
-        "image/x-portable-graymap": "pgm",
-        "image/x-portable-pixmap": "ppm",
-    }
+    IMAGE_MIME_TYPE_EXT_MAP: ClassVar[Mapping[str, str]] = IMAGE_MIME_TO_EXT
 
     async def extract_bytes_async(self, content: bytes) -> ExtractionResult:
         extension = self._get_extension_from_mime_type(self.mime_type)
         file_path, unlink = await create_temp_file(f".{extension}")
         await AsyncPath(file_path).write_bytes(content)
         try:
-            return await self.extract_path_async(file_path)
+            result = await self.extract_path_async(file_path)
+            if self.config.extract_images:
+                result.images = [self._create_self_reference_image(content, self.mime_type)]
+            return result
         finally:
             await unlink()
 
@@ -68,6 +53,10 @@ class ImageExtractor(Extractor):
 
         if preprocessing_metadata:
             result.metadata["image_preprocessing"] = preprocessing_metadata
+
+        if self.config.extract_images:
+            content = await AsyncPath(path).read_bytes()
+            result.images = [self._create_self_reference_image(content, self.mime_type)]
 
         return self._apply_quality_processing(result)
 
@@ -97,6 +86,10 @@ class ImageExtractor(Extractor):
         if preprocessing_metadata:
             result.metadata["image_preprocessing"] = preprocessing_metadata
 
+        if self.config.extract_images:
+            content = path.read_bytes()
+            result.images = [self._create_self_reference_image(content, self.mime_type)]
+
         return self._apply_quality_processing(result)
 
     def _get_extension_from_mime_type(self, mime_type: str) -> str:
@@ -108,3 +101,11 @@ class ImageExtractor(Extractor):
                 return v
 
         raise ValidationError("unsupported mimetype", context={"mime_type": mime_type})
+
+    def _create_self_reference_image(self, image_data: bytes, mime_type: str) -> ExtractedImage:
+        return ExtractedImage(
+            data=image_data,
+            format=IMAGE_MIME_TO_EXT.get(mime_type, "unknown"),
+            filename="source_image",
+            page_number=1,
+        )

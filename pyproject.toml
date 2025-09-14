@@ -165,18 +165,9 @@ lint.ignore = [
 lint.per-file-ignores."benchmarks/**/*.*" = [
   "BLE001",  # Allow broad exception catching in benchmarks
   "C901",    # Allow complex functions in benchmarks
+  "D",
   "PLR0912", # Allow many branches in benchmarks
   "PLR0915", # Allow many statements in benchmarks
-  "S112",    # Allow try-except-continue in benchmarks
-  "T201",    # Allow print statements in benchmarks
-]
-lint.per-file-ignores."python-text-extraction-libs-benchmarks/**/*.*" = [
-  "BLE001",  # Allow broad exception catching in benchmarks
-  "C901",    # Allow complex functions in benchmarks
-  "PLR0912", # Allow many branches in benchmarks
-  "PLR0915", # Allow many statements in benchmarks
-  "S112",    # Allow try-except-continue in benchmarks
-  "T201",    # Allow print statements in benchmarks
 ]
 lint.per-file-ignores."tests/**/*.*" = [
   "A005",    # Module shadows standard library
@@ -303,16 +294,8 @@ module = "benchmarks.src.kreuzberg_benchmarks.*"
 disable_error_code = [ "misc" ]
 
 [[tool.mypy.overrides]]
-module = "kreuzberg.docker.main"
-disable_error_code = [ "misc" ]
-
-[[tool.mypy.overrides]]
 module = [ "kreuzberg._gmft" ]
 disable_error_code = [ "unused-ignore" ]
-
-[[tool.mypy.overrides]]
-module = "kreuzberg._api.main"
-disable_error_code = [ "misc" ]
 
 [tool.uv.sources]
 uv-bump = { git = "https://github.com/Goldziher/uv-bump" }

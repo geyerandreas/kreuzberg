@@ -2,13 +2,10 @@ from __future__ import annotations
 
 import contextlib
 import csv
-import os
 import sys
-import tempfile
 from datetime import date, datetime, time, timedelta
 from io import StringIO
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import polars as pl
 from anyio import Path as AsyncPath
@@ -21,8 +18,11 @@ from kreuzberg._types import ExtractionResult, Metadata, TableData
 from kreuzberg._utils._string import normalize_spaces
 from kreuzberg._utils._sync import run_sync, run_taskgroup
 from kreuzberg._utils._table import enhance_table_markdown
-from kreuzberg._utils._tmp import create_temp_file
+from kreuzberg._utils._tmp import create_temp_file, temporary_file, temporary_file_sync
 from kreuzberg.exceptions import ParsingError
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 if sys.version_info < (3, 11):  # pragma: no cover
     from exceptiongroup import ExceptionGroup  # type: ignore[import-not-found]
@@ -48,12 +48,8 @@ class SpreadSheetExtractor(Extractor):
 
     async def extract_bytes_async(self, content: bytes) -> ExtractionResult:
         file_extension = self._get_file_extension()
-        xlsx_path, unlink = await create_temp_file(file_extension)
-        await AsyncPath(xlsx_path).write_bytes(content)
-        try:
+        async with temporary_file(file_extension, content) as xlsx_path:
             return await self.extract_path_async(xlsx_path)
-        finally:
-            await unlink()
 
     async def extract_path_async(self, path: Path) -> ExtractionResult:
         try:
@@ -86,16 +82,8 @@ class SpreadSheetExtractor(Extractor):
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
         file_extension = self._get_file_extension()
-        fd, temp_path = tempfile.mkstemp(suffix=file_extension)
-
-        try:
-            with os.fdopen(fd, "wb") as f:
-                f.write(content)
-
-            return self.extract_path_sync(Path(temp_path))
-        finally:
-            with contextlib.suppress(OSError):
-                Path(temp_path).unlink()
+        with temporary_file_sync(file_extension, content) as temp_path:
+            return self.extract_path_sync(temp_path)
 
     def extract_path_sync(self, path: Path) -> ExtractionResult:
         try:
@@ -122,15 +110,17 @@ class SpreadSheetExtractor(Extractor):
 
     @staticmethod
     def _convert_cell_to_str(value: Any) -> str:
-        if value is None:
-            return ""
-        if isinstance(value, bool):
-            return str(value).lower()
-        if isinstance(value, (datetime, date, time)):
-            return value.isoformat()
-        if isinstance(value, timedelta):
-            return f"{value.total_seconds()} seconds"
-        return str(value)
+        match value:
+            case None:
+                return ""
+            case bool():
+                return str(value).lower()
+            case datetime() | date() | time():
+                return value.isoformat()
+            case timedelta():
+                return f"{value.total_seconds()} seconds"
+            case _:
+                return str(value)
 
     async def _convert_sheet_to_text(self, workbook: CalamineWorkbook, sheet_name: str) -> str:
         values = workbook.get_sheet_by_name(sheet_name).to_python()

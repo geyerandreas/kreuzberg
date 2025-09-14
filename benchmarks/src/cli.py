@@ -2,20 +2,42 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+import statistics
+import time
+from collections.abc import Awaitable, Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import typer
+import click
+import msgpack
 from rich.console import Console
 from rich.table import Table
+
+from kreuzberg import (
+    ExtractionConfig,
+    ExtractionResult,
+    batch_extract_file,
+    extract_file,
+    extract_file_sync,
+)
+from kreuzberg._utils._cache import clear_all_caches
 
 from .benchmarks import KreuzbergBenchmarks
 from .models import FlameGraphConfig
 from .runner import BenchmarkRunner
 
-app = typer.Typer(help="Kreuzberg Performance Benchmarking Suite")
+SyncBench = tuple[str, Callable[[], ExtractionResult], dict[str, str]]
+AsyncBench = tuple[str, Callable[[], Awaitable[ExtractionResult]], dict[str, str]]
+
+
+@click.group(help="Kreuzberg Performance Benchmarking Suite")
+def cli() -> None:
+    pass
+
+
 console = Console()
 
 
@@ -26,8 +48,7 @@ def _generate_quality_report(data: dict[str, Any], console: Console) -> None:
     quality_results = [
         r
         for r in data["results"]
-        if r.get("extraction_quality")
-        and r.get("extraction_quality", {}).get("metadata_quality")
+        if r.get("extraction_quality") and r.get("extraction_quality", {}).get("metadata_quality")
     ]
 
     if not quality_results:
@@ -55,15 +76,11 @@ def _generate_quality_report(data: dict[str, Any], console: Console) -> None:
         backend_stats[backend]["total_metadata_fields"] += quality["metadata_count"]
         backend_stats[backend]["unique_fields"].update(quality["metadata_fields"])
 
-    for backend, stats in backend_stats.items():
+    for stats in backend_stats.values():
         results = stats["results"]
         if results:
-            stats["avg_completeness"] = sum(
-                r["metadata_completeness"] for r in results
-            ) / len(results)
-            stats["avg_richness"] = sum(r["metadata_richness"] for r in results) / len(
-                results
-            )
+            stats["avg_completeness"] = sum(r["metadata_completeness"] for r in results) / len(results)
+            stats["avg_richness"] = sum(r["metadata_richness"] for r in results) / len(results)
             stats["avg_metadata_count"] = stats["total_metadata_fields"] / len(results)
 
     table = Table(title="Backend Metadata Quality Comparison")
@@ -109,74 +126,99 @@ def _generate_quality_report(data: dict[str, Any], console: Console) -> None:
         for backend in sorted(file_type_stats[file_type].keys()):
             qualities = file_type_stats[file_type][backend]
             avg_count = sum(q["metadata_count"] for q in qualities) / len(qualities)
-            has_title = (
-                sum(1 for q in qualities if q["has_title"]) / len(qualities) * 100
-            )
-            has_author = (
-                sum(1 for q in qualities if q["has_author"]) / len(qualities) * 100
-            )
+            has_title = sum(1 for q in qualities if q["has_title"]) / len(qualities) * 100
+            has_author = sum(1 for q in qualities if q["has_author"]) / len(qualities) * 100
 
             console.print(
-                f"  {backend}: {avg_count:.1f} fields, "
-                f"{has_title:.0f}% with title, {has_author:.0f}% with author"
+                f"  {backend}: {avg_count:.1f} fields, {has_title:.0f}% with title, {has_author:.0f}% with author"
             )
 
     console.print("\n[bold]Most Common Metadata Fields:[/bold]")
     all_fields: dict[str, set[str]] = {}
-    for backend, stats in backend_stats.items():
+    for stats in backend_stats.values():
         for field in stats["unique_fields"]:
             if field not in all_fields:
                 all_fields[field] = set()
             all_fields[field].add(backend)
 
-    sorted_fields = sorted(all_fields.items(), key=lambda x: len(x[1]), reverse=True)[
-        :20
-    ]
+    sorted_fields = sorted(all_fields.items(), key=lambda x: len(x[1]), reverse=True)[:20]
 
     for field, backends in sorted_fields:
         console.print(f"  {field}: {', '.join(sorted(backends))}")
 
 
-@app.command()
-def run(
-    output_dir: Path = typer.Option(
-        Path("results"),
-        "--output-dir",
-        "-o",
-        help="Directory to save benchmark results",
-    ),  # noqa: B008
-    test_files_dir: Path | None = typer.Option(
-        None,
-        "--test-files-dir",
-        "-t",
-        help="Directory containing test files for benchmarking",
-    ),
-    include_flame: bool = typer.Option(
-        False, "--flame", "-f", help="Generate flame graphs for performance profiling"
-    ),
-    suite_name: str = typer.Option(
-        "kreuzberg_sync_vs_async",
-        "--suite-name",
-        "-s",
-        help="Name of the benchmark suite",
-    ),
-    sync_only: bool = typer.Option(
-        False, "--sync-only", help="Run only synchronous benchmarks"
-    ),
-    async_only: bool = typer.Option(
-        False, "--async-only", help="Run only asynchronous benchmarks"
-    ),
-    comparison_only: bool = typer.Option(
-        False,
-        "--comparison-only",
-        help="Run only direct sync vs async comparison benchmarks",
-    ),
-    include_stress: bool = typer.Option(
-        False, "--stress", help="Include stress test benchmarks"
-    ),
-    backend_comparison: bool = typer.Option(
-        False, "--backend-comparison", help="Run backend comparison benchmarks"
-    ),
+@cli.command()
+@click.option(
+    "--output-dir",
+    "output_dir",
+    type=click.Path(path_type=Path),
+    default=Path("results"),
+    show_default=True,
+    help="Directory to save benchmark results",
+)
+@click.option(
+    "--test-files-dir",
+    "test_files_dir",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Directory containing test files for benchmarking",
+)
+@click.option("--flame", "include_flame", is_flag=True, help="Generate flame graphs for performance profiling")
+@click.option(
+    "--suite-name",
+    "suite_name",
+    type=str,
+    default="kreuzberg_sync_vs_async",
+    show_default=True,
+    help="Name of the benchmark suite",
+)
+@click.option("--sync-only", "sync_only", is_flag=True, help="Run only synchronous benchmarks")
+@click.option("--async-only", "async_only", is_flag=True, help="Run only asynchronous benchmarks")
+@click.option(
+    "--comparison-only", "comparison_only", is_flag=True, help="Run only direct sync vs async comparison benchmarks"
+)
+@click.option("--stress", "include_stress", is_flag=True, help="Include stress test benchmarks")
+@click.option("--backend-comparison", "backend_comparison", is_flag=True, help="Run backend comparison benchmarks")
+@click.option("--images", "include_images", is_flag=True, help="Include image extraction benchmarks")
+@click.option(
+    "--images-stress", "images_stress", is_flag=True, help="Include image stress (memory/throughput) benchmarks"
+)
+@click.option("--tesseract", "include_tesseract", is_flag=True, help="Include Tesseract OCR benchmarks")
+@click.option(
+    "--tesseract-matrix",
+    "tesseract_matrix",
+    is_flag=True,
+    help="Include expanded Tesseract variant matrix (formats/PSM)",
+)
+@click.option(
+    "--tesseract-arch",
+    "tesseract_arch",
+    is_flag=True,
+    help="Compare Tesseract architectures (threads vs processes) across worker counts",
+)
+@click.option(
+    "--workers",
+    "workers_csv",
+    type=str,
+    default=None,
+    help="Comma-separated worker counts for --tesseract-arch (e.g., 1,4,8)",
+)
+def run(  # noqa: PLR0913
+    output_dir: Path,
+    test_files_dir: Path | None,
+    include_flame: bool,
+    suite_name: str,
+    sync_only: bool,
+    async_only: bool,
+    comparison_only: bool,
+    include_stress: bool,
+    backend_comparison: bool,
+    include_images: bool,
+    images_stress: bool,
+    include_tesseract: bool,
+    tesseract_matrix: bool,
+    tesseract_arch: bool,
+    workers_csv: str | None,
 ) -> None:
     console.print("[bold blue]Kreuzberg Performance Benchmarks[/bold blue]")
     console.print(f"Suite: {suite_name}")
@@ -187,7 +229,7 @@ def run(
         console.print("[red]Error:[/red] No test files found for benchmarking")
         console.print(f"Looking in: {benchmarks.test_files_dir}")
         console.print("Please ensure test files exist or specify --test-files-dir")
-        raise typer.Exit(1)
+        raise click.Abort from None
 
     console.print(f"Found {len(benchmarks.test_files)} test files")
 
@@ -195,44 +237,65 @@ def run(
 
     runner = BenchmarkRunner(console=console, flame_config=flame_config)
 
-    sync_benchmarks: list[tuple[str, Any, dict[str, Any]]] = []
-    async_benchmarks: list[tuple[str, Any, dict[str, Any]]] = []
+    sync_benchmarks: list[SyncBench] = []
+    async_benchmarks: list[AsyncBench] = []
 
     if backend_comparison:
         backend_benchmarks = benchmarks.get_backend_benchmarks()
-        sync_benchmarks = backend_benchmarks
+        sync_benchmarks = backend_benchmarks  # type: ignore[assignment]
         async_benchmarks = []
     elif comparison_only:
         comparison_benchmarks = benchmarks.get_comparison_benchmarks()
 
-        sync_benchmarks = [
-            (name, func, meta)
-            for name, func, meta in comparison_benchmarks
-            if meta.get("type") == "sync"
+        sync_benchmarks = [  # type: ignore[list-item]
+            (name, func, meta) for name, func, meta in comparison_benchmarks if meta.get("type") == "sync"
         ]
-        async_benchmarks = [
-            (name, func, meta)
-            for name, func, meta in comparison_benchmarks
-            if meta.get("type") == "async"
+        async_benchmarks = [  # type: ignore[list-item]
+            (name, func, meta) for name, func, meta in comparison_benchmarks if meta.get("type") == "async"
         ]
     else:
         if not async_only:
             sync_benchmarks = benchmarks.get_sync_benchmarks()
             if include_stress:
-                sync_benchmarks.extend(benchmarks.get_stress_benchmarks())
+                sync_benchmarks.extend(benchmarks.get_stress_benchmarks())  # type: ignore[arg-type]
 
         if not sync_only:
             async_benchmarks = benchmarks.get_async_benchmarks()
             if include_stress:
-                async_benchmarks.extend(benchmarks.get_stress_benchmarks())
+                async_benchmarks.extend(benchmarks.get_stress_benchmarks())  # type: ignore[arg-type]
+
+        if include_images:
+            image_benchmarks = benchmarks.get_image_benchmarks()
+            sync_benchmarks.extend([(n, f, m) for (n, f, m) in image_benchmarks if n.startswith("sync_")])  # type: ignore[list-item]
+            if not sync_only:
+                async_benchmarks.extend([(n, f, m) for (n, f, m) in image_benchmarks if n.startswith("async_")])  # type: ignore[list-item]
+
+        if images_stress:
+            image_stress = benchmarks.get_image_stress_benchmarks()
+            sync_benchmarks.extend([(n, f, m) for (n, f, m) in image_stress if n.startswith("sync_")])  # type: ignore[list-item]
+            if not sync_only:
+                async_benchmarks.extend([(n, f, m) for (n, f, m) in image_stress if n.startswith("async_")])  # type: ignore[list-item]
+
+        if include_tesseract:
+            console.print("Including Tesseract OCR benchmarks…")
+            sync_benchmarks.extend(benchmarks.get_tesseract_ocr_benchmarks())  # type: ignore[arg-type]
+            if tesseract_matrix:
+                sync_benchmarks.extend(benchmarks.get_tesseract_variant_benchmarks())  # type: ignore[arg-type]
+            if tesseract_arch:
+                worker_list = None
+                if workers_csv:
+                    try:
+                        worker_list = [int(x.strip()) for x in workers_csv.split(",") if x.strip()]
+                    except ValueError:
+                        console.print("[yellow]Invalid --workers list; falling back to defaults[/yellow]")
+                        worker_list = None
+                sync_benchmarks.extend(benchmarks.get_tesseract_architecture_benchmarks(worker_list))  # type: ignore[arg-type]
 
     if not sync_benchmarks and not async_benchmarks:
         console.print("[red]Error:[/red] No benchmarks to run")
-        raise typer.Exit(1)
+        raise click.Abort from None
 
-    console.print(
-        f"Running {len(sync_benchmarks)} sync + {len(async_benchmarks)} async benchmarks"
-    )
+    console.print(f"Running {len(sync_benchmarks)} sync + {len(async_benchmarks)} async benchmarks")
 
     try:
         suite = runner.run_benchmark_suite(
@@ -255,30 +318,27 @@ def run(
 
     except KeyboardInterrupt:
         console.print("\n[yellow]Benchmark interrupted by user[/yellow]")
-        raise typer.Exit(1)
+        raise click.Abort from None
     except Exception as e:
         console.print(f"\n[red]Benchmark failed:[/red] {e}")
-        raise typer.Exit(1)
+        raise click.Abort from e
 
 
-@app.command()
-def compare(
-    result1: Path = typer.Argument(..., help="First benchmark result file"),
-    result2: Path = typer.Argument(..., help="Second benchmark result file"),
-    output: Path | None = typer.Option(
-        None, "--output", "-o", help="Save comparison to file"
-    ),
-) -> None:
+@cli.command()
+@click.argument("result1", type=click.Path(path_type=Path))
+@click.argument("result2", type=click.Path(path_type=Path))
+@click.option("--output", "output", type=click.Path(path_type=Path), default=None, help="Save comparison to file")
+def compare(result1: Path, result2: Path, output: Path | None) -> None:
     console.print("[bold blue]Benchmark Comparison[/bold blue]")
 
     try:
-        with open(result1) as f:
+        with result1.open() as f:
             data1 = json.load(f)
-        with open(result2) as f:
+        with result2.open() as f:
             data2 = json.load(f)
     except Exception as e:
         console.print(f"[red]Error loading files:[/red] {e}")
-        raise typer.Exit(1)
+        raise click.Abort from e
 
     console.print("Comparing:")
     console.print(f"  {result1.name}: {data1['name']} ({data1['timestamp']})")
@@ -286,15 +346,11 @@ def compare(
 
     rate1 = data1["summary"]["success_rate_percent"]
     rate2 = data2["summary"]["success_rate_percent"]
-    console.print(
-        f"\nSuccess Rate: {rate1:.1f}% vs {rate2:.1f}% ({rate2 - rate1:+.1f}%)"
-    )
+    console.print(f"\nSuccess Rate: {rate1:.1f}% vs {rate2:.1f}% ({rate2 - rate1:+.1f}%)")
 
     duration1 = data1["summary"]["total_duration_seconds"]
     duration2 = data2["summary"]["total_duration_seconds"]
-    console.print(
-        f"Total Duration: {duration1:.3f}s vs {duration2:.3f}s ({duration2 - duration1:+.3f}s)"
-    )
+    console.print(f"Total Duration: {duration1:.3f}s vs {duration2:.3f}s ({duration2 - duration1:+.3f}s)")
 
     if output:
         comparison_data = {
@@ -307,12 +363,12 @@ def compare(
             },
         }
 
-        with open(output, "w") as f:
+        with output.open("w") as f:
             json.dump(comparison_data, f, indent=2)
         console.print(f"\nComparison saved to: {output}")
 
 
-@app.command()
+@cli.command()
 def tesseract() -> None:
     """Run Tesseract OCR output format benchmarks (DEPRECATED)."""
     console.print(
@@ -320,27 +376,22 @@ def tesseract() -> None:
     )
 
 
-@app.command()
-def analyze(
-    result_file: Path = typer.Argument(..., help="Benchmark result file to analyze"),
-    quality_report: bool = typer.Option(
-        False, "--quality", "-q", help="Generate metadata quality report"
-    ),
-) -> None:
+@cli.command()
+@click.argument("result_file", type=click.Path(path_type=Path))
+@click.option("--quality", "quality_report", is_flag=True, help="Generate metadata quality report")
+def analyze(result_file: Path, quality_report: bool) -> None:
     console.print("[bold blue]Benchmark Analysis[/bold blue]")
 
     try:
-        with open(result_file) as f:
+        with result_file.open() as f:
             data = json.load(f)
     except Exception as e:
         console.print(f"[red]Error loading file:[/red] {e}")
-        raise typer.Exit(1)
+        raise click.Abort from e
 
     console.print(f"Analyzing: {data['name']} ({data['timestamp']})")
 
-    successful_results = [
-        r for r in data["results"] if r["success"] and r["performance"]
-    ]
+    successful_results = [r for r in data["results"] if r["success"] and r["performance"]]
 
     if not successful_results:
         console.print("[red]No successful results to analyze[/red]")
@@ -352,45 +403,50 @@ def analyze(
     console.print("\n[bold]Performance Analysis:[/bold]")
     console.print(f"  Successful benchmarks: {len(successful_results)}")
     console.print(f"  Duration range: {min(durations):.3f}s - {max(durations):.3f}s")
-    console.print(
-        f"  Memory range: {min(memory_peaks):.1f}MB - {max(memory_peaks):.1f}MB"
-    )
+    console.print(f"  Memory range: {min(memory_peaks):.1f}MB - {max(memory_peaks):.1f}MB")
 
     sync_results = [r for r in successful_results if "sync" in r["name"]]
     async_results = [r for r in successful_results if "async" in r["name"]]
 
     if sync_results and async_results:
-        sync_avg = sum(
-            r["performance"]["duration_seconds"] for r in sync_results
-        ) / len(sync_results)
-        async_avg = sum(
-            r["performance"]["duration_seconds"] for r in async_results
-        ) / len(async_results)
+        sync_avg = sum(r["performance"]["duration_seconds"] for r in sync_results) / len(sync_results)
+        async_avg = sum(r["performance"]["duration_seconds"] for r in async_results) / len(async_results)
 
         console.print("\n[bold]Sync vs Async:[/bold]")
-        console.print(
-            f"  Sync average: {sync_avg:.3f}s ({len(sync_results)} benchmarks)"
-        )
-        console.print(
-            f"  Async average: {async_avg:.3f}s ({len(async_results)} benchmarks)"
-        )
+        console.print(f"  Sync average: {sync_avg:.3f}s ({len(sync_results)} benchmarks)")
+        console.print(f"  Async average: {async_avg:.3f}s ({len(async_results)} benchmarks)")
         console.print(f"  Performance difference: {async_avg - sync_avg:+.3f}s")
+
+    arch_results: dict[str, list[Any]] = {}
+    for r in successful_results:
+        meta = r.get("metadata") or {}
+        if meta.get("backend") == "tesseract" and meta.get("arch") in {"threads", "processes"}:
+            arch = meta.get("arch")
+            if arch:
+                arch_results.setdefault(arch, []).append(r)
+
+    if arch_results:
+        console.print("\n[bold]Tesseract Architecture Comparison:[/bold]")
+        for arch, items in arch_results.items():
+            avg = sum(i["performance"]["duration_seconds"] for i in items) / len(items)
+            console.print(f"  {arch}: avg {avg:.3f}s over {len(items)} benches")
+
+        if {"threads", "processes"}.issubset(arch_results.keys()):
+            thr_avg = sum(i["performance"]["duration_seconds"] for i in arch_results["threads"]) / len(
+                arch_results["threads"]
+            )
+            proc_avg = sum(i["performance"]["duration_seconds"] for i in arch_results["processes"]) / len(
+                arch_results["processes"]
+            )
+            console.print(f"  processes - threads: {proc_avg - thr_avg:+.3f}s (negative favors processes)")
 
     if quality_report:
         _generate_quality_report(data, console)
 
 
-@app.command()
-def baseline(
-    output_file: Path | None = typer.Option(
-        None, "--output", "-o", help="Save results to file"
-    ),
-) -> None:
-    import asyncio
-    import time
-    from kreuzberg import extract_file_sync, batch_extract_file
-    from kreuzberg._utils._cache import clear_all_caches
-
+@cli.command()
+@click.option("--output", "output_file", type=click.Path(path_type=Path), default=None, help="Save results to file")
+def baseline(output_file: Path | None) -> None:
     console.print("[bold blue]Baseline Performance Benchmark[/bold blue]")
 
     test_files_dir = Path("tests/test_source_files")
@@ -418,7 +474,7 @@ def baseline(
     clear_all_caches()
     start_time = time.time()
 
-    async def run_batch() -> list[Any]:
+    async def run_batch() -> list[ExtractionResult]:
         return await batch_extract_file(mixed_files)
 
     asyncio.run(run_batch())
@@ -440,31 +496,22 @@ def baseline(
     console.print(f"[yellow]Cache speedup: {results['speedup_factor']:.2f}x[/yellow]")
 
     if output_file:
-        with open(output_file, "w") as f:
+        with output_file.open("w") as f:
             json.dump(results, f, indent=2)
         console.print(f"[blue]Results saved to {output_file}[/blue]")
     else:
         output_dir = Path("results")
         output_dir.mkdir(parents=True, exist_ok=True)
         default_file = output_dir / "baseline.json"
-        with open(default_file, "w") as f:
+        with default_file.open("w") as f:
             json.dump(results, f, indent=2)
         console.print(f"[blue]Results saved to {default_file}[/blue]")
 
 
-@app.command()
-def statistical(
-    trials: int = typer.Option(5, "--trials", "-t", help="Number of trials to run"),
-    output_file: Path | None = typer.Option(
-        None, "--output", "-o", help="Save results to file"
-    ),
-) -> None:
-    import asyncio
-    import statistics
-    import time
-    from kreuzberg import ExtractionConfig, extract_file
-    from kreuzberg._utils._cache import clear_all_caches
-
+@cli.command()
+@click.option("--trials", "trials", type=int, default=5, show_default=True, help="Number of trials to run")
+@click.option("--output", "output_file", type=click.Path(path_type=Path), default=None, help="Save results to file")
+def statistical(trials: int, output_file: Path | None) -> None:
     console.print("[bold blue]Statistical Performance Benchmark[/bold blue]")
 
     test_files_dir = Path("tests/test_source_files")
@@ -475,9 +522,7 @@ def statistical(
         return
 
     single_file = pdf_files[0]
-    config = ExtractionConfig(
-        force_ocr=True, ocr_backend="tesseract", extract_tables=True, chunk_content=True
-    )
+    config = ExtractionConfig(force_ocr=True, ocr_backend="tesseract", extract_tables=True, chunk_content=True)
 
     console.print(f"File: {single_file.name}")
     console.print(f"Trials: {trials}")
@@ -540,28 +585,21 @@ def statistical(
     console.print(f"[yellow]Average speedup: {speedup:.2f}x[/yellow]")
 
     if output_file:
-        with open(output_file, "w") as f:
+        with output_file.open("w") as f:
             json.dump(results, f, indent=2)
         console.print(f"[blue]Results saved to {output_file}[/blue]")
     else:
         output_dir = Path("results")
         output_dir.mkdir(parents=True, exist_ok=True)
         default_file = output_dir / "statistical.json"
-        with open(default_file, "w") as f:
+        with default_file.open("w") as f:
             json.dump(results, f, indent=2)
         console.print(f"[blue]Results saved to {default_file}[/blue]")
 
 
-@app.command()
-def serialization(
-    output_file: Path | None = typer.Option(
-        None, "--output", "-o", help="Save results to file"
-    ),
-) -> None:
-    import time
-    import statistics
-    from kreuzberg._types import ExtractionResult
-
+@cli.command()
+@click.option("--output", "output_file", type=click.Path(path_type=Path), default=None, help="Save results to file")
+def serialization(output_file: Path | None) -> None:
     console.print("[bold blue]Serialization Performance Benchmark[/bold blue]")
 
     large_content = "This is a realistic OCR result content. " * 500
@@ -605,9 +643,7 @@ def serialization(
     msgpack_serialize_times = []
     msgpack_deserialize_times = []
 
-    try:
-        import msgpack  # type: ignore[import-not-found]
-
+    if msgpack is not None:
         console.print("Benchmarking msgpack serialization...")
 
         for _ in range(trials):
@@ -618,11 +654,8 @@ def serialization(
             start_time = time.time()
             msgpack.unpackb(msgpack_bytes, raw=False)
             msgpack_deserialize_times.append(time.time() - start_time)
-
-    except ImportError:
-        console.print(
-            "[yellow]msgpack not available - skipping msgpack benchmarks[/yellow]"
-        )
+    else:
+        console.print("[yellow]msgpack not available - skipping msgpack benchmarks[/yellow]")
 
     results = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -674,17 +707,17 @@ def serialization(
         console.print(f"[yellow]msgpack speedup: {speedup_val:.2f}x[/yellow]")
 
     if output_file:
-        with open(output_file, "w") as f:
+        with output_file.open("w") as f:
             json.dump(results, f, indent=2)
         console.print(f"[blue]Results saved to {output_file}[/blue]")
     else:
         output_dir = Path("results")
         output_dir.mkdir(parents=True, exist_ok=True)
         default_file = output_dir / "serialization.json"
-        with open(default_file, "w") as f:
+        with default_file.open("w") as f:
             json.dump(results, f, indent=2)
         console.print(f"[blue]Results saved to {default_file}[/blue]")
 
 
 if __name__ == "__main__":
-    app()
+    cli()

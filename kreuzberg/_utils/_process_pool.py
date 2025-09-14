@@ -19,15 +19,9 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 
+_POOL_SIZE = mp.cpu_count()
 
-_POOL_SIZE = max(1, mp.cpu_count() - 1)
-
-
-def _create_process_pool() -> ProcessPoolExecutor:
-    return ProcessPoolExecutor(max_workers=_POOL_SIZE)
-
-
-_process_pool_ref = Ref("process_pool", _create_process_pool)
+_process_pool_ref = Ref("process_pool", lambda: ProcessPoolExecutor(max_workers=_POOL_SIZE))
 
 
 def _get_process_pool() -> ProcessPoolExecutor:
@@ -49,6 +43,33 @@ def submit_to_process_pool(func: Callable[..., T], *args: Any, **kwargs: Any) ->
     with process_pool() as pool:
         future = pool.submit(func, *args, **kwargs)
         return future.result()
+
+
+def get_optimal_worker_count(num_tasks: int, cpu_intensive: bool = True) -> int:
+    """Calculate optimal worker count based on workload.
+
+    Optimized based on benchmarking results:
+    - For 1 task: Use 1 worker (avoid overhead)
+    - For 2-3 tasks: Use num_tasks workers
+    - For 4+ tasks: Use all CPU cores for CPU-intensive work
+    """
+    cpu_count = mp.cpu_count()
+
+    if num_tasks == 1:
+        return 1
+    if num_tasks <= 3:
+        return min(num_tasks, cpu_count)
+    if cpu_intensive:
+        return cpu_count
+    return min(cpu_count * 2, max(cpu_count, num_tasks))
+
+
+def warmup_process_pool() -> None:
+    """Warm up the process pool to reduce initialization overhead."""
+    with process_pool() as pool:
+        futures = [pool.submit(lambda: None) for _ in range(_POOL_SIZE)]
+        for future in futures:
+            future.result()
 
 
 def shutdown_process_pool() -> None:

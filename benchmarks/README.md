@@ -87,6 +87,18 @@ uv run python -m benchmarks.src run --stress
 # Run backend comparison benchmarks
 uv run python -m benchmarks.src run --backend-comparison
 
+# Include Tesseract OCR benchmarks (sync)
+uv run python -m benchmarks.src run --tesseract
+
+# Include expanded Tesseract variant matrix (formats/PSM)
+uv run python -m benchmarks.src run --tesseract --tesseract-matrix
+
+# Compare Tesseract architectures (threads vs processes)
+uv run python -m benchmarks.src run --sync-only --tesseract --tesseract-arch
+
+# Compare with custom worker counts (e.g., 1,4,8)
+uv run python -m benchmarks.src run --sync-only --tesseract --tesseract-arch --workers 1,4,8
+
 # Custom test files directory
 uv run python -m benchmarks.src run --test-files-dir /path/to/test/files
 
@@ -231,4 +243,22 @@ uv run python -m benchmarks.src run --sync-only --suite-name main_baseline
 # Compare PR performance
 uv run python -m benchmarks.src run --sync-only --suite-name pr_test
 uv run python -m benchmarks.src compare results/main_baseline.json results/pr_test.json
+```
+
+### Tesseract Benchmarks
+
+The suite includes focused Tesseract OCR benchmarks:
+
+- `--tesseract` adds thread-based batch OCR and a process-pool placeholder for A/B comparisons.
+- `--tesseract-matrix` expands with a small matrix across output formats (`text`, `markdown`, `tsv`) and PSM modes
+    (`AUTO`, `SINGLE_BLOCK`, `SINGLE_LINE`) to quantify overhead of richer outputs and segmentation strategies.
+
+Examples:
+
+```bash
+# Minimal Tesseract batch OCR benchmarks
+uv run python -m benchmarks.src run --sync-only --tesseract
+
+# Full Tesseract config matrix
+uv run python -m benchmarks.src run --sync-only --tesseract --tesseract-matrix
 ```

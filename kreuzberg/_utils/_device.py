@@ -12,7 +12,7 @@ from kreuzberg.exceptions import ValidationError
 DeviceType = Literal["cpu", "cuda", "mps", "auto"]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(unsafe_hash=True, frozen=True, slots=True)
 class DeviceInfo:
     device_type: Literal["cpu", "cuda", "mps"]
     """The type of device."""
@@ -30,12 +30,10 @@ def detect_available_devices() -> list[DeviceInfo]:
     cpu_device = DeviceInfo(device_type="cpu", name="CPU")
 
     cuda_devices = _get_cuda_devices() if _is_cuda_available() else []
-
     mps_device = _get_mps_device() if _is_mps_available() else None
     mps_devices = [mps_device] if mps_device else []
 
-    gpu_devices = list(chain(cuda_devices, mps_devices))
-    return [*gpu_devices, cpu_device]
+    return list(chain(cuda_devices, mps_devices, [cpu_device]))
 
 
 def get_optimal_device() -> DeviceInfo:

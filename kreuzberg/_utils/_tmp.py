@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import contextlib
+import os
+import tempfile
 from contextlib import suppress
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -10,7 +13,7 @@ from anyio import Path as AsyncPath
 from kreuzberg._utils._sync import run_sync
 
 if TYPE_CHECKING:  # pragma: no cover
-    from collections.abc import Callable, Coroutine
+    from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
 
 
 async def create_temp_file(
@@ -26,3 +29,36 @@ async def create_temp_file(
             await AsyncPath(file.name).unlink(missing_ok=True)
 
     return Path(file.name), unlink
+
+
+@contextlib.asynccontextmanager
+async def temporary_file(extension: str, content: bytes | None = None) -> AsyncGenerator[Path, None]:
+    """Async context manager for temporary files with automatic cleanup."""
+    file_path, unlink = await create_temp_file(extension, content)
+    try:
+        yield file_path
+    finally:
+        await unlink()
+
+
+@contextlib.contextmanager
+def temporary_file_sync(extension: str, content: bytes | None = None) -> Generator[Path, None, None]:
+    """Sync context manager for temporary files with automatic cleanup."""
+    fd, temp_path = tempfile.mkstemp(suffix=extension)
+    try:
+        if content:
+            with os.fdopen(fd, "wb") as f:
+                f.write(content)
+        else:
+            os.close(fd)
+        yield Path(temp_path)
+    finally:
+        with suppress(OSError, PermissionError):
+            Path(temp_path).unlink()
+
+
+@contextlib.contextmanager
+def temporary_directory() -> Generator[Path, None, None]:
+    """Context manager for temporary directories with automatic cleanup."""
+    with tempfile.TemporaryDirectory() as temp_dir:
+        yield Path(temp_dir)

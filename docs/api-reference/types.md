@@ -20,6 +20,26 @@ A TypedDict that contains data extracted from tables in documents:
 
 ::: kreuzberg.TableData
 
+## Image Extraction Types
+
+### ExtractedImage
+
+Represents an image extracted from a document:
+
+::: kreuzberg.ExtractedImage
+
+### ImageOCRResult
+
+Contains the result of running OCR on an extracted image:
+
+::: kreuzberg.ImageOCRResult
+
+### ImageOCRConfig
+
+Configuration for OCR processing of extracted images:
+
+::: kreuzberg.ImageOCRConfig
+
 ## OCR Configuration
 
 ### TesseractConfig

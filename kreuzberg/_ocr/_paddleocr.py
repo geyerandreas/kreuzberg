@@ -192,7 +192,7 @@ class PaddleBackend(OCRBackend[PaddleOCRConfig]):
         )
 
         return ExtractionResult(
-            content=normalize_spaces(text_content), mime_type=PLAIN_TEXT_MIME_TYPE, metadata=metadata, chunks=[]
+            content=normalize_spaces(text_content), mime_type=PLAIN_TEXT_MIME_TYPE, metadata=metadata
         )
 
     @classmethod

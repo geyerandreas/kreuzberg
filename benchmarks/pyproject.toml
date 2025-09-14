@@ -17,18 +17,13 @@ classifiers = [
 # kreuzberg-bench = "src.cli:app"
 
 dependencies = [
+  "click>=8.2.1",
   "kreuzberg",
-  "matplotlib>=3.7",
-  "memory-profiler>=0.61",
-  "pandas>=2",
+  "msgpack>=1.1.1",
   "psutil>=5.9",
   "py-spy>=0.3.14",
   "rich>=13",
-  "typer>=0.9",
 ]
-
-[tool.ruff]
-lint.extend-ignore = [ "ARG002", "B008", "B904", "BLE001", "E722", "PLR2004", "PYI036", "SLF001" ]
 
 [tool.uv.sources]
 kreuzberg = { workspace = true }

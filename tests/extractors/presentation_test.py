@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any
 
 import pytest
 
+from kreuzberg import ExtractionConfig
 from kreuzberg._extractors._presentation import PresentationExtractor
 from kreuzberg.extraction import DEFAULT_CONFIG
 
@@ -164,6 +165,38 @@ def test_extract_pptx_with_picture_shape(mocker: MockerFixture, extractor: Prese
 
     assert "![Test alt text](test_image.jpg)" in result.content
     assert result.mime_type == "text/markdown"
+
+
+@pytest.mark.anyio
+async def test_extract_pptx_images_field(mocker: MockerFixture) -> None:
+    from pptx.enum.shapes import MSO_SHAPE_TYPE
+
+    extractor = PresentationExtractor(
+        mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        config=ExtractionConfig(extract_images=True),
+    )
+
+    mock_presentation = mocker.MagicMock()
+    mock_slide = mocker.MagicMock()
+    mock_picture_shape = mocker.MagicMock()
+    mock_picture_shape.shape_type = MSO_SHAPE_TYPE.PICTURE
+    mock_img = mocker.MagicMock()
+    mock_img.ext = "png"
+    mock_img.blob = b"imgdata"
+    mock_picture_shape.image = mock_img
+
+    mock_slide.shapes = [mock_picture_shape]
+    mock_slide.has_notes_slide = False
+    mock_presentation.slides = [mock_slide]
+    mock_presentation.core_properties = mocker.MagicMock()
+    mock_presentation.core_properties.author = None
+
+    mocker.patch("pptx.Presentation", return_value=mock_presentation)
+
+    result = await extractor.extract_bytes_async(b"mock pptx content")
+
+    assert result.images
+    assert result.images[0].format == "png"
 
 
 def test_extract_pptx_with_table_shape(mocker: MockerFixture, extractor: PresentationExtractor) -> None:

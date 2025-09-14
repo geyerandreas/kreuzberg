@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import re
 from functools import lru_cache
+from itertools import chain
 from typing import TYPE_CHECKING, Any
 
 from kreuzberg._types import Entity, SpacyEntityExtractionConfig
@@ -21,11 +22,15 @@ def extract_entities(
 ) -> list[Entity]:
     entities: list[Entity] = []
     if custom_patterns:
-        for ent_type, pattern in custom_patterns:
-            entities.extend(
-                Entity(type=ent_type, text=match.group(), start=match.start(), end=match.end())
-                for match in re.finditer(pattern, text)
+        entities.extend(
+            chain.from_iterable(
+                (
+                    Entity(type=ent_type, text=match.group(), start=match.start(), end=match.end())
+                    for match in re.finditer(pattern, text)
+                )
+                for ent_type, pattern in custom_patterns
             )
+        )
 
     if spacy_config is None:
         spacy_config = SpacyEntityExtractionConfig()

@@ -132,26 +132,27 @@ def _build_cli_args(params: dict[str, Any]) -> dict[str, Any]:
     }
 
     ocr_backend = params["ocr_backend"]
-    if ocr_backend == "tesseract" and (
-        params["tesseract_lang"]
-        or params["tesseract_psm"] is not None
-        or params["tesseract_output_format"]
-        or params["enable_table_detection"]
-    ):
-        tesseract_config = {}
-        if params["tesseract_lang"]:
-            tesseract_config["language"] = params["tesseract_lang"]
-        if params["tesseract_psm"] is not None:
-            tesseract_config["psm"] = params["tesseract_psm"]
-        if params["tesseract_output_format"]:
-            tesseract_config["output_format"] = params["tesseract_output_format"]
-        if params["enable_table_detection"]:
-            tesseract_config["enable_table_detection"] = True
-        cli_args["tesseract_config"] = tesseract_config
-    elif ocr_backend == "easyocr" and params["easyocr_languages"]:
-        cli_args["easyocr_config"] = {"languages": params["easyocr_languages"].split(",")}
-    elif ocr_backend == "paddleocr" and params["paddleocr_languages"]:
-        cli_args["paddleocr_config"] = {"languages": params["paddleocr_languages"].split(",")}
+    match ocr_backend:
+        case "tesseract" if (
+            params["tesseract_lang"]
+            or params["tesseract_psm"] is not None
+            or params["tesseract_output_format"]
+            or params["enable_table_detection"]
+        ):
+            tesseract_config = {}
+            if params["tesseract_lang"]:
+                tesseract_config["language"] = params["tesseract_lang"]
+            if params["tesseract_psm"] is not None:
+                tesseract_config["psm"] = params["tesseract_psm"]
+            if params["tesseract_output_format"]:
+                tesseract_config["output_format"] = params["tesseract_output_format"]
+            if params["enable_table_detection"]:
+                tesseract_config["enable_table_detection"] = True
+            cli_args["tesseract_config"] = tesseract_config
+        case "easyocr" if params["easyocr_languages"]:
+            cli_args["easyocr_config"] = {"languages": params["easyocr_languages"].split(",")}
+        case "paddleocr" if params["paddleocr_languages"]:
+            cli_args["paddleocr_config"] = {"languages": params["paddleocr_languages"].split(",")}
 
     return cli_args
 

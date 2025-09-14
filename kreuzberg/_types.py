@@ -4,6 +4,7 @@ import sys
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import asdict, dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
 
 import msgspec
@@ -25,8 +26,6 @@ else:  # pragma: no cover
     from typing import NotRequired
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from PIL.Image import Image
     from polars import DataFrame
 
@@ -164,6 +163,12 @@ class EasyOCRConfig(ConfigDict):
     """Maximum vertical distance for paragraph merging."""
     ycenter_ths: float = 0.5
     """Maximum shift in y direction for merging."""
+
+    def __post_init__(self) -> None:
+        if isinstance(self.language, list):
+            object.__setattr__(self, "language", tuple(self.language))
+        if isinstance(self.rotation_info, list):
+            object.__setattr__(self, "rotation_info", tuple(self.rotation_info))
 
 
 @dataclass(unsafe_hash=True, frozen=True, slots=True)
@@ -350,6 +355,51 @@ class GMFTConfig(ConfigDict):
 
 
 @dataclass(unsafe_hash=True, frozen=True, slots=True)
+class ImageOCRConfig(ConfigDict):
+    """Configuration for OCR processing of extracted images."""
+
+    enabled: bool = False
+    """Whether to perform OCR on extracted images."""
+    backend: OcrBackendType | None = None
+    """OCR backend for image OCR. Falls back to main ocr_backend when None."""
+    backend_config: TesseractConfig | PaddleOCRConfig | EasyOCRConfig | None = None
+    """Backend-specific configuration for image OCR."""
+    min_dimensions: tuple[int, int] = (50, 50)
+    """Minimum (width, height) in pixels for image OCR eligibility."""
+    max_dimensions: tuple[int, int] = (10000, 10000)
+    """Maximum (width, height) in pixels for image OCR eligibility."""
+    allowed_formats: frozenset[str] = frozenset(
+        {
+            "jpg",
+            "jpeg",
+            "png",
+            "gif",
+            "bmp",
+            "tiff",
+            "tif",
+            "webp",
+            "jp2",
+            "jpx",
+            "jpm",
+            "mj2",
+            "pnm",
+            "pbm",
+            "pgm",
+            "ppm",
+        }
+    )
+    """Allowed image formats for OCR processing (lowercase, without dot)."""
+    batch_size: int = 4
+    """Number of images to process in parallel for OCR."""
+    timeout_seconds: int = 30
+    """Maximum time in seconds for OCR processing per image."""
+
+    def __post_init__(self) -> None:
+        if isinstance(self.allowed_formats, list):
+            object.__setattr__(self, "allowed_formats", frozenset(self.allowed_formats))
+
+
+@dataclass(unsafe_hash=True, frozen=True, slots=True)
 class LanguageDetectionConfig(ConfigDict):
     low_memory: bool = True
     """If True, uses a smaller model (~200MB). If False, uses a larger, more accurate model.
@@ -391,6 +441,9 @@ class SpacyEntityExtractionConfig(ConfigDict):
     """Batch size for processing multiple texts."""
 
     def __post_init__(self) -> None:
+        if isinstance(self.model_cache_dir, Path):
+            object.__setattr__(self, "model_cache_dir", str(self.model_cache_dir))
+
         if self.language_models is None:
             object.__setattr__(self, "language_models", self._get_default_language_models())
 
@@ -679,7 +732,7 @@ def normalize_metadata(data: dict[str, Any] | None) -> Metadata:
     return normalized
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(unsafe_hash=True, frozen=True, slots=True)
 class Entity:
     type: str
     """e.g., PERSON, ORGANIZATION, LOCATION, DATE, EMAIL, PHONE, or custom"""
@@ -691,18 +744,44 @@ class Entity:
     """End character offset in the content"""
 
 
+@dataclass(unsafe_hash=True, frozen=True, slots=True)
+class ExtractedImage:
+    data: bytes
+    format: str
+    filename: str | None = None
+    page_number: int | None = None
+    dimensions: tuple[int, int] | None = None
+    colorspace: str | None = None
+    bits_per_component: int | None = None
+    is_mask: bool = False
+    description: str | None = None
+
+
+@dataclass(slots=True)
+class ImageOCRResult:
+    image: ExtractedImage
+    ocr_result: ExtractionResult
+    confidence_score: float | None = None
+    processing_time: float | None = None
+    skipped_reason: str | None = None
+
+
 @dataclass(slots=True)
 class ExtractionResult:
     content: str
     """The extracted content."""
     mime_type: str
     """The mime type of the extracted content. Is either text/plain or text/markdown."""
-    metadata: Metadata
+    metadata: Metadata = field(default_factory=lambda: Metadata())
     """The metadata of the content."""
     tables: list[TableData] = field(default_factory=list)
     """Extracted tables. Is an empty list if 'extract_tables' is not set to True in the ExtractionConfig."""
     chunks: list[str] = field(default_factory=list)
     """The extracted content chunks. This is an empty list if 'chunk_content' is not set to True in the ExtractionConfig."""
+    images: list[ExtractedImage] = field(default_factory=list)
+    """Extracted images. Empty list if 'extract_images' is not enabled."""
+    image_ocr_results: list[ImageOCRResult] = field(default_factory=list)
+    """OCR results from extracted images. Empty list if disabled or none processed."""
     entities: list[Entity] | None = None
     """Extracted entities, if entity extraction is enabled."""
     keywords: list[tuple[str, float]] | None = None
@@ -761,6 +840,41 @@ class ExtractionConfig(ConfigDict):
     """Whether to extract tables from the content. This requires the 'gmft' dependency."""
     extract_tables_from_ocr: bool = False
     """Extract tables from OCR output using TSV format (Tesseract only)."""
+    extract_images: bool = False
+    """Whether to extract images from documents."""
+    deduplicate_images: bool = True
+    """Whether to remove duplicate images using CRC32 checksums."""
+    image_ocr_config: ImageOCRConfig | None = None
+    """Configuration for OCR processing of extracted images."""
+    ocr_extracted_images: bool = False
+    """Deprecated: Use image_ocr_config.enabled instead."""
+    image_ocr_backend: OcrBackendType | None = None
+    """Deprecated: Use image_ocr_config.backend instead."""
+    image_ocr_min_dimensions: tuple[int, int] = (50, 50)
+    """Deprecated: Use image_ocr_config.min_dimensions instead."""
+    image_ocr_max_dimensions: tuple[int, int] = (10000, 10000)
+    """Deprecated: Use image_ocr_config.max_dimensions instead."""
+    image_ocr_formats: frozenset[str] = frozenset(
+        {
+            "jpg",
+            "jpeg",
+            "png",
+            "gif",
+            "bmp",
+            "tiff",
+            "tif",
+            "webp",
+            "jp2",
+            "jpx",
+            "jpm",
+            "mj2",
+            "pnm",
+            "pbm",
+            "pgm",
+            "ppm",
+        }
+    )
+    """Deprecated: Use image_ocr_config.allowed_formats instead."""
     max_chars: int = DEFAULT_MAX_CHARACTERS
     """The size of each chunk in characters."""
     max_overlap: int = DEFAULT_MAX_OVERLAP
@@ -826,6 +940,51 @@ class ExtractionConfig(ConfigDict):
         if self.validators is not None and isinstance(self.validators, list):
             object.__setattr__(self, "validators", tuple(self.validators))
 
+        if isinstance(self.pdf_password, list):
+            object.__setattr__(self, "pdf_password", tuple(self.pdf_password))
+
+        if isinstance(self.image_ocr_formats, list):
+            object.__setattr__(self, "image_ocr_formats", frozenset(self.image_ocr_formats))
+
+        if self.image_ocr_config is None and (
+            self.ocr_extracted_images
+            or self.image_ocr_backend is not None
+            or self.image_ocr_min_dimensions != (50, 50)
+            or self.image_ocr_max_dimensions != (10000, 10000)
+            or self.image_ocr_formats
+            != frozenset(
+                {
+                    "jpg",
+                    "jpeg",
+                    "png",
+                    "gif",
+                    "bmp",
+                    "tiff",
+                    "tif",
+                    "webp",
+                    "jp2",
+                    "jpx",
+                    "jpm",
+                    "mj2",
+                    "pnm",
+                    "pbm",
+                    "pgm",
+                    "ppm",
+                }
+            )
+        ):
+            object.__setattr__(
+                self,
+                "image_ocr_config",
+                ImageOCRConfig(
+                    enabled=self.ocr_extracted_images,
+                    backend=self.image_ocr_backend,
+                    min_dimensions=self.image_ocr_min_dimensions,
+                    max_dimensions=self.image_ocr_max_dimensions,
+                    allowed_formats=self.image_ocr_formats,
+                ),
+            )
+
         if self.ocr_backend is None and self.ocr_config is not None:
             raise ValidationError("'ocr_backend' is None but 'ocr_config' is provided")
 
@@ -839,7 +998,6 @@ class ExtractionConfig(ConfigDict):
                 context={"ocr_backend": self.ocr_backend, "ocr_config": type(self.ocr_config).__name__},
             )
 
-        # Validate DPI configuration
         if self.target_dpi <= 0:
             raise ValidationError("target_dpi must be positive", context={"target_dpi": self.target_dpi})
         if self.min_dpi <= 0:
@@ -861,27 +1019,22 @@ class ExtractionConfig(ConfigDict):
             )
 
     def get_config_dict(self) -> dict[str, Any]:
-        if self.ocr_backend is None:
-            return {"use_cache": self.use_cache}
-
-        if self.ocr_config is not None:
-            config_dict = asdict(self.ocr_config)
-            config_dict["use_cache"] = self.use_cache
-            return config_dict
-
         match self.ocr_backend:
+            case None:
+                return {"use_cache": self.use_cache}
+            case _ if self.ocr_config is not None:
+                config_dict = asdict(self.ocr_config)
+                config_dict["use_cache"] = self.use_cache
+                return config_dict
             case "tesseract":
                 config_dict = asdict(TesseractConfig())
-                config_dict["use_cache"] = self.use_cache
-                return config_dict
             case "easyocr":
                 config_dict = asdict(EasyOCRConfig())
-                config_dict["use_cache"] = self.use_cache
-                return config_dict
             case _:
                 config_dict = asdict(PaddleOCRConfig())
-                config_dict["use_cache"] = self.use_cache
-                return config_dict
+
+        config_dict["use_cache"] = self.use_cache
+        return config_dict
 
     def to_dict(self, include_none: bool = False) -> dict[str, Any]:
         result = msgspec.to_builtins(
@@ -900,7 +1053,7 @@ class ExtractionConfig(ConfigDict):
         return {k: v for k, v in result.items() if v is not None}
 
 
-@dataclass(frozen=True)
+@dataclass(unsafe_hash=True, frozen=True, slots=True)
 class HTMLToMarkdownConfig:
     stream_processing: bool = False
     """Enable streaming mode for processing large HTML documents."""
@@ -968,4 +1121,5 @@ class HTMLToMarkdownConfig:
     """Remove form elements from HTML."""
 
     def to_dict(self) -> dict[str, Any]:
-        return {key: value for key, value in self.__dict__.items() if value is not None}
+        result = msgspec.to_builtins(self, builtin_types=(type(None),), order="deterministic")
+        return {k: v for k, v in result.items() if v is not None}

@@ -3,8 +3,7 @@ from __future__ import annotations
 import base64
 import io
 import traceback
-from functools import lru_cache
-from json import dumps, loads
+from json import dumps
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 import msgspec
@@ -14,24 +13,55 @@ from typing_extensions import TypedDict
 
 from kreuzberg import (
     EasyOCRConfig,
+    ExtractedImage,
     ExtractionConfig,
     ExtractionResult,
-    GMFTConfig,
+    ImageOCRResult,
     KreuzbergError,
-    LanguageDetectionConfig,
     MissingDependencyError,
     PaddleOCRConfig,
     ParsingError,
-    SpacyEntityExtractionConfig,
     TesseractConfig,
     ValidationError,
     batch_extract_bytes,
 )
+from kreuzberg._api._config_cache import (
+    create_gmft_config_cached,
+    create_html_markdown_config_cached,
+    create_language_detection_config_cached,
+    create_ocr_config_cached,
+    create_spacy_config_cached,
+    discover_config_cached,
+    parse_header_config_cached,
+)
 from kreuzberg._config import discover_config
-from kreuzberg._types import HTMLToMarkdownConfig
 
 if TYPE_CHECKING:
     from litestar.datastructures import UploadFile
+
+
+class ExtractedImageDict(TypedDict):
+    """TypedDict for extracted image JSON representation."""
+
+    data: str
+    format: str
+    filename: str | None
+    page_number: int | None
+    dimensions: tuple[int, int] | None
+    colorspace: str | None
+    bits_per_component: int | None
+    is_mask: bool
+    description: str | None
+
+
+class ImageOCRResultDict(TypedDict):
+    """TypedDict for image OCR result JSON representation."""
+
+    image: ExtractedImageDict
+    ocr_result: Any
+    confidence_score: float | None
+    processing_time: float | None
+    skipped_reason: str | None
 
 
 class HealthResponse(TypedDict):
@@ -146,55 +176,19 @@ def _create_ocr_config(
     return config_dict
 
 
-@lru_cache(maxsize=128)
-def _merge_configs_cached(
-    static_config: ExtractionConfig | None,
-    query_params: tuple[tuple[str, Any], ...],
-    header_config: tuple[tuple[str, Any], ...] | None,
-) -> ExtractionConfig:
-    base_config = static_config or ExtractionConfig()
-    config_dict = base_config.to_dict()
+def _create_dimension_tuple(width: int | None, height: int | None) -> tuple[int, int] | None:
+    """Create a dimension tuple from width and height values.
 
-    query_dict = dict(query_params) if query_params else {}
-    for key, value in query_dict.items():
-        if value is not None and key in config_dict:
-            config_dict[key] = _convert_value_type(config_dict[key], value)
+    Args:
+        width: Width value or None
+        height: Height value or None
 
-    if header_config:
-        header_dict = dict(header_config)
-        for key, value in header_dict.items():
-            if key in config_dict:
-                config_dict[key] = value
-
-    if "ocr_config" in config_dict and isinstance(config_dict["ocr_config"], dict):
-        ocr_backend = config_dict.get("ocr_backend")
-        config_dict["ocr_config"] = _create_ocr_config(ocr_backend, config_dict["ocr_config"])
-
-    if "gmft_config" in config_dict and isinstance(config_dict["gmft_config"], dict):
-        config_dict["gmft_config"] = GMFTConfig(**config_dict["gmft_config"])
-
-    if "language_detection_config" in config_dict and isinstance(config_dict["language_detection_config"], dict):
-        config_dict["language_detection_config"] = LanguageDetectionConfig(**config_dict["language_detection_config"])
-
-    if "spacy_entity_extraction_config" in config_dict and isinstance(
-        config_dict["spacy_entity_extraction_config"], dict
-    ):
-        config_dict["spacy_entity_extraction_config"] = SpacyEntityExtractionConfig(
-            **config_dict["spacy_entity_extraction_config"]
-        )
-
-    if "html_to_markdown_config" in config_dict and isinstance(config_dict["html_to_markdown_config"], dict):
-        config_dict["html_to_markdown_config"] = HTMLToMarkdownConfig(**config_dict["html_to_markdown_config"])
-
-    return ExtractionConfig(**config_dict)
-
-
-def _make_hashable(obj: Any) -> Any:
-    if isinstance(obj, dict):
-        return tuple(sorted((k, _make_hashable(v)) for k, v in obj.items()))
-    if isinstance(obj, list):
-        return tuple(_make_hashable(item) for item in obj)
-    return obj
+    Returns:
+        Tuple of (width, height) if both values are not None, otherwise None
+    """
+    if width is not None and height is not None:
+        return (width, height)
+    return None
 
 
 def merge_configs(
@@ -202,10 +196,43 @@ def merge_configs(
     query_params: dict[str, Any],
     header_config: dict[str, Any] | None,
 ) -> ExtractionConfig:
-    query_tuple = tuple(sorted(query_params.items())) if query_params else ()
-    header_tuple = _make_hashable(header_config) if header_config else None
+    base_config = static_config or ExtractionConfig()
+    config_dict = base_config.to_dict()
 
-    return _merge_configs_cached(static_config, query_tuple, header_tuple)
+    for key, value in query_params.items():
+        if value is not None and key in config_dict:
+            config_dict[key] = _convert_value_type(config_dict[key], value)
+
+    if header_config:
+        for key, value in header_config.items():
+            if key in config_dict:
+                config_dict[key] = value
+
+    if "ocr_config" in config_dict and isinstance(config_dict["ocr_config"], dict):
+        ocr_backend = config_dict.get("ocr_backend")
+        config_dict["ocr_config"] = create_ocr_config_cached(ocr_backend, config_dict["ocr_config"])
+
+    if "gmft_config" in config_dict and isinstance(config_dict["gmft_config"], dict):
+        config_dict["gmft_config"] = create_gmft_config_cached(config_dict["gmft_config"])
+
+    if "language_detection_config" in config_dict and isinstance(config_dict["language_detection_config"], dict):
+        config_dict["language_detection_config"] = create_language_detection_config_cached(
+            config_dict["language_detection_config"]
+        )
+
+    if "spacy_entity_extraction_config" in config_dict and isinstance(
+        config_dict["spacy_entity_extraction_config"], dict
+    ):
+        config_dict["spacy_entity_extraction_config"] = create_spacy_config_cached(
+            config_dict["spacy_entity_extraction_config"]
+        )
+
+    if "html_to_markdown_config" in config_dict and isinstance(config_dict["html_to_markdown_config"], dict):
+        config_dict["html_to_markdown_config"] = create_html_markdown_config_cached(
+            config_dict["html_to_markdown_config"]
+        )
+
+    return ExtractionConfig(**config_dict)
 
 
 @post("/extract", operation_id="ExtractFiles")
@@ -223,6 +250,13 @@ async def handle_files_upload(  # noqa: PLR0913
     ocr_backend: Literal["tesseract", "easyocr", "paddleocr"] | None = None,
     auto_detect_language: str | bool | None = None,
     pdf_password: str | None = None,
+    extract_images: str | bool | None = None,
+    ocr_extracted_images: str | bool | None = None,
+    image_ocr_backend: Literal["tesseract", "easyocr", "paddleocr"] | None = None,
+    image_ocr_min_width: int | None = None,
+    image_ocr_min_height: int | None = None,
+    image_ocr_max_width: int | None = None,
+    image_ocr_max_height: int | None = None,
 ) -> list[ExtractionResult]:
     """Extract text, metadata, and structured data from uploaded documents.
 
@@ -250,11 +284,30 @@ async def handle_files_upload(  # noqa: PLR0913
         ocr_backend: OCR engine to use (tesseract, easyocr, paddleocr)
         auto_detect_language: Enable automatic language detection
         pdf_password: Password for encrypted PDF files
+        extract_images: Enable image extraction for supported formats
+        ocr_extracted_images: Run OCR over extracted images
+        image_ocr_backend: Optional backend override for image OCR
+        image_ocr_min_width: Minimum image width for OCR eligibility
+        image_ocr_min_height: Minimum image height for OCR eligibility
+        image_ocr_max_width: Maximum image width for OCR eligibility
+        image_ocr_max_height: Maximum image height for OCR eligibility
 
     Returns:
         List of extraction results, one per uploaded file
+
+    Additional query parameters:
+        extract_images: Enable image extraction for supported formats
+        ocr_extracted_images: Run OCR over extracted images
+        image_ocr_backend: Optional backend override for image OCR
+        image_ocr_min_width: Minimum image width for OCR eligibility
+        image_ocr_min_height: Minimum image height for OCR eligibility
+        image_ocr_max_width: Maximum image width for OCR eligibility
+        image_ocr_max_height: Maximum image height for OCR eligibility
     """
-    static_config = discover_config()
+    static_config = discover_config_cached()
+
+    min_dims = _create_dimension_tuple(image_ocr_min_width, image_ocr_min_height)
+    max_dims = _create_dimension_tuple(image_ocr_max_width, image_ocr_max_height)
 
     query_params = {
         "chunk_content": chunk_content,
@@ -268,12 +321,17 @@ async def handle_files_upload(  # noqa: PLR0913
         "ocr_backend": ocr_backend,
         "auto_detect_language": auto_detect_language,
         "pdf_password": pdf_password,
+        "extract_images": extract_images,
+        "ocr_extracted_images": ocr_extracted_images,
+        "image_ocr_backend": image_ocr_backend,
+        "image_ocr_min_dimensions": min_dims,
+        "image_ocr_max_dimensions": max_dims,
     }
 
     header_config = None
     if config_header := request.headers.get("X-Extraction-Config"):
         try:
-            header_config = loads(config_header)
+            header_config = parse_header_config_cached(config_header)
         except Exception as e:
             raise ValidationError(f"Invalid JSON in X-Extraction-Config header: {e}", context={"error": str(e)}) from e
 
@@ -316,16 +374,39 @@ async def get_configuration() -> ConfigurationResponse:
 
 
 def _polars_dataframe_encoder(obj: Any) -> Any:
-    """Convert polars DataFrame to dict for JSON serialization."""
     return obj.to_dicts()
 
 
 def _pil_image_encoder(obj: Any) -> str:
-    """Convert PIL Image to base64 string for JSON serialization."""
     buffer = io.BytesIO()
     obj.save(buffer, format="PNG")
     img_str = base64.b64encode(buffer.getvalue()).decode()
     return f"data:image/png;base64,{img_str}"
+
+
+def _extracted_image_encoder(obj: ExtractedImage) -> ExtractedImageDict:
+    encoded_data = base64.b64encode(obj.data).decode()
+    return ExtractedImageDict(
+        data=f"data:image/{obj.format};base64,{encoded_data}",
+        format=obj.format,
+        filename=obj.filename,
+        page_number=obj.page_number,
+        dimensions=obj.dimensions,
+        colorspace=obj.colorspace,
+        bits_per_component=obj.bits_per_component,
+        is_mask=obj.is_mask,
+        description=obj.description,
+    )
+
+
+def _image_ocr_result_encoder(obj: ImageOCRResult) -> ImageOCRResultDict:
+    return ImageOCRResultDict(
+        image=_extracted_image_encoder(obj.image),
+        ocr_result=obj.ocr_result,
+        confidence_score=obj.confidence_score,
+        processing_time=obj.processing_time,
+        skipped_reason=obj.skipped_reason,
+    )
 
 
 openapi_config = OpenAPIConfig(
@@ -344,10 +425,11 @@ openapi_config = OpenAPIConfig(
     create_examples=True,
 )
 
-# Type encoders for custom serialization
 type_encoders = {
     pl.DataFrame: _polars_dataframe_encoder,
     Image.Image: _pil_image_encoder,
+    ExtractedImage: _extracted_image_encoder,
+    ImageOCRResult: _image_ocr_result_encoder,
 }
 
 app = Litestar(
@@ -360,5 +442,5 @@ app = Litestar(
         Exception: general_exception_handler,
     },
     type_encoders=type_encoders,
-    request_max_body_size=1024 * 1024 * 1024,  # 1GB limit for large file uploads
+    request_max_body_size=1024 * 1024 * 1024,
 )

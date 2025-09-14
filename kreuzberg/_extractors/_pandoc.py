@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import contextlib
-import os
+import logging
 import re
 import subprocess
 import sys
-import tempfile
-from json import JSONDecodeError, loads
+from itertools import chain
+from json import loads
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Final, Literal, cast
 
@@ -16,10 +15,10 @@ from anyio import run_process
 from kreuzberg._constants import MINIMAL_SUPPORTED_PANDOC_VERSION
 from kreuzberg._extractors._base import Extractor
 from kreuzberg._mime_types import MARKDOWN_MIME_TYPE
-from kreuzberg._types import ExtractionResult, Metadata
+from kreuzberg._types import ExtractedImage, ExtractionResult, ImageOCRResult, Metadata
 from kreuzberg._utils._string import normalize_spaces
-from kreuzberg._utils._sync import run_taskgroup
-from kreuzberg._utils._tmp import create_temp_file
+from kreuzberg._utils._sync import run_maybe_async, run_taskgroup
+from kreuzberg._utils._tmp import temporary_directory, temporary_file, temporary_file_sync
 from kreuzberg.exceptions import MissingDependencyError, ParsingError, ValidationError
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -152,13 +151,8 @@ class PandocExtractor(Extractor):
 
     async def extract_bytes_async(self, content: bytes) -> ExtractionResult:
         extension = self._get_pandoc_type_from_mime_type(self.mime_type)
-        input_file, unlink = await create_temp_file(f".{extension}")
-
-        try:
-            await AsyncPath(input_file).write_bytes(content)
+        async with temporary_file(f".{extension}", content) as input_file:
             return await self.extract_path_async(input_file)
-        finally:
-            await unlink()
 
     async def extract_path_async(self, path: Path) -> ExtractionResult:
         await self._validate_pandoc_version()
@@ -170,24 +164,25 @@ class PandocExtractor(Extractor):
             results = await run_taskgroup(metadata_task, content_task)
             metadata, content = cast("tuple[Metadata, str]", results)
 
-            return ExtractionResult(
-                content=normalize_spaces(content), metadata=metadata, mime_type=MARKDOWN_MIME_TYPE, chunks=[]
+            result = ExtractionResult(
+                content=normalize_spaces(content), metadata=metadata, mime_type=MARKDOWN_MIME_TYPE
             )
+
+            if self.config.extract_images:
+                images = await self._extract_images_with_pandoc(str(path))
+                result.images = images
+                if self.config.ocr_extracted_images and result.images:
+                    image_ocr_results = await self._process_images_with_ocr(result.images)
+                    result.image_ocr_results = image_ocr_results
+
+            return result
         except ExceptionGroup as eg:
             raise ParsingError("Failed to process file", context={"file": str(path), "errors": eg.exceptions}) from eg
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
         extension = self._get_pandoc_type_from_mime_type(self.mime_type)
-        fd, temp_path = tempfile.mkstemp(suffix=f".{extension}")
-
-        try:
-            with os.fdopen(fd, "wb") as f:
-                f.write(content)
-
-            return self.extract_path_sync(Path(temp_path))
-        finally:
-            with contextlib.suppress(OSError):
-                Path(temp_path).unlink()
+        with temporary_file_sync(f".{extension}", content) as temp_path:
+            return self.extract_path_sync(temp_path)
 
     def extract_path_sync(self, path: Path) -> ExtractionResult:
         self._validate_pandoc_version_sync()
@@ -197,9 +192,20 @@ class PandocExtractor(Extractor):
             metadata = self._extract_metadata_sync(path)
             content = self._extract_file_sync(path)
 
-            return ExtractionResult(
-                content=normalize_spaces(content), metadata=metadata, mime_type=MARKDOWN_MIME_TYPE, chunks=[]
+            result = ExtractionResult(
+                content=normalize_spaces(content), metadata=metadata, mime_type=MARKDOWN_MIME_TYPE
             )
+
+            if self.config.extract_images:
+                images: list[ExtractedImage] = run_maybe_async(self._extract_images_with_pandoc, str(path))
+                result.images = images
+                if self.config.ocr_extracted_images and result.images:
+                    image_ocr_results: list[ImageOCRResult] = run_maybe_async(
+                        self._process_images_with_ocr, result.images
+                    )
+                    result.image_ocr_results = image_ocr_results
+
+            return result
         except Exception as e:
             raise ParsingError("Failed to process file", context={"file": str(path), "error": str(e)}) from e
 
@@ -286,8 +292,7 @@ class PandocExtractor(Extractor):
 
     async def _handle_extract_metadata(self, input_file: str | PathLike[str]) -> Metadata:
         pandoc_type = self._get_pandoc_type_from_mime_type(self.mime_type)
-        metadata_file, unlink = await create_temp_file(".json")
-        try:
+        async with temporary_file(".json") as metadata_file:
             command = [
                 "pandoc",
                 str(input_file),
@@ -308,15 +313,10 @@ class PandocExtractor(Extractor):
 
             json_data = loads(await AsyncPath(metadata_file).read_text("utf-8"))
             return self._extract_metadata(json_data)
-        except (RuntimeError, OSError, JSONDecodeError) as e:
-            raise ParsingError("Failed to extract file data", context={"file": str(input_file)}) from e
-        finally:
-            await unlink()
 
     async def _handle_extract_file(self, input_file: str | PathLike[str]) -> str:
         pandoc_type = self._get_pandoc_type_from_mime_type(self.mime_type)
-        output_path, unlink = await create_temp_file(".md")
-        try:
+        async with temporary_file(".md") as output_path:
             command = [
                 "pandoc",
                 str(input_file),
@@ -339,10 +339,6 @@ class PandocExtractor(Extractor):
             text = await AsyncPath(output_path).read_text("utf-8")
 
             return normalize_spaces(text)
-        except (RuntimeError, OSError) as e:
-            raise ParsingError("Failed to extract file data", context={"file": str(input_file)}) from e
-        finally:
-            await unlink()
 
     def _extract_metadata(self, raw_meta: dict[str, Any]) -> Metadata:
         meta: Metadata = {}
@@ -378,9 +374,11 @@ class PandocExtractor(Extractor):
 
         citations_from_blocks = [
             cite["citationId"]
-            for block in raw_meta.get("blocks", [])
-            if block.get(TYPE_FIELD) == "Cite"
-            for cite in block.get(CONTENT_FIELD, [[{}]])[0]
+            for cite in chain.from_iterable(
+                block.get(CONTENT_FIELD, [[{}]])[0]
+                for block in raw_meta.get("blocks", [])
+                if block.get(TYPE_FIELD) == "Cite"
+            )
             if isinstance(cite, dict)
         ]
         if citations_from_blocks and "citations" not in meta:
@@ -391,14 +389,15 @@ class PandocExtractor(Extractor):
         return meta
 
     def _extract_inline_text(self, node: dict[str, Any], type_field: str = "t", content_field: str = "c") -> str | None:
-        if node_type := node.get(type_field):
-            if node_type == "Str":
+        match node.get(type_field):
+            case "Str":
                 return node.get(content_field)
-            if node_type == "Space":
+            case "Space":
                 return " "
-            if node_type in ("Emph", "Strong"):
+            case "Emph" | "Strong":
                 return self._extract_inlines(node.get(content_field, []))
-        return None
+            case _:
+                return None
 
     def _extract_inlines(self, nodes: list[dict[str, Any]]) -> str | None:
         texts = [text for node in nodes if (text := self._extract_inline_text(node))]
@@ -431,13 +430,8 @@ class PandocExtractor(Extractor):
                 return self._extract_inlines(content)
 
             if node_type == "MetaList":
-                results = []
-                for value in [value for item in content if (value := self._extract_meta_value(item))]:
-                    if isinstance(value, list):
-                        results.extend(value)
-                    else:
-                        results.append(value)
-                return results
+                values = [value for item in content if (value := self._extract_meta_value(item))]
+                return list(chain.from_iterable(value if isinstance(value, list) else [value] for value in values))
 
             if node_type == "MetaBlocks" and (
                 blocks := [block for block in content if block.get(type_field) == "Para"]
@@ -505,10 +499,8 @@ class PandocExtractor(Extractor):
 
     def _extract_metadata_sync(self, path: Path) -> Metadata:
         pandoc_type = self._get_pandoc_type_from_mime_type(self.mime_type)
-        fd, metadata_file = tempfile.mkstemp(suffix=".json")
-        os.close(fd)
 
-        try:
+        with temporary_file_sync(".json") as metadata_file:
             command = [
                 "pandoc",
                 str(path),
@@ -525,23 +517,15 @@ class PandocExtractor(Extractor):
             if result.returncode != 0:
                 raise ParsingError("Failed to extract file data", context={"file": str(path), "error": result.stderr})
 
-            with Path(metadata_file).open(encoding="utf-8") as f:
+            with metadata_file.open(encoding="utf-8") as f:
                 json_data = loads(f.read())
 
             return self._extract_metadata(json_data)
 
-        except (OSError, JSONDecodeError) as e:
-            raise ParsingError("Failed to extract file data", context={"file": str(path)}) from e
-        finally:
-            with contextlib.suppress(OSError):
-                Path(metadata_file).unlink()
-
     def _extract_file_sync(self, path: Path) -> str:
         pandoc_type = self._get_pandoc_type_from_mime_type(self.mime_type)
-        fd, output_path = tempfile.mkstemp(suffix=".md")
-        os.close(fd)
 
-        try:
+        with temporary_file_sync(".md") as output_path:
             command = [
                 "pandoc",
                 str(path),
@@ -559,16 +543,63 @@ class PandocExtractor(Extractor):
             if result.returncode != 0:
                 raise ParsingError("Failed to extract file data", context={"file": str(path), "error": result.stderr})
 
-            with Path(output_path).open(encoding="utf-8") as f:
+            with output_path.open(encoding="utf-8") as f:
                 text = f.read()
 
             return normalize_spaces(text)
 
-        except OSError as e:
-            raise ParsingError("Failed to extract file data", context={"file": str(path)}) from e
-        finally:
-            with contextlib.suppress(OSError):
-                Path(output_path).unlink()
+    async def _extract_images_with_pandoc(self, file_path: str) -> list[ExtractedImage]:
+        images = []
+
+        with temporary_directory() as temp_dir:
+            media_dir = Path(temp_dir) / "media"
+            media_dir.mkdir()
+
+            try:
+                cmd = [
+                    "pandoc",
+                    str(file_path),
+                    "--extract-media",
+                    str(media_dir),
+                    "-t",
+                    "markdown",
+                    "-o",
+                    "/dev/null",
+                ]
+
+                await run_process(cmd)
+
+                if media_dir.exists():
+                    for img_path in media_dir.rglob("*"):
+                        if img_path.is_file() and img_path.suffix.lower() in {
+                            ".jpg",
+                            ".jpeg",
+                            ".png",
+                            ".gif",
+                            ".bmp",
+                            ".tiff",
+                            ".webp",
+                        }:
+                            try:
+                                image_data = await AsyncPath(img_path).read_bytes()
+
+                                images.append(
+                                    ExtractedImage(
+                                        data=image_data,
+                                        format=img_path.suffix[1:].lower(),
+                                        filename=img_path.name,
+                                        page_number=None,
+                                    )
+                                )
+                            except Exception as e:  # noqa: BLE001
+                                logging.getLogger(__name__).warning(
+                                    "Failed to read extracted image %s: %s", img_path, e
+                                )
+
+            except Exception as e:  # noqa: BLE001
+                logging.getLogger(__name__).warning("Pandoc image extraction failed: %s", e)
+
+        return images
 
 
 class MarkdownExtractor(PandocExtractor):

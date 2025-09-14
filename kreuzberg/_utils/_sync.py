@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from functools import partial
 from inspect import isawaitable, iscoroutinefunction
 from typing import TYPE_CHECKING, Any, TypeVar, cast
@@ -37,14 +38,43 @@ async def run_taskgroup(*async_tasks: Awaitable[Any]) -> list[Any]:
     return results
 
 
-async def run_taskgroup_batched(*async_tasks: Awaitable[Any], batch_size: int) -> list[Any]:
-    results: list[Any] = []
+async def run_taskgroup_batched(
+    *async_tasks: Awaitable[Any],
+    batch_size: int,
+    use_semaphore: bool = True,
+) -> list[Any]:
+    """Run async tasks with controlled concurrency.
 
-    for i in range(0, len(async_tasks), batch_size):
-        batch = async_tasks[i : i + batch_size]
-        results.extend(await run_taskgroup(*batch))
+    Args:
+        async_tasks: Tasks to execute
+        batch_size: Maximum concurrent tasks
+        use_semaphore: Use semaphore for concurrency control instead of sequential batches
 
-    return results
+    Returns:
+        List of results in the same order as input tasks
+    """
+    if not async_tasks:
+        return []
+
+    if len(async_tasks) <= batch_size or not use_semaphore:
+        results: list[Any] = []
+        for i in range(0, len(async_tasks), batch_size):
+            batch = async_tasks[i : i + batch_size]
+            results.extend(await run_taskgroup(*batch))
+        return results
+
+    semaphore = asyncio.Semaphore(batch_size)
+
+    async def run_with_semaphore(task: Awaitable[Any], index: int) -> tuple[int, Any]:
+        async with semaphore:
+            result = await task
+            return (index, result)
+
+    indexed_tasks = [run_with_semaphore(task, i) for i, task in enumerate(async_tasks)]
+    indexed_results = await asyncio.gather(*indexed_tasks)
+
+    indexed_results.sort(key=lambda x: x[0])
+    return [result for _, result in indexed_results]
 
 
 async def run_maybe_sync(fn: Callable[P, T | Awaitable[T]], *args: P.args, **kwargs: P.kwargs) -> T:

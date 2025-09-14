@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import logging
 import re
 from contextlib import suppress
 from html import escape
 from io import BytesIO
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import pptx
 from anyio import Path as AsyncPath
@@ -13,8 +14,9 @@ from pptx.enum.shapes import MSO_SHAPE_TYPE
 
 from kreuzberg._extractors._base import Extractor
 from kreuzberg._mime_types import MARKDOWN_MIME_TYPE, POWER_POINT_MIME_TYPE
-from kreuzberg._types import ExtractionResult
+from kreuzberg._types import ExtractedImage, ExtractionResult, ImageOCRResult
 from kreuzberg._utils._string import normalize_spaces
+from kreuzberg._utils._sync import run_maybe_async
 
 if TYPE_CHECKING:  # pragma: no cover
     from pptx.presentation import Presentation
@@ -23,23 +25,41 @@ if TYPE_CHECKING:  # pragma: no cover
 
 _NON_WORD_PATTERN = re.compile(r"\W")
 
+logger = logging.getLogger(__name__)
+
 
 class PresentationExtractor(Extractor):
     SUPPORTED_MIME_TYPES: ClassVar[set[str]] = {POWER_POINT_MIME_TYPE}
 
     async def extract_bytes_async(self, content: bytes) -> ExtractionResult:
-        return self._extract_pptx(content)
+        result = self._extract_pptx(content)
+        if self.config.extract_images and self.config.ocr_extracted_images and result.images:
+            image_ocr_results = await self._process_images_with_ocr(result.images)
+            result.image_ocr_results = image_ocr_results
+        return result
 
     async def extract_path_async(self, path: Path) -> ExtractionResult:
         content = await AsyncPath(path).read_bytes()
-        return self._extract_pptx(content)
+        result = self._extract_pptx(content)
+        if self.config.extract_images and self.config.ocr_extracted_images and result.images:
+            image_ocr_results = await self._process_images_with_ocr(result.images)
+            result.image_ocr_results = image_ocr_results
+        return result
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
-        return self._extract_pptx(content)
+        result = self._extract_pptx(content)
+        if self.config.extract_images and self.config.ocr_extracted_images and result.images:
+            image_ocr_results: list[ImageOCRResult] = run_maybe_async(self._process_images_with_ocr, result.images)
+            result.image_ocr_results = image_ocr_results
+        return result
 
     def extract_path_sync(self, path: Path) -> ExtractionResult:
         content = Path(path).read_bytes()
-        return self._extract_pptx(content)
+        result = self._extract_pptx(content)
+        if self.config.extract_images and self.config.ocr_extracted_images and result.images:
+            image_ocr_results: list[ImageOCRResult] = run_maybe_async(self._process_images_with_ocr, result.images)
+            result.image_ocr_results = image_ocr_results
+        return result
 
     def _extract_pptx(self, file_contents: bytes) -> ExtractionResult:
         md_content = ""
@@ -63,8 +83,10 @@ class PresentationExtractor(Extractor):
                     with suppress(AttributeError):
                         alt_text = shape._element._nvXxPr.cNvPr.attrib.get("descr", "")  # noqa: SLF001
 
-                    filename = _NON_WORD_PATTERN.sub("", shape.name) + ".jpg"
-                    md_content += f"\n![{alt_text if alt_text else shape.name}]({filename})\n"
+                    name_val = shape.name if isinstance(getattr(shape, "name", None), str) else "image"
+                    filename = _NON_WORD_PATTERN.sub("", name_val) + ".jpg"
+                    label = alt_text if alt_text else name_val
+                    md_content += f"\n![{label}]({filename})\n"
 
                 elif shape.shape_type == MSO_SHAPE_TYPE.TABLE:
                     html_table = "<table>"
@@ -106,7 +128,49 @@ class PresentationExtractor(Extractor):
             chunks=[],
         )
 
+        if self.config.extract_images:
+            images = self._extract_images_from_pptx(presentation)
+            result.images = images
+
         return self._apply_quality_processing(result)
+
+    def _extract_images_from_pptx(self, presentation: Presentation) -> list[ExtractedImage]:
+        images: list[ExtractedImage] = []
+
+        for slide_num, slide in enumerate(presentation.slides, 1):
+            for shape in slide.shapes:
+                if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                    try:
+                        image = shape.image
+                        filename = f"slide_{slide_num}_image_{len(images) + 1}.{image.ext}"
+
+                        images.append(
+                            ExtractedImage(data=image.blob, format=image.ext, filename=filename, page_number=slide_num)
+                        )
+                    except Exception as e:  # noqa: BLE001
+                        logger.warning("Failed to extract image from slide %s: %s", slide_num, e)
+                        continue
+
+                elif shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                    images.extend(self._extract_from_grouped_shapes(shape, slide_num, len(images)))
+
+        return images
+
+    def _extract_from_grouped_shapes(self, group_shape: Any, slide_num: int, image_count: int) -> list[ExtractedImage]:
+        images: list[ExtractedImage] = []
+        for shape in group_shape.shapes:
+            if shape.shape_type == MSO_SHAPE_TYPE.PICTURE:
+                try:
+                    image = shape.image
+                    filename = f"slide_{slide_num}_group_image_{image_count + len(images) + 1}.{image.ext}"
+                    images.append(
+                        ExtractedImage(data=image.blob, format=image.ext, filename=filename, page_number=slide_num)
+                    )
+                except Exception as e:  # noqa: BLE001
+                    logger.warning("Failed to extract grouped image: %s", e)
+            elif shape.shape_type == MSO_SHAPE_TYPE.GROUP:
+                images.extend(self._extract_from_grouped_shapes(shape, slide_num, image_count + len(images)))
+        return images
 
     @staticmethod
     def _extract_presentation_metadata(presentation: Presentation) -> Metadata:

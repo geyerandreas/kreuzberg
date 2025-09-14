@@ -217,8 +217,32 @@ def test_email_with_attachments(email_extractor: EmailExtractor) -> None:
 
         result = email_extractor.extract_bytes_sync(b"dummy")
 
-        assert result.metadata["attachments"] == ["document.pdf", "image.jpg", "unknown"]
-        assert "Attachments: document.pdf, image.jpg, unknown" in result.content
+    assert result.metadata["attachments"] == ["document.pdf", "image.jpg", "unknown"]
+
+
+def test_email_image_attachments_to_images(email_extractor: EmailExtractor) -> None:
+    with patch("mailparse.EmailDecode.load") as mock_load:
+        mock_load.return_value = {
+            "from": "sender@example.com",
+            "to": "recipient@example.com",
+            "subject": "Email with Image",
+            "text": "See image.",
+            "attachments": [
+                {"name": "inline.png", "mime": "image/png", "data": b"\x89PNG\r\n"},
+                {"name": "note.txt", "mime": "text/plain", "data": b"hello"},
+            ],
+        }
+
+        email_extractor.config = email_extractor.config.__class__(
+            **{
+                **email_extractor.config.to_dict(),
+                "extract_images": True,
+            }
+        )
+
+        result = email_extractor.extract_bytes_sync(b"dummy")
+        assert isinstance(result.images, list)
+        assert any(img.format in {"png"} and img.filename == "inline.png" for img in result.images)
 
 
 def test_email_with_empty_attachments(email_extractor: EmailExtractor) -> None:

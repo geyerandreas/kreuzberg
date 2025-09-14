@@ -20,6 +20,8 @@ from kreuzberg._utils._sync import run_sync
 
 T = TypeVar("T")
 
+CACHE_CLEANUP_FREQUENCY = 100
+
 
 class KreuzbergCache(Generic[T]):
     def __init__(
@@ -136,15 +138,19 @@ class KreuzbergCache(Generic[T]):
     def _cleanup_cache(self) -> None:
         try:
             cache_files = list(self.cache_dir.glob("*.msgpack"))
-
             cutoff_time = time.time() - (self.max_age_days * 24 * 3600)
-            for cache_file in cache_files[:]:
+
+            remaining_files = []
+            for cache_file in cache_files:
                 try:
                     if cache_file.stat().st_mtime < cutoff_time:
                         cache_file.unlink(missing_ok=True)
-                        cache_files.remove(cache_file)
+                    else:
+                        remaining_files.append(cache_file)
                 except OSError:  # noqa: PERF203
                     continue
+
+            cache_files = remaining_files
 
             total_size = sum(cache_file.stat().st_size for cache_file in cache_files if cache_file.exists()) / (
                 1024 * 1024
@@ -191,7 +197,7 @@ class KreuzbergCache(Generic[T]):
             content = serialize(serialized)
             cache_path.write_bytes(content)
 
-            if hash(cache_key) % 100 == 0:
+            if hash(cache_key) % CACHE_CLEANUP_FREQUENCY == 0:
                 self._cleanup_cache()
         except (OSError, TypeError, ValueError):
             pass

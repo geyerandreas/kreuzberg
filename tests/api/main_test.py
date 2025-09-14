@@ -67,7 +67,6 @@ async def test_extract_from_file_extraction_error(test_client: AsyncTestClient[A
     assert response.status_code == 500
     error_response = response.json()
 
-    # The general exception handler returns these fields
     assert "error_type" in error_response
     assert "message" in error_response
     assert error_response["error_type"] == "Exception"

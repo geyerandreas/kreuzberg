@@ -320,3 +320,52 @@ async def test_extract_with_all_query_params(test_client: AsyncTestClient[Any], 
     assert "entities" in data[0]
     assert "keywords" in data[0]
     assert "detected_languages" in data[0]
+
+
+@pytest.mark.anyio
+async def test_extract_images_from_html_base64(test_client: AsyncTestClient[Any]) -> None:
+    html = (
+        b"<html><body>"
+        b'<img src="data:image/png;base64,'
+        b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+        b'" alt="Red dot">'
+        b"</body></html>"
+    )
+
+    response = await test_client.post(
+        "/extract?extract_images=true",
+        files=[("data", ("inline.html", html, "text/html"))],
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert len(data) == 1
+    assert "images" in data[0]
+    assert len(data[0]["images"]) == 1
+    img0 = data[0]["images"][0]
+    assert img0["format"] == "png"
+    assert img0["data"].startswith("data:image/png;base64,")
+    assert img0["description"] == "Red dot"
+
+
+@pytest.mark.anyio
+async def test_extract_images_with_ocr_skip_small(test_client: AsyncTestClient[Any]) -> None:
+    html = (
+        b"<html><body>"
+        b'<img src="data:image/png;base64,'
+        b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
+        b'" alt="Tiny">'
+        b"</body></html>"
+    )
+
+    response = await test_client.post(
+        "/extract?extract_images=true&ocr_extracted_images=true",
+        files=[("data", ("inline.html", html, "text/html"))],
+    )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert len(data) == 1
+    assert "image_ocr_results" in data[0]
+    assert len(data[0]["image_ocr_results"]) == 1
+    assert data[0]["image_ocr_results"][0]["skipped_reason"] is not None

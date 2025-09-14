@@ -239,7 +239,7 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
             )
 
             return ExtractionResult(
-                content=normalize_spaces(text_content), mime_type=PLAIN_TEXT_MIME_TYPE, metadata=metadata, chunks=[]
+                content=normalize_spaces(text_content), mime_type=PLAIN_TEXT_MIME_TYPE, metadata=metadata
             )
 
         # Group text boxes by lines based on Y coordinate  # ~keep
@@ -287,7 +287,7 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
         )
 
         return ExtractionResult(
-            content=normalize_spaces(text_content), mime_type=PLAIN_TEXT_MIME_TYPE, metadata=metadata, chunks=[]
+            content=normalize_spaces(text_content), mime_type=PLAIN_TEXT_MIME_TYPE, metadata=metadata
         )
 
     @classmethod

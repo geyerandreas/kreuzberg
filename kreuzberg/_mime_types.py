@@ -56,6 +56,48 @@ IMAGE_MIME_TYPES: Final[set[str]] = {
     "image/x-tiff",
 }
 
+IMAGE_FORMATS: Final[frozenset[str]] = frozenset(
+    {
+        "jpg",
+        "jpeg",
+        "png",
+        "gif",
+        "bmp",
+        "tiff",
+        "tif",
+        "webp",
+        "jp2",
+        "jpx",
+        "jpm",
+        "mj2",
+        "pnm",
+        "pbm",
+        "pgm",
+        "ppm",
+    }
+)
+
+IMAGE_MIME_TO_EXT: Final[dict[str, str]] = {
+    "image/bmp": "bmp",
+    "image/x-bmp": "bmp",
+    "image/x-ms-bmp": "bmp",
+    "image/gif": "gif",
+    "image/jpeg": "jpg",
+    "image/pjpeg": "jpg",
+    "image/png": "png",
+    "image/tiff": "tiff",
+    "image/x-tiff": "tiff",
+    "image/jp2": "jp2",
+    "image/jpx": "jpx",
+    "image/jpm": "jpm",
+    "image/mj2": "mj2",
+    "image/webp": "webp",
+    "image/x-portable-anymap": "pnm",
+    "image/x-portable-bitmap": "pbm",
+    "image/x-portable-graymap": "pgm",
+    "image/x-portable-pixmap": "ppm",
+}
+
 PANDOC_SUPPORTED_MIME_TYPES: Final[set[str]] = {
     "application/csl+json",
     "application/docbook+xml",

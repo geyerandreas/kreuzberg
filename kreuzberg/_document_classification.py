@@ -65,12 +65,10 @@ def classify_document(result: ExtractionResult, config: ExtractionConfig) -> tup
         return None, None
 
     translated_text = _get_translated_text(result)
-    scores = dict.fromkeys(DOCUMENT_CLASSIFIERS, 0)
-
-    for doc_type, patterns in DOCUMENT_CLASSIFIERS.items():
-        for pattern in patterns:
-            if re.search(pattern, translated_text):
-                scores[doc_type] += 1
+    scores = {
+        doc_type: sum(1 for pattern in patterns if re.search(pattern, translated_text))
+        for doc_type, patterns in DOCUMENT_CLASSIFIERS.items()
+    }
 
     total_score = sum(scores.values())
     if total_score == 0:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import re
 from html import unescape
 from typing import TYPE_CHECKING, Any, ClassVar
@@ -8,9 +9,8 @@ from anyio import Path as AsyncPath
 
 from kreuzberg._extractors._base import Extractor
 from kreuzberg._mime_types import EML_MIME_TYPE, PLAIN_TEXT_MIME_TYPE
-from kreuzberg._types import ExtractionResult, normalize_metadata
-from kreuzberg._utils._string import normalize_spaces
-from kreuzberg._utils._sync import run_sync
+from kreuzberg._types import ExtractedImage, ExtractionResult, ImageOCRResult, normalize_metadata
+from kreuzberg._utils._sync import run_maybe_async, run_sync
 from kreuzberg.exceptions import MissingDependencyError
 
 if TYPE_CHECKING:
@@ -84,24 +84,18 @@ class EmailExtractor(Extractor):
             text_parts.append(f"BCC: {bcc_formatted}")
 
     def _format_email_field(self, field: Any) -> str:
-        if isinstance(field, list):
-            emails = []
-            for item in field:
-                if isinstance(item, dict):
-                    email = item.get("email", "")
-                    if email:
-                        emails.append(email)
-                else:
-                    emails.append(str(item))
-            return ", ".join(emails)
-        if isinstance(field, dict):
-            return str(field.get("email", ""))
-        return str(field)
+        match field:
+            case list():
+                return ", ".join(str(item.get("email", "")) if isinstance(item, dict) else str(item) for item in field)
+            case dict():
+                return str(field.get("email", ""))
+            case _:
+                return str(field)
 
     def _extract_email_body(self, parsed_email: dict[str, Any], text_parts: list[str]) -> None:
         text_content = parsed_email.get("text")
         if text_content:
-            text_parts.append(f"\n{text_content}")
+            text_parts.append(str(text_content))
             return
 
         html_content = parsed_email.get("html")
@@ -111,21 +105,83 @@ class EmailExtractor(Extractor):
                 h.ignore_links = True
                 h.ignore_images = True
                 converted_text = h.handle(html_content)
-                text_parts.append(f"\n{converted_text}")
+                text_parts.append(converted_text)
             else:
-                clean_html = _HTML_TAG_PATTERN.sub("", html_content)
+                cleaned = re.sub(r"<script[^>]*>.*?</script>", "", html_content, flags=re.IGNORECASE | re.DOTALL)
+                cleaned = re.sub(r"<style[^>]*>.*?</style>", "", cleaned, flags=re.IGNORECASE | re.DOTALL)
+                clean_html = _HTML_TAG_PATTERN.sub("", cleaned)
                 clean_html = unescape(clean_html)
-                text_parts.append(f"\n{clean_html}")
+                clean_html = (
+                    clean_html.replace("\u201c", '"')
+                    .replace("\u201d", '"')
+                    .replace("\u2019", "'")
+                    .replace("\u2018", "'")
+                )
+                text_parts.append(clean_html)
 
     def _extract_email_attachments(
         self, parsed_email: dict[str, Any], text_parts: list[str], metadata: dict[str, Any]
     ) -> None:
         attachments = parsed_email.get("attachments")
-        if attachments and isinstance(attachments, list):
-            attachment_names = [att.get("name") or "unknown" for att in attachments]
-            metadata["attachments"] = attachment_names
-            if attachment_names:
-                text_parts.append(f"\nAttachments: {', '.join(attachment_names)}")
+        if not isinstance(attachments, list):
+            return
+        names: list[str] = []
+        for att in attachments:
+            name_val: str = "unknown"
+            if isinstance(att, dict):
+                n = att.get("name")
+                if isinstance(n, str) and n:
+                    name_val = n
+            names.append(name_val)
+        metadata["attachments"] = names
+        if names:
+            text_parts.append("Attachments: " + ", ".join(names))
+
+    def _extract_images_from_attachments(self, parsed_email: dict[str, Any]) -> list[ExtractedImage]:
+        images: list[ExtractedImage] = []
+        attachments = parsed_email.get("attachments") or []
+        if not isinstance(attachments, list):
+            return []
+
+        for idx, att in enumerate(attachments, start=1):
+            if not isinstance(att, dict):
+                continue
+
+            mime = att.get("mime") or att.get("content_type") or att.get("type")
+            if not isinstance(mime, str) or not mime.startswith("image/"):
+                continue
+
+            name = att.get("name") if isinstance(att.get("name"), str) else None
+            data = att.get("data") or att.get("content") or att.get("payload")
+            raw: bytes | None = None
+            if isinstance(data, (bytes, bytearray)):
+                raw = bytes(data)
+            elif isinstance(data, str):
+                try:
+                    raw = base64.b64decode(data)
+                except Exception:  # noqa: BLE001
+                    raw = data.encode()
+
+            if raw is None:
+                continue
+
+            fmt = mime.split("/", 1)[1].lower()
+            if name and "." in name:
+                ext = name.rsplit(".", 1)[-1].lower()
+                if ext:
+                    fmt = ext
+
+            filename = name or f"attachment_image_{idx}.{fmt}"
+            images.append(
+                ExtractedImage(
+                    data=raw,
+                    format=fmt,
+                    filename=filename,
+                    page_number=None,
+                )
+            )
+
+        return images
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
         if mailparse is None:
@@ -143,12 +199,23 @@ class EmailExtractor(Extractor):
 
             combined_text = "\n".join(text_parts)
 
-            return ExtractionResult(
-                content=normalize_spaces(combined_text),
+            result = ExtractionResult(
+                content=combined_text,
                 mime_type=PLAIN_TEXT_MIME_TYPE,
                 metadata=normalize_metadata(metadata),
                 chunks=[],
             )
+
+            if self.config.extract_images:
+                images = self._extract_images_from_attachments(parsed_email)
+                result.images = images
+                if self.config.ocr_extracted_images and result.images:
+                    image_ocr_results: list[ImageOCRResult] = run_maybe_async(
+                        self._process_images_with_ocr, result.images
+                    )
+                    result.image_ocr_results = image_ocr_results
+
+            return result
 
         except Exception as e:
             msg = f"Failed to parse email content: {e}"
