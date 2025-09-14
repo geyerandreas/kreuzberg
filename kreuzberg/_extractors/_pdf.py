@@ -51,6 +51,11 @@ if TYPE_CHECKING:  # pragma: no cover
 
 logger = logging.getLogger(__name__)
 
+# PDF processing constants
+PDF_MAX_WORKERS = 8
+PDF_MAX_RETRY_ATTEMPTS = 3
+PDF_RETRY_DELAY_BASE = 0.5
+
 
 class PDFExtractor(Extractor):
     SUPPORTED_MIME_TYPES: ClassVar[set[str]] = {PDF_MIME_TYPE}
@@ -275,7 +280,7 @@ class PDFExtractor(Extractor):
             return []
 
         images = []
-        max_workers = min(8, len(jobs))
+        max_workers = min(PDF_MAX_WORKERS, len(jobs))
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {executor.submit(extract_single_image, *job): i for i, job in enumerate(jobs)}
             for future in as_completed(futures):
@@ -290,7 +295,7 @@ class PDFExtractor(Extractor):
         document: pypdfium2.PdfDocument | None = None
         last_error = None
 
-        for attempt in range(3):  # Try up to 3 times  # ~keep
+        for attempt in range(PDF_MAX_RETRY_ATTEMPTS):  # ~keep
             try:
                 with pypdfium_file_lock(input_file):
                     document = await run_sync(pypdfium2.PdfDocument, str(input_file))
@@ -327,7 +332,7 @@ class PDFExtractor(Extractor):
                         ),
                     ) from e
                 # Wait before retry with exponential backoff  # ~keep
-                await anyio.sleep(0.5 * (attempt + 1))
+                await anyio.sleep(PDF_RETRY_DELAY_BASE * (attempt + 1))
             finally:
                 if document:
                     with pypdfium_file_lock(input_file), contextlib.suppress(Exception):
@@ -340,7 +345,7 @@ class PDFExtractor(Extractor):
                 operation="convert_pdf_to_images",
                 file_path=input_file,
                 error=last_error,
-                attempts=3,
+                attempts=PDF_MAX_RETRY_ATTEMPTS,
             ),
         ) from last_error
 
@@ -546,7 +551,7 @@ class PDFExtractor(Extractor):
         for password in passwords:
             try:
                 return await extract_pdf_metadata(content, password=password)
-            except Exception as e:  # noqa: PERF203, BLE001
+            except (ParsingError, ValueError, TypeError, OSError) as e:  # noqa: PERF203
                 last_exception = e
                 continue
 
@@ -564,7 +569,7 @@ class PDFExtractor(Extractor):
         for password in passwords:
             try:
                 return extract_pdf_metadata_sync(content, password=password)
-            except Exception as e:  # noqa: PERF203, BLE001
+            except (ParsingError, ValueError, TypeError, OSError) as e:  # noqa: PERF203
                 last_exception = e
                 continue
 

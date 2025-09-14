@@ -20,14 +20,15 @@ def get_chunker(
     key = (max_characters, overlap_characters, mime_type)
     if key not in _chunkers:
         try:
-            if mime_type == MARKDOWN_MIME_TYPE:
-                from semantic_text_splitter import MarkdownSplitter  # noqa: PLC0415
+            match mime_type:
+                case x if x == MARKDOWN_MIME_TYPE:
+                    from semantic_text_splitter import MarkdownSplitter  # noqa: PLC0415
 
-                _chunkers[key] = MarkdownSplitter(max_characters, overlap_characters)
-            else:
-                from semantic_text_splitter import TextSplitter  # noqa: PLC0415
+                    _chunkers[key] = MarkdownSplitter(max_characters, overlap_characters)
+                case _:
+                    from semantic_text_splitter import TextSplitter  # noqa: PLC0415
 
-                _chunkers[key] = TextSplitter(max_characters, overlap_characters)
+                    _chunkers[key] = TextSplitter(max_characters, overlap_characters)
         except ImportError as e:  # pragma: no cover
             raise MissingDependencyError.create_for_package(
                 dependency_group="chunking", functionality="chunking", package_name="semantic-text-splitter"

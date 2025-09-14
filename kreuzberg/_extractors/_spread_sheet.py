@@ -122,15 +122,17 @@ class SpreadSheetExtractor(Extractor):
 
     @staticmethod
     def _convert_cell_to_str(value: Any) -> str:
-        if value is None:
-            return ""
-        if isinstance(value, bool):
-            return str(value).lower()
-        if isinstance(value, (datetime, date, time)):
-            return value.isoformat()
-        if isinstance(value, timedelta):
-            return f"{value.total_seconds()} seconds"
-        return str(value)
+        match value:
+            case None:
+                return ""
+            case bool():
+                return str(value).lower()
+            case datetime() | date() | time():
+                return value.isoformat()
+            case timedelta():
+                return f"{value.total_seconds()} seconds"
+            case _:
+                return str(value)
 
     async def _convert_sheet_to_text(self, workbook: CalamineWorkbook, sheet_name: str) -> str:
         values = workbook.get_sheet_by_name(sheet_name).to_python()

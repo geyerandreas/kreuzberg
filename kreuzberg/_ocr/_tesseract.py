@@ -258,18 +258,19 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         if enable_table_detection and output_format == "text":
             output_format = "tsv"
 
-        if output_format == "markdown":
-            tesseract_format = "hocr"
-            ext = ".hocr"
-        elif output_format == "tsv":
-            tesseract_format = "tsv"
-            ext = ".tsv"
-        elif output_format == "hocr":
-            tesseract_format = "hocr"
-            ext = ".hocr"
-        else:
-            tesseract_format = "text"
-            ext = ".txt"
+        match output_format:
+            case "markdown":
+                tesseract_format = "hocr"
+                ext = ".hocr"
+            case "tsv":
+                tesseract_format = "tsv"
+                ext = ".tsv"
+            case "hocr":
+                tesseract_format = "hocr"
+                ext = ".hocr"
+            case _:
+                tesseract_format = "text"
+                ext = ".txt"
 
         return {
             "language": language,
