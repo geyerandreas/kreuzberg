@@ -254,7 +254,7 @@ exclude_lines = [
 fail_under = 85
 
 [tool.mypy]
-packages = [ "kreuzberg", "tests", "benchmarks.src.kreuzberg_benchmarks" ]
+packages = [ "kreuzberg", "tests", "benchmarks" ]
 python_version = "3.10"
 disable_error_code = 'import-untyped'
 implicit_reexport = false
@@ -286,11 +286,12 @@ module = [
   "keybert.*",
   "mailparse.*",
   "deep_translator.*",
+  "msgpack.*",
 ]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "benchmarks.src.kreuzberg_benchmarks.*"
+module = "benchmarks.*"
 disable_error_code = [ "misc" ]
 
 [[tool.mypy.overrides]]

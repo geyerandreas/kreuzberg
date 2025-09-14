@@ -675,6 +675,8 @@ class Metadata(TypedDict, total=False):
     """Source format of the extracted content."""
     error: NotRequired[str]
     """Error message if extraction failed."""
+    error_context: NotRequired[dict[str, Any]]
+    """Error context information for debugging."""
 
 
 _VALID_METADATA_KEYS = {
@@ -717,6 +719,9 @@ _VALID_METADATA_KEYS = {
     "tables_summary",
     "quality_score",
     "image_preprocessing",
+    "source_format",
+    "error",
+    "error_context",
 }
 
 

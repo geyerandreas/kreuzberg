@@ -361,14 +361,13 @@ async def test_batch_extract_bytes_error_context_includes_index() -> None:
     assert len(result) == 2
 
     # Check first error has index 0
-    assert result[0].metadata["error_context"]["index"] == 0  # type: ignore[typeddict-item]
-    assert result[0].metadata["error_context"]["operation"] == "batch_extract_bytes"  # type: ignore[typeddict-item]
-    assert result[0].metadata["error_context"]["mime_type"] == "text/plain"  # type: ignore[typeddict-item]
-    assert result[0].metadata["error_context"]["content_size"] == 9  # type: ignore[typeddict-item]
-
+    assert result[0].metadata["error_context"]["index"] == 0
+    assert result[0].metadata["error_context"]["operation"] == "batch_extract_bytes"
+    assert result[0].metadata["error_context"]["mime_type"] == "text/plain"
+    assert result[0].metadata["error_context"]["content_size"] == 9
     # Check second error has index 1
-    assert result[1].metadata["error_context"]["index"] == 1  # type: ignore[typeddict-item]
-    assert result[1].metadata["error_context"]["operation"] == "batch_extract_bytes"  # type: ignore[typeddict-item]
+    assert result[1].metadata["error_context"]["index"] == 1
+    assert result[1].metadata["error_context"]["operation"] == "batch_extract_bytes"
 
 
 @pytest.mark.anyio
@@ -381,22 +380,21 @@ async def test_batch_extract_file_error_context_includes_index() -> None:
     assert len(result) == 2
 
     # Check first error has index 0
-    assert result[0].metadata["error_context"]["index"] == 0  # type: ignore[typeddict-item]
-    assert result[0].metadata["error_context"]["operation"] == "batch_extract_file"  # type: ignore[typeddict-item]
+    assert result[0].metadata["error_context"]["index"] == 0
+    assert result[0].metadata["error_context"]["operation"] == "batch_extract_file"
     # File path might be stored differently depending on implementation
     # File path might be stored differently depending on implementation
     assert "file_path" in result[0].metadata["error_context"] or str(nonexistent_files[0]) in str(
         result[0].metadata["error_context"]
-    )  # type: ignore[typeddict-item]
-
+    )
     # Check second error has index 1
-    assert result[1].metadata["error_context"]["index"] == 1  # type: ignore[typeddict-item]
-    assert result[1].metadata["error_context"]["operation"] == "batch_extract_file"  # type: ignore[typeddict-item]
+    assert result[1].metadata["error_context"]["index"] == 1
+    assert result[1].metadata["error_context"]["operation"] == "batch_extract_file"
     # File path might be stored differently depending on implementation
     # File path might be stored differently depending on implementation
     assert "file_path" in result[1].metadata["error_context"] or str(nonexistent_files[1]) in str(
         result[1].metadata["error_context"]
-    )  # type: ignore[typeddict-item]
+    )
 
 
 def test_batch_extract_bytes_sync_error_context_preserves_ordering() -> None:

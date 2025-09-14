@@ -242,11 +242,11 @@ async def batch_extract_file(
                 error_result = ExtractionResult(
                     content=f"Error: {type(e).__name__}: {e!s}",
                     mime_type="text/plain",
-                    metadata={  # type: ignore[typeddict-unknown-key]
+                    metadata={
                         "error": f"{type(e).__name__}: {e!s}",
                         "error_context": create_error_context(
                             operation="batch_extract_file",
-                            file_path=path,
+                            file_path=str(path),
                             error=e,
                             index=index,
                         ),
@@ -291,7 +291,7 @@ async def batch_extract_bytes(
                 error_result = ExtractionResult(
                     content=f"Error: {type(e).__name__}: {e!s}",
                     mime_type="text/plain",
-                    metadata={  # type: ignore[typeddict-unknown-key]
+                    metadata={
                         "error": f"{type(e).__name__}: {e!s}",
                         "error_context": create_error_context(
                             operation="batch_extract_bytes",
@@ -426,11 +426,11 @@ def batch_extract_file_sync(
             error_result = ExtractionResult(
                 content=f"Error: {type(e).__name__}: {e!s}",
                 mime_type="text/plain",
-                metadata={  # type: ignore[typeddict-unknown-key]
+                metadata={
                     "error": f"{type(e).__name__}: {e!s}",
                     "error_context": create_error_context(
                         operation="batch_extract_file_sync",
-                        file_path=file_path,
+                        file_path=str(file_path),
                         error=e,
                     ),
                 },
@@ -476,7 +476,7 @@ def batch_extract_bytes_sync(
             error_result = ExtractionResult(
                 content=f"Error: {type(e).__name__}: {e!s}",
                 mime_type="text/plain",
-                metadata={  # type: ignore[typeddict-unknown-key]
+                metadata={
                     "error": f"{type(e).__name__}: {e!s}",
                     "error_context": create_error_context(
                         operation="batch_extract_bytes_sync",
