@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import contextlib
 import json
 from typing import Any
 
@@ -9,8 +10,11 @@ from mcp.server import FastMCP
 from mcp.types import TextContent
 
 from kreuzberg._config import discover_config
-from kreuzberg._types import ExtractionConfig, OcrBackendType
-from kreuzberg.extraction import extract_bytes_sync, extract_file_sync
+from kreuzberg._types import ExtractionConfig, OcrBackendType, PSMMode, TesseractConfig
+from kreuzberg.extraction import (
+    extract_bytes_sync,
+    extract_file_sync,
+)
 
 mcp = FastMCP("Kreuzberg Text Extraction")
 
@@ -36,7 +40,41 @@ def _create_config_with_overrides(**kwargs: Any) -> ExtractionConfig:
         "gmft_config": base_config.gmft_config,
     }
 
+    # Extract Tesseract-specific parameters from kwargs
+    tesseract_lang = kwargs.pop("tesseract_lang", None)
+    tesseract_psm = kwargs.pop("tesseract_psm", None)
+    tesseract_output_format = kwargs.pop("tesseract_output_format", None)
+    enable_table_detection = kwargs.pop("enable_table_detection", None)
+
     config_dict = config_dict | kwargs
+
+    # Handle Tesseract OCR configuration
+    ocr_backend = config_dict.get("ocr_backend")
+    if ocr_backend == "tesseract" and (
+        tesseract_lang or tesseract_psm is not None or tesseract_output_format or enable_table_detection
+    ):
+        tesseract_config_dict = {}
+
+        if tesseract_lang:
+            tesseract_config_dict["language"] = tesseract_lang
+        if tesseract_psm is not None:
+            with contextlib.suppress(ValueError):
+                tesseract_config_dict["psm"] = PSMMode(tesseract_psm)
+        if tesseract_output_format:
+            tesseract_config_dict["output_format"] = tesseract_output_format
+        if enable_table_detection:
+            tesseract_config_dict["enable_table_detection"] = True
+
+        if tesseract_config_dict:
+            # Merge with existing tesseract config if present
+            existing_ocr_config = config_dict.get("ocr_config")
+            if existing_ocr_config and isinstance(existing_ocr_config, TesseractConfig):
+                # Convert existing config to dict, merge, and recreate
+                existing_dict = existing_ocr_config.to_dict()
+                merged_dict = existing_dict | tesseract_config_dict
+                config_dict["ocr_config"] = TesseractConfig(**merged_dict)
+            else:
+                config_dict["ocr_config"] = TesseractConfig(**tesseract_config_dict)
 
     return ExtractionConfig(**config_dict)
 
@@ -55,6 +93,10 @@ def extract_document(  # noqa: PLR0913
     max_overlap: int = 200,
     keyword_count: int = 10,
     auto_detect_language: bool = False,
+    tesseract_lang: str | None = None,
+    tesseract_psm: int | None = None,
+    tesseract_output_format: str | None = None,
+    enable_table_detection: bool | None = None,
 ) -> dict[str, Any]:
     config = _create_config_with_overrides(
         force_ocr=force_ocr,
@@ -67,6 +109,10 @@ def extract_document(  # noqa: PLR0913
         max_overlap=max_overlap,
         keyword_count=keyword_count,
         auto_detect_language=auto_detect_language,
+        tesseract_lang=tesseract_lang,
+        tesseract_psm=tesseract_psm,
+        tesseract_output_format=tesseract_output_format,
+        enable_table_detection=enable_table_detection,
     )
 
     result = extract_file_sync(file_path, mime_type, config)
@@ -87,6 +133,10 @@ def extract_bytes(  # noqa: PLR0913
     max_overlap: int = 200,
     keyword_count: int = 10,
     auto_detect_language: bool = False,
+    tesseract_lang: str | None = None,
+    tesseract_psm: int | None = None,
+    tesseract_output_format: str | None = None,
+    enable_table_detection: bool | None = None,
 ) -> dict[str, Any]:
     content_bytes = base64.b64decode(content_base64)
 
@@ -101,6 +151,10 @@ def extract_bytes(  # noqa: PLR0913
         max_overlap=max_overlap,
         keyword_count=keyword_count,
         auto_detect_language=auto_detect_language,
+        tesseract_lang=tesseract_lang,
+        tesseract_psm=tesseract_psm,
+        tesseract_output_format=tesseract_output_format,
+        enable_table_detection=enable_table_detection,
     )
 
     result = extract_bytes_sync(content_bytes, mime_type, config)
