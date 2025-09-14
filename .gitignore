@@ -69,3 +69,4 @@ yarn-error.log*
 
 # AI Rules generated files
 .claude/agents/
+AGENTS.md
