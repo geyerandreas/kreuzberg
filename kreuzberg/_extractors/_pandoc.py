@@ -368,8 +368,8 @@ class PandocExtractor(Extractor):
 
             extracted = self._extract_meta_value(value)
             if extracted:
-                if pandoc_key in ("languages", "authors"):
-                    extracted = [extracted]  # type: ignore[list-item]
+                if pandoc_key in ("languages", "authors") and not isinstance(extracted, list):
+                    extracted = [extracted]
                 meta[pandoc_key] = extracted  # type: ignore[literal-required]
 
         citations_from_blocks = [

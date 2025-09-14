@@ -987,7 +987,7 @@ name = "exceptiongroup"
 version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/0b/9f/a65090624ecf468cdca03533906e7c69ed7588582240cfe7cc9e770b50eb/exceptiongroup-1.3.0.tar.gz", hash = "sha256:b241f5885f560bc56a59ee63ca4c6a8bfa46ae4ad651af316d4e81817bb9fd88", size = 29749, upload-time = "2025-05-10T17:42:51.123Z" }
 wheels = [
@@ -6151,11 +6151,11 @@ wheels = [
 
 [[package]]
 name = "xlsxwriter"
-version = "3.2.6"
+version = "3.2.8"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5c/95/fc3f7321591f02547defe4307f885b6fc36ac9f31e1cbba7c536bf396657/xlsxwriter-3.2.6.tar.gz", hash = "sha256:0686a0293a38ef949136b908d1a3048a40f438be58aabf701c0724e0b41de75e", size = 215972, upload-time = "2025-09-12T19:25:05.117Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/06/8f/f6bec39596df9634e3860000ee8c1467398c5f489ac5461456026b074ee7/xlsxwriter-3.2.8.tar.gz", hash = "sha256:8c0dc8f1538c4052a4d4e07a1962750949c2a469138a6cfbc73349c88f6b39a7", size = 216091, upload-time = "2025-09-14T12:41:02.715Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c9/26/3388f77ede6823c26b47d3e22f723a9c2ffb189b99b70d4445a2eaf83b8f/xlsxwriter-3.2.6-py3-none-any.whl", hash = "sha256:e793acff58c5026f24d7b83cbefbaf3a7da275b0273772f8f17b227a06d9bd95", size = 175435, upload-time = "2025-09-12T19:25:03.804Z" },
+    { url = "https://files.pythonhosted.org/packages/fd/45/de7a965ad9c4be23b60e99c5fe491e5f5b3c5026f530313b05ed7533ef24/xlsxwriter-3.2.8-py3-none-any.whl", hash = "sha256:cb0baf8c9bcce14fdadd01297f4e6cd64901cf536283a1f4ab5d07290d85a66b", size = 175480, upload-time = "2025-09-14T12:41:01.257Z" },
 ]
 
 [[package]]

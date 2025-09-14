@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import json
+from pathlib import Path
 from typing import Any
 
 import msgspec
@@ -9,34 +11,178 @@ from mcp.server import FastMCP
 from mcp.types import TextContent
 
 from kreuzberg._config import discover_config
-from kreuzberg._types import ExtractionConfig, OcrBackendType
-from kreuzberg.extraction import extract_bytes_sync, extract_file_sync
+from kreuzberg._types import ExtractionConfig, OcrBackendType, PSMMode, TesseractConfig
+from kreuzberg.exceptions import ValidationError
+from kreuzberg.extraction import (
+    batch_extract_bytes_sync,
+    batch_extract_file_sync,
+    extract_bytes_sync,
+    extract_file_sync,
+)
 
 mcp = FastMCP("Kreuzberg Text Extraction")
+
+# Security and performance limits
+MAX_BATCH_SIZE = 100
+
+
+def _validate_file_path(file_path: str) -> Path:
+    """Validate file path to prevent path traversal attacks.
+
+    Args:
+        file_path: The file path to validate
+
+    Returns:
+        Path: The validated Path object
+
+    Raises:
+        ValidationError: If path traversal is detected or path is invalid
+    """
+    try:
+        path = Path(file_path).resolve()
+    except (OSError, ValueError) as e:
+        raise ValidationError(
+            f"Invalid file path: {file_path}",
+            context={"file_path": file_path, "error": str(e)},
+        ) from e
+
+    # Check for path traversal attempts
+    if ".." in file_path and not file_path.startswith("/"):
+        raise ValidationError(
+            "Path traversal detected in file path",
+            context={"file_path": file_path, "resolved_path": str(path)},
+        )
+
+    if not path.exists():
+        raise ValidationError(
+            f"File not found: {file_path}",
+            context={"file_path": file_path, "resolved_path": str(path)},
+        )
+
+    if not path.is_file():
+        raise ValidationError(
+            f"Path is not a file: {file_path}",
+            context={"file_path": file_path, "resolved_path": str(path)},
+        )
+
+    return path
+
+
+def _validate_file_path_with_context(file_path: str, index: int, total: int) -> Path:
+    """Validate file path and add context for batch operations."""
+    try:
+        return _validate_file_path(file_path)
+    except ValidationError as e:
+        # Add context about which file in the batch failed
+        e.context = e.context or {}
+        e.context["batch_index"] = index
+        e.context["total_files"] = total
+        raise
+
+
+def _validate_base64_content(content_base64: str, context_info: str | None = None) -> bytes:
+    """Validate and decode base64 content with proper error handling.
+
+    Args:
+        content_base64: The base64 string to validate and decode
+        context_info: Additional context information for error reporting
+
+    Returns:
+        bytes: The decoded content
+
+    Raises:
+        ValidationError: If the base64 content is invalid
+    """
+    if not content_base64:
+        raise ValidationError(
+            "Base64 content cannot be empty",
+            context={"context": context_info},
+        )
+
+    # Check for whitespace-only content
+    if not content_base64.strip():
+        raise ValidationError(
+            "Base64 content cannot be whitespace only",
+            context={"content_preview": content_base64[:50], "context": context_info},
+        )
+
+    try:
+        content_bytes = base64.b64decode(content_base64, validate=True)
+    except (ValueError, binascii.Error) as e:
+        error_type = type(e).__name__
+        raise ValidationError(
+            f"Invalid base64 content: {error_type}: {e}",
+            context={
+                "error_type": error_type,
+                "error": str(e),
+                "content_preview": content_base64[:50] + "..." if len(content_base64) > 50 else content_base64,
+                "context": context_info,
+            },
+        ) from e
+
+    return content_bytes
 
 
 def _create_config_with_overrides(**kwargs: Any) -> ExtractionConfig:
     base_config = discover_config()
 
+    # Extract Tesseract-specific parameters from kwargs first
+    tesseract_lang = kwargs.pop("tesseract_lang", None)
+    tesseract_psm = kwargs.pop("tesseract_psm", None)
+    tesseract_output_format = kwargs.pop("tesseract_output_format", None)
+    enable_table_detection = kwargs.pop("enable_table_detection", None)
+
     if base_config is None:
-        return ExtractionConfig(**kwargs)
+        config_dict = kwargs
+    else:
+        config_dict = {
+            "force_ocr": base_config.force_ocr,
+            "chunk_content": base_config.chunk_content,
+            "extract_tables": base_config.extract_tables,
+            "extract_entities": base_config.extract_entities,
+            "extract_keywords": base_config.extract_keywords,
+            "ocr_backend": base_config.ocr_backend,
+            "max_chars": base_config.max_chars,
+            "max_overlap": base_config.max_overlap,
+            "keyword_count": base_config.keyword_count,
+            "auto_detect_language": base_config.auto_detect_language,
+            "ocr_config": base_config.ocr_config,
+            "gmft_config": base_config.gmft_config,
+        }
+        config_dict = config_dict | kwargs
 
-    config_dict: dict[str, Any] = {
-        "force_ocr": base_config.force_ocr,
-        "chunk_content": base_config.chunk_content,
-        "extract_tables": base_config.extract_tables,
-        "extract_entities": base_config.extract_entities,
-        "extract_keywords": base_config.extract_keywords,
-        "ocr_backend": base_config.ocr_backend,
-        "max_chars": base_config.max_chars,
-        "max_overlap": base_config.max_overlap,
-        "keyword_count": base_config.keyword_count,
-        "auto_detect_language": base_config.auto_detect_language,
-        "ocr_config": base_config.ocr_config,
-        "gmft_config": base_config.gmft_config,
-    }
+    # Handle Tesseract OCR configuration
+    ocr_backend = config_dict.get("ocr_backend")
+    if ocr_backend == "tesseract" and (
+        tesseract_lang or tesseract_psm is not None or tesseract_output_format or enable_table_detection
+    ):
+        tesseract_config_dict = {}
 
-    config_dict = config_dict | kwargs
+        if tesseract_lang:
+            tesseract_config_dict["language"] = tesseract_lang
+        if tesseract_psm is not None:
+            try:
+                tesseract_config_dict["psm"] = PSMMode(tesseract_psm)
+            except ValueError as e:
+                raise ValidationError(
+                    f"Invalid PSM mode value: {tesseract_psm}",
+                    context={"psm_value": tesseract_psm, "error": str(e)},
+                ) from e
+        if tesseract_output_format:
+            tesseract_config_dict["output_format"] = tesseract_output_format
+        if enable_table_detection:
+            tesseract_config_dict["enable_table_detection"] = True
+
+        if tesseract_config_dict:
+            # Merge with existing tesseract config if present
+            existing_ocr_config = config_dict.get("ocr_config")
+            if existing_ocr_config and isinstance(existing_ocr_config, TesseractConfig):
+                # Convert existing config to dict, merge, and recreate
+                existing_dict = existing_ocr_config.to_dict()
+                merged_dict = existing_dict | tesseract_config_dict
+                config_dict["ocr_config"] = TesseractConfig(**merged_dict)
+            else:
+                config_dict["ocr_config"] = TesseractConfig(**tesseract_config_dict)
 
     return ExtractionConfig(**config_dict)
 
@@ -55,7 +201,13 @@ def extract_document(  # noqa: PLR0913
     max_overlap: int = 200,
     keyword_count: int = 10,
     auto_detect_language: bool = False,
+    tesseract_lang: str | None = None,
+    tesseract_psm: int | None = None,
+    tesseract_output_format: str | None = None,
+    enable_table_detection: bool | None = None,
 ) -> dict[str, Any]:
+    # Validate file path for security
+    validated_path = _validate_file_path(file_path)
     config = _create_config_with_overrides(
         force_ocr=force_ocr,
         chunk_content=chunk_content,
@@ -67,9 +219,13 @@ def extract_document(  # noqa: PLR0913
         max_overlap=max_overlap,
         keyword_count=keyword_count,
         auto_detect_language=auto_detect_language,
+        tesseract_lang=tesseract_lang,
+        tesseract_psm=tesseract_psm,
+        tesseract_output_format=tesseract_output_format,
+        enable_table_detection=enable_table_detection,
     )
 
-    result = extract_file_sync(file_path, mime_type, config)
+    result = extract_file_sync(str(validated_path), mime_type, config)
     return result.to_dict(include_none=True)
 
 
@@ -87,8 +243,12 @@ def extract_bytes(  # noqa: PLR0913
     max_overlap: int = 200,
     keyword_count: int = 10,
     auto_detect_language: bool = False,
+    tesseract_lang: str | None = None,
+    tesseract_psm: int | None = None,
+    tesseract_output_format: str | None = None,
+    enable_table_detection: bool | None = None,
 ) -> dict[str, Any]:
-    content_bytes = base64.b64decode(content_base64)
+    content_bytes = _validate_base64_content(content_base64, "extract_bytes")
 
     config = _create_config_with_overrides(
         force_ocr=force_ocr,
@@ -101,6 +261,10 @@ def extract_bytes(  # noqa: PLR0913
         max_overlap=max_overlap,
         keyword_count=keyword_count,
         auto_detect_language=auto_detect_language,
+        tesseract_lang=tesseract_lang,
+        tesseract_psm=tesseract_psm,
+        tesseract_output_format=tesseract_output_format,
+        enable_table_detection=enable_table_detection,
     )
 
     result = extract_bytes_sync(content_bytes, mime_type, config)
@@ -108,12 +272,164 @@ def extract_bytes(  # noqa: PLR0913
 
 
 @mcp.tool()
+def batch_extract_document(  # noqa: PLR0913
+    file_paths: list[str],
+    force_ocr: bool = False,
+    chunk_content: bool = False,
+    extract_tables: bool = False,
+    extract_entities: bool = False,
+    extract_keywords: bool = False,
+    ocr_backend: OcrBackendType = "tesseract",
+    max_chars: int = 1000,
+    max_overlap: int = 200,
+    keyword_count: int = 10,
+    auto_detect_language: bool = False,
+    tesseract_lang: str | None = None,
+    tesseract_psm: int | None = None,
+    tesseract_output_format: str | None = None,
+    enable_table_detection: bool | None = None,
+) -> list[dict[str, Any]]:
+    # Validate batch size
+    if len(file_paths) > MAX_BATCH_SIZE:
+        raise ValidationError(
+            f"Batch size exceeds maximum limit of {MAX_BATCH_SIZE}",
+            context={"batch_size": len(file_paths), "max_batch_size": MAX_BATCH_SIZE},
+        )
+
+    if not file_paths:
+        raise ValidationError(
+            "File paths list cannot be empty",
+            context={"file_paths": file_paths},
+        )
+
+    # Validate all file paths for security
+    validated_paths = []
+    for i, file_path in enumerate(file_paths):
+        validated_path = _validate_file_path_with_context(file_path, i, len(file_paths))
+        validated_paths.append(str(validated_path))
+    config = _create_config_with_overrides(
+        force_ocr=force_ocr,
+        chunk_content=chunk_content,
+        extract_tables=extract_tables,
+        extract_entities=extract_entities,
+        extract_keywords=extract_keywords,
+        ocr_backend=ocr_backend,
+        max_chars=max_chars,
+        max_overlap=max_overlap,
+        keyword_count=keyword_count,
+        auto_detect_language=auto_detect_language,
+        tesseract_lang=tesseract_lang,
+        tesseract_psm=tesseract_psm,
+        tesseract_output_format=tesseract_output_format,
+        enable_table_detection=enable_table_detection,
+    )
+
+    results = batch_extract_file_sync(validated_paths, config)
+    return [result.to_dict(include_none=True) for result in results]
+
+
+@mcp.tool()
+def batch_extract_bytes(  # noqa: PLR0913
+    content_items: list[dict[str, str]],
+    force_ocr: bool = False,
+    chunk_content: bool = False,
+    extract_tables: bool = False,
+    extract_entities: bool = False,
+    extract_keywords: bool = False,
+    ocr_backend: OcrBackendType = "tesseract",
+    max_chars: int = 1000,
+    max_overlap: int = 200,
+    keyword_count: int = 10,
+    auto_detect_language: bool = False,
+    tesseract_lang: str | None = None,
+    tesseract_psm: int | None = None,
+    tesseract_output_format: str | None = None,
+    enable_table_detection: bool | None = None,
+) -> list[dict[str, Any]]:
+    # Validate input
+    if not content_items:
+        raise ValidationError("content_items cannot be empty", context={"content_items": content_items})
+
+    if not isinstance(content_items, list):
+        raise ValidationError(
+            "content_items must be a list", context={"content_items_type": type(content_items).__name__}
+        )
+
+    # Validate batch size
+    if len(content_items) > MAX_BATCH_SIZE:
+        raise ValidationError(
+            f"Batch size exceeds maximum limit of {MAX_BATCH_SIZE}",
+            context={"batch_size": len(content_items), "max_batch_size": MAX_BATCH_SIZE},
+        )
+
+    config = _create_config_with_overrides(
+        force_ocr=force_ocr,
+        chunk_content=chunk_content,
+        extract_tables=extract_tables,
+        extract_entities=extract_entities,
+        extract_keywords=extract_keywords,
+        ocr_backend=ocr_backend,
+        max_chars=max_chars,
+        max_overlap=max_overlap,
+        keyword_count=keyword_count,
+        auto_detect_language=auto_detect_language,
+        tesseract_lang=tesseract_lang,
+        tesseract_psm=tesseract_psm,
+        tesseract_output_format=tesseract_output_format,
+        enable_table_detection=enable_table_detection,
+    )
+
+    # Convert list of dicts to list of tuples (bytes, mime_type)
+    contents = []
+    for i, item in enumerate(content_items):
+        # Validate item structure
+        if not isinstance(item, dict):
+            raise ValidationError(
+                f"Item at index {i} must be a dictionary",
+                context={"item_index": i, "item_type": type(item).__name__, "item": item},
+            )
+
+        # Check for required keys
+        if "content_base64" not in item:
+            raise ValidationError(
+                f"Item at index {i} is missing required key 'content_base64'",
+                context={"item_index": i, "item_keys": list(item.keys()), "item": item},
+            )
+
+        if "mime_type" not in item:
+            raise ValidationError(
+                f"Item at index {i} is missing required key 'mime_type'",
+                context={"item_index": i, "item_keys": list(item.keys()), "item": item},
+            )
+
+        content_base64 = item["content_base64"]
+        mime_type = item["mime_type"]
+
+        # Validate base64 content
+        try:
+            content_bytes = _validate_base64_content(content_base64, f"batch_extract_bytes item {i}")
+        except ValidationError as e:
+            # Add batch-specific context
+            e.context = e.context or {}
+            e.context["item_index"] = i
+            e.context["total_items"] = len(content_items)
+            raise
+
+        contents.append((content_bytes, mime_type))
+
+    results = batch_extract_bytes_sync(contents, config)
+    return [result.to_dict(include_none=True) for result in results]
+
+
+@mcp.tool()
 def extract_simple(
     file_path: str,
     mime_type: str | None = None,
 ) -> str:
+    # Validate file path for security
+    validated_path = _validate_file_path(file_path)
     config = _create_config_with_overrides()
-    result = extract_file_sync(file_path, mime_type, config)
+    result = extract_file_sync(str(validated_path), mime_type, config)
     return result.content
 
 
@@ -151,7 +467,9 @@ def get_supported_formats() -> str:
 
 @mcp.prompt()
 def extract_and_summarize(file_path: str) -> list[TextContent]:
-    result = extract_file_sync(file_path, None, _create_config_with_overrides())
+    # Validate file path for security
+    validated_path = _validate_file_path(file_path)
+    result = extract_file_sync(str(validated_path), None, _create_config_with_overrides())
 
     return [
         TextContent(
@@ -163,12 +481,14 @@ def extract_and_summarize(file_path: str) -> list[TextContent]:
 
 @mcp.prompt()
 def extract_structured(file_path: str) -> list[TextContent]:
+    # Validate file path for security
+    validated_path = _validate_file_path(file_path)
     config = _create_config_with_overrides(
         extract_entities=True,
         extract_keywords=True,
         extract_tables=True,
     )
-    result = extract_file_sync(file_path, None, config)
+    result = extract_file_sync(str(validated_path), None, config)
 
     content = f"Document Content:\n{result.content}\n\n"
 

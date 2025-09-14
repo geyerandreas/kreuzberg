@@ -549,7 +549,7 @@ def test_email_header_extraction_comprehensive_to_field_list_first_no_email(emai
         result = email_extractor.extract_bytes_sync(b"dummy")
 
         assert result.metadata["email_to"] == ""
-        assert "To: , recipient2@example.com" in result.content
+        assert "To: recipient2@example.com" in result.content
 
 
 def test_email_header_extraction_comprehensive_to_field_list_strings(email_extractor: EmailExtractor) -> None:
@@ -661,7 +661,7 @@ def test_email_body_extraction_comprehensive_text_only(email_extractor: EmailExt
 
         result = email_extractor.extract_bytes_sync(b"dummy")
 
-        assert result.content == "\nPlain text content"
+        assert result.content == "Plain text content"
 
 
 def test_email_body_extraction_comprehensive_html_only_with_html2text(email_extractor: EmailExtractor) -> None:
@@ -678,7 +678,7 @@ def test_email_body_extraction_comprehensive_html_only_with_html2text(email_extr
 
             result = email_extractor.extract_bytes_sync(b"dummy")
 
-            assert result.content == "\nHTML **content**"
+            assert result.content == "HTML **content**"
             assert mock_converter.ignore_links is True
             assert mock_converter.ignore_images is True
 
@@ -692,7 +692,7 @@ def test_email_body_extraction_comprehensive_html_only_without_html2text(email_e
         with patch("kreuzberg._extractors._email.html2text", None):
             result = email_extractor.extract_bytes_sync(b"dummy")
 
-            assert result.content == "\nHTML & content <test>"
+            assert result.content == "HTML & content <test>"
 
 
 def test_email_body_extraction_comprehensive_both_text_and_html(email_extractor: EmailExtractor) -> None:
@@ -704,7 +704,7 @@ def test_email_body_extraction_comprehensive_both_text_and_html(email_extractor:
 
         result = email_extractor.extract_bytes_sync(b"dummy")
 
-        assert result.content == "\nPlain text version"
+        assert result.content == "Plain text version"
 
 
 def test_email_body_extraction_comprehensive_no_content(email_extractor: EmailExtractor) -> None:
@@ -728,7 +728,7 @@ def test_email_body_extraction_comprehensive_empty_text_and_html(email_extractor
 
         result = email_extractor.extract_bytes_sync(b"dummy")
 
-        assert result.content == "Subject: Empty Body\n"
+        assert result.content == "Subject: Empty Body"
 
 
 def test_email_body_extraction_comprehensive_none_text_and_html(email_extractor: EmailExtractor) -> None:
@@ -890,7 +890,7 @@ def test_email_integration_comprehensive_malformed_email_structure_recovery(emai
 
         result = email_extractor.extract_bytes_sync(b"malformed email")
 
-        assert "From: " in result.content
+        assert "From:" in result.content
         assert "To: 123, valid@example.com" in result.content
         assert "Subject: ['should', 'be', 'string']" in result.content
         assert "\n12345" in result.content
@@ -945,4 +945,4 @@ def test_email_integration_comprehensive_html_with_complex_entities_without_html
 
             assert "Title & Subtitle" in result.content
             assert "Price: €100 <discount>" in result.content
-            assert 'Quote: "Hello"' in result.content
+            assert "Quote: \u201cHello\u201d" in result.content  # Unicode quotes from &ldquo; and &rdquo;

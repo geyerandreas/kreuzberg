@@ -63,3 +63,12 @@ yarn-debug.log*
 yarn-error.log*
 todo.md
 TODO.md
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+
+# AI Rules generated files
+.claude/agents/
+AGENTS.md

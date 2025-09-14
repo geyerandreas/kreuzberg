@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 from unittest.mock import Mock, patch
 
 import pytest
@@ -102,9 +102,11 @@ async def test_init_paddle_ocr_with_gpu_package(
     mock_device_info = DeviceInfo(device_type="cuda", device_id=0, name="NVIDIA GPU")
     mocker.patch("kreuzberg._ocr._paddleocr.validate_device_request", return_value=mock_device_info)
 
-    mock_paddleocr = mocker.patch("kreuzberg._ocr._paddleocr.PaddleOCR")
+    mock_paddleocr = Mock()
     mock_instance = Mock()
     mock_paddleocr.return_value = mock_instance
+
+    mocker.patch("kreuzberg._ocr._paddleocr._import_paddleocr", return_value=(Mock(), mock_paddleocr))
 
     await backend._init_paddle_ocr()
 
@@ -120,9 +122,11 @@ async def test_init_paddle_ocr_with_language(
 ) -> None:
     PaddleBackend._paddle_ocr = None
 
-    mock_paddleocr = mocker.patch("kreuzberg._ocr._paddleocr.PaddleOCR")
+    mock_paddleocr = Mock()
     mock_instance = Mock()
     mock_paddleocr.return_value = mock_instance
+
+    mocker.patch("kreuzberg._ocr._paddleocr._import_paddleocr", return_value=(Mock(), mock_paddleocr))
 
     with patch.object(PaddleBackend, "_validate_language_code", return_value="french"):
         await backend._init_paddle_ocr(language="fra")
@@ -138,9 +142,11 @@ async def test_init_paddle_ocr_with_custom_options(
 ) -> None:
     PaddleBackend._paddle_ocr = None
 
-    mock_paddleocr = mocker.patch("kreuzberg._ocr._paddleocr.PaddleOCR")
+    mock_paddleocr = Mock()
     mock_instance = Mock()
     mock_paddleocr.return_value = mock_instance
+
+    mocker.patch("kreuzberg._ocr._paddleocr._import_paddleocr", return_value=(Mock(), mock_paddleocr))
 
     custom_options = {
         "det_db_thresh": 0.4,
@@ -175,9 +181,11 @@ async def test_init_paddle_ocr_with_model_dirs(
 ) -> None:
     PaddleBackend._paddle_ocr = None
 
-    mock_paddleocr = mocker.patch("kreuzberg._ocr._paddleocr.PaddleOCR")
+    mock_paddleocr = Mock()
     mock_instance = Mock()
     mock_paddleocr.return_value = mock_instance
+
+    mocker.patch("kreuzberg._ocr._paddleocr._import_paddleocr", return_value=(Mock(), mock_paddleocr))
 
     custom_options = {
         "det_model_dir": "/path/to/det/model",
@@ -197,29 +205,30 @@ async def test_init_paddle_ocr_with_model_dirs(
 async def test_init_paddle_ocr_missing_dependency(backend: PaddleBackend, mock_find_spec_missing: Mock) -> None:
     PaddleBackend._paddle_ocr = None
 
-    with patch("kreuzberg._ocr._paddleocr.HAS_PADDLEOCR", False):
-        with patch("kreuzberg._ocr._paddleocr.PaddleOCR", None):
-            with pytest.raises(MissingDependencyError) as excinfo:
-                await backend._init_paddle_ocr()
+    with patch("kreuzberg._ocr._paddleocr._import_paddleocr", return_value=(None, None)):
+        with pytest.raises(MissingDependencyError) as excinfo:
+            await backend._init_paddle_ocr()
 
-            error_message = str(excinfo.value)
-            assert "paddleocr" in error_message
-            assert "missing" in error_message.lower() or "required" in error_message.lower()
+        error_message = str(excinfo.value)
+        assert "paddleocr" in error_message
+        assert "missing" in error_message.lower() or "required" in error_message.lower()
 
 
 @pytest.mark.anyio
-async def test_init_paddle_ocr_initialization_error(backend: PaddleBackend, mock_find_spec: Mock) -> None:
+async def test_init_paddle_ocr_initialization_error(
+    backend: PaddleBackend, mock_find_spec: Mock, mocker: MockerFixture
+) -> None:
     PaddleBackend._paddle_ocr = None
 
-    async def mock_run_sync_error(*args: Any, **_: Any) -> None:
-        if args and args[0].__name__ == "PaddleOCR":
-            raise Exception("Initialization error")
+    mock_paddleocr = Mock()
+    mock_paddleocr.side_effect = Exception("Initialization error")
 
-    with patch("kreuzberg._ocr._paddleocr.run_sync", side_effect=mock_run_sync_error):
-        with pytest.raises(OCRError) as excinfo:
-            await backend._init_paddle_ocr()
+    mocker.patch("kreuzberg._ocr._paddleocr._import_paddleocr", return_value=(Mock(), mock_paddleocr))
 
-        assert "Failed to initialize PaddleOCR" in str(excinfo.value)
+    with pytest.raises(OCRError) as excinfo:
+        await backend._init_paddle_ocr()
+
+    assert "Failed to initialize PaddleOCR" in str(excinfo.value)
 
 
 @pytest.mark.anyio
@@ -765,6 +774,7 @@ async def test_init_paddle_ocr_with_invalid_language(
     )
 
     mocker.patch.object(PaddleBackend, "_validate_language_code", side_effect=validation_error)
+    mocker.patch("kreuzberg._ocr._paddleocr._import_paddleocr", return_value=(Mock(), Mock()))
 
     with pytest.raises(ValidationError) as excinfo:
         await backend._init_paddle_ocr(language="invalid_language")

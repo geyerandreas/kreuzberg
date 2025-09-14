@@ -197,7 +197,12 @@ class SpreadSheetExtractor(Extractor):
             if not data or not any(row for row in data):
                 return f"## {sheet_name}\n\n*Empty sheet*"
 
-            df = pl.DataFrame(data)
+            # Normalize row lengths to avoid polars ShapeError
+            if data:
+                max_cols = max(len(row) if row else 0 for row in data)
+                data = [row + [None] * (max_cols - len(row)) if row else [None] * max_cols for row in data]  # type: ignore[list-item]
+
+            df = pl.DataFrame(data, strict=False)
 
             df = df.filter(~pl.all_horizontal(pl.all().is_null()))
             df = df.select([col for col in df.columns if not df[col].is_null().all()])

@@ -122,6 +122,10 @@ def _build_cli_args(params: dict[str, Any]) -> dict[str, Any]:
         "force_ocr": params["force_ocr"] if params["force_ocr"] else None,
         "chunk_content": params["chunk_content"] if params["chunk_content"] else None,
         "extract_tables": params["extract_tables"] if params["extract_tables"] else None,
+        "extract_entities": params["extract_entities"] if params["extract_entities"] else None,
+        "extract_keywords": params["extract_keywords"] if params["extract_keywords"] else None,
+        "auto_detect_language": params["auto_detect_language"] if params["auto_detect_language"] else None,
+        "keyword_count": params["keyword_count"] if params["keyword_count"] != 10 else None,
         "max_chars": params["max_chars"] if params["max_chars"] != DEFAULT_MAX_CHARACTERS else None,
         "max_overlap": params["max_overlap"] if params["max_overlap"] != DEFAULT_MAX_OVERLAP else None,
         "ocr_backend": params["ocr_backend"],
@@ -251,6 +255,9 @@ def cli(ctx: click.Context) -> None:
 @click.option("--force-ocr", is_flag=True, help="Force OCR processing")
 @click.option("--chunk-content", is_flag=True, help="Enable content chunking")
 @click.option("--extract-tables", is_flag=True, help="Enable table extraction")
+@click.option("--extract-entities", is_flag=True, help="Enable entity extraction")
+@click.option("--extract-keywords", is_flag=True, help="Enable keyword extraction")
+@click.option("--auto-detect-language", is_flag=True, help="Enable automatic language detection")
 @click.option(
     "--max-chars",
     type=int,
@@ -262,6 +269,12 @@ def cli(ctx: click.Context) -> None:
     type=int,
     default=DEFAULT_MAX_OVERLAP,
     help=f"Maximum overlap between chunks (default: {DEFAULT_MAX_OVERLAP})",
+)
+@click.option(
+    "--keyword-count",
+    type=int,
+    default=10,
+    help="Number of keywords to extract (default: 10)",
 )
 @click.option(
     "--ocr-backend", type=OcrBackendParamType(), help="OCR backend to use (tesseract, easyocr, paddleocr, none)"

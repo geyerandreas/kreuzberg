@@ -476,11 +476,11 @@ def test_enhance_sheet_with_table_data_pandas_available(extractor: SpreadSheetEx
     mock_df.empty = False
     mock_df.dropna.return_value = mock_df
 
-    mock_enhance = mocker.patch("kreuzberg._utils._table.enhance_table_markdown")
+    mock_enhance = mocker.patch("kreuzberg._extractors._spread_sheet.enhance_table_markdown")
     mock_enhance.return_value = "Enhanced table markdown"
 
-    with mocker.patch("pandas.DataFrame", return_value=mock_df):
-        result = extractor._enhance_sheet_with_table_data(mock_workbook, "TestSheet")
+    mocker.patch("pandas.DataFrame", return_value=mock_df)
+    result = extractor._enhance_sheet_with_table_data(mock_workbook, "TestSheet")
 
     assert result == "## TestSheet\n\nEnhanced table markdown"
 
@@ -508,24 +508,25 @@ def test_enhance_sheet_with_table_data_no_data_after_cleanup(
     mock_df.empty = True
     mock_df.dropna.return_value = mock_df
 
-    with mocker.patch("pandas.DataFrame", return_value=mock_df):
-        result = extractor._enhance_sheet_with_table_data(mock_workbook, "CleanedSheet")
+    mocker.patch("pandas.DataFrame", return_value=mock_df)
+    result = extractor._enhance_sheet_with_table_data(mock_workbook, "CleanedSheet")
 
     assert result == "## CleanedSheet\n\n*No data*"
 
 
-def test_enhance_sheet_with_table_data_pandas_error_fallback(
-    extractor: SpreadSheetExtractor, mocker: MockerFixture
-) -> None:
+def test_enhance_sheet_with_table_data_error_fallback(extractor: SpreadSheetExtractor, mocker: MockerFixture) -> None:
+    """Test that errors in enhance_table_markdown fall back to text conversion"""
     mock_workbook = mocker.Mock(spec=CalamineWorkbook)
     mock_sheet = mocker.Mock()
     mock_sheet.to_python.return_value = [["Header"], ["Data"]]
     mock_workbook.get_sheet_by_name.return_value = mock_sheet
 
-    with mocker.patch("pandas.DataFrame", side_effect=ImportError("pandas not available")):
-        mocker.patch.object(extractor, "_convert_sheet_to_text_sync", return_value="Fallback content")
+    mocker.patch(
+        "kreuzberg._extractors._spread_sheet.enhance_table_markdown", side_effect=ValueError("Enhancement error")
+    )
+    mocker.patch.object(extractor, "_convert_sheet_to_text_sync", return_value="Fallback content")
 
-        result = extractor._enhance_sheet_with_table_data(mock_workbook, "FallbackSheet")
+    result = extractor._enhance_sheet_with_table_data(mock_workbook, "FallbackSheet")
 
     assert result == "Fallback content"
 
@@ -1053,23 +1054,33 @@ def test_spreadsheet_table_enhance_sheet_with_table_data_pandas_dataframe_operat
     mock_workbook.get_sheet_by_name.return_value = mock_sheet
 
     mock_df_initial = mocker.Mock()
-    mock_df_after_dropna = mocker.Mock()
-    mock_df_after_dropna.empty = False
+    mock_df_filtered = mocker.Mock()
+    mock_df_final = mocker.Mock()
 
-    mock_df_initial.dropna.return_value = mock_df_after_dropna
-    mock_df_after_dropna.dropna.return_value = mock_df_after_dropna
+    # Mock the filter operation
+    mock_df_initial.filter.return_value = mock_df_filtered
 
-    mock_enhance = mocker.patch("kreuzberg._utils._table.enhance_table_markdown")
+    # Mock the select operation
+    mock_df_filtered.columns = ["column_0", "column_1", "column_2", "column_3"]
+    mock_col = mocker.Mock()
+    mock_col.is_null.return_value.all.return_value = False
+    mock_df_filtered.__getitem__ = mocker.Mock(return_value=mock_col)
+    mock_df_filtered.select.return_value = mock_df_final
+
+    # Mock is_empty check
+    mock_df_final.is_empty.return_value = False
+
+    mock_enhance = mocker.patch("kreuzberg._extractors._spread_sheet.enhance_table_markdown")
     mock_enhance.return_value = "Enhanced table with cleaned data"
 
     mocker.patch("PIL.Image.new")
 
-    with mocker.patch("pandas.DataFrame", return_value=mock_df_initial):
-        result = extractor._enhance_sheet_with_table_data(mock_workbook, "CleanedSheet")
+    mocker.patch("polars.DataFrame", return_value=mock_df_initial)
+    result = extractor._enhance_sheet_with_table_data(mock_workbook, "CleanedSheet")
 
     assert result == "## CleanedSheet\n\nEnhanced table with cleaned data"
-    assert mock_df_initial.dropna.call_count == 1
-    assert mock_df_after_dropna.dropna.call_count == 1
+    assert mock_df_initial.filter.call_count == 1
+    assert mock_df_filtered.select.call_count == 1
 
 
 def test_spreadsheet_table_enhance_sheet_with_table_data_value_error_fallback(
@@ -1080,10 +1091,10 @@ def test_spreadsheet_table_enhance_sheet_with_table_data_value_error_fallback(
     mock_sheet.to_python.return_value = [["Header"], ["Data"]]
     mock_workbook.get_sheet_by_name.return_value = mock_sheet
 
-    with mocker.patch("pandas.DataFrame", side_effect=ValueError("DataFrame creation error")):
-        mocker.patch.object(extractor, "_convert_sheet_to_text_sync", return_value="Fallback after ValueError")
+    mocker.patch("polars.DataFrame", side_effect=ValueError("DataFrame creation error"))
+    mocker.patch.object(extractor, "_convert_sheet_to_text_sync", return_value="Fallback after ValueError")
 
-        result = extractor._enhance_sheet_with_table_data(mock_workbook, "ErrorSheet")
+    result = extractor._enhance_sheet_with_table_data(mock_workbook, "ErrorSheet")
 
     assert result == "Fallback after ValueError"
 
@@ -1097,17 +1108,17 @@ def test_spreadsheet_table_enhance_sheet_with_table_data_attribute_error_fallbac
     mock_workbook.get_sheet_by_name.return_value = mock_sheet
 
     mock_df = mocker.Mock()
-    mock_df.dropna.side_effect = AttributeError("dropna method not found")
+    mock_df.filter.side_effect = AttributeError("filter method not found")
 
-    with mocker.patch("pandas.DataFrame", return_value=mock_df):
-        mocker.patch.object(extractor, "_convert_sheet_to_text_sync", return_value="Fallback after AttributeError")
+    mocker.patch("polars.DataFrame", return_value=mock_df)
+    mocker.patch.object(extractor, "_convert_sheet_to_text_sync", return_value="Fallback after AttributeError")
 
-        result = extractor._enhance_sheet_with_table_data(mock_workbook, "AttributeErrorSheet")
+    result = extractor._enhance_sheet_with_table_data(mock_workbook, "AttributeErrorSheet")
 
     assert result == "Fallback after AttributeError"
 
 
-def test_spreadsheet_table_enhance_sheet_with_table_data_data_contains_only_empty_rows(
+def test_spreadsheet_table_enhance_sheet_with_table_data_contains_only_empty_rows(
     extractor: SpreadSheetExtractor, mocker: MockerFixture
 ) -> None:
     mock_workbook = mocker.Mock(spec=CalamineWorkbook)
