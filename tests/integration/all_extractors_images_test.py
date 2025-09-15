@@ -52,19 +52,27 @@ class TestAllExtractorsImageIntegration:
         </html>
         """
 
-        config = ExtractionConfig(extract_images=True, ocr_extracted_images=True, ocr_backend="tesseract")
+        config = ExtractionConfig(
+            extract_images=True, ocr_extracted_images=True, ocr_backend="tesseract", image_ocr_min_dimensions=(1, 1)
+        )
         extractor = HTMLExtractor(mime_type="text/html", config=config)
 
-        with patch("kreuzberg._extractors._base.get_ocr_backend") as mock_get_backend:
-            from kreuzberg._types import ExtractionResult
+        with patch.object(extractor, "_process_images_with_ocr") as mock_process_ocr:
+            from kreuzberg._types import ExtractionResult, ImageOCRResult
 
-            mock_backend = MagicMock()
+            def mock_ocr_processing(images: list[ExtractedImage]) -> list[ImageOCRResult]:
+                if images:
+                    return [
+                        ImageOCRResult(
+                            image=images[0],
+                            ocr_result=ExtractionResult(content="OCR text", mime_type="text/plain", metadata={}),
+                            confidence_score=0.95,
+                            processing_time=0.1,
+                        )
+                    ]
+                return []
 
-            async def mock_process_image(*args: Any, **kwargs: Any) -> ExtractionResult:
-                return ExtractionResult(content="OCR text", mime_type="text/plain", metadata={})
-
-            mock_backend.process_image = mock_process_image
-            mock_get_backend.return_value = mock_backend
+            mock_process_ocr.side_effect = mock_ocr_processing
 
             result = extractor.extract_bytes_sync(html_content.encode())
 

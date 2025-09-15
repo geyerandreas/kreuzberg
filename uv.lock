@@ -1292,15 +1292,15 @@ wheels = [
 
 [[package]]
 name = "html-to-markdown"
-version = "1.12.0"
+version = "1.12.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "nh3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a4/5f/1d1524a1b16a418ed2ec98c878a4e1a13260f2422718ef198b476ef69b3d/html_to_markdown-1.12.0.tar.gz", hash = "sha256:7404fc50b5158131301f26416344003ead574df34485c987687807c9e7cddf9e", size = 38937, upload-time = "2025-09-15T09:50:25.943Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/5c/5afd49f24b6d12ebe410a7257a3eee897bef5f69e7d1d88255b514b8c688/html_to_markdown-1.12.1.tar.gz", hash = "sha256:b617c22d56045f9708354fa5c4dbdba8a5fdaf8fc307ac59d99861f1b0b1f1d4", size = 40166, upload-time = "2025-09-15T11:08:51.188Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/70/d449a7d9ea0e653ad312b0319a93440423a6d2a12b5714352e514b511947/html_to_markdown-1.12.0-py3-none-any.whl", hash = "sha256:c048f0f64f21152ee47e80e4225d795c2acb3d396e9cea95f9116069e6d24626", size = 34483, upload-time = "2025-09-15T09:50:24.607Z" },
+    { url = "https://files.pythonhosted.org/packages/e1/8f/eef62aeba5ce1537297008a5557e2ae24a0ef35f2425969383740d836ed2/html_to_markdown-1.12.1-py3-none-any.whl", hash = "sha256:b96bf714fde2f5ce73e30858ddb9192590c23f83a49c4fb5c20e891aad95c0e4", size = 34991, upload-time = "2025-09-15T11:08:49.093Z" },
 ]
 
 [package.optional-dependencies]
@@ -1776,7 +1776,7 @@ requires-dist = [
     { name = "exceptiongroup", marker = "python_full_version < '3.11'", specifier = ">=1.2.2" },
     { name = "fast-langdetect", marker = "extra == 'langdetect'", specifier = ">=0.3.2" },
     { name = "gmft", marker = "extra == 'gmft'", specifier = ">=0.4.2" },
-    { name = "html-to-markdown", extras = ["lxml"], specifier = ">=1.12.0" },
+    { name = "html-to-markdown", extras = ["lxml"], specifier = ">=1.12.1" },
     { name = "keybert", marker = "extra == 'entity-extraction'", specifier = ">=0.9.0" },
     { name = "kreuzberg", extras = ["additional-extensions", "api", "chunking", "cli", "crypto", "document-classification", "easyocr", "entity-extraction", "gmft", "langdetect", "paddleocr"], marker = "extra == 'all'" },
     { name = "litestar", extras = ["standard", "structlog", "opentelemetry"], marker = "extra == 'api'", specifier = ">=2.17.0" },
