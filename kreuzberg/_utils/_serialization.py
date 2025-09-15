@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import is_dataclass
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar
 
 import msgspec
 from msgspec import MsgspecError
-from msgspec.msgpack import decode, encode
 
 T = TypeVar("T")
 
@@ -42,18 +41,26 @@ def encode_hook(obj: Any) -> Any:
     raise TypeError(f"Unsupported type: {type(obj)!r}")
 
 
-def deserialize(value: str | bytes, target_type: type[T]) -> T:
+def deserialize(value: str | bytes, target_type: type[T], json: bool = False) -> T:
+    decoder = msgspec.json.decode if json else msgspec.msgpack.decode
+
+    if json:
+        data = value.encode() if isinstance(value, str) else value
+    else:
+        data = value.encode() if isinstance(value, str) else value
+
     try:
-        return decode(cast("bytes", value), type=target_type, strict=False)
+        return decoder(data, type=target_type, strict=False)
     except MsgspecError as e:
         raise ValueError(f"Failed to deserialize to {target_type.__name__}: {e}") from e
 
 
-def serialize(value: Any, **kwargs: Any) -> bytes:
+def serialize(value: Any, json: bool = False, **kwargs: Any) -> bytes:
     if isinstance(value, dict) and kwargs:
         value = value | kwargs
 
+    encoder = msgspec.json.encode if json else msgspec.msgpack.encode
     try:
-        return encode(value, enc_hook=encode_hook)
+        return encoder(value, enc_hook=encode_hook)
     except (MsgspecError, TypeError) as e:
         raise ValueError(f"Failed to serialize {type(value).__name__}: {e}") from e

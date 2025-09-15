@@ -18,7 +18,7 @@
 - **Text Extraction**: High-fidelity text extraction preserving document structure and formatting
 - **Image Extraction**: Extract embedded images from PDFs, presentations, HTML, and Office documents with optional OCR
 - **Metadata Extraction**: Comprehensive metadata including author, creation date, language, and document properties
-- **Format Support**: 18 document types including PDF, Microsoft Office, images, HTML, and structured data formats
+- **Format Support**: 21 document types including PDF, Microsoft Office, images, HTML, and structured data formats
 - **OCR Integration**: Tesseract OCR with markdown output (default) and table extraction from scanned documents
 - **Document Classification**: Automatic document type detection (contracts, forms, invoices, receipts, reports)
 
@@ -136,14 +136,15 @@ claude mcp add kreuzberg uvx kreuzberg-mcp
 
 ## Supported Formats
 
-| Category          | Formats                        |
-| ----------------- | ------------------------------ |
-| **Documents**     | PDF, DOCX, DOC, RTF, TXT, EPUB |
-| **Images**        | JPG, PNG, TIFF, BMP, GIF, WEBP |
-| **Spreadsheets**  | XLSX, XLS, CSV, ODS            |
-| **Presentations** | PPTX, PPT, ODP                 |
-| **Web**           | HTML, XML, MHTML               |
-| **Archives**      | Support via extraction         |
+| Category            | Formats                        |
+| ------------------- | ------------------------------ |
+| **Documents**       | PDF, DOCX, DOC, RTF, TXT, EPUB |
+| **Images**          | JPG, PNG, TIFF, BMP, GIF, WEBP |
+| **Spreadsheets**    | XLSX, XLS, CSV, ODS            |
+| **Presentations**   | PPTX, PPT, ODP                 |
+| **Web**             | HTML, XML, MHTML               |
+| **Structured Data** | JSON, YAML, TOML               |
+| **Archives**        | Support via extraction         |
 
 ## 📊 Performance Characteristics
 

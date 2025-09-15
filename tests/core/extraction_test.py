@@ -48,7 +48,6 @@ async def test_extract_bytes_with_unknown_mime_type() -> None:
     content = b"Unknown content type"
     mime_type = "application/unknown"
 
-    # Mock the validation to allow unknown mime type for testing
     with patch("kreuzberg.extraction.validate_mime_type", return_value=mime_type):
         result = await extract_bytes(content, mime_type)
 
@@ -73,7 +72,6 @@ def test_extract_bytes_sync_with_unknown_mime_type() -> None:
     content = b"Unknown content type"
     mime_type = "application/unknown"
 
-    # Mock the validation to allow unknown mime type for testing
     with patch("kreuzberg.extraction.validate_mime_type", return_value=mime_type):
         result = extract_bytes_sync(content, mime_type)
 
@@ -129,7 +127,6 @@ async def test_extract_file_with_unknown_mime_type(tmp_path: Path) -> None:
     test_file = tmp_path / "test.unknown"
     test_file.write_text("Unknown file type content")
 
-    # Mock the validation to allow unknown mime type for testing
     with patch("kreuzberg.extraction.validate_mime_type", return_value="application/unknown"):
         result = await extract_file(test_file, mime_type="application/unknown")
 
@@ -142,7 +139,6 @@ def test_extract_file_sync_with_unknown_mime_type(tmp_path: Path) -> None:
     test_file = tmp_path / "test.unknown"
     test_file.write_text("Unknown file type content")
 
-    # Mock the validation to allow unknown mime type for testing
     with patch("kreuzberg.extraction.validate_mime_type", return_value="application/unknown"):
         result = extract_file_sync(test_file, mime_type="application/unknown")
 
@@ -162,7 +158,7 @@ def test_handle_chunk_content() -> None:
     )
 
     assert chunks is not None
-    assert len(chunks) > 1  # Should be chunked
+    assert len(chunks) > 1
 
 
 @pytest.mark.anyio
@@ -364,11 +360,9 @@ async def test_validate_and_post_process_async_with_post_processors() -> None:
 
     config = ExtractionConfig(post_processing_hooks=[async_processor, sync_processor])
 
-    # Mock _validate_and_post_process_helper to return the original result
     with patch("kreuzberg.extraction._validate_and_post_process_helper", return_value=result):
         processed_result = await _validate_and_post_process_async(result, config)
 
-    # Only the last processor's result should be returned
     assert processed_result.content == "Modified content"
     assert processed_result.metadata.get("processed") is True
 
@@ -400,7 +394,6 @@ def test_validate_and_post_process_sync_with_post_processors() -> None:
     processor = Mock(return_value=modified_result)
     config = ExtractionConfig(post_processing_hooks=[processor])
 
-    # Mock _validate_and_post_process_helper to return the original result
     with patch("kreuzberg.extraction._validate_and_post_process_helper", return_value=result):
         processed_result = _validate_and_post_process_sync(result, config)
 
@@ -433,7 +426,6 @@ def test_validate_and_post_process_helper_with_all_features() -> None:
         patch("kreuzberg.extraction.detect_languages") as mock_languages,
         patch("kreuzberg.extraction.auto_detect_document_type") as mock_doc_type,
     ):
-        # Setup mocks
         mock_chunker_instance = Mock()
         mock_chunker_instance.chunks.return_value = ["chunk1", "chunk2"]
         mock_chunker.return_value = mock_chunker_instance
@@ -441,7 +433,7 @@ def test_validate_and_post_process_helper_with_all_features() -> None:
         mock_entities.return_value = [{"text": "test", "label": "MISC"}]
         mock_keywords.return_value = ["test", "content", "processing"]
         mock_languages.return_value = ["en"]
-        mock_doc_type.return_value = result  # Return unchanged
+        mock_doc_type.return_value = result
 
         processed_result = _validate_and_post_process_helper(result, config, Path("/test/path.txt"))
 

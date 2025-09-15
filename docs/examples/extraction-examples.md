@@ -525,13 +525,95 @@ async def comprehensive_extraction():
     print(f"Total text (including OCR): {len(all_text)} characters")
 ```
 
+## JSON and Structured Data Extraction
+
+### Basic JSON Extraction
+
+```python
+from kreuzberg import extract_file_sync
+
+# Simple JSON extraction
+result = extract_file_sync("data.json")
+print(result.content)
+
+# Metadata includes detected text fields
+print(f"Title: {result.metadata.get('title')}")
+print(f"Description: {result.metadata.get('description')}")
+```
+
+### Advanced JSON with Schema Extraction
+
+```python
+from kreuzberg import extract_file_sync, ExtractionConfig, JSONExtractionConfig
+
+# Configure advanced JSON extraction
+json_config = JSONExtractionConfig(
+    extract_schema=True,  # Extract JSON structure
+    custom_text_field_patterns=frozenset({"summary", "abstract"}),  # Custom fields
+    include_type_info=True,  # Add type annotations
+    flatten_nested_objects=True,  # Flatten nested structures
+    max_depth=5,  # Limit schema depth
+    array_item_limit=100,  # Limit array processing
+)
+
+config = ExtractionConfig(json_config=json_config)
+result = extract_file_sync("complex.json", config=config)
+
+# Access schema information
+if "json_schema" in result.metadata:
+    schema = result.metadata["json_schema"]
+    print(f"Root type: {schema['type']}")
+    print(f"Properties: {list(schema.get('properties', {}).keys())}")
+
+# Access nested attributes with dotted notation
+if "attributes" in result.metadata:
+    attrs = result.metadata["attributes"]
+    # Nested fields like {"info": {"title": "Example"}} become "info.title"
+    print(f"Nested title: {attrs.get('info.title')}")
+```
+
+### YAML and TOML Processing
+
+```python
+from kreuzberg import extract_file_sync
+
+# YAML extraction (similar to JSON)
+yaml_result = extract_file_sync("config.yaml")
+print(yaml_result.content)
+
+# TOML extraction
+toml_result = extract_file_sync("pyproject.toml")
+print(toml_result.content)
+
+# Both formats support the same metadata extraction as JSON
+print(f"Package name: {toml_result.metadata.get('name')}")
+```
+
+### Working with API Responses
+
+```python
+import httpx
+from kreuzberg import extract_bytes_sync, ExtractionConfig, JSONExtractionConfig
+
+# Fetch JSON from API
+response = httpx.get("https://api.example.com/data")
+
+# Extract with schema
+config = ExtractionConfig(json_config=JSONExtractionConfig(extract_schema=True))
+
+result = extract_bytes_sync(response.content, mime_type="application/json", config=config)
+
+print(f"API Response: {result.content}")
+print(f"Schema: {result.metadata.get('json_schema')}")
+```
+
 ## Batch Processing
 
 ```python
 from kreuzberg import batch_extract_file, ExtractionConfig
 
 async def process_documents():
-    file_paths = ["document1.pdf", "document2.docx", "image.jpg"]
+    file_paths = ["document1.pdf", "document2.docx", "data.json", "image.jpg"]
     config = ExtractionConfig()  # Optional: configure extraction options
     results = await batch_extract_file(file_paths, config=config)
 

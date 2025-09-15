@@ -25,9 +25,9 @@ def mock_ocr_backend() -> Generator[MagicMock, None, None]:
     backend = MagicMock()
     backend.process_file = AsyncMock()
     backend.process_image_sync = MagicMock()
-    backend.process_image_sync = MagicMock()  # Add process_image_sync for sync extraction
+    backend.process_image_sync = MagicMock()
     backend.process_batch_sync = MagicMock()
-    backend.process_image = AsyncMock()  # Add process_image for new image extraction
+    backend.process_image = AsyncMock()
 
     with patch("kreuzberg._extractors._image.get_ocr_backend", return_value=backend):
         yield backend
@@ -50,7 +50,6 @@ async def test_extract_path_async(mock_ocr_backend: MagicMock, tmp_path: Path) -
     extractor = ImageExtractor(mime_type="image/png", config=config)
 
     image_path = tmp_path / "test.png"
-    # Create a minimal valid PNG (1x1 pixel red image)
     image_path.write_bytes(
         b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
         b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf\xc0"
@@ -73,7 +72,6 @@ def test_extract_path_sync(mock_ocr_backend: MagicMock, tmp_path: Path) -> None:
     extractor = ImageExtractor(mime_type="image/png", config=config)
 
     image_path = tmp_path / "test.png"
-    # Create a minimal valid PNG (1x1 pixel red image)
     image_path.write_bytes(
         b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
         b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf\xc0"
@@ -101,7 +99,6 @@ def test_extract_bytes_sync(mock_ocr_backend: MagicMock) -> None:
 
     with patch.object(extractor, "extract_path_sync") as mock_extract_path:
         mock_extract_path.return_value = expected_result
-        # Use a minimal valid PNG (1x1 pixel red image)
         result = extractor.extract_bytes_sync(
             b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
             b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf\xc0"
@@ -156,7 +153,6 @@ async def test_extract_bytes_async(mock_ocr_backend: MagicMock) -> None:
     config = ExtractionConfig(ocr_backend="tesseract")
     extractor = ImageExtractor(mime_type="image/png", config=config)
 
-    # Use a minimal valid PNG (1x1 pixel red image)
     png_bytes = (
         b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
         b"\x08\x02\x00\x00\x00\x90wS\xde\x00\x00\x00\x0cIDATx\x9cc\xf8\xcf\xc0"
@@ -170,7 +166,6 @@ async def test_extract_bytes_async(mock_ocr_backend: MagicMock) -> None:
 
     result = await extractor.extract_bytes_async(png_bytes)
 
-    # Verify the OCR backend was called
     mock_ocr_backend.process_image.assert_called_once()
     assert result.content == "extracted text from bytes"
     assert result.metadata["quality_score"] == 1.0
@@ -325,7 +320,6 @@ async def test_extract_path_async_delegation(mock_ocr_backend: MagicMock, tmp_pa
     config = ExtractionConfig(ocr_backend="tesseract")
     extractor = ImageExtractor(mime_type="image/png", config=config)
 
-    # Create a minimal valid PNG file
     test_path = tmp_path / "test_image.png"
     test_path.write_bytes(
         b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
@@ -353,7 +347,6 @@ def test_extract_path_sync_with_tesseract_config(mock_ocr_backend: MagicMock, tm
     config = ExtractionConfig(ocr_backend="tesseract", ocr_config=tesseract_config)
     extractor = ImageExtractor(mime_type="image/png", config=config)
 
-    # Create a minimal valid PNG file
     image_path = tmp_path / "test.png"
     image_path.write_bytes(
         b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
@@ -379,7 +372,6 @@ def test_extract_path_sync_with_paddleocr_config(mock_ocr_backend: MagicMock, tm
     config = ExtractionConfig(ocr_backend="paddleocr", ocr_config=paddle_config)
     extractor = ImageExtractor(mime_type="image/png", config=config)
 
-    # Create a minimal valid PNG file
     image_path = tmp_path / "test.png"
     image_path.write_bytes(
         b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
@@ -405,7 +397,6 @@ def test_extract_path_sync_with_easyocr_config(mock_ocr_backend: MagicMock, tmp_
     config = ExtractionConfig(ocr_backend="easyocr", ocr_config=easy_config)
     extractor = ImageExtractor(mime_type="image/png", config=config)
 
-    # Create a minimal valid PNG file
     image_path = tmp_path / "test.png"
     image_path.write_bytes(
         b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
@@ -519,7 +510,6 @@ def test_image_sync_path_extraction_unknown_backend(mock_ocr_backend: MagicMock,
         "Sync OCR not implemented for unknown_backend"
     )
 
-    # Create a minimal valid PNG file
     image_path = tmp_path / "test.png"
     image_path.write_bytes(
         b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
@@ -537,7 +527,6 @@ def test_image_sync_path_extraction_default_tesseract(mock_ocr_backend: MagicMoc
     expected_result = ExtractionResult(content="extracted text", chunks=[], mime_type="text/plain", metadata={})
     mock_ocr_backend.process_image_sync.return_value = expected_result
 
-    # Create a minimal valid PNG file
     image_path = tmp_path / "test.png"
     image_path.write_bytes(
         b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
@@ -558,7 +547,6 @@ def test_image_sync_path_extraction_default_paddleocr(mock_ocr_backend: MagicMoc
     expected_result = ExtractionResult(content="extracted text", chunks=[], mime_type="text/plain", metadata={})
     mock_ocr_backend.process_image_sync.return_value = expected_result
 
-    # Create a minimal valid PNG file
     image_path = tmp_path / "test.png"
     image_path.write_bytes(
         b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
@@ -579,7 +567,6 @@ def test_image_sync_path_extraction_default_easyocr(mock_ocr_backend: MagicMock,
     expected_result = ExtractionResult(content="extracted text", chunks=[], mime_type="text/plain", metadata={})
     mock_ocr_backend.process_image_sync.return_value = expected_result
 
-    # Create a minimal valid PNG file
     image_path = tmp_path / "test.png"
     image_path.write_bytes(
         b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
@@ -609,7 +596,6 @@ def test_image_sync_path_extraction_custom_configs(mock_ocr_backend: MagicMock, 
     expected_result = ExtractionResult(content="German text", mime_type="text/plain", metadata={})
     mock_ocr_backend.process_image_sync.return_value = expected_result
 
-    # Create a minimal valid PNG file
     image_path = tmp_path / "test.png"
     image_path.write_bytes(
         b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
@@ -738,7 +724,6 @@ def test_image_edge_cases_quality_processing_applied(mock_ocr_backend: MagicMock
     raw_result = ExtractionResult(content="Low quality text with ████ artifacts", mime_type="text/plain", metadata={})
     mock_ocr_backend.process_image_sync.return_value = raw_result
 
-    # Create a minimal valid PNG file
     image_path = tmp_path / "test.png"
     image_path.write_bytes(
         b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
@@ -760,7 +745,6 @@ async def test_image_edge_cases_async_path_delegation_preserves_config(
     config = ExtractionConfig(ocr_backend="tesseract", ocr_config=tesseract_config, enable_quality_processing=True)
     extractor = ImageExtractor(mime_type="image/png", config=config)
 
-    # Create a minimal valid PNG file
     image_path = tmp_path / "japanese.png"
     image_path.write_bytes(
         b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"

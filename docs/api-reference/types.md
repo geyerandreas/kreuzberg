@@ -72,6 +72,12 @@ Configuration options for automatic language detection:
 
 ::: kreuzberg.LanguageDetectionConfig
 
+## JSON Extraction Configuration
+
+Configuration for enhanced JSON document processing:
+
+::: kreuzberg.JSONExtractionConfig
+
 ## PSMMode (Page Segmentation Mode)
 
 ::: kreuzberg.PSMMode

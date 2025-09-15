@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import sys
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -17,11 +16,13 @@ try:
 except ImportError:  # pragma: no cover
     yaml = None
 
+
 from anyio import Path as AsyncPath
 
 from kreuzberg._extractors._base import Extractor
 from kreuzberg._mime_types import JSON_MIME_TYPE, PLAIN_TEXT_MIME_TYPE, TOML_MIME_TYPE, YAML_MIME_TYPE
-from kreuzberg._types import ExtractionResult, normalize_metadata
+from kreuzberg._types import ExtractionResult, JSONExtractionConfig, normalize_metadata
+from kreuzberg._utils._serialization import deserialize
 from kreuzberg._utils._string import normalize_spaces, safe_decode
 from kreuzberg._utils._sync import run_sync
 
@@ -43,6 +44,42 @@ class StructuredDataExtractor(Extractor):
         "text/toml",
     }
 
+    @property
+    def _json_config(self) -> JSONExtractionConfig | None:
+        return self.config.json_config
+
+    def _get_text_field_keywords(self) -> frozenset[str]:
+        json_config = self._json_config
+        if json_config and json_config.custom_text_field_patterns:
+            return _TEXT_FIELD_KEYWORDS | json_config.custom_text_field_patterns
+        return _TEXT_FIELD_KEYWORDS
+
+    def _extract_json_schema(self, data: Any, path: str = "", depth: int = 0) -> dict[str, Any]:
+        json_config = self._json_config
+        if not json_config or not json_config.extract_schema:
+            return {}
+
+        if depth >= json_config.max_depth:
+            return {"max_depth_reached": True}
+
+        schema_info: dict[str, Any] = {"type": type(data).__name__}
+
+        if isinstance(data, dict):
+            schema_info["properties"] = {}
+            for key, value in data.items():
+                key_path = f"{path}.{key}" if path else key
+                schema_info["properties"][key] = self._extract_json_schema(value, key_path, depth + 1)
+        elif isinstance(data, list) and data:
+            if len(data) <= json_config.array_item_limit:
+                schema_info["items"] = self._extract_json_schema(data[0], f"{path}[0]", depth + 1)
+                schema_info["length"] = len(data)
+            else:
+                schema_info["items"] = {"type": "truncated"}
+                schema_info["length"] = len(data)
+                schema_info["truncated"] = True
+
+        return schema_info
+
     async def extract_bytes_async(self, content: bytes) -> ExtractionResult:
         return await run_sync(self.extract_bytes_sync, content)
 
@@ -51,12 +88,12 @@ class StructuredDataExtractor(Extractor):
         return await self.extract_bytes_async(content)
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
-        text_content = safe_decode(content)
-
+        text_content: None | str = None
         try:
             if self.mime_type in {JSON_MIME_TYPE, "text/json"}:
-                data = json.loads(text_content)
+                data = deserialize(content, dict, json=True)
             elif self.mime_type in {TOML_MIME_TYPE, "text/toml"}:
+                text_content = safe_decode(content)
                 if tomllib is None:
                     return ExtractionResult(
                         content=normalize_spaces(text_content),
@@ -66,6 +103,7 @@ class StructuredDataExtractor(Extractor):
                     )
                 data = tomllib.loads(text_content)
             else:
+                text_content = safe_decode(content)
                 if yaml is None:
                     return ExtractionResult(
                         content=normalize_spaces(text_content),
@@ -75,8 +113,16 @@ class StructuredDataExtractor(Extractor):
                     )
                 data = yaml.safe_load(text_content)
 
-            text_parts: list[str] = []
             metadata: dict[str, Any] = {}
+
+            if (
+                self.mime_type in {JSON_MIME_TYPE, "text/json"}
+                and self._json_config
+                and self._json_config.extract_schema
+            ):
+                schema_info = self._extract_json_schema(data)
+                if schema_info:
+                    metadata["json_schema"] = schema_info
 
             if isinstance(data, dict):
                 text_parts = self._extract_from_dict(data, metadata)
@@ -85,7 +131,7 @@ class StructuredDataExtractor(Extractor):
             else:
                 text_parts = [str(data)]
 
-            combined_text = "\n".join(text_parts) if text_parts else text_content
+            combined_text = "\n".join(text_parts) if text_parts else (text_content or safe_decode(content))
 
             return ExtractionResult(
                 content=normalize_spaces(combined_text),
@@ -96,7 +142,7 @@ class StructuredDataExtractor(Extractor):
 
         except (ValueError, TypeError) as e:
             return ExtractionResult(
-                content=normalize_spaces(text_content),
+                content=normalize_spaces(text_content or safe_decode(content)),
                 mime_type=PLAIN_TEXT_MIME_TYPE,
                 metadata={"parse_error": str(e)},
                 chunks=[],
@@ -113,23 +159,38 @@ class StructuredDataExtractor(Extractor):
             full_key = f"{prefix}.{key}" if prefix else key
 
             if isinstance(value, str) and value.strip():
-                text_parts.append(f"{full_key}: {value}")
+                if self._json_config and self._json_config.include_type_info:
+                    text_parts.append(f"{full_key} (string): {value}")
+                else:
+                    text_parts.append(f"{full_key}: {value}")
 
                 key_lower = key.lower()
-                if any(keyword in key_lower for keyword in _TEXT_FIELD_KEYWORDS):
+                text_field_keywords = self._get_text_field_keywords()
+                if any(keyword in key_lower for keyword in text_field_keywords):
                     metadata[full_key] = value
 
             elif isinstance(value, (int, float, bool)):
-                text_parts.append(f"{full_key}: {value}")
+                if self._json_config and self._json_config.include_type_info:
+                    type_name = type(value).__name__
+                    text_parts.append(f"{full_key} ({type_name}): {value}")
+                else:
+                    text_parts.append(f"{full_key}: {value}")
 
             elif isinstance(value, dict):
-                text_parts.extend(self._extract_from_dict(value, metadata, full_key))
+                if self._json_config and not self._json_config.flatten_nested_objects:
+                    text_parts.append(f"{full_key}: [nested object with {len(value)} properties]")
+                else:
+                    text_parts.extend(self._extract_from_dict(value, metadata, full_key))
 
             elif isinstance(value, list):
                 text_parts.extend(self._extract_from_list(value, metadata, full_key))
 
             elif value is not None:
-                text_parts.append(f"{full_key}: {value!s}")
+                if self._json_config and self._json_config.include_type_info:
+                    type_name = type(value).__name__
+                    text_parts.append(f"{full_key} ({type_name}): {value!s}")
+                else:
+                    text_parts.append(f"{full_key}: {value!s}")
 
         return text_parts
 
@@ -140,7 +201,10 @@ class StructuredDataExtractor(Extractor):
             item_key = f"{prefix}[{i}]" if prefix else f"item_{i}"
 
             if isinstance(item, str) and item.strip():
-                text_parts.append(f"{item_key}: {item}")
+                if self._json_config and self._json_config.include_type_info:
+                    text_parts.append(f"{item_key} (string): {item}")
+                else:
+                    text_parts.append(f"{item_key}: {item}")
 
             elif isinstance(item, dict):
                 text_parts.extend(self._extract_from_dict(item, metadata, item_key))
@@ -149,6 +213,10 @@ class StructuredDataExtractor(Extractor):
                 text_parts.extend(self._extract_from_list(item, metadata, item_key))
 
             elif item is not None:
-                text_parts.append(f"{item_key}: {item!s}")
+                if self._json_config and self._json_config.include_type_info:
+                    type_name = type(item).__name__
+                    text_parts.append(f"{item_key} ({type_name}): {item!s}")
+                else:
+                    text_parts.append(f"{item_key}: {item!s}")
 
         return text_parts

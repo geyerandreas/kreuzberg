@@ -623,6 +623,58 @@ For better performance in production:
 - Enable deduplication to avoid redundant processing
 - Use selective extraction based on document types
 
+### JSON Extraction Configuration
+
+Kreuzberg provides enhanced JSON document processing with schema extraction and customizable field detection:
+
+```python
+from kreuzberg import extract_file, ExtractionConfig, JSONExtractionConfig
+
+# Advanced JSON extraction with schema
+result = await extract_file(
+    "data.json",
+    config=ExtractionConfig(
+        json_config=JSONExtractionConfig(
+            extract_schema=True,  # Extract JSON structure schema
+            include_type_info=True,  # Add type annotations to output
+            flatten_nested_objects=True,  # Flatten nested objects in output
+            custom_text_field_patterns=frozenset({"summary", "abstract"}),  # Additional text fields
+            max_depth=10,  # Maximum nesting depth for schema
+            array_item_limit=1000,  # Limit array processing for performance
+        )
+    ),
+)
+
+# Access schema and nested attributes
+if result.metadata.get("json_schema"):
+    print(f"JSON Schema: {result.metadata['json_schema']}")
+if result.metadata.get("attributes"):
+    print(f"Nested fields: {result.metadata['attributes']}")
+```
+
+#### Configuration File Support
+
+Add JSON configuration to your `kreuzberg.toml`:
+
+```toml
+[json_config]
+extract_schema = true              # Extract JSON structure schema
+include_type_info = false          # Add type annotations to output
+flatten_nested_objects = true      # Flatten nested objects in output
+custom_text_field_patterns = ["summary", "abstract"]  # Additional text fields to extract
+max_depth = 10                     # Maximum nesting depth for schema extraction
+array_item_limit = 1000           # Limit array processing for performance
+```
+
+#### Key Features
+
+- **High Performance**: Uses msgspec for fast JSON parsing, significantly faster than standard library
+- **Schema Extraction**: Automatically extracts the structure of your JSON data, useful for understanding complex documents
+- **Custom Field Detection**: Configure additional text fields beyond defaults (title, name, description, content, body, text, message)
+- **Type Information**: Optionally include data type annotations in extracted content for better understanding
+- **Nested Object Control**: Choose between flattened or hierarchical output based on your needs
+- **Memory Protection**: Array item limits prevent memory issues with large datasets
+
 ### Entity and Keyword Extraction
 
 Kreuzberg can extract named entities and keywords from documents using spaCy for entity recognition and KeyBERT for keyword extraction:

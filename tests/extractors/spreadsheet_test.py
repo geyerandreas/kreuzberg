@@ -1057,17 +1057,14 @@ def test_spreadsheet_table_enhance_sheet_with_table_data_pandas_dataframe_operat
     mock_df_filtered = mocker.Mock()
     mock_df_final = mocker.Mock()
 
-    # Mock the filter operation
     mock_df_initial.filter.return_value = mock_df_filtered
 
-    # Mock the select operation
     mock_df_filtered.columns = ["column_0", "column_1", "column_2", "column_3"]
     mock_col = mocker.Mock()
     mock_col.is_null.return_value.all.return_value = False
     mock_df_filtered.__getitem__ = mocker.Mock(return_value=mock_col)
     mock_df_filtered.select.return_value = mock_df_final
 
-    # Mock is_empty check
     mock_df_final.is_empty.return_value = False
 
     mock_enhance = mocker.patch("kreuzberg._extractors._spread_sheet.enhance_table_markdown")

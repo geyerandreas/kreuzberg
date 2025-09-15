@@ -1,6 +1,6 @@
 # Supported Formats
 
-Kreuzberg handles a wide range of document, image, and text formats.
+Kreuzberg handles a wide range of document, image, text, and structured data formats.
 
 ## Document Formats
 
@@ -35,6 +35,19 @@ Kreuzberg handles a wide range of document, image, and text formats.
 - CSL-JSON (`.json`)
 - EndNote and JATS XML (`.xml`)
 - RIS (`.ris`)
+
+## Structured Data Formats
+
+- JSON (`.json`) - High-performance extraction using msgspec with schema analysis
+- YAML (`.yaml`, `.yml`) - Full YAML 1.2 support with nested structure extraction
+- TOML (`.toml`) - Configuration and metadata files with type-aware processing
+
+These formats benefit from:
+
+- **Schema extraction**: Automatically analyze and extract the structure of your data
+- **Custom field detection**: Configure additional text fields for specialized extraction
+- **Type information**: Optionally include data type annotations in extracted content
+- **Performance optimization**: Uses msgspec for efficient JSON parsing
 
 ## Image Formats
 

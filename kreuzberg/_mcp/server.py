@@ -22,7 +22,6 @@ from kreuzberg.extraction import (
 
 mcp = FastMCP("Kreuzberg Text Extraction")
 
-# Security and performance limits
 MAX_BATCH_SIZE = 100
 
 
@@ -46,7 +45,6 @@ def _validate_file_path(file_path: str) -> Path:
             context={"file_path": file_path, "error": str(e)},
         ) from e
 
-    # Check for path traversal attempts
     if ".." in file_path and not file_path.startswith("/"):
         raise ValidationError(
             "Path traversal detected in file path",
@@ -73,7 +71,6 @@ def _validate_file_path_with_context(file_path: str, index: int, total: int) -> 
     try:
         return _validate_file_path(file_path)
     except ValidationError as e:
-        # Add context about which file in the batch failed
         e.context = e.context or {}
         e.context["batch_index"] = index
         e.context["total_files"] = total
@@ -99,7 +96,6 @@ def _validate_base64_content(content_base64: str, context_info: str | None = Non
             context={"context": context_info},
         )
 
-    # Check for whitespace-only content
     if not content_base64.strip():
         raise ValidationError(
             "Base64 content cannot be whitespace only",
@@ -126,7 +122,6 @@ def _validate_base64_content(content_base64: str, context_info: str | None = Non
 def _create_config_with_overrides(**kwargs: Any) -> ExtractionConfig:
     base_config = discover_config()
 
-    # Extract Tesseract-specific parameters from kwargs first
     tesseract_lang = kwargs.pop("tesseract_lang", None)
     tesseract_psm = kwargs.pop("tesseract_psm", None)
     tesseract_output_format = kwargs.pop("tesseract_output_format", None)
@@ -151,7 +146,6 @@ def _create_config_with_overrides(**kwargs: Any) -> ExtractionConfig:
         }
         config_dict = config_dict | kwargs
 
-    # Handle Tesseract OCR configuration
     ocr_backend = config_dict.get("ocr_backend")
     if ocr_backend == "tesseract" and (
         tesseract_lang or tesseract_psm is not None or tesseract_output_format or enable_table_detection
@@ -174,10 +168,8 @@ def _create_config_with_overrides(**kwargs: Any) -> ExtractionConfig:
             tesseract_config_dict["enable_table_detection"] = True
 
         if tesseract_config_dict:
-            # Merge with existing tesseract config if present
             existing_ocr_config = config_dict.get("ocr_config")
             if existing_ocr_config and isinstance(existing_ocr_config, TesseractConfig):
-                # Convert existing config to dict, merge, and recreate
                 existing_dict = existing_ocr_config.to_dict()
                 merged_dict = existing_dict | tesseract_config_dict
                 config_dict["ocr_config"] = TesseractConfig(**merged_dict)
@@ -206,7 +198,6 @@ def extract_document(  # noqa: PLR0913
     tesseract_output_format: str | None = None,
     enable_table_detection: bool | None = None,
 ) -> dict[str, Any]:
-    # Validate file path for security
     validated_path = _validate_file_path(file_path)
     config = _create_config_with_overrides(
         force_ocr=force_ocr,
@@ -289,7 +280,6 @@ def batch_extract_document(  # noqa: PLR0913
     tesseract_output_format: str | None = None,
     enable_table_detection: bool | None = None,
 ) -> list[dict[str, Any]]:
-    # Validate batch size
     if len(file_paths) > MAX_BATCH_SIZE:
         raise ValidationError(
             f"Batch size exceeds maximum limit of {MAX_BATCH_SIZE}",
@@ -302,7 +292,6 @@ def batch_extract_document(  # noqa: PLR0913
             context={"file_paths": file_paths},
         )
 
-    # Validate all file paths for security
     validated_paths = []
     for i, file_path in enumerate(file_paths):
         validated_path = _validate_file_path_with_context(file_path, i, len(file_paths))
@@ -346,7 +335,6 @@ def batch_extract_bytes(  # noqa: PLR0913
     tesseract_output_format: str | None = None,
     enable_table_detection: bool | None = None,
 ) -> list[dict[str, Any]]:
-    # Validate input
     if not content_items:
         raise ValidationError("content_items cannot be empty", context={"content_items": content_items})
 
@@ -355,7 +343,6 @@ def batch_extract_bytes(  # noqa: PLR0913
             "content_items must be a list", context={"content_items_type": type(content_items).__name__}
         )
 
-    # Validate batch size
     if len(content_items) > MAX_BATCH_SIZE:
         raise ValidationError(
             f"Batch size exceeds maximum limit of {MAX_BATCH_SIZE}",
@@ -379,17 +366,14 @@ def batch_extract_bytes(  # noqa: PLR0913
         enable_table_detection=enable_table_detection,
     )
 
-    # Convert list of dicts to list of tuples (bytes, mime_type)
     contents = []
     for i, item in enumerate(content_items):
-        # Validate item structure
         if not isinstance(item, dict):
             raise ValidationError(
                 f"Item at index {i} must be a dictionary",
                 context={"item_index": i, "item_type": type(item).__name__, "item": item},
             )
 
-        # Check for required keys
         if "content_base64" not in item:
             raise ValidationError(
                 f"Item at index {i} is missing required key 'content_base64'",
@@ -405,11 +389,9 @@ def batch_extract_bytes(  # noqa: PLR0913
         content_base64 = item["content_base64"]
         mime_type = item["mime_type"]
 
-        # Validate base64 content
         try:
             content_bytes = _validate_base64_content(content_base64, f"batch_extract_bytes item {i}")
         except ValidationError as e:
-            # Add batch-specific context
             e.context = e.context or {}
             e.context["item_index"] = i
             e.context["total_items"] = len(content_items)
@@ -426,7 +408,6 @@ def extract_simple(
     file_path: str,
     mime_type: str | None = None,
 ) -> str:
-    # Validate file path for security
     validated_path = _validate_file_path(file_path)
     config = _create_config_with_overrides()
     result = extract_file_sync(str(validated_path), mime_type, config)
@@ -467,7 +448,6 @@ def get_supported_formats() -> str:
 
 @mcp.prompt()
 def extract_and_summarize(file_path: str) -> list[TextContent]:
-    # Validate file path for security
     validated_path = _validate_file_path(file_path)
     result = extract_file_sync(str(validated_path), None, _create_config_with_overrides())
 
@@ -481,7 +461,6 @@ def extract_and_summarize(file_path: str) -> list[TextContent]:
 
 @mcp.prompt()
 def extract_structured(file_path: str) -> list[TextContent]:
-    # Validate file path for security
     validated_path = _validate_file_path(file_path)
     config = _create_config_with_overrides(
         extract_entities=True,

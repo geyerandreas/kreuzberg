@@ -28,8 +28,7 @@ async def test_extract_pdf_metadata_success() -> None:
         result = await extract_pdf_metadata(b"fake pdf content", "password123")
 
     assert isinstance(result, dict)
-    # Should contain basic metadata processing results
-    assert "summary" in result  # Always generated
+    assert "summary" in result
 
 
 @pytest.mark.anyio

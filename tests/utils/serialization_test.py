@@ -295,3 +295,92 @@ def test_deserialize_with_bytes_input() -> None:
 
     result = deserialize(serialized, dict[str, str])
     assert result == original
+
+
+def test_serialize_json_mode() -> None:
+    """Test serialization with json=True."""
+    data = {"key": "value", "number": 42}
+    result = serialize(data, json=True)
+
+    assert isinstance(result, bytes)
+    assert b'"key"' in result
+    assert b'"value"' in result
+    assert b'"number"' in result
+    assert b"42" in result
+
+
+def test_deserialize_json_mode() -> None:
+    """Test deserialization with json=True."""
+    json_bytes = b'{"name": "test", "value": 123}'
+    result = deserialize(json_bytes, dict[str, Any], json=True)
+
+    assert result == {"name": "test", "value": 123}
+
+
+def test_serialize_deserialize_json_roundtrip() -> None:
+    """Test roundtrip with JSON mode."""
+    original = {
+        "string": "hello",
+        "number": 42,
+        "float": 3.14,
+        "bool": True,
+        "null": None,
+        "array": [1, 2, 3],
+        "object": {"nested": "value"},
+    }
+
+    serialized = serialize(original, json=True)
+    result = deserialize(serialized, dict[str, Any], json=True)
+
+    assert result == original
+
+
+def test_json_mode_with_dataclass() -> None:
+    """Test JSON mode with dataclass objects."""
+    obj = SampleDataclass(name="json_test", value=999, color=Color.BLUE)
+
+    serialized = serialize(obj, json=True)
+    assert isinstance(serialized, bytes)
+
+    import json
+
+    decoded = json.loads(serialized)
+    assert decoded["name"] == "json_test"
+    assert decoded["value"] == 999
+    assert decoded["color"] == "blue"
+
+
+def test_json_mode_with_kwargs() -> None:
+    """Test JSON mode with additional kwargs."""
+    base = {"existing": "data"}
+    result = serialize(base, json=True, new_field="added", count=100)
+
+    import json
+
+    decoded = json.loads(result)
+    assert decoded == {"existing": "data", "new_field": "added", "count": 100}
+
+
+def test_deserialize_json_string_input() -> None:
+    """Test that deserialize can handle string input for JSON."""
+    json_str = '{"test": "string input"}'
+    result = deserialize(json_str, dict[str, str], json=True)
+
+    assert result == {"test": "string input"}
+
+
+def test_msgpack_vs_json_size() -> None:
+    """Compare msgpack vs JSON serialization."""
+    data = {"key": "value" * 100, "numbers": list(range(100))}
+
+    msgpack_result = serialize(data, json=False)
+    json_result = serialize(data, json=True)
+
+    assert isinstance(msgpack_result, bytes)
+    assert isinstance(json_result, bytes)
+
+    msgpack_decoded = deserialize(msgpack_result, dict[str, Any], json=False)
+    json_decoded = deserialize(json_result, dict[str, Any], json=True)
+
+    assert msgpack_decoded == data
+    assert json_decoded == data

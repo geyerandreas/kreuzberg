@@ -607,7 +607,6 @@ async def test_pdf_extract_path_async_searchable_text(
     mock_apply_quality = mocker.patch.object(pdf_extractor, "_apply_quality_processing")
     mock_apply_quality.side_effect = lambda x: x
 
-    # Mock extract_tables to prevent trying to parse invalid PDF
     mocker.patch("kreuzberg._gmft.extract_tables", return_value=[])
 
     result = await pdf_extractor.extract_path_async(test_file)
@@ -636,7 +635,6 @@ async def test_pdf_extract_path_async_force_ocr(
     mock_apply_quality = mocker.patch.object(pdf_extractor, "_apply_quality_processing")
     mock_apply_quality.side_effect = lambda x: x
 
-    # Mock extract_tables to prevent trying to parse invalid PDF
     mocker.patch("kreuzberg._gmft.extract_tables", return_value=[])
 
     result = await pdf_extractor.extract_path_async(test_file)
@@ -705,7 +703,6 @@ async def test_pdf_extract_path_async_searchable_fails(
     mock_apply_quality = mocker.patch.object(pdf_extractor, "_apply_quality_processing")
     mock_apply_quality.side_effect = lambda x: x
 
-    # Mock extract_tables to prevent trying to parse invalid PDF
     mocker.patch("kreuzberg._gmft.extract_tables", return_value=[])
 
     result = await pdf_extractor.extract_path_async(test_file)
@@ -732,7 +729,6 @@ async def test_pdf_extract_path_async_no_extraction_possible(
     mock_apply_quality = mocker.patch.object(pdf_extractor, "_apply_quality_processing")
     mock_apply_quality.side_effect = lambda x: x
 
-    # Mock extract_tables to prevent trying to parse invalid PDF
     mocker.patch("kreuzberg._gmft.extract_tables", return_value=[])
 
     result = await pdf_extractor.extract_path_async(test_file)

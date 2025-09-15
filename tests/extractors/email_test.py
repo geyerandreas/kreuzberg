@@ -945,4 +945,4 @@ def test_email_integration_comprehensive_html_with_complex_entities_without_html
 
             assert "Title & Subtitle" in result.content
             assert "Price: €100 <discount>" in result.content
-            assert "Quote: \u201cHello\u201d" in result.content  # Unicode quotes from &ldquo; and &rdquo;
+            assert "Quote: \u201cHello\u201d" in result.content

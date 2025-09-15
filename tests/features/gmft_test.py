@@ -26,7 +26,6 @@ def test_pandas_to_polars_with_none() -> None:
 
 def test_pandas_to_polars_with_valid_dataframe() -> None:
     """Test _pandas_to_polars with valid pandas dataframe."""
-    # Mock pandas DataFrame
     mock_pandas_df = Mock()
     mock_polars_df = Mock(spec=pl.DataFrame)
 
@@ -39,10 +38,9 @@ def test_pandas_to_polars_with_valid_dataframe() -> None:
 
 def test_pandas_to_polars_with_conversion_error_and_duplicate_columns() -> None:
     """Test _pandas_to_polars handles conversion error with duplicate columns."""
-    # Mock pandas DataFrame with duplicate columns
     mock_pandas_df = Mock()
     mock_pandas_df.columns = Mock()
-    mock_pandas_df.columns.duplicated.return_value = [False, True, False]  # Second column is duplicate
+    mock_pandas_df.columns.duplicated.return_value = [False, True, False]
 
     mock_filtered_df = Mock()
     mock_pandas_df.loc.__getitem__.return_value = mock_filtered_df
@@ -50,7 +48,6 @@ def test_pandas_to_polars_with_conversion_error_and_duplicate_columns() -> None:
     mock_polars_df = Mock(spec=pl.DataFrame)
 
     with patch("polars.from_pandas") as mock_from_pandas:
-        # First call raises error, second call succeeds
         mock_from_pandas.side_effect = [ValueError("Duplicate columns"), mock_polars_df]
 
         result = _pandas_to_polars(mock_pandas_df)
@@ -63,7 +60,6 @@ def test_pandas_to_polars_with_conversion_error_and_duplicate_columns() -> None:
 def test_pandas_to_polars_with_conversion_error_no_columns_attr() -> None:
     """Test _pandas_to_polars handles conversion error when no columns attribute."""
     mock_pandas_df = Mock()
-    # Remove columns attribute to trigger the fallback
     del mock_pandas_df.columns
 
     with patch("polars.from_pandas", side_effect=TypeError("Conversion failed")):
@@ -120,7 +116,7 @@ def test_dataframe_to_markdown_with_pandas_dataframe() -> None:
 def test_dataframe_to_markdown_with_object_without_to_markdown() -> None:
     """Test _dataframe_to_markdown with object that doesn't have to_markdown method."""
     mock_df = Mock()
-    del mock_df.to_markdown  # Remove to_markdown method
+    del mock_df.to_markdown
 
     result = _dataframe_to_markdown(mock_df)
 
@@ -145,7 +141,6 @@ def test_dataframe_to_csv_with_polars_dataframe() -> None:
     df = pl.DataFrame({"col1": [1, 2], "col2": [3, 4]})
     result = _dataframe_to_csv(df)
 
-    # Should contain CSV headers and data
     assert "col1,col2" in result
     assert "1,3" in result
     assert "2,4" in result
@@ -165,7 +160,7 @@ def test_dataframe_to_csv_with_pandas_dataframe() -> None:
 def test_dataframe_to_csv_with_object_without_to_csv() -> None:
     """Test _dataframe_to_csv with object that doesn't have to_csv method."""
     mock_df = Mock()
-    del mock_df.to_csv  # Remove to_csv method
+    del mock_df.to_csv
 
     result = _dataframe_to_csv(mock_df)
 
@@ -215,7 +210,7 @@ def test_is_dataframe_empty_with_pandas_dataframe_nonempty() -> None:
 def test_is_dataframe_empty_with_object_without_empty_attr() -> None:
     """Test _is_dataframe_empty with object that doesn't have empty attribute."""
     mock_df = Mock()
-    del mock_df.empty  # Remove empty attribute
+    del mock_df.empty
 
     result = _is_dataframe_empty(mock_df)
 
@@ -325,7 +320,6 @@ async def test_extract_tables_with_processing_wait() -> None:
         mock_cache_instance = Mock()
         mock_cache.return_value = mock_cache_instance
 
-        # First call returns None, second call returns None (no processing), third call returns result
         cached_result = [TableData(cropped_image=Mock(), page_number=1, text="Processed table", df=pl.DataFrame())]
         mock_cache_instance.aget.side_effect = [None, cached_result]
         mock_cache_instance.is_processing.return_value = True
@@ -359,7 +353,6 @@ async def test_extract_tables_environment_variable_isolated_false() -> None:
         mock_cache_instance.aget.return_value = None
         mock_cache_instance.is_processing.return_value = False
 
-        # Mock the GMFT imports and functionality
         with patch.dict(
             "sys.modules",
             {
@@ -369,11 +362,9 @@ async def test_extract_tables_environment_variable_isolated_false() -> None:
                 "gmft.pdf_bindings.pdfium": Mock(),
             },
         ):
-            # Should raise MissingDependencyError due to mocked imports
             with pytest.raises(MissingDependencyError):
                 await extract_tables(file_path)
 
-        # Should not use isolated process
         mock_isolated.assert_not_called()
 
 
@@ -412,7 +403,6 @@ def test_extract_tables_sync_environment_variable_variations() -> None:
                 extract_tables_sync(file_path)
                 mock_isolated.assert_called_once()
             else:
-                # Should raise MissingDependencyError due to missing GMFT
                 with pytest.raises(MissingDependencyError):
                     extract_tables_sync(file_path)
                 mock_isolated.assert_not_called()
@@ -442,10 +432,8 @@ async def test_extract_tables_config_serialization() -> None:
 
         await extract_tables(file_path, config=custom_config)
 
-        # Verify cache was called with serialized config
         cache_call_kwargs = mock_cache_instance.aget.call_args[1]
         assert "config" in cache_call_kwargs
-        # Config should be serialized as sorted items string
         assert "verbosity" in cache_call_kwargs["config"]
         assert "detector_base_threshold" in cache_call_kwargs["config"]
 
@@ -466,7 +454,6 @@ def test_extract_tables_sync_missing_gmft_dependency() -> None:
         mock_cache.return_value = mock_cache_instance
         mock_cache_instance.get.return_value = None
 
-        # ImportError should be raised and caught, then re-raised as MissingDependencyError
         with pytest.raises(MissingDependencyError) as exc_info:
             extract_tables_sync(file_path)
 
@@ -496,12 +483,11 @@ async def test_extract_tables_default_config() -> None:
 
         mock_isolated.return_value = []
 
-        await extract_tables(file_path)  # No config provided
+        await extract_tables(file_path)
 
-        # Should call isolated function with default config
         mock_isolated.assert_called_once()
         call_args = mock_isolated.call_args
-        config_arg = call_args[0][1]  # Second argument should be config
+        config_arg = call_args[0][1]
         assert isinstance(config_arg, GMFTConfig)
 
 
@@ -521,8 +507,5 @@ def test_extract_tables_sync_override_isolated_process_parameter() -> None:
         mock_cache.return_value = mock_cache_instance
         mock_cache_instance.get.return_value = None
 
-        # Override environment variable with use_isolated_process=False
         with pytest.raises(MissingDependencyError):
             extract_tables_sync(file_path, use_isolated_process=False)
-
-        # The function should not use isolated process despite env var being 'true'
