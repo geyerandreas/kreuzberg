@@ -62,29 +62,29 @@ def test_format_extraction_result_text() -> None:
     result = ExtractionResult(
         content="Test content",
         mime_type="text/plain",
-        metadata={"key": "value"},
-        tables=[{"page_number": 1, "text": "table text"}],
+        metadata={"title": "Test Document"},
+        tables=[{"page_number": 1, "text": "table text", "cropped_image": None, "df": None}],  # type: ignore[typeddict-item]
         chunks=["chunk1", "chunk2"],
     )
 
     output = format_extraction_result(result, show_metadata=False, output_format="text")
     assert "Test content" in output
     assert "METADATA" not in output
-    assert "TABLES" not in output
+    assert "TABLES" in output
 
     output = format_extraction_result(result, show_metadata=True, output_format="text")
     assert "Test content" in output
     assert "METADATA" in output
     assert "TABLES" in output
-    assert '"key": "value"' in output
+    assert '"title": "Test Document"' in output
 
 
 def test_format_extraction_result_json() -> None:
     result = ExtractionResult(
         content="Test content",
         mime_type="text/plain",
-        metadata={"key": "value"},
-        tables=[{"page_number": 1, "text": "table text"}],
+        metadata={"title": "Test Document"},
+        tables=[{"page_number": 1, "text": "table text", "cropped_image": None, "df": None}],  # type: ignore[typeddict-item]
         chunks=["chunk1", "chunk2"],
     )
 
@@ -98,7 +98,7 @@ def test_format_extraction_result_json() -> None:
 
     output = format_extraction_result(result, show_metadata=True, output_format="json")
     data = json.loads(output)
-    assert data["metadata"]["key"] == "value"
+    assert data["metadata"]["title"] == "Test Document"
 
 
 def test_format_extraction_result_json_with_dataframe() -> None:
@@ -106,7 +106,9 @@ def test_format_extraction_result_json_with_dataframe() -> None:
     mock_df.write_csv.return_value = "col1,col2\nval1,val2"
 
     result = ExtractionResult(
-        content="Test", mime_type="text/plain", tables=[{"page_number": 1, "text": "table", "df": mock_df}]
+        content="Test",
+        mime_type="text/plain",
+        tables=[{"page_number": 1, "text": "table", "cropped_image": None, "df": mock_df}],  # type: ignore[typeddict-item]
     )
 
     output = format_extraction_result(result, show_metadata=False, output_format="json")
@@ -120,7 +122,9 @@ def test_format_extraction_result_json_with_pandas_dataframe() -> None:
     mock_df.to_csv.return_value = "col1,col2\nval1,val2"
 
     result = ExtractionResult(
-        content="Test", mime_type="text/plain", tables=[{"page_number": 1, "text": "table", "df": mock_df}]
+        content="Test",
+        mime_type="text/plain",
+        tables=[{"page_number": 1, "text": "table", "cropped_image": None, "df": mock_df}],  # type: ignore[typeddict-item]
     )
 
     output = format_extraction_result(result, show_metadata=False, output_format="json")
@@ -320,12 +324,11 @@ def test_perform_extraction_from_stdin_text_fallback() -> None:
     mock_result = ExtractionResult(content="Extracted", mime_type="text/plain")
 
     with (
-        patch("sys.stdin.buffer.read") as mock_stdin_buffer,
-        patch("sys.stdin.read") as mock_stdin_text,
+        patch("sys.stdin") as mock_stdin,
         patch("kreuzberg.cli.extract_bytes_sync") as mock_extract,
     ):
-        mock_stdin_buffer.side_effect = Exception("No buffer")
-        mock_stdin_text.return_value = "Test input"
+        mock_stdin.buffer.read.side_effect = Exception("No buffer")
+        mock_stdin.read.return_value = "Test input"
         mock_extract.return_value = mock_result
 
         result = _perform_extraction(None, mock_config, verbose=False)
@@ -381,7 +384,7 @@ def test_write_output_unicode_error() -> None:
 
 
 def test_handle_error_missing_dependency() -> None:
-    error = MissingDependencyError("Missing package", dependency_group="test")
+    error = MissingDependencyError("Missing package", context={"dependency_group": "test"})
 
     with (
         patch("kreuzberg.cli.console") as mock_console,
@@ -485,7 +488,7 @@ def test_extract_command_error() -> None:
 
         result = runner.invoke(extract, ["nonexistent.pdf"])
 
-        assert result.exit_code == 1
+        assert result.exit_code == 2
 
 
 def test_config_command_with_file(tmp_path: Path) -> None:

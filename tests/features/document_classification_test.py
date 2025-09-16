@@ -63,7 +63,7 @@ def test_get_translated_text_none_metadata_values() -> None:
     result = ExtractionResult(
         content="Document",
         mime_type="text/plain",
-        metadata={"key1": None, "key2": "value", "key3": None},
+        metadata={"title": None, "abstract": "value", "categories": None},  # type: ignore[typeddict-item]
     )
 
     pytest.importorskip("deep_translator")
@@ -104,6 +104,7 @@ def test_classify_document_invoice() -> None:
     doc_type, confidence = classify_document(result, config)
 
     assert doc_type == "invoice"
+    assert confidence is not None
     assert confidence > 0.5
 
 
@@ -123,6 +124,7 @@ def test_classify_document_receipt() -> None:
     doc_type, confidence = classify_document(result, config)
 
     assert doc_type == "receipt"
+    assert confidence is not None
     assert confidence > 0.5
 
 
@@ -142,6 +144,7 @@ def test_classify_document_contract() -> None:
     doc_type, confidence = classify_document(result, config)
 
     assert doc_type == "contract"
+    assert confidence is not None
     assert confidence > 0.5
 
 
@@ -161,6 +164,7 @@ def test_classify_document_report() -> None:
     doc_type, confidence = classify_document(result, config)
 
     assert doc_type == "report"
+    assert confidence is not None
     assert confidence > 0.5
 
 
@@ -180,6 +184,7 @@ def test_classify_document_form() -> None:
     doc_type, confidence = classify_document(result, config)
 
     assert doc_type == "form"
+    assert confidence is not None
     assert confidence > 0.5
 
 
@@ -304,6 +309,7 @@ def test_classify_document_from_layout_invoice_top() -> None:
     doc_type, confidence = classify_document_from_layout(result, config)
 
     assert doc_type == "invoice"
+    assert confidence is not None
     assert confidence > 0.5
 
 
@@ -313,7 +319,7 @@ def test_classify_document_from_layout_with_metadata() -> None:
     result = ExtractionResult(
         content="Test",
         mime_type="text/plain",
-        metadata={"type": "receipt"},
+        metadata={"categories": ["receipt"]},
         layout=pl.DataFrame(
             {
                 "text": ["Payment", "Total"],
@@ -330,6 +336,7 @@ def test_classify_document_from_layout_with_metadata() -> None:
     doc_type, confidence = classify_document_from_layout(result, config)
 
     assert doc_type == "receipt"
+    assert confidence is not None
     assert confidence > 0
 
 
@@ -356,6 +363,7 @@ def test_classify_document_from_layout_invalid_types() -> None:
     doc_type, confidence = classify_document_from_layout(result, config)
 
     assert doc_type == "invoice"
+    assert confidence is not None
     assert confidence > 0
 
 
@@ -434,6 +442,7 @@ def test_classify_document_from_layout_null_page_height() -> None:
     doc_type, confidence = classify_document_from_layout(result, config)
 
     assert doc_type == "invoice"
+    assert confidence is not None
     assert confidence > 0
 
 
@@ -493,6 +502,7 @@ def test_auto_detect_document_type_with_existing_layout() -> None:
     updated_result = auto_detect_document_type(result, config)
 
     assert updated_result.document_type == "invoice"
+    assert updated_result.document_type_confidence is not None
     assert updated_result.document_type_confidence > 0
 
 
@@ -514,6 +524,7 @@ def test_auto_detect_document_type_text_mode() -> None:
     updated_result = auto_detect_document_type(result, config)
 
     assert updated_result.document_type == "contract"
+    assert updated_result.document_type_confidence is not None
     assert updated_result.document_type_confidence > 0
 
 
@@ -535,6 +546,7 @@ def test_auto_detect_document_type_empty_layout() -> None:
     updated_result = auto_detect_document_type(result, config)
 
     assert updated_result.document_type == "form"
+    assert updated_result.document_type_confidence is not None
     assert updated_result.document_type_confidence > 0
 
 
@@ -554,6 +566,7 @@ def test_classify_document_mixed_keywords() -> None:
     doc_type, confidence = classify_document(result, config)
 
     assert doc_type in ["invoice", "receipt", "report"]
+    assert confidence is not None
     assert confidence > 0
 
 
@@ -604,6 +617,7 @@ def test_classify_document_from_layout_translation_api_failure() -> None:
         doc_type, confidence = classify_document_from_layout(result, config)
 
     assert doc_type == "invoice"
+    assert confidence is not None
     assert confidence > 0
 
 
@@ -631,13 +645,16 @@ def test_classify_document_from_layout_page_height_calculation_error() -> None:
         pl.DataFrame,
         "with_columns",
         side_effect=[
-            result.layout.with_columns(pl.lit("invoice").alias("translated_text")),
+            result.layout.with_columns(pl.lit("invoice").alias("translated_text"))
+            if result.layout is not None
+            else pl.DataFrame(),
             Exception("Cast error"),
         ],
     ):
         doc_type, confidence = classify_document_from_layout(result, config)
 
     assert doc_type == "invoice"
+    assert confidence is not None
     assert confidence > 0
 
 

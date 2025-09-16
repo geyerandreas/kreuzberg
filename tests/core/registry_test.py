@@ -1,9 +1,14 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from kreuzberg._extractors._base import Extractor
 from kreuzberg._extractors._pdf import PDFExtractor
 from kreuzberg._registry import ExtractorRegistry
 from kreuzberg._types import ExtractionConfig, ExtractionResult
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class MockExtractor(Extractor):
@@ -12,13 +17,13 @@ class MockExtractor(Extractor):
     async def extract_bytes_async(self, content: bytes) -> ExtractionResult:
         return ExtractionResult(content="mock", mime_type="text/plain", metadata={})
 
-    async def extract_path_async(self, path) -> ExtractionResult:
+    async def extract_path_async(self, path: Path) -> ExtractionResult:
         return ExtractionResult(content="mock", mime_type="text/plain", metadata={})
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
         return ExtractionResult(content="mock", mime_type="text/plain", metadata={})
 
-    def extract_path_sync(self, path) -> ExtractionResult:
+    def extract_path_sync(self, path: Path) -> ExtractionResult:
         return ExtractionResult(content="mock", mime_type="text/plain", metadata={})
 
 
@@ -28,13 +33,13 @@ class AnotherMockExtractor(Extractor):
     async def extract_bytes_async(self, content: bytes) -> ExtractionResult:
         return ExtractionResult(content="another", mime_type="text/plain", metadata={})
 
-    async def extract_path_async(self, path) -> ExtractionResult:
+    async def extract_path_async(self, path: Path) -> ExtractionResult:
         return ExtractionResult(content="another", mime_type="text/plain", metadata={})
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
         return ExtractionResult(content="another", mime_type="text/plain", metadata={})
 
-    def extract_path_sync(self, path) -> ExtractionResult:
+    def extract_path_sync(self, path: Path) -> ExtractionResult:
         return ExtractionResult(content="another", mime_type="text/plain", metadata={})
 
 
@@ -146,13 +151,13 @@ def test_registered_extractors_priority() -> None:
         async def extract_bytes_async(self, content: bytes) -> ExtractionResult:
             return ExtractionResult(content="custom pdf", mime_type="text/plain", metadata={})
 
-        async def extract_path_async(self, path) -> ExtractionResult:
+        async def extract_path_async(self, path: Path) -> ExtractionResult:
             return ExtractionResult(content="custom pdf", mime_type="text/plain", metadata={})
 
         def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
             return ExtractionResult(content="custom pdf", mime_type="text/plain", metadata={})
 
-        def extract_path_sync(self, path) -> ExtractionResult:
+        def extract_path_sync(self, path: Path) -> ExtractionResult:
             return ExtractionResult(content="custom pdf", mime_type="text/plain", metadata={})
 
     ExtractorRegistry.add_extractor(CustomPDFExtractor)

@@ -1,9 +1,21 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING, Any
+
 import pytest
 
 from kreuzberg._extractors._base import Extractor
-from kreuzberg._types import ExtractedImage, ExtractionConfig, ExtractionResult, ImageOCRResult, TesseractConfig
+from kreuzberg._types import (
+    ExtractedImage,
+    ExtractionConfig,
+    ExtractionResult,
+    ImageOCRResult,
+    PSMMode,
+    TesseractConfig,
+)
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 class MockExtractor(Extractor):
@@ -12,13 +24,13 @@ class MockExtractor(Extractor):
     async def extract_bytes_async(self, content: bytes) -> ExtractionResult:
         return ExtractionResult(content="test content", mime_type="text/plain", metadata={})
 
-    async def extract_path_async(self, path) -> ExtractionResult:
+    async def extract_path_async(self, path: Path) -> ExtractionResult:
         return ExtractionResult(content="test content", mime_type="text/plain", metadata={})
 
     def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
         return ExtractionResult(content="test content", mime_type="text/plain", metadata={})
 
-    def extract_path_sync(self, path) -> ExtractionResult:
+    def extract_path_sync(self, path: Path) -> ExtractionResult:
         return ExtractionResult(content="test content", mime_type="text/plain", metadata={})
 
 
@@ -29,13 +41,13 @@ def test_supports_mimetype_prefix_matching() -> None:
         async def extract_bytes_async(self, content: bytes) -> ExtractionResult:
             return ExtractionResult(content="", mime_type="text/plain", metadata={})
 
-        async def extract_path_async(self, path) -> ExtractionResult:
+        async def extract_path_async(self, path: Path) -> ExtractionResult:
             return ExtractionResult(content="", mime_type="text/plain", metadata={})
 
         def extract_bytes_sync(self, content: bytes) -> ExtractionResult:
             return ExtractionResult(content="", mime_type="text/plain", metadata={})
 
-        def extract_path_sync(self, path) -> ExtractionResult:
+        def extract_path_sync(self, path: Path) -> ExtractionResult:
             return ExtractionResult(content="", mime_type="text/plain", metadata={})
 
     assert TestExtractor.supports_mimetype("application/vnd.openxmlformats-officedocument.wordprocessingml.document")
@@ -52,7 +64,7 @@ def test_apply_quality_processing_enabled_with_content() -> None:
     original_result = ExtractionResult(
         content="Test with   excessive    whitespace and a   b   c scattered chars",
         mime_type="text/plain",
-        metadata={"test": "data"},
+        metadata={},
         images=[test_image],
     )
 
@@ -68,7 +80,7 @@ def test_apply_quality_processing_empty_content() -> None:
     config = ExtractionConfig(enable_quality_processing=True)
     extractor = MockExtractor(mime_type="test/mock", config=config)
 
-    original_result = ExtractionResult(content="", mime_type="text/plain", metadata={"test": "data"})
+    original_result = ExtractionResult(content="", mime_type="text/plain", metadata={})
 
     processed_result = extractor._apply_quality_processing(original_result)
     assert processed_result is original_result
@@ -78,7 +90,7 @@ def test_apply_quality_processing_disabled() -> None:
     config = ExtractionConfig(enable_quality_processing=False)
     extractor = MockExtractor(mime_type="test/mock", config=config)
 
-    original_result = ExtractionResult(content="Some test content", mime_type="text/plain", metadata={"test": "data"})
+    original_result = ExtractionResult(content="Some test content", mime_type="text/plain", metadata={})
 
     processed_result = extractor._apply_quality_processing(original_result)
     assert processed_result is original_result
@@ -93,14 +105,14 @@ def test_prepare_ocr_config_unknown_backend() -> None:
 
 
 def test_prepare_ocr_config_with_user_config() -> None:
-    tesseract_config = TesseractConfig(language="spa", psm=6)
+    tesseract_config = TesseractConfig(language="spa", psm=PSMMode.SINGLE_BLOCK)
     config = ExtractionConfig(ocr_config=tesseract_config)
     extractor = MockExtractor(mime_type="test/mock", config=config)
 
     result_config = extractor._prepare_ocr_config("tesseract")
 
     assert result_config["language"] == "spa"
-    assert result_config["psm"] == 6
+    assert result_config["psm"] == PSMMode.SINGLE_BLOCK
     assert "use_cache" in result_config
 
 
@@ -137,7 +149,7 @@ def test_deduplicate_images_disabled() -> None:
     assert result is test_images
 
 
-def test_deduplicate_images_with_duplicates(caplog) -> None:
+def test_deduplicate_images_with_duplicates(caplog: Any) -> None:
     config = ExtractionConfig(deduplicate_images=True)
     extractor = MockExtractor(mime_type="test/mock", config=config)
 
@@ -208,7 +220,7 @@ def test_check_image_memory_limits_single_large_image() -> None:
     assert result == []
 
 
-def test_check_image_memory_limits_total_size_exceeded(caplog) -> None:
+def test_check_image_memory_limits_total_size_exceeded(caplog: Any) -> None:
     import logging
 
     config = ExtractionConfig()
@@ -261,7 +273,7 @@ def test_compute_image_hash_large_image() -> None:
 
 
 def test_validate_image_for_ocr_unsupported_format() -> None:
-    config = ExtractionConfig(image_ocr_formats={"png", "jpg"})
+    config = ExtractionConfig(image_ocr_formats=frozenset({"png", "jpg"}))
     extractor = MockExtractor(mime_type="test/mock", config=config)
 
     unsupported_image = ExtractedImage(data=b"image_data", format="bmp", filename="test.bmp")
@@ -271,7 +283,7 @@ def test_validate_image_for_ocr_unsupported_format() -> None:
 
 
 def test_validate_image_for_ocr_too_small() -> None:
-    config = ExtractionConfig(image_ocr_formats={"png"}, image_ocr_min_dimensions=(100, 100))
+    config = ExtractionConfig(image_ocr_formats=frozenset({"png"}), image_ocr_min_dimensions=(100, 100))
     extractor = MockExtractor(mime_type="test/mock", config=config)
 
     small_image = ExtractedImage(data=b"image_data", format="png", filename="small.png", dimensions=(50, 50))
@@ -281,7 +293,7 @@ def test_validate_image_for_ocr_too_small() -> None:
 
 
 def test_validate_image_for_ocr_too_large() -> None:
-    config = ExtractionConfig(image_ocr_formats={"png"}, image_ocr_max_dimensions=(1000, 1000))
+    config = ExtractionConfig(image_ocr_formats=frozenset({"png"}), image_ocr_max_dimensions=(1000, 1000))
     extractor = MockExtractor(mime_type="test/mock", config=config)
 
     large_image = ExtractedImage(data=b"image_data", format="png", filename="large.png", dimensions=(2000, 2000))
@@ -292,7 +304,7 @@ def test_validate_image_for_ocr_too_large() -> None:
 
 def test_validate_image_for_ocr_valid() -> None:
     config = ExtractionConfig(
-        image_ocr_formats={"png"}, image_ocr_min_dimensions=(50, 50), image_ocr_max_dimensions=(1000, 1000)
+        image_ocr_formats=frozenset({"png"}), image_ocr_min_dimensions=(50, 50), image_ocr_max_dimensions=(1000, 1000)
     )
     extractor = MockExtractor(mime_type="test/mock", config=config)
 
@@ -304,7 +316,9 @@ def test_validate_image_for_ocr_valid() -> None:
 
 def test_validate_image_for_ocr_no_dimensions() -> None:
     config = ExtractionConfig(
-        image_ocr_formats={"svg", "png"}, image_ocr_min_dimensions=(100, 100), image_ocr_max_dimensions=(1000, 1000)
+        image_ocr_formats=frozenset({"svg", "png"}),
+        image_ocr_min_dimensions=(100, 100),
+        image_ocr_max_dimensions=(1000, 1000),
     )
     extractor = MockExtractor(mime_type="test/mock", config=config)
 
@@ -340,6 +354,7 @@ async def test_ocr_single_image_success() -> None:
     assert isinstance(result, ImageOCRResult)
     assert result.image == test_image
     assert result.ocr_result == mock_ocr_result
+    assert result.processing_time is not None
     assert result.processing_time > 0
     assert result.skipped_reason is None
 
@@ -359,7 +374,9 @@ async def test_process_images_with_ocr_disabled() -> None:
 async def test_process_images_with_ocr_skipped_images() -> None:
     from unittest.mock import patch
 
-    config = ExtractionConfig(ocr_extracted_images=True, image_ocr_backend="tesseract", image_ocr_formats={"png"})
+    config = ExtractionConfig(
+        ocr_extracted_images=True, image_ocr_backend="tesseract", image_ocr_formats=frozenset({"png"})
+    )
     extractor = MockExtractor(mime_type="test/mock", config=config)
 
     unsupported_image = ExtractedImage(data=b"image_data", format="bmp", filename="test.bmp")
@@ -381,7 +398,9 @@ async def test_process_images_with_ocr_skipped_images() -> None:
 async def test_process_images_with_ocr_no_tasks() -> None:
     from unittest.mock import patch
 
-    config = ExtractionConfig(ocr_extracted_images=True, image_ocr_backend="tesseract", image_ocr_formats={"png"})
+    config = ExtractionConfig(
+        ocr_extracted_images=True, image_ocr_backend="tesseract", image_ocr_formats=frozenset({"png"})
+    )
     extractor = MockExtractor(mime_type="test/mock", config=config)
 
     skipped_images = [

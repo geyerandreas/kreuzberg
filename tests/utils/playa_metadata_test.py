@@ -427,7 +427,7 @@ def test_extract_structure_information_no_h1() -> None:
     result: dict[str, Any] = {}
 
     with patch("kreuzberg._playa.decode_text", side_effect=lambda x: x.decode("utf-8") if isinstance(x, bytes) else x):
-        _extract_structure_information(mock_document, result)
+        _extract_structure_information(mock_document, result)  # type: ignore[arg-type]
 
     assert result.get("languages") == ["en"]
     assert "subtitle" not in result

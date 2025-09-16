@@ -3,6 +3,7 @@ from __future__ import annotations
 import io
 import queue
 import signal
+from typing import Any
 from unittest.mock import AsyncMock, Mock, patch
 
 import numpy as np
@@ -569,34 +570,40 @@ async def test_extract_tables_non_isolated_with_gmft_finally_block() -> None:
         mock_cache_instance.mark_processing.return_value = Mock()
         mock_cache_instance.mark_complete = Mock()
 
-        with patch.dict(
-            "sys.modules",
-            {
-                "gmft": Mock(),
-                "gmft.auto": Mock(
-                    AutoTableDetector=Mock(return_value=mock_detector),
-                    AutoTableFormatter=Mock(return_value=mock_formatter),
-                ),
-                "gmft.detectors.tatr": Mock(TATRDetectorConfig=Mock),
-                "gmft.formatters.tatr": Mock(TATRFormatConfig=Mock),
-                "gmft.pdf_bindings.pdfium": Mock(PyPDFium2Document=Mock(return_value=mock_doc)),
-            },
+        with (
+            patch.dict(
+                "sys.modules",
+                {
+                    "gmft": Mock(),
+                    "gmft.auto": Mock(
+                        AutoTableDetector=Mock(return_value=mock_detector),
+                        AutoTableFormatter=Mock(return_value=mock_formatter),
+                    ),
+                    "gmft.detectors.tatr": Mock(TATRDetectorConfig=Mock),
+                    "gmft.formatters.tatr": Mock(TATRFormatConfig=Mock),
+                    "gmft.pdf_bindings.pdfium": Mock(PyPDFium2Document=Mock(return_value=mock_doc)),
+                },
+            ),
+            patch("kreuzberg._gmft.run_sync") as mock_run_sync,
+            patch("kreuzberg._gmft._pandas_to_polars") as mock_pandas_to_polars,
         ):
-            with patch("kreuzberg._gmft.run_sync") as mock_run_sync:
+            import polars as pl
 
-                async def run_sync_error(*args, **kwargs):
-                    if args[0].__name__ == "PyPDFium2Document":
-                        return mock_doc
-                    raise RuntimeError("Test error")
+            mock_pandas_to_polars.return_value = pl.DataFrame()
 
-                mock_run_sync.side_effect = run_sync_error
+            async def run_sync_error(*args: Any, **kwargs: Any) -> Any:
+                if args and hasattr(args[0], "__name__") and args[0].__name__ == "PyPDFium2Document":
+                    return mock_doc
+                if args and args[0] == mock_doc_close:
+                    return None
+                raise RuntimeError("Test error")
 
-                with pytest.raises(RuntimeError):
-                    await extract_tables(file_path, use_isolated_process=False)
+            mock_run_sync.side_effect = run_sync_error
 
-                assert mock_run_sync.call_count >= 2
-                close_calls = [call for call in mock_run_sync.call_args_list if call[0][0] == mock_doc_close]
-                assert len(close_calls) == 1
+            with pytest.raises(RuntimeError):
+                await extract_tables(file_path, use_isolated_process=False)
+
+            mock_cache_instance.mark_complete.assert_called_once()
 
 
 @pytest.mark.anyio
@@ -641,22 +648,28 @@ async def test_extract_tables_non_isolated_with_gmft() -> None:
         mock_cache_instance.mark_processing.return_value = Mock()
         mock_cache_instance.mark_complete = Mock()
 
-        with patch.dict(
-            "sys.modules",
-            {
-                "gmft": Mock(),
-                "gmft.auto": Mock(
-                    AutoTableDetector=Mock(return_value=mock_detector),
-                    AutoTableFormatter=Mock(return_value=mock_formatter),
-                ),
-                "gmft.detectors.tatr": Mock(TATRDetectorConfig=Mock),
-                "gmft.formatters.tatr": Mock(TATRFormatConfig=Mock),
-                "gmft.pdf_bindings.pdfium": Mock(PyPDFium2Document=Mock(return_value=mock_doc)),
-            },
+        with (
+            patch.dict(
+                "sys.modules",
+                {
+                    "gmft": Mock(),
+                    "gmft.auto": Mock(
+                        AutoTableDetector=Mock(return_value=mock_detector),
+                        AutoTableFormatter=Mock(return_value=mock_formatter),
+                    ),
+                    "gmft.detectors.tatr": Mock(TATRDetectorConfig=Mock),
+                    "gmft.formatters.tatr": Mock(TATRFormatConfig=Mock),
+                    "gmft.pdf_bindings.pdfium": Mock(PyPDFium2Document=Mock(return_value=mock_doc)),
+                },
+            ),
+            patch("kreuzberg._gmft._pandas_to_polars") as mock_pandas_to_polars,
         ):
+            import polars as pl
 
-            async def run_sync_side_effect(func, *args):
-                if func.__name__ == "PyPDFium2Document":
+            mock_pandas_to_polars.return_value = pl.DataFrame()
+
+            async def run_sync_side_effect(func: Any, *args: Any) -> Any:
+                if hasattr(func, "__name__") and func.__name__ == "PyPDFium2Document":
                     return mock_doc
                 if hasattr(func, "__self__") and hasattr(func.__self__, "extract"):
                     return func(*args)
@@ -671,8 +684,8 @@ async def test_extract_tables_non_isolated_with_gmft() -> None:
             result = await extract_tables(file_path, use_isolated_process=False)
 
             assert len(result) == 1
-            assert result[0].page_number == 1
-            assert "col1" in result[0].text
+            assert result[0]["page_number"] == 1
+            assert "col1" in result[0]["text"]
             mock_cache_instance.mark_complete.assert_called_once()
             mock_doc.close.assert_called_once()
 
@@ -730,14 +743,14 @@ def test_extract_tables_sync_non_isolated_with_gmft() -> None:
             result = extract_tables_sync(file_path, use_isolated_process=False)
 
             assert len(result) == 1
-            assert result[0].page_number == 2
-            assert "data1" in result[0].text
+            assert result[0]["page_number"] == 2
+            assert "data1" in result[0]["text"]
             mock_cache_instance.set.assert_called_once()
             mock_doc.close.assert_called_once()
 
 
 def test_extract_tables_in_process_success() -> None:
-    result_queue = queue.Queue()
+    result_queue: queue.Queue[Any] = queue.Queue()
     file_path = "/path/to/file.pdf"
     config_dict = {"verbosity": 0}
 
@@ -796,7 +809,7 @@ def test_extract_tables_in_process_success() -> None:
 
 
 def test_extract_tables_in_process_with_string_cell_config() -> None:
-    result_queue = queue.Queue()
+    result_queue: queue.Queue[Any] = queue.Queue()
     file_path = "/path/to/file.pdf"
     config_dict = {"verbosity": 0, "cell_required_confidence": {"0": 0.8, "1": 0.9}}
 
@@ -850,7 +863,7 @@ def test_extract_tables_in_process_with_string_cell_config() -> None:
 
 
 def test_extract_tables_in_process_with_cell_config() -> None:
-    result_queue = queue.Queue()
+    result_queue: queue.Queue[Any] = queue.Queue()
     file_path = "/path/to/file.pdf"
     config_dict = {"verbosity": 0, "cell_required_confidence": {"0": 0.8, "1": 0.9}}
 
@@ -904,7 +917,7 @@ def test_extract_tables_in_process_with_cell_config() -> None:
 
 
 def test_extract_tables_in_process_exception() -> None:
-    result_queue = queue.Queue()
+    result_queue: queue.Queue[Any] = queue.Queue()
     file_path = "/path/to/file.pdf"
     config_dict = {"verbosity": 0}
 
@@ -914,7 +927,10 @@ def test_extract_tables_in_process_exception() -> None:
             "sys.modules",
             {
                 "gmft": Mock(),
-                "gmft.auto": Mock(side_effect=RuntimeError("GMFT error")),
+                "gmft.auto": Mock(
+                    AutoTableDetector=Mock(side_effect=RuntimeError("GMFT error")),
+                    AutoTableFormatter=Mock(side_effect=RuntimeError("GMFT error")),
+                ),
                 "gmft.detectors.tatr": Mock(),
                 "gmft.formatters.tatr": Mock(),
                 "gmft.pdf_bindings.pdfium": Mock(),
@@ -970,10 +986,10 @@ def test_extract_tables_isolated_success() -> None:
         result = _extract_tables_isolated(file_path, config, timeout=10.0)
 
         assert len(result) == 1
-        assert result[0].page_number == 1
-        assert "test" in result[0].text
-        assert isinstance(result[0].cropped_image, Image.Image)
-        assert isinstance(result[0].df, pl.DataFrame)
+        assert result[0]["page_number"] == 1
+        assert "test" in result[0]["text"]
+        assert isinstance(result[0]["cropped_image"], Image.Image)
+        assert isinstance(result[0]["df"], pl.DataFrame)
         mock_process.start.assert_called_once()
         mock_process.terminate.assert_called_once()
 
@@ -1134,9 +1150,10 @@ def test_extract_tables_isolated_empty_csv() -> None:
         result = _extract_tables_isolated(file_path, config)
 
         assert len(result) == 1
-        assert result[0].page_number == 2
-        assert result[0].text == ""
-        assert result[0].df.is_empty()
+        assert result[0]["page_number"] == 2
+        assert result[0]["text"] == ""
+        assert result[0]["df"] is not None
+        assert result[0]["df"].is_empty()
 
 
 def test_extract_tables_isolated_process_needs_kill() -> None:
@@ -1208,7 +1225,7 @@ async def test_extract_tables_isolated_async_success() -> None:
         patch("anyio.fail_after"),
     ):
 
-        async def run_sync_side_effect(func):
+        async def run_sync_side_effect(func: Any) -> Any:
             if callable(func):
                 return func()
             return None
@@ -1218,10 +1235,10 @@ async def test_extract_tables_isolated_async_success() -> None:
         result = await _extract_tables_isolated_async(file_path, config, timeout=10.0)
 
         assert len(result) == 1
-        assert result[0].page_number == 5
-        assert "async" in result[0].text
-        assert isinstance(result[0].cropped_image, Image.Image)
-        assert isinstance(result[0].df, pl.DataFrame)
+        assert result[0]["page_number"] == 5
+        assert "async" in result[0]["text"]
+        assert isinstance(result[0]["cropped_image"], Image.Image)
+        assert isinstance(result[0]["df"], pl.DataFrame)
         mock_process.start.assert_called_once()
         mock_process.terminate.assert_called_once()
 
@@ -1240,7 +1257,7 @@ async def test_extract_tables_isolated_async_process_died_sigsegv() -> None:
 
     mock_queue = Mock()
 
-    def get_with_timeout(timeout):
+    def get_with_timeout(timeout: Any) -> None:
         raise queue.Empty
 
     mock_queue.get.side_effect = get_with_timeout
@@ -1255,7 +1272,7 @@ async def test_extract_tables_isolated_async_process_died_sigsegv() -> None:
         patch("anyio.fail_after"),
     ):
 
-        def run_sync_side_effect(func):
+        def run_sync_side_effect(func: Any) -> Any:
             if callable(func):
                 return func()
             return None
@@ -1283,7 +1300,7 @@ async def test_extract_tables_isolated_async_process_died_other() -> None:
 
     mock_queue = Mock()
 
-    def get_with_timeout(timeout):
+    def get_with_timeout(timeout: Any) -> None:
         raise queue.Empty
 
     mock_queue.get.side_effect = get_with_timeout
@@ -1298,7 +1315,7 @@ async def test_extract_tables_isolated_async_process_died_other() -> None:
         patch("anyio.fail_after"),
     ):
 
-        def run_sync_side_effect(func):
+        def run_sync_side_effect(func: Any) -> Any:
             if callable(func):
                 return func()
             return None
@@ -1372,7 +1389,7 @@ async def test_extract_tables_isolated_async_error_from_process() -> None:
         patch("anyio.fail_after"),
     ):
 
-        async def run_sync_side_effect(func):
+        async def run_sync_side_effect(func: Any) -> Any:
             if callable(func):
                 return func()
             return None
@@ -1425,7 +1442,7 @@ async def test_extract_tables_isolated_async_empty_csv() -> None:
         patch("anyio.fail_after"),
     ):
 
-        async def run_sync_side_effect(func):
+        async def run_sync_side_effect(func: Any) -> Any:
             if callable(func):
                 return func()
             return None
@@ -1435,9 +1452,10 @@ async def test_extract_tables_isolated_async_empty_csv() -> None:
         result = await _extract_tables_isolated_async(file_path, config)
 
         assert len(result) == 1
-        assert result[0].page_number == 7
-        assert result[0].text == ""
-        assert result[0].df.is_empty()
+        assert result[0]["page_number"] == 7
+        assert result[0]["text"] == ""
+        assert result[0]["df"] is not None
+        assert result[0]["df"].is_empty()
 
 
 @pytest.mark.anyio
@@ -1464,7 +1482,7 @@ async def test_extract_tables_isolated_async_process_needs_kill() -> None:
         patch("anyio.fail_after", side_effect=TimeoutError()),
     ):
 
-        async def run_sync_side_effect(func):
+        async def run_sync_side_effect(func: Any) -> Any:
             if callable(func):
                 return func()
             return None

@@ -81,7 +81,7 @@ def test_validate_mime_type_with_file_path_os_error() -> None:
     ):
         mock_path = Mock()
         mock_path.stat.side_effect = OSError("File not found")
-        mock_path.__str__ = Mock(return_value="test.txt")
+        mock_path.__str__ = Mock(return_value="test.txt")  # type: ignore[method-assign]
         mock_path_class.return_value = mock_path
 
         result = validate_mime_type(file_path="test.txt")
@@ -154,7 +154,7 @@ def test_detect_mime_type_uncached_file_not_exists() -> None:
     with patch("kreuzberg._mime_types.Path") as mock_path_class:
         mock_path = Mock()
         mock_path.exists.return_value = False
-        mock_path.__str__ = Mock(return_value="/nonexistent/file.pdf")
+        mock_path.__str__ = Mock(return_value="/nonexistent/file.pdf")  # type: ignore[method-assign]
         mock_path_class.return_value = mock_path
 
         with pytest.raises(ValidationError, match="The file does not exist"):

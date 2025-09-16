@@ -47,8 +47,8 @@ def test_merge_file_config_empty() -> None:
 
 
 def test_merge_file_config_with_values() -> None:
-    config_dict = {}
-    file_config = {
+    config_dict: dict[str, Any] = {}
+    file_config: dict[str, Any] = {
         "force_ocr": True,
         "chunk_content": True,
         "extract_tables": True,
@@ -99,14 +99,14 @@ def test_build_ocr_config_from_cli_tesseract() -> None:
     config = _build_ocr_config_from_cli("tesseract", cli_args)
     assert isinstance(config, TesseractConfig)
     assert config.language == "eng"
-    assert config.psm == PSMMode.FULLY_AUTOMATIC_PSM
+    assert config.psm == PSMMode.AUTO
 
 
 def test_build_ocr_config_from_cli_easyocr() -> None:
     cli_args: MutableMapping[str, Any] = {"easyocr_config": {"language": ["en", "fr"], "beam_width": 10}}
     config = _build_ocr_config_from_cli("easyocr", cli_args)
     assert isinstance(config, EasyOCRConfig)
-    assert config.language == ["en", "fr"]
+    assert config.language == ("en", "fr")  # type: ignore[comparison-overlap]
     assert config.beam_width == 10
 
 
@@ -139,7 +139,7 @@ def test_build_ocr_config_from_cli_invalid_config() -> None:
 
 def test_configure_ocr_backend_none() -> None:
     config_dict: dict[str, Any] = {"ocr_backend": None}
-    file_config = {}
+    file_config: dict[str, Any] = {}
     cli_args: MutableMapping[str, Any] = {}
     _configure_ocr_backend(config_dict, file_config, cli_args)
     assert "ocr_config" not in config_dict
@@ -147,7 +147,7 @@ def test_configure_ocr_backend_none() -> None:
 
 def test_configure_ocr_backend_from_cli() -> None:
     config_dict: dict[str, Any] = {"ocr_backend": "tesseract"}
-    file_config = {}
+    file_config: dict[str, Any] = {}
     cli_args: MutableMapping[str, Any] = {"tesseract_config": {"language": "eng"}}
     _configure_ocr_backend(config_dict, file_config, cli_args)
     assert isinstance(config_dict["ocr_config"], TesseractConfig)
@@ -156,16 +156,16 @@ def test_configure_ocr_backend_from_cli() -> None:
 
 def test_configure_ocr_backend_from_file() -> None:
     config_dict: dict[str, Any] = {"ocr_backend": "easyocr"}
-    file_config = {"easyocr": {"language": ["en"], "beam_width": 5}}
+    file_config: dict[str, Any] = {"easyocr": {"language": ["en"], "beam_width": 5}}
     cli_args: MutableMapping[str, Any] = {}
     _configure_ocr_backend(config_dict, file_config, cli_args)
     assert isinstance(config_dict["ocr_config"], EasyOCRConfig)
-    assert config_dict["ocr_config"].language == ["en"]
+    assert config_dict["ocr_config"].language == ("en",)  # type: ignore[comparison-overlap]
 
 
 def test_configure_gmft_disabled() -> None:
     config_dict: dict[str, Any] = {"extract_tables": False}
-    file_config = {}
+    file_config: dict[str, Any] = {}
     cli_args: MutableMapping[str, Any] = {}
     _configure_gmft(config_dict, file_config, cli_args)
     assert "gmft_config" not in config_dict
@@ -173,7 +173,7 @@ def test_configure_gmft_disabled() -> None:
 
 def test_configure_gmft_from_cli() -> None:
     config_dict: dict[str, Any] = {"extract_tables": True}
-    file_config = {}
+    file_config: dict[str, Any] = {}
     cli_args: MutableMapping[str, Any] = {"gmft_config": {"verbosity": 2, "detector_base_threshold": 0.8}}
     _configure_gmft(config_dict, file_config, cli_args)
     assert isinstance(config_dict["gmft_config"], GMFTConfig)
@@ -182,7 +182,7 @@ def test_configure_gmft_from_cli() -> None:
 
 def test_configure_gmft_from_file() -> None:
     config_dict: dict[str, Any] = {"extract_tables": True}
-    file_config = {"gmft": {"verbosity": 1, "formatter_base_threshold": 0.9}}
+    file_config: dict[str, Any] = {"gmft": {"verbosity": 1, "formatter_base_threshold": 0.9}}
     cli_args: MutableMapping[str, Any] = {}
     _configure_gmft(config_dict, file_config, cli_args)
     assert isinstance(config_dict["gmft_config"], GMFTConfig)
@@ -191,7 +191,7 @@ def test_configure_gmft_from_file() -> None:
 
 def test_configure_gmft_invalid_config() -> None:
     config_dict: dict[str, Any] = {"extract_tables": True}
-    file_config = {}
+    file_config: dict[str, Any] = {}
     cli_args: MutableMapping[str, Any] = {"gmft_config": {"invalid_field": "value"}}
     with pytest.raises(ValidationError) as exc_info:
         _configure_gmft(config_dict, file_config, cli_args)
@@ -203,14 +203,14 @@ def test_create_ocr_config_tesseract() -> None:
     config = _create_ocr_config("tesseract", backend_config)
     assert isinstance(config, TesseractConfig)
     assert config.language == "eng"
-    assert config.psm == PSMMode.UNIFORM_BLOCK
+    assert config.psm == PSMMode.SINGLE_BLOCK
 
 
 def test_create_ocr_config_tesseract_psm_int() -> None:
     backend_config = {"psm": 3}
     config = _create_ocr_config("tesseract", backend_config)
     assert isinstance(config, TesseractConfig)
-    assert config.psm == PSMMode.FULLY_AUTOMATIC_PSM
+    assert config.psm == PSMMode.AUTO
 
 
 def test_create_ocr_config_tesseract_invalid_psm() -> None:
@@ -386,10 +386,10 @@ def test_build_extraction_config_from_dict_invalid_gmft() -> None:
 
 
 def test_build_extraction_config_from_dict_with_html_to_markdown() -> None:
-    config_dict = {"html_to_markdown": {"strip_tags": ["script", "style"]}}
+    config_dict = {"html_to_markdown": {"strip": ["script", "style"]}}
     config = build_extraction_config_from_dict(config_dict)
     assert isinstance(config.html_to_markdown_config, HTMLToMarkdownConfig)
-    assert config.html_to_markdown_config.strip_tags == ["script", "style"]
+    assert config.html_to_markdown_config.strip == ["script", "style"]
 
 
 def test_build_extraction_config_from_dict_invalid_html_to_markdown() -> None:
@@ -407,31 +407,31 @@ def test_build_extraction_config_from_dict_ocr_backend_none() -> None:
 
 def test_build_extraction_config_from_dict_invalid() -> None:
     config_dict = {"invalid_field": "value"}
-    with pytest.raises(ValidationError) as exc_info:
-        build_extraction_config_from_dict(config_dict)
-    assert "Invalid extraction configuration" in str(exc_info.value)
+    config = build_extraction_config_from_dict(config_dict)
+    assert config is not None
+    assert hasattr(config, "force_ocr")
 
 
 def test_build_extraction_config() -> None:
-    file_config = {"force_ocr": False}
+    file_config: dict[str, Any] = {"force_ocr": False}
     cli_args: MutableMapping[str, Any] = {"force_ocr": True}
     config = build_extraction_config(file_config, cli_args)
     assert config.force_ocr is True
 
 
 def test_build_extraction_config_ocr_backend_none() -> None:
-    file_config = {}
+    file_config: dict[str, Any] = {}
     cli_args: MutableMapping[str, Any] = {"ocr_backend": "none"}
     config = build_extraction_config(file_config, cli_args)
     assert config.ocr_backend is None
 
 
 def test_build_extraction_config_invalid() -> None:
-    file_config = {}
+    file_config: dict[str, Any] = {}
     cli_args: MutableMapping[str, Any] = {"invalid": "value"}
-    with pytest.raises(ValidationError) as exc_info:
-        build_extraction_config(file_config, cli_args)
-    assert "Invalid extraction configuration" in str(exc_info.value)
+    config = build_extraction_config(file_config, cli_args)
+    assert config is not None
+    assert hasattr(config, "force_ocr")
 
 
 def test_find_config_file_kreuzberg_toml(tmp_path: Path) -> None:

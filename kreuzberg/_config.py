@@ -69,7 +69,17 @@ def _build_ocr_config_from_cli(
     try:
         match ocr_backend:
             case "tesseract":
-                return TesseractConfig(**backend_args)
+                # Handle PSM mode conversion from int to enum
+                processed_args = backend_args.copy()
+                if "psm" in processed_args and isinstance(processed_args["psm"], int):
+                    try:
+                        processed_args["psm"] = PSMMode(processed_args["psm"])
+                    except ValueError as e:
+                        raise ValidationError(
+                            f"Invalid PSM mode value: {processed_args['psm']}",
+                            context={"psm_value": processed_args["psm"], "error": str(e)},
+                        ) from e
+                return TesseractConfig(**processed_args)
             case "easyocr":
                 return EasyOCRConfig(**backend_args)
             case "paddleocr":

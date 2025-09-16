@@ -77,7 +77,7 @@ def test_image_ocr_config_post_init_allowed_formats() -> None:
 
     config = ImageOCRConfig(
         enabled=True,
-        allowed_formats=["png", "jpg", "jpeg"],
+        allowed_formats=frozenset(["png", "jpg", "jpeg"]),
     )
 
     assert isinstance(config.allowed_formats, frozenset)
@@ -197,9 +197,7 @@ def test_extraction_config_get_config_dict() -> None:
 def test_extraction_result_to_dict() -> None:
     from kreuzberg._types import ExtractionResult
 
-    result = ExtractionResult(
-        content="Test content", mime_type="text/plain", metadata={"title": "Test Document", "author": None}
-    )
+    result = ExtractionResult(content="Test content", mime_type="text/plain", metadata={"title": "Test Document"})
 
     dict_result = result.to_dict()
     assert dict_result["content"] == "Test content"
@@ -221,7 +219,7 @@ def test_extraction_result_table_export_methods() -> None:
 
     df = pl.DataFrame({"name": ["Alice", "Bob"], "age": [25, 30]})
 
-    table = TableData(df=df, title="Test Table", bbox=(0, 0, 100, 50))
+    table = TableData(df=df, text="Test Table", page_number=1, cropped_image=None)  # type: ignore[typeddict-item]
 
     result = ExtractionResult(content="Test content", mime_type="text/plain", metadata={}, tables=[table])
 
@@ -243,9 +241,9 @@ def test_extraction_result_table_export_methods() -> None:
 
 
 def test_extraction_config_to_dict_with_nested_objects() -> None:
-    from kreuzberg._types import ExtractionConfig, TesseractConfig
+    from kreuzberg._types import ExtractionConfig, PSMMode, TesseractConfig
 
-    tesseract_config = TesseractConfig(language="eng", psm=6)
+    tesseract_config = TesseractConfig(language="eng", psm=PSMMode.SINGLE_BLOCK)
     config = ExtractionConfig(ocr_backend="tesseract", ocr_config=tesseract_config, use_cache=True)
 
     dict_result = config.to_dict(include_none=False)
@@ -313,11 +311,11 @@ def test_extraction_config_post_init_conversion() -> None:
     from kreuzberg._types import ExtractionConfig
 
     config = ExtractionConfig(
-        custom_entity_patterns={"PERSON": r"\b[A-Z][a-z]+\b"},
+        custom_entity_patterns=frozenset([("PERSON", r"\b[A-Z][a-z]+\b")]),
         post_processing_hooks=[],
         validators=[],
         pdf_password=["pass1", "pass2"],
-        image_ocr_formats=["png", "jpg"],
+        image_ocr_formats=frozenset(["png", "jpg"]),
     )
 
     assert isinstance(config.custom_entity_patterns, frozenset)
@@ -389,7 +387,7 @@ def test_normalize_metadata_function() -> None:
     result = normalize_metadata(metadata)
 
     assert result["title"] == "Test Document"
-    assert result["authors"] == "Test Author"
+    assert result["authors"] == "Test Author"  # type: ignore[comparison-overlap]
     assert result["subject"] == "Testing"
 
     assert "invalid_key" not in result
