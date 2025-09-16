@@ -132,7 +132,7 @@ def classify_document_from_layout(
             if not found_words.is_empty():
                 scores[doc_type] += 1.0
                 word_top = found_words[0, "top"]
-                if word_top < page_height * 0.3:
+                if word_top is not None and word_top < page_height * 0.3:
                     scores[doc_type] += 0.5
 
     total_score = sum(scores.values())

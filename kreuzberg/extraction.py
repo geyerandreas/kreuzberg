@@ -47,7 +47,7 @@ async def _handle_cache_async(path: Path, config: ExtractionConfig) -> Extractio
         return cached_result
 
     if cache.is_processing(path, config):
-        event = cache.mark_processing(path, config)
+        event = cache.mark_processing(path, config)  # pragma: no cover
         await anyio.to_thread.run_sync(event.wait)  # pragma: no cover
 
         return cache.get(path, config)  # pragma: no cover
@@ -362,7 +362,7 @@ def extract_file_sync(
             return cached_result
 
         if cache.is_processing(path, config):
-            event = cache.mark_processing(path, config)
+            event = cache.mark_processing(path, config)  # pragma: no cover
             event.wait()  # pragma: no cover
 
             # Try cache again after waiting for other process to complete  # ~keep
