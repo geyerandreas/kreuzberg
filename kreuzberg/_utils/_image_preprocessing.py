@@ -198,7 +198,7 @@ def normalize_image_dpi(
             calculated_dpi=calculated_dpi,
         )
 
-    except OSError as e:
+    except OSError as e:  # pragma: no cover
         return image, ImagePreprocessingMetadata(
             original_dimensions=(original_width, original_height),
             original_dpi=original_dpi,

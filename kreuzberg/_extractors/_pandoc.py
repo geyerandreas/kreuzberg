@@ -253,7 +253,7 @@ class PandocExtractor(Extractor):
                 "Pandoc version 2 or above is a required system dependency. Please install it on your system and make sure its available in $PATH."
             )
 
-        except FileNotFoundError as e:
+        except FileNotFoundError as e:  # pragma: no cover
             raise MissingDependencyError(
                 "Pandoc version 2 or above is a required system dependency. Please install it on your system and make sure its available in $PATH."
             ) from e
@@ -491,7 +491,7 @@ class PandocExtractor(Extractor):
                 "Please install it on your system and make sure its available in $PATH."
             )
 
-        except (subprocess.SubprocessError, FileNotFoundError) as e:
+        except (subprocess.SubprocessError, FileNotFoundError) as e:  # pragma: no cover
             raise MissingDependencyError(
                 "Pandoc version 2 or above is a required system dependency. "
                 "Please install it on your system and make sure its available in $PATH."

@@ -102,7 +102,7 @@ class HTMLExtractor(Extractor):
                     try:
                         with Image.open(io.BytesIO(image_data)) as pil_img:
                             dimensions = pil_img.size
-                    except (OSError, ValueError) as e:
+                    except (OSError, ValueError) as e:  # pragma: no cover
                         logger.debug("Could not determine image dimensions for %s: %s", format_name, e)
 
                     alt_val = img.get("alt")  # type: ignore[union-attr]

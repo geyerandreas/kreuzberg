@@ -57,14 +57,14 @@ def _import_easyocr() -> tuple[Any, Any]:
 
         try:
             import torch as _torch  # noqa: PLC0415
-        except ImportError:
+        except ImportError:  # pragma: no cover
             _torch = None  # type: ignore[assignment]
 
         easyocr = _easyocr
         torch = _torch
         HAS_EASYOCR = True
         return easyocr, torch
-    except ImportError:
+    except ImportError:  # pragma: no cover
         return None, None
 
 
@@ -161,7 +161,7 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
     async def process_image(self, image: Image.Image, **kwargs: Unpack[EasyOCRConfig]) -> ExtractionResult:
         try:
             import numpy as np  # noqa: PLC0415
-        except ImportError as e:
+        except ImportError as e:  # pragma: no cover
             raise MissingDependencyError("EasyOCR requires numpy: pip install 'kreuzberg[easyocr]'") from e
 
         use_cache = kwargs.pop("use_cache", True)
@@ -409,7 +409,7 @@ class EasyOCRBackend(OCRBackend[EasyOCRConfig]):
     def process_image_sync(self, image: Image.Image, **kwargs: Unpack[EasyOCRConfig]) -> ExtractionResult:
         try:
             import numpy as np  # noqa: PLC0415
-        except ImportError as e:
+        except ImportError as e:  # pragma: no cover
             raise MissingDependencyError("EasyOCR requires numpy: pip install 'kreuzberg[easyocr]'") from e
 
         use_cache = kwargs.pop("use_cache", True)

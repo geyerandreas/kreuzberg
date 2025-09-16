@@ -627,3 +627,47 @@ def test_configure_gmft_with_file_config() -> None:
     assert "gmft_config" in config_dict
     assert isinstance(config_dict["gmft_config"], GMFTConfig)
     assert config_dict["gmft_config"].verbosity == 1
+
+
+def test_configure_ocr_backend_no_ocr_config_from_cli_or_file() -> None:
+    """Test when OCR backend is specified but no config is provided."""
+
+    from kreuzberg._config import _configure_ocr_backend
+
+    config_dict: dict[str, Any] = {"ocr_backend": "tesseract"}
+    file_config: dict[str, Any] = {}  # No file config
+    cli_args: MutableMapping[str, Any] = {}  # No CLI config
+
+    _configure_ocr_backend(config_dict, file_config, cli_args)
+    # Should not add ocr_config if none provided
+    assert "ocr_config" not in config_dict
+
+
+def test_build_extraction_config_from_dict_no_ocr_config() -> None:
+    """Test building extraction config when OCR backend specified but no OCR config."""
+    from kreuzberg._config import build_extraction_config_from_dict
+
+    config_dict = {
+        "ocr_backend": "tesseract",
+        "force_ocr": True,
+    }
+
+    config = build_extraction_config_from_dict(config_dict)
+    assert config.ocr_backend == "tesseract"
+    assert config.force_ocr is True
+    # No ocr_config was provided, so should use defaults
+    assert config.ocr_config is None
+
+
+def test_build_extraction_config_from_dict_no_gmft_config() -> None:
+    """Test building extraction config when extract_tables is True but no gmft config."""
+    from kreuzberg._config import build_extraction_config_from_dict
+
+    config_dict = {
+        "extract_tables": True,
+    }
+
+    config = build_extraction_config_from_dict(config_dict)
+    assert config.extract_tables is True
+    # No gmft_config was provided
+    assert config.gmft_config is None

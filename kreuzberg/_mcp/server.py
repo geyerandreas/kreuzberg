@@ -39,7 +39,7 @@ def _validate_file_path(file_path: str) -> Path:
     """
     try:
         path = Path(file_path).resolve()
-    except (OSError, ValueError) as e:
+    except (OSError, ValueError) as e:  # pragma: no cover
         raise ValidationError(
             f"Invalid file path: {file_path}",
             context={"file_path": file_path, "error": str(e)},

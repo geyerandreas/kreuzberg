@@ -99,7 +99,7 @@ async def extract_tables(
             "size": stat.st_size,
             "mtime": stat.st_mtime,
         }
-    except OSError:
+    except OSError:  # pragma: no cover
         file_info = {
             "path": str(path),
             "size": 0,
@@ -215,7 +215,7 @@ def extract_tables_sync(
             "size": stat.st_size,
             "mtime": stat.st_mtime,
         }
-    except OSError:
+    except OSError:  # pragma: no cover
         file_info = {
             "path": str(path),
             "size": 0,

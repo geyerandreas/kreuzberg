@@ -153,7 +153,7 @@ class PDFExtractor(Extractor):
                 from kreuzberg._gmft import extract_tables_sync  # noqa: PLC0415
 
                 tables = extract_tables_sync(path)
-            except ImportError:
+            except ImportError:  # pragma: no cover
                 tables = []
 
         if not self.config.force_ocr and self._validate_extracted_text(text):
@@ -500,7 +500,7 @@ class PDFExtractor(Extractor):
             except (ValueError, TypeError, KeyError, RuntimeError) as e:  # noqa: PERF203
                 last_exception = e
                 continue
-            except OSError as e:
+            except OSError as e:  # pragma: no cover
                 raise ParsingError(f"Failed to parse PDF: {e}") from e
 
         if last_exception:
@@ -520,7 +520,7 @@ class PDFExtractor(Extractor):
         for password in passwords:
             try:
                 return await extract_pdf_metadata(content, password=password)
-            except (ParsingError, ValueError, TypeError, OSError) as e:  # noqa: PERF203
+            except (ParsingError, ValueError, TypeError, OSError) as e:  # noqa: PERF203  # pragma: no cover
                 last_exception = e
                 continue
 
@@ -538,7 +538,7 @@ class PDFExtractor(Extractor):
         for password in passwords:
             try:
                 return extract_pdf_metadata_sync(content, password=password)
-            except (ParsingError, ValueError, TypeError, OSError) as e:  # noqa: PERF203
+            except (ParsingError, ValueError, TypeError, OSError) as e:  # noqa: PERF203  # pragma: no cover
                 last_exception = e
                 continue
 

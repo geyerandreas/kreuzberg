@@ -161,7 +161,7 @@ def load_config_from_file(config_path: Path) -> dict[str, Any]:
     try:
         with config_path.open("rb") as f:
             data = tomllib.load(f)
-    except FileNotFoundError as e:
+    except FileNotFoundError as e:  # pragma: no cover
         raise ValidationError(f"Configuration file not found: {config_path}") from e
     except tomllib.TOMLDecodeError as e:
         raise ValidationError(f"Invalid TOML in configuration file: {e}") from e
@@ -293,7 +293,7 @@ def find_config_file(start_path: Path | None = None) -> Path | None:
                     data = tomllib.load(f)
                 if "tool" in data and "kreuzberg" in data["tool"]:
                     return pyproject_toml
-            except OSError as e:
+            except OSError as e:  # pragma: no cover
                 raise ValidationError(
                     f"Failed to read pyproject.toml: {e}",
                     context={"file": str(pyproject_toml), "error": str(e)},

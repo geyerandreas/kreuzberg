@@ -453,3 +453,24 @@ def test_extraction_config_nested_to_dict_calls() -> None:
     assert isinstance(result["html_to_markdown_config"], dict)
     assert result["ocr_config"]["language"] == "deu"
     assert result["html_to_markdown_config"]["autolinks"] is False
+
+
+def test_extraction_result_to_dict_with_nested_config() -> None:
+    """Test that ExtractionResult.to_dict handles nested config objects with to_dict methods."""
+    from kreuzberg._types import ExtractionResult, PSMMode, TesseractConfig
+
+    # Create a config with nested objects
+    config = TesseractConfig(language="eng", psm=PSMMode.SINGLE_BLOCK)
+
+    # Create result with nested config
+    result = ExtractionResult(content="Test content", mime_type="text/plain", metadata={"ocr_config": config})  # type: ignore[typeddict-unknown-key]
+
+    # Call to_dict which should trigger the nested to_dict call
+    result_dict = result.to_dict(include_none=False)
+
+    # Verify nested object was converted
+    assert "metadata" in result_dict
+    assert "ocr_config" in result_dict["metadata"]
+    # The config should be converted to dict
+    assert isinstance(result_dict["metadata"]["ocr_config"], dict)
+    assert result_dict["metadata"]["ocr_config"]["language"] == "eng"

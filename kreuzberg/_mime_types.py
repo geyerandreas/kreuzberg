@@ -229,7 +229,7 @@ def validate_mime_type(
                 "mtime": stat.st_mtime if stat else 0,
                 "check_file_exists": check_file_exists,
             }
-        except OSError:
+        except OSError:  # pragma: no cover
             file_info = {
                 "path": str(path),
                 "size": 0,

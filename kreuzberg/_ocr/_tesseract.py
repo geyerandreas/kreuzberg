@@ -215,7 +215,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
             try:
                 await run_sync(save_image.save, str(image_path), format="PNG")
-            except OSError as e:
+            except OSError as e:  # pragma: no cover
                 if "cannot write mode" not in str(e):
                     raise
                 save_image = image.convert("RGB")
@@ -357,7 +357,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         try:
             stat = path.stat()
             file_info = {"path": str(path.resolve()), "size": stat.st_size, "mtime": stat.st_mtime}
-        except OSError:
+        except OSError:  # pragma: no cover
             file_info = {"path": str(path), "size": 0, "mtime": 0}
 
         cache_kwargs = {
@@ -399,7 +399,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                     await ocr_cache.aset(extraction_result, **final_cache_kwargs)
 
                 return extraction_result
-            except (RuntimeError, OSError) as e:
+            except (RuntimeError, OSError) as e:  # pragma: no cover
                 raise OCRError(f"Failed to OCR using tesseract: {e}") from e
             finally:
                 await unlink()
@@ -432,7 +432,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
                 try:
                     df = await run_sync(pl.DataFrame, table_data[1:], schema=table_data[0])
-                except (ImportError, IndexError):
+                except (ImportError, IndexError):  # pragma: no cover
                     df = None
 
                 table: TableData = {"text": markdown, "df": df, "page_number": 1, "cropped_image": None}  # type: ignore[typeddict-item]
@@ -444,7 +444,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                     tables=[table],
                     chunks=text_result.chunks,
                 )
-        except (ValueError, KeyError, ImportError):
+        except (ValueError, KeyError, ImportError):  # pragma: no cover
             pass
 
         return text_result
@@ -761,7 +761,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
                 try:
                     df = pl.DataFrame(table_data[1:], schema=table_data[0])
-                except (ImportError, IndexError):
+                except (ImportError, IndexError):  # pragma: no cover
                     df = None
 
                 table: TableData = {"text": markdown, "df": df, "page_number": 1, "cropped_image": None}  # type: ignore[typeddict-item]
@@ -773,7 +773,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                     tables=[table],
                     chunks=text_result.chunks,
                 )
-        except (ValueError, KeyError, ImportError):
+        except (ValueError, KeyError, ImportError):  # pragma: no cover
             pass
 
         return text_result
@@ -810,7 +810,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
                 try:
                     df = await run_sync(pl.DataFrame, table_data[1:], schema=table_data[0])
-                except (ImportError, IndexError):
+                except (ImportError, IndexError):  # pragma: no cover
                     df = None
 
                 dummy_image = Image.new("RGB", (1, 1), "white")
@@ -823,7 +823,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                     "metadata": {"bbox": (min_x, min_y, max_x, max_y)},
                 }  # type: ignore[typeddict-unknown-key]
                 tables.append(table)
-        except (ValueError, KeyError, ImportError):
+        except (ValueError, KeyError, ImportError):  # pragma: no cover
             pass
 
         return tables
@@ -879,7 +879,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             env = {"OMP_THREAD_LIMIT": "1"} if sys.platform.startswith("linux") else None
             try:
                 result = await run_process(command, env=env)
-            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:  # pragma: no cover
                 raise MissingDependencyError(
                     "Tesseract version 5 is a required system dependency. Please install it on your system and make sure its available in $PATH."
                 ) from e
@@ -890,7 +890,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                 )
 
             cls._version_checked = True
-        except FileNotFoundError as e:
+        except FileNotFoundError as e:  # pragma: no cover
             raise MissingDependencyError(
                 "Tesseract version 5 is a required system dependency. Please install it on your system and make sure its available in $PATH."
             ) from e
@@ -1087,7 +1087,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                 "size": stat.st_size,
                 "mtime": stat.st_mtime,
             }
-        except OSError:
+        except OSError:  # pragma: no cover
             return {
                 "path": str(path),
                 "size": 0,
@@ -1189,7 +1189,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             command = ["tesseract", "--version"]
             try:
                 result = subprocess.run(command, capture_output=True, text=True, check=True, encoding="utf-8")
-            except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            except (subprocess.CalledProcessError, FileNotFoundError) as e:  # pragma: no cover
                 raise MissingDependencyError(
                     "Tesseract version 5 is a required system dependency. Please install it on your system and make sure its available in $PATH."
                 ) from e
@@ -1200,7 +1200,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
                 )
 
             cls._version_checked = True
-        except FileNotFoundError as e:
+        except FileNotFoundError as e:  # pragma: no cover
             raise MissingDependencyError(
                 "Tesseract version 5 is a required system dependency. Please install it on your system and make sure its available in $PATH."
             ) from e

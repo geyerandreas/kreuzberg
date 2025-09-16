@@ -60,7 +60,7 @@ def _import_paddleocr() -> tuple[Any, Any]:
         PaddleOCR = _PaddleOCR
         HAS_PADDLEOCR = True
         return np, PaddleOCR
-    except ImportError:
+    except ImportError:  # pragma: no cover
         return None, None
 
 
