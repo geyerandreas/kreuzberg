@@ -1095,7 +1095,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
             }
 
     def _result_from_dict(self, result_dict: dict[str, Any]) -> ExtractionResult:
-        """Convert a worker result dict to ExtractionResult."""
         if result_dict.get("success"):
             return ExtractionResult(
                 content=str(result_dict.get("text", "")),

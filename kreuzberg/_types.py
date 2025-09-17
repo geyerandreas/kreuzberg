@@ -1215,29 +1215,19 @@ class TokenReductionConfig:
     language_hint: str | None = None
 
     def __post_init__(self) -> None:
-        # Validate and normalize language_hint to ISO 639-1 format
         if self.language_hint:
-            # Basic input sanitization before calling langcodes
             hint = self.language_hint.strip()
 
-            # Reject obviously invalid inputs
             if not hint or len(hint) > 50 or any(c in hint for c in "\x00\r\n\t"):
                 object.__setattr__(self, "language_hint", None)
                 return
 
             try:
-                # Use langcodes to normalize the language code
-                # standardize_tag handles various formats including BCP 47, ISO 639-2/3, etc.
                 normalized = langcodes.standardize_tag(hint)
 
-                # Get just the language part (no region, script, etc.)
-                # This will give us the shortest form (preferably ISO 639-1)
                 lang = langcodes.Language.get(normalized).language
 
-                # Update the language_hint with normalized value if different
                 if lang and lang != hint:
                     object.__setattr__(self, "language_hint", lang)
             except (ValueError, AttributeError, TypeError):
-                # If langcodes fails, clear the language_hint
-                # Stopwords manager will fallback to English
                 object.__setattr__(self, "language_hint", None)

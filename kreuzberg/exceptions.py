@@ -17,7 +17,6 @@ class KreuzbergError(Exception):
         super().__init__(message)
 
     def _serialize_context(self, obj: Any) -> Any:
-        """Recursively serialize context objects to ensure JSON compatibility."""
         if isinstance(obj, bytes):
             return obj.decode("utf-8", errors="replace")
         if isinstance(obj, dict):

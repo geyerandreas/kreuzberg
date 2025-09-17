@@ -96,7 +96,6 @@ class Extractor(ABC):
         )
 
     def _check_image_memory_limits(self, images: list[ExtractedImage]) -> list[ExtractedImage]:
-        """Filter images based on memory safety limits."""
         if not images:
             return []
 
@@ -142,17 +141,6 @@ class Extractor(ABC):
     _HASH_SAMPLE_SIZE = 512
 
     def _compute_image_hash(self, img: ExtractedImage) -> int:
-        """Compute hash for image deduplication using progressive hashing.
-
-        For small images (<1KB), hash the entire content.
-        For larger images, use size + first/last bytes for quick comparison.
-
-        Args:
-            img: Image to hash
-
-        Returns:
-            Hash value for deduplication
-        """
         data_len = len(img.data)
 
         if data_len < self._SMALL_IMAGE_THRESHOLD:
@@ -189,14 +177,6 @@ class Extractor(ABC):
         return unique_images
 
     def _prepare_ocr_config(self, backend_name: str) -> dict[str, Any]:
-        """Prepare OCR configuration for the specified backend.
-
-        Args:
-            backend_name: Name of the OCR backend
-
-        Returns:
-            Configuration dictionary for the backend
-        """
         default_config: TesseractConfig | EasyOCRConfig | PaddleOCRConfig
         config_class: type[TesseractConfig | EasyOCRConfig | PaddleOCRConfig]
 
@@ -222,14 +202,6 @@ class Extractor(ABC):
         return cfg
 
     def _validate_image_for_ocr(self, img: ExtractedImage) -> str | None:
-        """Validate if an image is suitable for OCR processing.
-
-        Args:
-            img: Image to validate
-
-        Returns:
-            Reason for skipping if invalid, None if valid
-        """
         fmt = img.format.lower()
         if fmt not in self.config.image_ocr_formats:
             return f"Unsupported format: {img.format}"
@@ -247,16 +219,6 @@ class Extractor(ABC):
         return None
 
     async def _ocr_single_image(self, target: ExtractedImage, backend: Any, cfg: dict[str, Any]) -> ImageOCRResult:
-        """Process a single image with OCR.
-
-        Args:
-            target: Image to process
-            backend: OCR backend instance
-            cfg: Configuration for the backend
-
-        Returns:
-            OCR result for the image
-        """
         try:
             start = time.time()
             pil_img = Image.open(io.BytesIO(target.data))
@@ -284,14 +246,6 @@ class Extractor(ABC):
     async def _process_images_with_ocr(
         self, images: tuple[ExtractedImage, ...] | list[ExtractedImage]
     ) -> list[ImageOCRResult]:
-        """Process multiple images with OCR.
-
-        Args:
-            images: Tuple or list of images to process
-
-        Returns:
-            List of OCR results
-        """
         if not images or not self.config.ocr_extracted_images:
             return []
 

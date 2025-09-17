@@ -32,15 +32,6 @@ DEFAULT_CONFIG: Final[ExtractionConfig] = ExtractionConfig()
 
 
 async def _handle_cache_async(path: Path, config: ExtractionConfig) -> ExtractionResult | None:
-    """Handle cache lookup and coordination with other processes.
-
-    Args:
-        path: Path to the file being processed
-        config: Extraction configuration
-
-    Returns:
-        Cached result if available, None otherwise
-    """
     cache = get_document_cache()
 
     cached_result = cache.get(path, config)
@@ -96,10 +87,8 @@ def _validate_and_post_process_helper(
     if config.token_reduction is not None and config.token_reduction.mode != "off":
         original_content = result.content
 
-        # Use the best detected language if available
         language_hint = None
         if result.detected_languages and len(result.detected_languages) > 0:
-            # Use the first (highest confidence) detected language
             language_hint = result.detected_languages[0]
 
         reduced_content = reduce_tokens(
@@ -110,7 +99,6 @@ def _validate_and_post_process_helper(
         reduction_stats = get_reduction_stats(original_content, reduced_content)
 
         result.content = reduced_content
-        # Store reduction stats in metadata
         result.metadata["token_reduction"] = {
             "character_reduction_ratio": reduction_stats["character_reduction_ratio"],
             "token_reduction_ratio": reduction_stats["token_reduction_ratio"],

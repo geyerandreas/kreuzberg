@@ -18,13 +18,10 @@ class Ref(Generic[T]):
         self.factory = factory
 
     def get(self) -> T:
-        # Fast path - check if already initialized
         if self.name in self._instances:
             return cast("T", self._instances[self.name])
 
-        # Slow path - initialize with lock
         with self._lock:
-            # Double-check after acquiring lock
             if self.name not in self._instances:
                 self._instances[self.name] = self.factory()
             return cast("T", self._instances[self.name])

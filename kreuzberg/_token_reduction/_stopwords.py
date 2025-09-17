@@ -10,16 +10,14 @@ from kreuzberg._utils._ref import Ref
 _STOPWORDS_DIR = Path(__file__).parent / "stopwords"
 
 
-@lru_cache(maxsize=16)  # Cache up to 16 languages in memory
+@lru_cache(maxsize=16)
 def _load_language_stopwords(lang_code: str) -> set[str]:
     """Load stopwords for a specific language from its JSON file."""
-    # Validate language code to prevent path traversal
     if not lang_code or "/" in lang_code or "\\" in lang_code or ".." in lang_code:
         return set()
 
     file_path = _STOPWORDS_DIR / f"{lang_code}_stopwords.json"
 
-    # Ensure the resolved path is within the expected directory
     try:
         file_path = file_path.resolve()
         if not file_path.parent.samefile(_STOPWORDS_DIR):
@@ -35,8 +33,6 @@ def _load_language_stopwords(lang_code: str) -> set[str]:
             words: list[str] = msgspec.json.decode(f.read())
         return set(words)
     except (OSError, msgspec.DecodeError):
-        # Return empty set for corrupted files (consistent with missing files)
-        # In production, this could log the error
         return set()
 
 
@@ -48,17 +44,14 @@ def _get_available_languages() -> frozenset[str]:
 
         languages = set()
         for file_path in _STOPWORDS_DIR.glob("*_stopwords.json"):
-            # Extract language code from filename
             lang_code = file_path.stem.replace("_stopwords", "")
             languages.add(lang_code)
 
         return frozenset(languages)
     except (OSError, ValueError):
-        # Handle race condition where directory is deleted during iteration
         return frozenset()
 
 
-# Cache available languages list
 _available_languages_ref = Ref("available_languages", _get_available_languages)
 
 
@@ -81,10 +74,8 @@ class StopwordsManager:
 
     def get_stopwords(self, language: str) -> set[str]:
         """Get stopwords for a language, combining default and custom."""
-        # Load default stopwords lazily
         result = _load_language_stopwords(language)
 
-        # Add custom stopwords if any
         if language in self._custom_stopwords:
             result = result | self._custom_stopwords[language]
 
@@ -113,7 +104,6 @@ class StopwordsManager:
         self._custom_stopwords[language].update(words)
 
 
-# Global default manager using Ref pattern
 def _create_default_manager() -> StopwordsManager:
     return StopwordsManager()
 
