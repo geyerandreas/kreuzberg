@@ -52,26 +52,38 @@ def _is_markdown_structural_line(line: str, in_code_block: bool) -> bool:
         return True
 
     stripped = line.strip()
+
+    # Check for headers
+    if stripped.startswith("#"):
+        return True
+
+    # Check for tables (must have at least 2 pipes and look like a table)
+    if "|" in line:
+        pipe_count = line.count("|")
+        # Table rows typically have at least 2 pipes (for 2+ columns)
+        # and often start/end with pipes or have consistent spacing
+        if pipe_count >= 2 and (line.strip().startswith("|") or line.strip().endswith("|") or " | " in line):
+            return True
+
+    # Check for lists
     return (
-        stripped.startswith("#")  # Headers
-        or "|" in line  # Tables
-        or MARKDOWN_LIST_PATTERNS[0].match(line) is not None  # Bullet lists
+        MARKDOWN_LIST_PATTERNS[0].match(line) is not None  # Bullet lists
         or MARKDOWN_LIST_PATTERNS[1].match(line) is not None  # Numbered lists
     )
 
 
-@lru_cache(maxsize=128)
-def _get_cached_stopwords(language: str) -> set[str]:
-    """Get cached stopwords for a language."""
-    return get_default_stopwords_manager().get_stopwords(language)
-
-
 @lru_cache(maxsize=64)
-def _get_cached_custom_stopwords(language: str, custom_words_tuple: tuple[str, ...]) -> set[str]:
-    """Get stopwords with custom words efficiently cached."""
-    base_stopwords = _get_cached_stopwords(language)
-    custom_words = set(custom_words_tuple)
-    return base_stopwords | custom_words
+def _get_stopwords_with_custom(language: str, custom_words_tuple: tuple[str, ...] | None = None) -> set[str]:
+    """Get stopwords for a language, optionally with custom additions.
+
+    The caching happens in _load_language_stopwords, so we don't double-cache here.
+    """
+    manager = get_default_stopwords_manager()
+    base_stopwords = manager.get_stopwords(language)
+
+    if custom_words_tuple:
+        return base_stopwords | set(custom_words_tuple)
+    return base_stopwords
 
 
 def reduce_tokens(
@@ -217,11 +229,11 @@ def _apply_moderate_reduction(
         return text
 
     # Get stopwords (with custom if provided)
+    custom_words_tuple = None
     if config.custom_stopwords and lang in config.custom_stopwords:
         custom_words_tuple = tuple(sorted(config.custom_stopwords[lang]))
-        stopwords = _get_cached_custom_stopwords(lang, custom_words_tuple)
-    else:
-        stopwords = _get_cached_stopwords(lang)
+
+    stopwords = _get_stopwords_with_custom(lang, custom_words_tuple)
 
     # Apply stopword reduction
     if config.preserve_markdown:
@@ -238,16 +250,24 @@ def _apply_stopword_reduction_plain(text: str, *, stopwords: set[str]) -> str:
         # Clean word for stopword checking
         clean_word = WORD_CLEAN_PATTERN.sub("", word.lower())
 
-        # Keep word if not a stopword or if it's important
-        if (
-            clean_word not in stopwords
-            or len(clean_word) <= 2  # Keep short words
-            or word.isupper()  # Keep all-caps (likely acronyms)
+        # Skip empty cleaned words
+        if not clean_word:
+            filtered_words.append(word)
+            continue
+
+        # Check if word should be kept
+        should_keep = (
+            clean_word not in stopwords  # Not a stopword
+            or (len(clean_word) <= 1)  # Keep single letters (I, a as in "a priori")
+            or (word.isupper() and len(word) > 1)  # Keep acronyms (but not single caps)
             or any(char.isdigit() for char in word)  # Keep words with numbers
-        ):
+        )
+
+        if should_keep:
             filtered_words.append(word)
 
-    return " ".join(filtered_words)
+    # Return the filtered result, or empty string if all words removed
+    return " ".join(filtered_words) if filtered_words else ""
 
 
 def _apply_stopword_reduction_markdown_aware(text: str, *, stopwords: set[str]) -> str:

@@ -507,9 +507,10 @@ def test_stopwords_manager_handles_corrupted_file(tmp_path: Path) -> None:
     with patch("kreuzberg._token_reduction._stopwords._STOPWORDS_DIR", corrupted_dir):
         manager = StopwordsManager()
 
-        # Should raise ValidationError when trying to load corrupted file
-        with pytest.raises(ValidationError, match="Failed to load stopwords for language 'xx'"):
-            manager.get_stopwords("xx")
+        # Should return empty set for corrupted file (consistent with missing files)
+        stopwords = manager.get_stopwords("xx")
+        assert isinstance(stopwords, set)
+        assert len(stopwords) == 0
 
 
 def test_stopwords_manager_handles_missing_file() -> None:
@@ -632,3 +633,165 @@ def test_reduce_tokens_with_custom_stopwords_thread_safety() -> None:
             or "features" in result_lower
             or "características" in result_lower
         )
+
+
+def test_short_stopwords_are_removed() -> None:
+    """Test that common 2-letter stopwords are actually removed."""
+    config = TokenReductionConfig(mode="moderate")
+    # Common 2-letter stopwords that should be removed
+    text = "It is an excellent document of the organization"
+
+    result = reduce_tokens(text, config=config, language="en")
+
+    # These 2-letter stopwords should be removed
+    assert " is " not in f" {result} "
+    assert " it " not in f" {result.lower()} "
+    assert " an " not in f" {result.lower()} "
+    assert " of " not in f" {result.lower()} "
+
+    # Content words should remain (using words not in stopword list)
+    assert "excellent" in result
+    assert "document" in result
+    assert "organization" in result
+
+
+def test_single_letter_words_preserved() -> None:
+    """Test that single letters like 'I' and 'a' are preserved."""
+    config = TokenReductionConfig(mode="moderate")
+    text = "I need a solution"
+
+    result = reduce_tokens(text, config=config, language="en")
+
+    # Single letters should be preserved
+    assert "I" in result or "i" in result.lower()
+    assert " a " in f" {result.lower()} " or result.lower().startswith("a ")
+
+    # Other words preserved/removed appropriately
+    assert "solution" in result
+
+
+def test_markdown_table_detection_improved() -> None:
+    """Test improved markdown table detection."""
+    config = TokenReductionConfig(mode="moderate", preserve_markdown=True)
+
+    # Real table - should be preserved
+    table_text = """
+| Column 1 | Column 2 |
+|----------|----------|
+| Value 1  | Value 2  |
+"""
+
+    # Not a table - just text with pipes
+    not_table = "This text has a pipe | but it's not a table"
+
+    table_result = reduce_tokens(table_text, config=config, language="en")
+    not_table_result = reduce_tokens(not_table, config=config, language="en")
+
+    # Real table structure preserved
+    assert "| Column 1 | Column 2 |" in table_result
+    assert "|----------|----------|" in table_result
+
+    # Pipe in regular text gets stopwords removed
+    assert "pipe" in not_table_result
+    assert "table" in not_table_result
+    # "but" and "it's" should be removed as stopwords
+    assert "but" not in not_table_result
+
+
+def test_path_traversal_protection() -> None:
+    """Test that path traversal attempts are blocked."""
+
+    manager = StopwordsManager()
+
+    # Try various path traversal patterns
+    dangerous_codes = [
+        "../../../etc/passwd",
+        "..\\..\\windows\\system32",
+        "en/../../../etc/passwd",
+        "en/../../secret",
+    ]
+
+    for dangerous_code in dangerous_codes:
+        # Should safely return empty set
+        stopwords = manager.get_stopwords(dangerous_code)
+        assert stopwords == set()
+
+
+def test_custom_stopwords_size_limits() -> None:
+    """Test that custom stopwords have size limits."""
+    # Test too many languages
+    too_many_langs = {f"lang{i}": ["word"] for i in range(101)}
+
+    with pytest.raises(ValidationError, match="Too many custom stopword languages"):
+        StopwordsManager(custom_stopwords=too_many_langs)
+
+    # Test too many words per language
+    too_many_words = {"en": [f"word{i}" for i in range(10001)]}
+
+    with pytest.raises(ValidationError, match="Too many custom stopwords for language"):
+        StopwordsManager(custom_stopwords=too_many_words)
+
+
+def test_add_custom_stopwords_limits() -> None:
+    """Test that add_custom_stopwords enforces limits."""
+    manager = StopwordsManager()
+
+    # Add languages up to the limit
+    for i in range(100):
+        manager.add_custom_stopwords(f"lang{i}", ["word"])
+
+    # Should fail when adding 101st language
+    with pytest.raises(ValidationError, match="Cannot add more custom stopword languages"):
+        manager.add_custom_stopwords("lang100", ["word"])
+
+    # Test word limit per language
+    manager2 = StopwordsManager()
+    manager2.add_custom_stopwords("en", [f"word{i}" for i in range(9999)])
+
+    # Should fail when exceeding word limit
+    with pytest.raises(ValidationError, match="Too many custom stopwords for language"):
+        manager2.add_custom_stopwords("en", ["word9999", "word10000"])
+
+
+def test_empty_result_handling() -> None:
+    """Test that completely filtered text returns empty string."""
+    config = TokenReductionConfig(mode="moderate", custom_stopwords={"en": ["everything", "removed"]})
+    text = "everything is removed"
+
+    result = reduce_tokens(text, config=config, language="en")
+
+    # Should return empty string, not crash
+    assert result == ""
+
+
+def test_thread_safe_ref_initialization() -> None:
+    """Test that Ref class is thread-safe during initialization."""
+    import concurrent.futures
+    import time
+
+    from kreuzberg._utils._ref import Ref
+
+    call_count = 0
+
+    def slow_factory() -> str:
+        nonlocal call_count
+        call_count += 1
+        time.sleep(0.01)  # Simulate slow initialization
+        return f"initialized_{call_count}"
+
+    ref = Ref("test_ref", slow_factory)
+
+    # Clear to ensure fresh test
+    ref.clear()
+
+    # Multiple threads try to initialize simultaneously
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = [executor.submit(ref.get) for _ in range(10)]
+        results = [f.result() for f in concurrent.futures.as_completed(futures)]
+
+    # Should only initialize once despite concurrent access
+    assert call_count == 1
+    assert all(r == "initialized_1" for r in results)
+
+    # Cleanup
+    ref.clear()
