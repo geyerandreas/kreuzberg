@@ -16,6 +16,8 @@ from kreuzberg._types import ExtractionResult
 from kreuzberg.exceptions import MissingDependencyError, OCRError, ValidationError
 
 if TYPE_CHECKING:
+    from PIL.ImageFont import FreeTypeFont
+    from PIL.ImageFont import ImageFont as ImageFontType
     from pytest_mock import MockerFixture
 
 
@@ -1163,6 +1165,68 @@ async def test_markdown_extraction_with_table_detection(
     if tables_count > 0:
         assert len(result.tables) == tables_count
         assert "Table" in content or len(result.tables) > 0
+
+
+@pytest.mark.anyio
+async def test_markdown_no_excessive_escaping(backend: TesseractBackend, tmp_path: Path) -> None:
+    from PIL import ImageDraw, ImageFont
+
+    image = Image.new("RGB", (800, 400), color="white")
+    draw = ImageDraw.Draw(image)
+
+    font: FreeTypeFont | ImageFontType
+    try:
+        font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", 24)
+    except (OSError, AttributeError):
+        font = ImageFont.load_default()
+
+    test_text = [
+        "There should be one-- and preferably only one --obvious way",
+        "Table headers: Name | Age | Status == Active",
+        "Math expressions: 2 + 2 = 4",
+        "Code block: if (x > 0) { return true; }",
+        "List items: [1] First item [+] Add new",
+        "Number: 273.879.750",
+        "Asterisks for *emphasis* and **bold**",
+    ]
+
+    y_position = 20
+    for line in test_text:
+        draw.text((20, y_position), line, fill="black", font=font)
+        y_position += 40
+
+    image_path = tmp_path / "test_special_chars.png"
+    image.save(image_path)
+
+    from kreuzberg._types import TesseractConfig
+
+    config = TesseractConfig(output_format="markdown")
+    result = await backend.process_file(image_path, **config.to_dict())
+
+    assert r"\-\-" not in result.content
+    assert r"\|" not in result.content
+    assert r"\=" not in result.content
+    assert r"\+" not in result.content
+    assert r"\[" not in result.content
+    assert r"\]" not in result.content
+
+    assert "--" in result.content
+    assert "|" in result.content or "I" in result.content
+    assert "=" in result.content
+    assert "+" in result.content
+    assert "*" in result.content
+
+
+@pytest.mark.anyio
+async def test_html_to_markdown_config_defaults() -> None:
+    from kreuzberg._types import HTMLToMarkdownConfig
+
+    config = HTMLToMarkdownConfig()
+
+    assert config.escape_misc is False
+    assert config.escape_asterisks is False
+    assert config.escape_underscores is False
+    assert config.extract_metadata is True
 
 
 def test_tesseract_utility_functions_normalize_spaces_in_results(

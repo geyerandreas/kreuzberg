@@ -507,12 +507,7 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
         table_min_confidence: float = 30.0,
         **_kwargs: Any,
     ) -> ExtractionResult:
-        config = html_to_markdown_config or HTMLToMarkdownConfig(
-            escape_asterisks=False,
-            escape_underscores=False,
-            extract_metadata=False,
-            strip=["meta", "title"],
-        )
+        config = html_to_markdown_config or HTMLToMarkdownConfig()
 
         tables: list[TableData] = []
         if enable_table_detection:
@@ -678,10 +673,6 @@ class TesseractBackend(OCRBackend[TesseractConfig]):
 
             html_config = HTMLToMarkdownConfig(
                 custom_converters=converters,
-                escape_asterisks=False,
-                escape_underscores=False,
-                extract_metadata=False,
-                strip=["meta", "title"],
             )
 
             config_dict = html_config.to_dict()

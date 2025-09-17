@@ -1151,11 +1151,11 @@ class HTMLToMarkdownConfig:
     """Mapping of HTML tag names to custom converter functions."""
     default_title: bool = False
     """Use default titles for elements like links."""
-    escape_asterisks: bool = True
+    escape_asterisks: bool = False
     """Escape * characters to prevent unintended formatting."""
-    escape_misc: bool = True
+    escape_misc: bool = False
     """Escape miscellaneous characters to prevent Markdown conflicts."""
-    escape_underscores: bool = True
+    escape_underscores: bool = False
     """Escape _ characters to prevent unintended formatting."""
     extract_metadata: bool = True
     """Extract document metadata as comment header."""
