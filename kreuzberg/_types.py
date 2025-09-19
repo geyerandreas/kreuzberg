@@ -402,9 +402,12 @@ class ImageOCRConfig(ConfigDict):
 
 @dataclass(unsafe_hash=True, frozen=True, slots=True)
 class LanguageDetectionConfig(ConfigDict):
-    low_memory: bool = True
-    """If True, uses a smaller model (~200MB). If False, uses a larger, more accurate model.
-    Defaults to True for better memory efficiency."""
+    model: Literal["lite", "full", "auto"] = "auto"
+    """Language detection model to use:
+    - 'lite': Smaller, faster model with good accuracy
+    - 'full': Larger model with highest accuracy
+    - 'auto': Automatically choose based on memory availability (default)
+    """
     top_k: int = 3
     """Maximum number of languages to return for multilingual detection."""
     multilingual: bool = False
@@ -412,8 +415,8 @@ class LanguageDetectionConfig(ConfigDict):
     If False, uses single language detection."""
     cache_dir: str | None = None
     """Custom directory for model cache. If None, uses system default."""
-    allow_fallback: bool = True
-    """If True, falls back to small model if large model fails."""
+    low_memory: bool = True
+    """Deprecated. Use 'model' parameter instead. If True, uses 'lite' model."""
 
 
 @dataclass(unsafe_hash=True, frozen=True, slots=True)
@@ -983,8 +986,14 @@ class ExtractionConfig(ConfigDict):
     """Custom entity patterns as a frozenset of (entity_type, regex_pattern) tuples."""
     auto_detect_language: bool = False
     """Whether to automatically detect language and configure OCR accordingly."""
+    language_detection_model: Literal["lite", "full", "auto"] = "auto"
+    """Language detection model to use when auto_detect_language is True.
+    - 'lite': Smaller, faster model with good accuracy
+    - 'full': Larger model with highest accuracy
+    - 'auto': Automatically choose based on memory availability (default)
+    """
     language_detection_config: LanguageDetectionConfig | None = None
-    """Configuration for language detection. If None, uses default settings."""
+    """Configuration for language detection. If None, uses default settings with language_detection_model."""
     spacy_entity_extraction_config: SpacyEntityExtractionConfig | None = None
     """Configuration for spaCy entity extraction. If None, uses default settings."""
     auto_detect_document_type: bool = False
