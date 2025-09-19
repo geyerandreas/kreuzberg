@@ -14,7 +14,7 @@ try:
     from fast_langdetect import detect
 
     HAS_FAST_LANGDETECT = True
-except ImportError:  # pragma: no cover
+except ImportError as e:  # pragma: no cover
     HAS_FAST_LANGDETECT = False
     detect = None
     FastLangDetectConfig = None
@@ -46,14 +46,13 @@ def detect_languages(text: str, config: LanguageDetectionConfig | None = None) -
         config = LanguageDetectionConfig()
 
     try:
-        if config.multilingual:
-            results = detect(text, low_memory=config.low_memory, k=config.top_k)
-
+        result = detect(
+            text,
+            model='lite' if config.low_memory else 'full',
+            k=config.top_k  if config.multilingual else 1
+        )
+        if result:
             return [result["lang"].lower() for result in results if result.get("lang")]
-
-        result = detect(text, low_memory=config.low_memory)
-        if result and result.get("lang"):
-            return [result["lang"].lower()]
         return None
     except Exception:  # noqa: BLE001
         return None
