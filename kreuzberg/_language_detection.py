@@ -11,13 +11,12 @@ if TYPE_CHECKING:
 
 try:
     from fast_langdetect import LangDetectConfig as FastLangDetectConfig
-    from fast_langdetect import detect, detect_multilingual
+    from fast_langdetect import detect
 
     HAS_FAST_LANGDETECT = True
-except ImportError:  # pragma: no cover
+except ImportError as e:  # pragma: no cover
     HAS_FAST_LANGDETECT = False
     detect = None
-    detect_multilingual = None
     FastLangDetectConfig = None
 
 _CACHE_SIZE = 128
@@ -38,7 +37,7 @@ def _create_fast_langdetect_config(config: LanguageDetectionConfig) -> FastLangD
 
 @lru_cache(maxsize=_CACHE_SIZE)
 def detect_languages(text: str, config: LanguageDetectionConfig | None = None) -> list[str] | None:
-    if not HAS_FAST_LANGDETECT or detect is None or detect_multilingual is None:
+    if not HAS_FAST_LANGDETECT or detect is None:
         raise MissingDependencyError.create_for_package(
             dependency_group="langdetect", functionality="language detection", package_name="fast-langdetect"
         )
@@ -47,14 +46,13 @@ def detect_languages(text: str, config: LanguageDetectionConfig | None = None) -
         config = LanguageDetectionConfig()
 
     try:
-        if config.multilingual:
-            results = detect_multilingual(text, low_memory=config.low_memory, k=config.top_k)
-
+        result = detect(
+            text,
+            model='lite' if config.low_memory else 'full',
+            k=config.top_k  if config.multilingual else 1
+        )
+        if result:
             return [result["lang"].lower() for result in results if result.get("lang")]
-
-        result = detect(text, low_memory=config.low_memory)
-        if result and result.get("lang"):
-            return [result["lang"].lower()]
         return None
     except Exception:  # noqa: BLE001
         return None
