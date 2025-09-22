@@ -368,9 +368,10 @@ rules:
       - Fix linting issues: `ruff check --fix`
       - Type check: `mypy`
 
-      ### Pre-commit
-      - Install hooks: `pre-commit install && pre-commit install --hook-type commit-msg`
-      - Run manually: `pre-commit run --all-files`
+      ### Prek
+      - Install prek: `uv tool install prek`
+      - Install hooks: `prek install && prek install --hook-type commit-msg`
+      - Run manually: `prek run --all-files`
 
       ### Documentation
       - Build docs: `uv run mkdocs build --clean --strict`

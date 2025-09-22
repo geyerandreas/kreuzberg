@@ -9,7 +9,7 @@ tasks:
     desc: "Install dependencies with uv"
     cmds:
       - uv sync --all-extras --all-packages
-      - pre-commit install && pre-commit install -hook-type commit-msg
+      - prek install && prek install --hook-type commit-msg
 
   update:
     desc: "Update the dependencies"
@@ -17,7 +17,7 @@ tasks:
       - uv run uv-bump
       - cd benchmarks && uv run uv-bump && cd -
       - uv sync --all-extras --all-packages --upgrade
-      - pre-commit autoupdate
+      - prek autoupdate
 
   test:
     desc: "Run tests with pytest"
@@ -32,7 +32,7 @@ tasks:
   lint:
     desc: "Lint code with ruff and docs with markdownlint"
     cmds:
-      - pre-commit run --all-files
+      - prek run --all-files
 
   docs:build:
     desc: "Build documentation"
