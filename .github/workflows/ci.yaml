@@ -124,7 +124,7 @@ jobs:
           shell: bash
 
       - name: Upload Coverage to DeepSource
-        if: always()
+        if: always() && secrets.DEEPSOURCE_DSN != ''
         env:
           DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
         run: |
@@ -232,7 +232,7 @@ jobs:
           name: coverage-pr-${{ github.sha }}
 
       - name: Upload Coverage to DeepSource
-        if: always()
+        if: always() && secrets.DEEPSOURCE_DSN != ''
         env:
           DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
         run: |
