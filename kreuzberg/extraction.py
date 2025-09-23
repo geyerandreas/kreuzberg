@@ -76,7 +76,6 @@ def _validate_and_post_process_helper(
             result.keywords = None
 
     if config.auto_detect_language:
-        # Use provided config or create one with the model from ExtractionConfig
         lang_config = config.language_detection_config
         if lang_config is None:
             from kreuzberg._types import LanguageDetectionConfig  # noqa: PLC0415

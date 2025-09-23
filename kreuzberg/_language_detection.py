@@ -23,9 +23,7 @@ def detect_languages(text: str, config: LanguageDetectionConfig | None = None) -
         config = LanguageDetectionConfig()
 
     try:
-        # detect always returns a list, use k parameter for multiple languages
         k = config.top_k if config.multilingual else 1
-        # Use the model from config directly
         model = config.model
         results = detect(text, model=model, k=k)
 

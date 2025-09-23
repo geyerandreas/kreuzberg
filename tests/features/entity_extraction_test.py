@@ -11,7 +11,7 @@ from kreuzberg._entity_extraction import (
     extract_keywords,
 )
 from kreuzberg._types import SpacyEntityExtractionConfig
-from kreuzberg.exceptions import MissingDependencyError
+from kreuzberg.exceptions import KreuzbergError, MissingDependencyError
 
 
 def test_extract_entities_with_custom_patterns_only() -> None:
@@ -58,11 +58,11 @@ def test_extract_entities_spacy_load_fails() -> None:
 
     with (
         patch("kreuzberg._entity_extraction._select_spacy_model", return_value="en_core_web_sm"),
-        patch("kreuzberg._entity_extraction._load_spacy_model", return_value=None),
+        patch("kreuzberg._entity_extraction._load_spacy_model") as mock_load,
     ):
-        entities = extract_entities(text)
-
-    assert entities == []
+        mock_load.side_effect = KreuzbergError("Model download failed")
+        with pytest.raises(KreuzbergError, match="Model download failed"):
+            extract_entities(text)
 
 
 def test_extract_entities_with_spacy_success() -> None:
@@ -216,26 +216,82 @@ def test_load_spacy_model_with_cache_dir() -> None:
     os.environ.update(original_env)
 
 
-def test_load_spacy_model_failure() -> None:
+def test_load_spacy_model_auto_download_success() -> None:
+    config = SpacyEntityExtractionConfig()
+
+    mock_spacy = Mock()
+    mock_nlp = Mock()
+    mock_spacy.load.side_effect = [OSError("Model not found"), mock_nlp]
+
+    mock_subprocess = Mock()
+    mock_subprocess.run.return_value.returncode = 0
+
+    with (
+        patch.dict("sys.modules", {"spacy": mock_spacy}),
+        patch("subprocess.run", mock_subprocess.run),
+    ):
+        _load_spacy_model.cache_clear()
+        result = _load_spacy_model("en_core_web_sm", config)
+
+    assert result == mock_nlp
+    assert mock_nlp.max_length == config.max_doc_length
+    assert mock_spacy.load.call_count == 2
+    mock_subprocess.run.assert_called_once()
+
+    call_args = mock_subprocess.run.call_args[0][0]
+    assert "-m" in call_args
+    assert "spacy" in call_args
+    assert "download" in call_args
+    assert "en_core_web_sm" in call_args
+
+
+def test_load_spacy_model_download_then_load_failure() -> None:
+    config = SpacyEntityExtractionConfig()
+
+    mock_spacy = Mock()
+    mock_spacy.load.side_effect = [OSError("Model not found"), OSError("Load failed")]
+
+    mock_subprocess = Mock()
+    mock_subprocess.run.return_value.returncode = 0
+
+    with (
+        patch.dict("sys.modules", {"spacy": mock_spacy}),
+        patch("subprocess.run", mock_subprocess.run),
+    ):
+        _load_spacy_model.cache_clear()
+        with pytest.raises(KreuzbergError, match="Failed to load spaCy model"):
+            _load_spacy_model("en_core_web_sm", config)
+
+    assert mock_spacy.load.call_count == 2
+    mock_subprocess.run.assert_called_once()
+
+
+def test_load_spacy_model_auto_download_failure() -> None:
     config = SpacyEntityExtractionConfig()
 
     mock_spacy = Mock()
     mock_spacy.load.side_effect = OSError("Model not found")
 
-    with patch.dict("sys.modules", {"spacy": mock_spacy}):
-        _load_spacy_model.cache_clear()
-        result = _load_spacy_model("en_core_web_sm", config)
+    mock_subprocess = Mock()
+    mock_subprocess.run.return_value.returncode = 1
+    mock_subprocess.run.return_value.stderr = "Download error"
 
-    assert result is None
+    with (
+        patch.dict("sys.modules", {"spacy": mock_spacy}),
+        patch("subprocess.run", mock_subprocess.run),
+    ):
+        _load_spacy_model.cache_clear()
+        with pytest.raises(KreuzbergError, match="Failed to download spaCy model"):
+            _load_spacy_model("en_core_web_sm", config)
+
+    mock_spacy.load.assert_called_once_with("en_core_web_sm")
+    mock_subprocess.run.assert_called_once()
 
 
 def test_load_spacy_model_import_error() -> None:
     config = SpacyEntityExtractionConfig()
 
-    mock_spacy = Mock()
-    mock_spacy.load.side_effect = ImportError("Module not found")
-
-    with patch.dict("sys.modules", {"spacy": mock_spacy}):
+    with patch.dict("sys.modules", {"spacy": None}):
         _load_spacy_model.cache_clear()
         result = _load_spacy_model("en_core_web_sm", config)
 

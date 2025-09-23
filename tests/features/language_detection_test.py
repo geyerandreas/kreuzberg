@@ -23,7 +23,6 @@ def clear_language_detection_cache() -> Generator[None, None, None]:
 def test_detect_languages_when_library_missing() -> None:
     text = "This is some English text."
 
-    # Mock the import statement inside the function
     with patch.dict("sys.modules", {"fast_langdetect": None}):
         with pytest.raises(MissingDependencyError) as exc_info:
             detect_languages(text)
@@ -224,7 +223,6 @@ def test_detect_languages_cache_different_configs() -> None:
     mock_detect.assert_any_call(text, model="auto", k=2)
 
 
-# Real integration tests without mocks
 def test_detect_languages_real_single_language() -> None:
     text = "This is definitely an English text with multiple sentences. It should be detected as English."
     result = detect_languages(text)
@@ -235,24 +233,20 @@ def test_detect_languages_real_single_language() -> None:
 
 
 def test_detect_languages_real_multilingual() -> None:
-    # Text with mixed languages
     text = "Hello world. Bonjour le monde. Hola mundo. Ciao mondo."
     config = LanguageDetectionConfig(multilingual=True, top_k=4)
     result = detect_languages(text, config)
 
     assert result is not None
     assert len(result) >= 1
-    # The exact languages detected may vary, but we should get at least one
     assert all(isinstance(lang, str) for lang in result)
-    assert all(len(lang) == 2 for lang in result)  # Language codes should be 2 chars
+    assert all(len(lang) == 2 for lang in result)
 
 
 def test_detect_languages_real_empty_text() -> None:
     text = ""
     result = detect_languages(text)
 
-    # Empty text should return None or raise an exception (caught and returns None)
-    # Note: fast_langdetect may return a default language for empty text
     assert result is None or (isinstance(result, list) and len(result) <= 1)
 
 
@@ -272,7 +266,6 @@ def test_detect_languages_real_french_text() -> None:
 
     assert result is not None
     assert len(result) == 1
-    # Note: Model accuracy may vary, checking that we get a valid language code
     assert isinstance(result[0], str)
     assert len(result[0]) == 2
 
@@ -283,7 +276,6 @@ def test_detect_languages_real_german_text() -> None:
 
     assert result is not None
     assert len(result) == 1
-    # Note: Model accuracy may vary, checking that we get a valid language code
     assert isinstance(result[0], str)
     assert len(result[0]) == 2
 
@@ -294,19 +286,16 @@ def test_detect_languages_real_spanish_text() -> None:
 
     assert result is not None
     assert len(result) == 1
-    # Note: Model accuracy may vary, checking that we get a valid language code
     assert isinstance(result[0], str)
     assert len(result[0]) == 2
 
 
 def test_detect_languages_real_mixed_languages_with_top_k() -> None:
-    # Text with multiple languages - should detect top languages
     text = "English text. Texte français. Deutscher Text. Texto español."
     config = LanguageDetectionConfig(multilingual=True, top_k=2)
     result = detect_languages(text, config)
 
     assert result is not None
-    # Should detect at least 1, up to 2 languages
     assert 1 <= len(result) <= 2
     assert all(isinstance(lang, str) for lang in result)
     assert all(len(lang) == 2 for lang in result)

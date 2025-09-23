@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
+import sys
 from functools import lru_cache
 from itertools import chain
 from typing import TYPE_CHECKING, Any
 
 from kreuzberg._types import Entity, SpacyEntityExtractionConfig
-from kreuzberg.exceptions import MissingDependencyError
+from kreuzberg.exceptions import KreuzbergError, MissingDependencyError
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -49,8 +51,6 @@ def extract_entities(
         return entities
 
     nlp = _load_spacy_model(model_name, spacy_config)
-    if not nlp:
-        return entities
 
     if len(text) > spacy_config.max_doc_length:
         text = text[: spacy_config.max_doc_length]
@@ -77,17 +77,45 @@ def extract_entities(
 def _load_spacy_model(model_name: str, spacy_config: SpacyEntityExtractionConfig) -> Any:
     try:
         import spacy  # noqa: PLC0415
-
-        if spacy_config.model_cache_dir:
-            os.environ["SPACY_DATA"] = str(spacy_config.model_cache_dir)
-
-        nlp = spacy.load(model_name)
-
-        nlp.max_length = spacy_config.max_doc_length
-
-        return nlp
-    except (OSError, ImportError):
+    except ImportError:
         return None
+
+    if spacy_config.model_cache_dir:
+        os.environ["SPACY_DATA"] = str(spacy_config.model_cache_dir)
+
+    try:
+        nlp = spacy.load(model_name)
+    except OSError:
+        result = subprocess.run(
+            [sys.executable, "-m", "spacy", "download", model_name],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        if result.returncode != 0:
+            error_msg = (
+                f"Failed to download spaCy model '{model_name}'. "
+                f"Please install it manually with: python -m spacy download {model_name}"
+            )
+            if result.stderr:
+                error_msg += f"\nError details: {result.stderr}"
+            raise KreuzbergError(
+                error_msg, context={"model": model_name, "stderr": result.stderr, "return_code": result.returncode}
+            ) from None
+
+        try:
+            nlp = spacy.load(model_name)
+        except OSError as e:
+            raise KreuzbergError(
+                f"Failed to load spaCy model '{model_name}' even after successful download. "
+                f"Please verify your spaCy installation and try reinstalling the model.",
+                context={"model": model_name, "error": str(e)},
+            ) from e
+
+    nlp.max_length = spacy_config.max_doc_length
+
+    return nlp
 
 
 def _select_spacy_model(languages: list[str] | None, spacy_config: SpacyEntityExtractionConfig) -> str | None:
