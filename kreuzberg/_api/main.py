@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import io
+import os
 import traceback
 from json import dumps
 from typing import TYPE_CHECKING, Annotated, Any, Literal
@@ -98,6 +99,36 @@ def exception_handler(request: Request[Any, Any, Any], exception: KreuzbergError
         content={"message": message, "details": details},
         status_code=status_code,
     )
+
+
+def _get_max_upload_size() -> int:
+    """Get the maximum upload size from environment variable.
+
+    Returns:
+        Maximum upload size in bytes. Defaults to 1GB if not set.
+
+    Environment Variables:
+        KREUZBERG_MAX_UPLOAD_SIZE: Maximum upload size in bytes (default: 1073741824 = 1GB)
+    """
+    default_size = 1024 * 1024 * 1024  # 1GB
+    try:
+        size = int(os.environ.get("KREUZBERG_MAX_UPLOAD_SIZE", default_size))
+        # Return default if negative
+        return size if size >= 0 else default_size
+    except ValueError:
+        return default_size
+
+
+def _is_opentelemetry_enabled() -> bool:
+    """Check if OpenTelemetry should be enabled.
+
+    Returns:
+        True if OpenTelemetry should be enabled, False otherwise.
+
+    Environment Variables:
+        KREUZBERG_ENABLE_OPENTELEMETRY: Enable OpenTelemetry tracing (true/false) (default: true)
+    """
+    return os.environ.get("KREUZBERG_ENABLE_OPENTELEMETRY", "true").lower() in ("true", "1", "yes", "on")
 
 
 def general_exception_handler(request: Request[Any, Any, Any], exception: Exception) -> Response[Any]:
@@ -242,7 +273,7 @@ async def handle_files_upload(  # noqa: PLR0913
     - Language detection (if enabled)
 
     Supports various file formats including PDF, Office documents, images, and more.
-    Maximum file size: 1GB per file.
+    Maximum file size: Configurable via KREUZBERG_MAX_UPLOAD_SIZE environment variable (default: 1GB per file).
 
     Args:
         request: The HTTP request object
@@ -379,9 +410,18 @@ type_encoders = {
     Image.Image: _pil_image_encoder,
 }
 
+
+def _get_plugins() -> list[Any]:
+    """Get configured plugins based on environment variables."""
+    plugins = []
+    if _is_opentelemetry_enabled():
+        plugins.append(OpenTelemetryPlugin(OpenTelemetryConfig()))
+    return plugins
+
+
 app = Litestar(
     route_handlers=[handle_files_upload, health_check, get_configuration],
-    plugins=[OpenTelemetryPlugin(OpenTelemetryConfig())],
+    plugins=_get_plugins(),
     logging_config=StructLoggingConfig(),
     openapi_config=openapi_config,
     exception_handlers={
@@ -389,5 +429,5 @@ app = Litestar(
         Exception: general_exception_handler,
     },
     type_encoders=type_encoders,
-    request_max_body_size=1024 * 1024 * 1024,
+    request_max_body_size=_get_max_upload_size(),
 )

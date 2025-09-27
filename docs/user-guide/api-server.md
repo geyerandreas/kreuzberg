@@ -62,7 +62,7 @@ Extract text from one or more files.
 - Method: `POST`
 - Content-Type: `multipart/form-data`
 - Body: One or more files with field name `data`
-- **Maximum file size: 1GB per file**
+- **Maximum file size: Configurable via `KREUZBERG_MAX_UPLOAD_SIZE` environment variable (default: 1GB per file)**
 
 **Response:**
 
@@ -462,6 +462,37 @@ The API server uses the default Kreuzberg extraction configuration:
 - Tesseract OCR is included by default
 - PDF, image, and document extraction is supported
 - Table extraction with GMFT (if installed)
+
+### Environment Variables
+
+The API server can be configured using environment variables for production deployments:
+
+#### Server Configuration
+
+| Variable                         | Description                  | Default            | Example            |
+| -------------------------------- | ---------------------------- | ------------------ | ------------------ |
+| `KREUZBERG_MAX_UPLOAD_SIZE`      | Maximum upload size in bytes | `1073741824` (1GB) | `2147483648` (2GB) |
+| `KREUZBERG_ENABLE_OPENTELEMETRY` | Enable OpenTelemetry tracing | `true`             | `false`            |
+
+#### Usage Examples
+
+```bash
+# Set 2GB upload limit
+export KREUZBERG_MAX_UPLOAD_SIZE=2147483648
+litestar --app kreuzberg._api.main:app run
+
+# Disable telemetry
+export KREUZBERG_ENABLE_OPENTELEMETRY=false
+uvicorn kreuzberg._api.main:app --host 0.0.0.0 --port 8000
+
+# Production settings with Docker
+docker run -p 8000:8000 \
+  -e KREUZBERG_MAX_UPLOAD_SIZE=5368709120 \
+  -e KREUZBERG_ENABLE_OPENTELEMETRY=true \
+  goldziher/kreuzberg:latest
+```
+
+**Note**: Boolean environment variables accept `true`/`false`, `1`/`0`, `yes`/`no`, or `on`/`off` values.
 
 To use custom configuration, modify the extraction call in your own API wrapper:
 
