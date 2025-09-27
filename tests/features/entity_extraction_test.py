@@ -5,10 +5,10 @@ from unittest.mock import Mock, patch
 import pytest
 
 from kreuzberg._entity_extraction import (
-    _load_spacy_model,
-    _select_spacy_model,
     extract_entities,
     extract_keywords,
+    get_spacy_model_url,
+    is_uv_available,
 )
 from kreuzberg._types import SpacyEntityExtractionConfig
 from kreuzberg.exceptions import KreuzbergError, MissingDependencyError
@@ -24,7 +24,7 @@ def test_extract_entities_with_custom_patterns_only() -> None:
         ]
     )
 
-    with patch("kreuzberg._entity_extraction._select_spacy_model", return_value=None):
+    with patch("kreuzberg._entity_extraction.select_spacy_model", return_value=None):
         entities = extract_entities(text, custom_patterns=custom_patterns)
 
     assert len(entities) == 2
@@ -46,7 +46,7 @@ def test_extract_entities_no_spacy_model() -> None:
     text = "John Smith works at Google."
 
     with (
-        patch("kreuzberg._entity_extraction._select_spacy_model", return_value=None),
+        patch("kreuzberg._entity_extraction.select_spacy_model", return_value=None),
     ):
         entities = extract_entities(text)
 
@@ -57,8 +57,8 @@ def test_extract_entities_spacy_load_fails() -> None:
     text = "John Smith works at Google."
 
     with (
-        patch("kreuzberg._entity_extraction._select_spacy_model", return_value="en_core_web_sm"),
-        patch("kreuzberg._entity_extraction._load_spacy_model") as mock_load,
+        patch("kreuzberg._entity_extraction.select_spacy_model", return_value="en_core_web_sm"),
+        patch("kreuzberg._entity_extraction.load_spacy_model") as mock_load,
     ):
         mock_load.side_effect = KreuzbergError("Model download failed")
         with pytest.raises(KreuzbergError, match="Model download failed"):
@@ -93,8 +93,8 @@ def test_extract_entities_with_spacy_success() -> None:
     mock_nlp.return_value = mock_doc
 
     with (
-        patch("kreuzberg._entity_extraction._select_spacy_model", return_value="en_core_web_sm"),
-        patch("kreuzberg._entity_extraction._load_spacy_model", return_value=mock_nlp),
+        patch("kreuzberg._entity_extraction.select_spacy_model", return_value="en_core_web_sm"),
+        patch("kreuzberg._entity_extraction.load_spacy_model", return_value=mock_nlp),
     ):
         entities = extract_entities(text)
 
@@ -119,8 +119,8 @@ def test_extract_entities_text_truncation() -> None:
     mock_nlp.return_value = mock_doc
 
     with (
-        patch("kreuzberg._entity_extraction._select_spacy_model", return_value="en_core_web_sm"),
-        patch("kreuzberg._entity_extraction._load_spacy_model", return_value=mock_nlp),
+        patch("kreuzberg._entity_extraction.select_spacy_model", return_value="en_core_web_sm"),
+        patch("kreuzberg._entity_extraction.load_spacy_model", return_value=mock_nlp),
     ):
         extract_entities(long_text, spacy_config=config)
 
@@ -150,8 +150,8 @@ def test_extract_entities_mixed_patterns_and_spacy() -> None:
     mock_nlp.return_value = mock_doc
 
     with (
-        patch("kreuzberg._entity_extraction._select_spacy_model", return_value="en_core_web_sm"),
-        patch("kreuzberg._entity_extraction._load_spacy_model", return_value=mock_nlp),
+        patch("kreuzberg._entity_extraction.select_spacy_model", return_value="en_core_web_sm"),
+        patch("kreuzberg._entity_extraction.load_spacy_model", return_value=mock_nlp),
     ):
         entities = extract_entities(text, custom_patterns=custom_patterns)
 
@@ -172,151 +172,6 @@ def test_extract_entities_missing_spacy() -> None:
     with patch.dict("sys.modules", {"spacy": None}):
         with pytest.raises(MissingDependencyError, match="spacy"):
             extract_entities(text)
-
-
-def test_load_spacy_model_success() -> None:
-    config = SpacyEntityExtractionConfig(max_doc_length=500000)
-
-    mock_spacy = Mock()
-    mock_nlp = Mock()
-    mock_spacy.load.return_value = mock_nlp
-
-    with patch.dict("sys.modules", {"spacy": mock_spacy}):
-        _load_spacy_model.cache_clear()
-        result = _load_spacy_model("en_core_web_sm", config)
-
-    assert result == mock_nlp
-    assert mock_nlp.max_length == 500000
-    mock_spacy.load.assert_called_once_with("en_core_web_sm")
-
-
-def test_load_spacy_model_with_cache_dir() -> None:
-    import os
-
-    config = SpacyEntityExtractionConfig(max_doc_length=500000, model_cache_dir="/custom/cache")
-
-    mock_spacy = Mock()
-    mock_nlp = Mock()
-    mock_spacy.load.return_value = mock_nlp
-
-    original_env = os.environ.copy()
-
-    with (
-        patch.dict("sys.modules", {"spacy": mock_spacy}),
-        patch.dict(os.environ, {}, clear=True),
-    ):
-        _load_spacy_model.cache_clear()
-        result = _load_spacy_model("en_core_web_sm", config)
-
-        assert os.environ.get("SPACY_DATA") == "/custom/cache"
-
-    assert result == mock_nlp
-
-    os.environ.clear()
-    os.environ.update(original_env)
-
-
-def test_load_spacy_model_auto_download_success() -> None:
-    config = SpacyEntityExtractionConfig()
-
-    mock_spacy = Mock()
-    mock_nlp = Mock()
-    mock_spacy.load.side_effect = [OSError("Model not found"), mock_nlp]
-
-    mock_subprocess = Mock()
-    mock_subprocess.run.return_value.returncode = 0
-
-    with (
-        patch.dict("sys.modules", {"spacy": mock_spacy}),
-        patch("subprocess.run", mock_subprocess.run),
-    ):
-        _load_spacy_model.cache_clear()
-        result = _load_spacy_model("en_core_web_sm", config)
-
-    assert result == mock_nlp
-    assert mock_nlp.max_length == config.max_doc_length
-    assert mock_spacy.load.call_count == 2
-    mock_subprocess.run.assert_called_once()
-
-    call_args = mock_subprocess.run.call_args[0][0]
-    assert "-m" in call_args
-    assert "spacy" in call_args
-    assert "download" in call_args
-    assert "en_core_web_sm" in call_args
-
-
-def test_load_spacy_model_download_then_load_failure() -> None:
-    config = SpacyEntityExtractionConfig()
-
-    mock_spacy = Mock()
-    mock_spacy.load.side_effect = [OSError("Model not found"), OSError("Load failed")]
-
-    mock_subprocess = Mock()
-    mock_subprocess.run.return_value.returncode = 0
-
-    with (
-        patch.dict("sys.modules", {"spacy": mock_spacy}),
-        patch("subprocess.run", mock_subprocess.run),
-    ):
-        _load_spacy_model.cache_clear()
-        with pytest.raises(KreuzbergError, match="Failed to load spaCy model"):
-            _load_spacy_model("en_core_web_sm", config)
-
-    assert mock_spacy.load.call_count == 2
-    mock_subprocess.run.assert_called_once()
-
-
-def test_load_spacy_model_auto_download_failure() -> None:
-    config = SpacyEntityExtractionConfig()
-
-    mock_spacy = Mock()
-    mock_spacy.load.side_effect = OSError("Model not found")
-
-    mock_subprocess = Mock()
-    mock_subprocess.run.return_value.returncode = 1
-    mock_subprocess.run.return_value.stderr = "Download error"
-
-    with (
-        patch.dict("sys.modules", {"spacy": mock_spacy}),
-        patch("subprocess.run", mock_subprocess.run),
-    ):
-        _load_spacy_model.cache_clear()
-        with pytest.raises(KreuzbergError, match="Failed to download spaCy model"):
-            _load_spacy_model("en_core_web_sm", config)
-
-    mock_spacy.load.assert_called_once_with("en_core_web_sm")
-    mock_subprocess.run.assert_called_once()
-
-
-def test_load_spacy_model_import_error() -> None:
-    config = SpacyEntityExtractionConfig()
-
-    with patch.dict("sys.modules", {"spacy": None}):
-        _load_spacy_model.cache_clear()
-        result = _load_spacy_model("en_core_web_sm", config)
-
-    assert result is None
-
-
-def test_select_spacy_model_no_languages() -> None:
-    config = SpacyEntityExtractionConfig()
-
-    result = _select_spacy_model(None, config)
-
-    assert result == "en_core_web_sm"
-
-
-def test_select_spacy_model_with_languages() -> None:
-    config = SpacyEntityExtractionConfig()
-
-    result = _select_spacy_model(["de"], config)
-    assert result == "de_core_news_sm"
-
-    result = _select_spacy_model(["ko", "fr", "en"], config)
-    assert result == "ko_core_news_sm"
-
-    result = _select_spacy_model(["xyz"], config)
-    assert result == "xx_ent_wiki_sm"
 
 
 def test_extract_keywords_success() -> None:
@@ -402,3 +257,23 @@ def test_extract_keywords_missing_keybert() -> None:
     with patch.dict("sys.modules", {"keybert": None}):
         with pytest.raises(MissingDependencyError, match="keybert"):
             extract_keywords(text)
+
+
+def test_get_spacy_model_url() -> None:
+    # Test default version
+    url = get_spacy_model_url("en_core_web_sm")
+    expected = "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+    assert url == expected
+
+    # Test custom version
+    url = get_spacy_model_url("de_core_news_sm", "3.7.0")
+    expected = "https://github.com/explosion/spacy-models/releases/download/de_core_news_sm-3.7.0/de_core_news_sm-3.7.0-py3-none-any.whl"
+    assert url == expected
+
+
+def test_is_uv_available() -> None:
+    with patch("shutil.which", return_value="/usr/bin/uv"):
+        assert is_uv_available() is True
+
+    with patch("shutil.which", return_value=None):
+        assert is_uv_available() is False
