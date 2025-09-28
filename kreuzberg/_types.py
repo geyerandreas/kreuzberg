@@ -32,6 +32,7 @@ if TYPE_CHECKING:
 
 OcrBackendType = Literal["tesseract", "easyocr", "paddleocr"]
 OutputFormatType = Literal["text", "tsv", "hocr", "markdown"]
+ErrorContextType = Literal["batch_processing", "optional_feature", "single_extraction", "unknown"]
 
 
 class ConfigDict:
@@ -503,6 +504,17 @@ class SpacyEntityExtractionConfig(ConfigDict):
         return "xx_ent_wiki_sm" if self.fallback_to_multilingual else None
 
 
+class ProcessingErrorDict(TypedDict):
+    feature: str
+    """Name of the feature that failed (e.g., 'chunking', 'entity_extraction', 'keyword_extraction')."""
+    error_type: str
+    """Type of the exception that occurred (e.g., 'RuntimeError', 'ValidationError')."""
+    error_message: str
+    """Human-readable error message."""
+    traceback: str
+    """Full Python traceback for debugging."""
+
+
 class BoundingBox(TypedDict):
     left: int
     """X coordinate of the left edge."""
@@ -701,6 +713,10 @@ class Metadata(TypedDict, total=False):
     """Additional attributes extracted from structured data (e.g., custom text fields with dotted keys)."""
     token_reduction: NotRequired[dict[str, float]]
     """Token reduction statistics including reduction ratios and counts."""
+    processing_errors: NotRequired[list[ProcessingErrorDict]]
+    """List of processing errors that occurred during extraction."""
+    extraction_error: NotRequired[dict[str, Any]]
+    """Error information for critical extraction failures."""
 
 
 _VALID_METADATA_KEYS = {
@@ -756,6 +772,8 @@ _VALID_METADATA_KEYS = {
     "message",
     "attributes",
     "token_reduction",
+    "processing_errors",
+    "extraction_error",
 }
 
 
