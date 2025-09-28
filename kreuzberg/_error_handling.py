@@ -32,11 +32,9 @@ def should_exception_bubble_up(exception: Exception, context: ErrorContextType =
 
     # ValidationError handling depends on context
     if isinstance(exception, ValidationError):
-        # In batch processing, unsupported MIME types should be handled gracefully
-        # to allow mixed file uploads where some files are supported and others aren't
-        if context == "batch_processing" and (
-            "mime type" in str(exception).lower() or "unsupported" in str(exception).lower()
-        ):
+        # In batch processing, validation errors should be handled gracefully
+        # to allow mixed file uploads where some files fail validation
+        if context == "batch_processing":
             return False
 
         # In optional feature processing, validation errors should be handled gracefully
