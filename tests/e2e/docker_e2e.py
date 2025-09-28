@@ -15,7 +15,7 @@ DOCKER_IMAGES = {
     "core": "kreuzberg:core",
 }
 
-OPTIONAL_IMAGES = set()
+OPTIONAL_IMAGES: set[str] = set()
 
 SECURITY_CONFIG = {
     "max_container_runtime": 300,
@@ -121,9 +121,9 @@ def test_api_health(image_name: str) -> bool:
         "--name",
         container_name,
         "--memory",
-        SECURITY_CONFIG["max_memory"],
+        str(SECURITY_CONFIG["max_memory"]),
         "--cpus",
-        SECURITY_CONFIG["max_cpu"],
+        str(SECURITY_CONFIG["max_cpu"]),
         "--security-opt",
         "no-new-privileges",
         "-p",
@@ -142,7 +142,8 @@ def test_api_health(image_name: str) -> bool:
         try:
             response = urllib.request.urlopen(f"http://localhost:{port}/health", timeout=5)
             data = json.loads(response.read().decode())
-            return response.status == 200 and data.get("status") == "ok"
+            status_ok = data.get("status") == "ok" if isinstance(data, dict) else False
+            return response.status == 200 and status_ok
         except Exception:
             return False
     finally:
@@ -238,9 +239,9 @@ def test_api_extraction(image_name: str) -> bool:
         "--name",
         container_name,
         "--memory",
-        SECURITY_CONFIG["max_memory"],
+        str(SECURITY_CONFIG["max_memory"]),
         "--cpus",
-        SECURITY_CONFIG["max_cpu"],
+        str(SECURITY_CONFIG["max_cpu"]),
         "--security-opt",
         "no-new-privileges",
         "-p",

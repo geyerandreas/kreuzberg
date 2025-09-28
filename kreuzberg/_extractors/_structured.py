@@ -14,7 +14,7 @@ else:  # pragma: no cover
 try:
     import yaml
 except ImportError:  # pragma: no cover
-    yaml = None
+    yaml = None  # type: ignore[assignment]
 
 
 from anyio import Path as AsyncPath

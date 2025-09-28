@@ -10,85 +10,85 @@ from kreuzberg import ExtractionConfig, PSMMode, TesseractConfig
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-test_source_files_folder = Path(__file__).parent / "test_source_files"
+test_documents_folder = Path(__file__).parent.parent / "test_documents"
 
 
 @pytest.fixture(scope="session")
 def searchable_pdf() -> Path:
-    return test_source_files_folder / "searchable.pdf"
+    return test_documents_folder / "pdfs" / "searchable.pdf"
 
 
 @pytest.fixture(scope="session")
 def scanned_pdf() -> Path:
-    return test_source_files_folder / "scanned.pdf"
+    return test_documents_folder / "pdfs" / "scanned.pdf"
 
 
 @pytest.fixture(scope="session")
 def non_searchable_pdf() -> Path:
-    return test_source_files_folder / "non-searchable.pdf"
+    return test_documents_folder / "pdfs" / "non-searchable.pdf"
 
 
 @pytest.fixture(scope="session")
 def non_ascii_pdf() -> Path:
-    return test_source_files_folder / "non-ascii-text.pdf"
+    return test_documents_folder / "pdfs" / "non-ascii-text.pdf"
 
 
 @pytest.fixture(scope="session")
 def test_article() -> Path:
-    return test_source_files_folder / "test-article.pdf"
+    return test_documents_folder / "pdfs" / "test-article.pdf"
 
 
 @pytest.fixture(scope="session")
 def test_contract() -> Path:
-    return test_source_files_folder / "sample-contract.pdf"
+    return test_documents_folder / "pdfs" / "sample-contract.pdf"
 
 
 @pytest.fixture(scope="session")
 def ocr_image() -> Path:
-    return test_source_files_folder / "ocr-image.jpg"
+    return test_documents_folder / "images" / "ocr-image.jpg"
 
 
 @pytest.fixture(scope="session")
 def docx_document() -> Path:
-    return test_source_files_folder / "document.docx"
+    return test_documents_folder / "office" / "document.docx"
 
 
 @pytest.fixture(scope="session")
 def markdown_document() -> Path:
-    return test_source_files_folder / "markdown.md"
+    return test_documents_folder / "documents" / "markdown.md"
 
 
 @pytest.fixture(scope="session")
 def pptx_document() -> Path:
-    return test_source_files_folder / "pitch-deck-presentation.pptx"
+    return test_documents_folder / "presentations" / "pitch_deck_presentation.pptx"
 
 
 @pytest.fixture(scope="session")
 def html_document() -> Path:
-    return test_source_files_folder / "html.html"
+    return test_documents_folder / "web" / "html.html"
 
 
 @pytest.fixture(scope="session")
 def excel_document() -> Path:
-    return test_source_files_folder / "excel.xlsx"
+    return test_documents_folder / "office" / "excel.xlsx"
 
 
 @pytest.fixture(scope="session")
 def excel_multi_sheet_document() -> Path:
-    return test_source_files_folder / "excel-multi-sheet.xlsx"
+    return test_documents_folder / "spreadsheets" / "excel-multi-sheet.xlsx"
 
 
 @pytest.fixture(scope="session")
 def test_files_path() -> Path:
-    return test_source_files_folder
+    return test_documents_folder
 
 
 @pytest.fixture(scope="session")
 def tiny_pdf_with_tables() -> Path:
-    return test_source_files_folder / "pdfs_with_tables" / "tiny.pdf"
+    return test_documents_folder / "pdfs_with_tables" / "tiny.pdf"
 
 
-pdfs_with_tables = sorted((test_source_files_folder / "pdfs_with_tables").glob("*.pdf"))
+pdfs_with_tables = sorted((test_documents_folder / "pdfs_with_tables").glob("*.pdf"))
 
 
 @pytest.fixture(scope="session")
@@ -124,7 +124,7 @@ def clean_cache_session() -> Generator[None, None, None]:
 
 @pytest.fixture(scope="session")
 def google_doc_pdf() -> Path:
-    return test_source_files_folder / "google-doc-document.pdf"
+    return test_documents_folder / "pdfs" / "google-doc-document.pdf"
 
 
 @pytest.fixture(scope="session")
@@ -132,13 +132,13 @@ def xerox_pdf() -> Path:
     import os
 
     if os.environ.get("CI") == "true":
-        return test_source_files_folder / "scanned.pdf"
-    return test_source_files_folder / "Xerox_AltaLink_series_mfp_sag_en-US 2.pdf"
+        return test_documents_folder / "pdfs" / "scanned.pdf"
+    return test_documents_folder / "pdfs" / "Xerox_AltaLink_series_mfp_sag_en-US 2.pdf"
 
 
 @pytest.fixture(scope="session")
 def test_xls() -> Path:
-    return test_source_files_folder / "test-excel.xls"
+    return test_documents_folder / "spreadsheets" / "test-excel.xls"
 
 
 @pytest.fixture
