@@ -1,6 +1,9 @@
 name: Comparative Framework Benchmark
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       iterations:
@@ -16,6 +19,8 @@ on:
 
 jobs:
   comparative-benchmark:
+    # Only run on manual dispatch to avoid expensive automated runs
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 360
 
