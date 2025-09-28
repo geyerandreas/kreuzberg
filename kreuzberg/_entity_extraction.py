@@ -235,7 +235,8 @@ def extract_keywords(
         kw_model = KeyBERT()
         keywords = kw_model.extract_keywords(text, top_n=keyword_count)
         return [(kw, float(score)) for kw, score in keywords]
-    except (RuntimeError, OSError, ValueError):
+    except ValueError:
+        # ValueError is acceptable to handle gracefully (e.g., invalid input)
         return []
     except ImportError as e:  # pragma: no cover
         raise MissingDependencyError.create_for_package(

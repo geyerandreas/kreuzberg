@@ -230,18 +230,21 @@ class Extractor(ABC):
                 confidence_score=None,
                 processing_time=duration,
             )
-        except (OSError, ValueError) as e:  # pragma: no cover
+        except ValueError as e:  # pragma: no cover
+            # ValueError is acceptable to handle gracefully (e.g., invalid image data)
             return ImageOCRResult(
                 image=target,
                 ocr_result=ExtractionResult(content="", mime_type="text/plain", metadata={}),
                 skipped_reason=f"OCR failed: {type(e).__name__}: {e}",
             )
-        except (RuntimeError, TypeError) as e:  # pragma: no cover
+        except TypeError as e:  # pragma: no cover
+            # TypeError is acceptable to handle gracefully (e.g., type mismatch)
             return ImageOCRResult(
                 image=target,
                 ocr_result=ExtractionResult(content="", mime_type="text/plain", metadata={}),
                 skipped_reason=f"Backend error: {type(e).__name__}: {e}",
             )
+        # OSError and RuntimeError will bubble up as per our policy
 
     async def _process_images_with_ocr(
         self, images: tuple[ExtractedImage, ...] | list[ExtractedImage]

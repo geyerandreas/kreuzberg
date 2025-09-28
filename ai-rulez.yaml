@@ -387,6 +387,8 @@ rules:
       - All builtin imports should be at the top level (except for cyclical or optional dependencies)
       - All config dataclasses must be hashable, frozen, and use slots: `@dataclass(unsafe_hash=True, frozen=True, slots=True)`
       - When committing, always use the format specified in the CLAUDE.md
+      - **CRITICAL: OSError and RuntimeError must ALWAYS bubble up** - Never suppress these system errors
+      - **CRITICAL: NEVER use class-based tests** - Only function-based tests are allowed
     name: Important Instructions
     priority: critical
   - content: |
@@ -430,13 +432,18 @@ rules:
       - **Exception-based**: All errors are raised as exceptions, no tuple returns
       - **Base class**: All exceptions inherit from `KreuzbergError`
       - **Context**: Exceptions include a `context` parameter with debugging information
+      - **CRITICAL**: **OSError and RuntimeError must ALWAYS bubble up to users**
+        - These indicate real system problems we need to know about
+        - User reports about these errors help improve the library
+        - Never suppress or handle these gracefully - they must surface to users
+        - SystemExit, KeyboardInterrupt, MemoryError also always bubble up
       - **Common exceptions**:
         - `ValidationError`: Configuration or input validation failures
         - `ParsingError`: Document parsing failures
         - `OCRError`: OCR processing failures
         - `MissingDependencyError`: Missing optional dependencies
     name: Error Handling
-    priority: medium
+    priority: critical
   - content: |
       ### File Organization and Naming
       - **Test files MUST end with `_test.py`** - No exceptions
@@ -454,7 +461,9 @@ rules:
         ```
 
       ### Test Structure and Patterns
-      - **Only function-based tests** - No class-based test methods
+      - **CRITICAL: Only function-based tests** - NEVER use class-based test methods
+        - ❌ `class TestExtraction:` - NEVER do this
+        - ✅ `def test_extraction_succeeds():` - Always use functions
       - **Test naming**: `test_<function>_<scenario>_<expected_outcome>`
         - ✅ `test_extract_pdf_with_ocr_returns_text()`
         - ✅ `test_extract_file_raises_validation_error_when_file_missing()`
