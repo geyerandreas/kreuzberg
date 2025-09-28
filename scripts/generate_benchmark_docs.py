@@ -1,14 +1,3 @@
-#!/usr/bin/env python3
-# /// script
-# dependencies = [
-#   "msgspec>=0.18.0",
-#   "typer>=0.15.0",
-#   "rich>=13.0.0",
-#   "jinja2>=3.1.0",
-# ]
-# requires-python = ">=3.11"
-# ///
-
 from __future__ import annotations
 
 import json

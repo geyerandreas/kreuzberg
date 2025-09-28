@@ -29,8 +29,8 @@ async def test_enhanced_resource_monitor_async_context() -> None:
 
     assert isinstance(metrics, PerformanceMetrics)
     assert metrics.extraction_time >= 0
-    assert metrics.peak_memory_mb >= 0  # May be 0 for short tasks
-    assert metrics.avg_memory_mb >= 0  # May be 0 for short tasks
+    assert metrics.peak_memory_mb >= 0
+    assert metrics.avg_memory_mb >= 0
 
 
 def test_profile_performance_context_manager() -> None:
@@ -44,7 +44,7 @@ def test_profile_performance_context_manager() -> None:
     assert result == "completed"
     assert isinstance(metrics, PerformanceMetrics)
     assert metrics.extraction_time >= 0.1
-    assert metrics.peak_memory_mb >= 0  # May be 0 for short tasks
+    assert metrics.peak_memory_mb >= 0
     assert len(metrics.samples) > 0
 
 
@@ -60,7 +60,7 @@ async def test_async_performance_profiler() -> None:
     assert result == "completed"
     assert isinstance(metrics, PerformanceMetrics)
     assert metrics.extraction_time >= 0.001
-    assert metrics.peak_memory_mb >= 0  # May be 0 for short tasks
+    assert metrics.peak_memory_mb >= 0
     assert len(metrics.samples) >= 0
 
 
@@ -91,8 +91,8 @@ def test_profile_performance_memory_tracking() -> None:
         result = memory_task()
 
     assert len(result) == 1000
-    assert metrics.peak_memory_mb >= 0  # May be 0 for short tasks
-    assert metrics.avg_memory_mb >= 0  # May be 0 for short tasks
+    assert metrics.peak_memory_mb >= 0
+    assert metrics.avg_memory_mb >= 0
     assert len(metrics.samples) >= 1
 
 
@@ -125,8 +125,8 @@ async def test_enhanced_resource_monitor_no_samples() -> None:
 
     assert isinstance(metrics, PerformanceMetrics)
     assert metrics.extraction_time >= 0
-    assert metrics.peak_memory_mb >= 0  # May be 0 for short tasks
-    assert metrics.avg_memory_mb >= 0  # May be 0 for short tasks
+    assert metrics.peak_memory_mb >= 0
+    assert metrics.avg_memory_mb >= 0
 
 
 def test_profile_performance_exception_handling() -> None:

@@ -117,7 +117,6 @@ BENCHMARK_TEST_FILES: dict[str, list[str]] = {
 
 
 def get_benchmark_files() -> list[tuple[str, Path]]:
-    """Get all benchmark files that exist."""
     test_files = []
 
     for category, files in BENCHMARK_TEST_FILES.items():

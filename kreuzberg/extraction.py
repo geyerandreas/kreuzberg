@@ -52,7 +52,6 @@ async def _handle_cache_async(path: Path, config: ExtractionConfig) -> Extractio
 def _validate_and_post_process_helper(
     result: ExtractionResult, config: ExtractionConfig, file_path: Path | None = None
 ) -> ExtractionResult:
-    # Initialize metadata if not present
     if result.metadata is None:
         result.metadata = {}
 
@@ -75,7 +74,7 @@ def _validate_and_post_process_helper(
                 result.content,
                 custom_patterns=config.custom_entity_patterns,
             ),
-            default_value=None,  # Original behavior expected None on failure
+            default_value=None,
             result=result,
         )
 
@@ -86,7 +85,7 @@ def _validate_and_post_process_helper(
                 result.content,
                 keyword_count=config.keyword_count,
             ),
-            default_value=None,  # Original behavior expected None on failure
+            default_value=None,
             result=result,
         )
 
@@ -112,7 +111,7 @@ def _validate_and_post_process_helper(
         result = safe_feature_execution(
             feature_name="document_type_detection",
             execution_func=lambda: auto_detect_document_type(result, config, file_path=file_path),
-            default_value=result,  # Return unchanged result on failure
+            default_value=result,
             result=result,
         )
 
@@ -136,7 +135,6 @@ def _validate_and_post_process_helper(
             )
             reduction_stats = get_reduction_stats(original_content, reduced_content)
 
-            # Update metadata with reduction stats
             if result.metadata is not None:
                 result.metadata["token_reduction"] = {
                     "character_reduction_ratio": reduction_stats["character_reduction_ratio"],
@@ -152,7 +150,7 @@ def _validate_and_post_process_helper(
         result.content = safe_feature_execution(
             feature_name="token_reduction",
             execution_func=_apply_token_reduction,
-            default_value=result.content,  # Keep original content on failure
+            default_value=result.content,
             result=result,
         )
 
@@ -162,19 +160,15 @@ def _validate_and_post_process_helper(
 async def _validate_and_post_process_async(
     result: ExtractionResult, config: ExtractionConfig, file_path: Path | None = None
 ) -> ExtractionResult:
-    # Run validators - these are critical and should fail fast
     for validator in config.validators or []:
         await run_maybe_sync(validator, result)
 
-    # Run post-processing helper - already has robust error handling
     result = _validate_and_post_process_helper(result, config, file_path)
 
-    # Run post-processing hooks with individual error handling
     for i, post_processor in enumerate(config.post_processing_hooks or []):
         try:
             result = await run_maybe_sync(post_processor, result)
         except (KreuzbergError, ValueError, RuntimeError, TypeError) as e:  # noqa: PERF203
-            # Add error to metadata but continue with other hooks
             if result.metadata is None:
                 result.metadata = {}
             error_list = result.metadata.setdefault("processing_errors", [])
@@ -321,14 +315,12 @@ async def batch_extract_file(
                 )
                 results[index] = result
             except Exception as e:
-                # Only handle specific exceptions that should not break batch processing
                 if should_exception_bubble_up(e, "batch_processing"):
                     raise
 
-                # For exceptions that should be handled gracefully in batch context
                 basic_result = _attempt_basic_extraction(
-                    None,  # content not available for files
-                    None,  # mime_type will be detected
+                    None,
+                    None,
                     e,
                     index,
                     file_path=str(path),
@@ -368,11 +360,9 @@ async def batch_extract_bytes(
                 result = await extract_bytes(content, mime_type, config)
                 results[index] = result
             except Exception as e:
-                # Only handle specific exceptions that should not break batch processing
                 if should_exception_bubble_up(e, "batch_processing"):
                     raise
 
-                # For exceptions that should be handled gracefully in batch context
                 basic_result = _attempt_basic_extraction(content, mime_type, e, index)
                 results[index] = basic_result
 
@@ -401,8 +391,6 @@ def _attempt_basic_extraction(
     Returns:
         A basic ExtractionResult with whatever could be extracted
     """
-    # For certain types of errors or testing scenarios, create an error result immediately
-    # This ensures compatibility with existing tests and proper error reporting
     if (
         isinstance(original_error, (ValueError, TypeError, ValidationError))
         or "mock" in str(type(original_error)).lower()
@@ -431,7 +419,6 @@ def _attempt_basic_extraction(
         )
 
     try:
-        # If we don't have content (file extraction), create a minimal error result
         if content is None:
             return ExtractionResult(
                 content=f"Error: {type(original_error).__name__}: {original_error!s}",
@@ -454,13 +441,10 @@ def _attempt_basic_extraction(
                 image_ocr_results=[],
             )
 
-        # Try to get a basic extractor and extract just the content
         mime_type = validate_mime_type(mime_type=mime_type)
         if extractor := ExtractorRegistry.get_extractor(mime_type=mime_type, config=ExtractionConfig()):
-            # Try basic extraction without any advanced processing
             basic_result = extractor.extract_bytes_sync(content)
 
-            # Add error information to metadata
             if basic_result.metadata is None:
                 basic_result.metadata = {}
 
@@ -482,10 +466,7 @@ def _attempt_basic_extraction(
             return basic_result
 
     except (KreuzbergError, ValueError, RuntimeError, TypeError):
-        # Even basic extraction failed, fallback further
         pass
-
-    # Last resort: create error result
 
     return ExtractionResult(
         content=f"Error: {type(original_error).__name__}: {original_error!s}",
@@ -622,14 +603,12 @@ def batch_extract_file_sync(
                 extract_file_sync(file_path=Path(file_path), mime_type=None, config=config),
             )
         except Exception as e:
-            # Only handle specific exceptions that should not break batch processing
             if should_exception_bubble_up(e, "batch_processing"):
                 raise
 
-            # For exceptions that should be handled gracefully in batch context
             basic_result = _attempt_basic_extraction(
-                None,  # content not available for files
-                None,  # mime_type will be detected
+                None,
+                None,
                 e,
                 index,
                 file_path=str(file_path),
@@ -671,11 +650,9 @@ def batch_extract_bytes_sync(
         try:
             return (index, extract_bytes_sync(content=content, mime_type=mime_type, config=config))
         except Exception as e:
-            # Only handle specific exceptions that should not break batch processing
             if should_exception_bubble_up(e, "batch_processing"):
                 raise
 
-            # For exceptions that should be handled gracefully in batch context
             basic_result = _attempt_basic_extraction(content, mime_type, e, index)
             return (index, basic_result)
 

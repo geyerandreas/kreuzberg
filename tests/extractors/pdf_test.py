@@ -907,11 +907,6 @@ async def test_pdf_extract_path_async_table_import_error(
 
 @pytest.mark.anyio
 async def test_extract_german_image_pdf_async_with_force_ocr(german_image_pdf: Path) -> None:
-    """Test that German image-only PDF extracts successfully with force_ocr=True.
-
-    This test reproduces issue #149 where an image-only German PDF would fail
-    with EmptyHtmlError when using Tesseract OCR.
-    """
     from kreuzberg._types import PSMMode, TesseractConfig
 
     config = ExtractionConfig(
@@ -921,18 +916,12 @@ async def test_extract_german_image_pdf_async_with_force_ocr(german_image_pdf: P
 
     result = await extractor.extract_path_async(german_image_pdf)
 
-    # Should extract German text successfully
     assert result.content.strip(), "Should extract text content from German image PDF"
     assert result.mime_type == "text/plain"
     assert len(result.content) > 50, "Should extract meaningful amount of text"
 
 
 def test_extract_german_image_pdf_sync_with_force_ocr(german_image_pdf: Path) -> None:
-    """Test that German image-only PDF extracts successfully with force_ocr=True (sync).
-
-    This test reproduces issue #149 where an image-only German PDF would fail
-    with EmptyHtmlError when using Tesseract OCR.
-    """
     from kreuzberg._types import PSMMode, TesseractConfig
 
     config = ExtractionConfig(
@@ -942,7 +931,6 @@ def test_extract_german_image_pdf_sync_with_force_ocr(german_image_pdf: Path) ->
 
     result = extractor.extract_path_sync(german_image_pdf)
 
-    # Should extract German text successfully
     assert result.content.strip(), "Should extract text content from German image PDF"
     assert result.mime_type == "text/plain"
     assert len(result.content) > 50, "Should extract meaningful amount of text"
@@ -950,24 +938,20 @@ def test_extract_german_image_pdf_sync_with_force_ocr(german_image_pdf: Path) ->
 
 @pytest.mark.anyio
 async def test_extract_german_image_pdf_async_default_config(german_image_pdf: Path) -> None:
-    """Test that German image-only PDF extracts with default OCR config."""
     config = ExtractionConfig(ocr_backend="tesseract")
     extractor = PDFExtractor(mime_type="application/pdf", config=config)
 
     result = await extractor.extract_path_async(german_image_pdf)
 
-    # Should extract some text content even with default config
     assert result.content.strip(), "Should extract text content with default config"
     assert result.mime_type == "text/plain"
 
 
 def test_extract_german_image_pdf_sync_default_config(german_image_pdf: Path) -> None:
-    """Test that German image-only PDF extracts with default OCR config (sync)."""
     config = ExtractionConfig(ocr_backend="tesseract")
     extractor = PDFExtractor(mime_type="application/pdf", config=config)
 
     result = extractor.extract_path_sync(german_image_pdf)
 
-    # Should extract some text content even with default config
     assert result.content.strip(), "Should extract text content with default config"
     assert result.mime_type == "text/plain"

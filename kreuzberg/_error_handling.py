@@ -22,36 +22,24 @@ def should_exception_bubble_up(exception: Exception, context: ErrorContextType =
     Returns:
         True if the exception should bubble up, False if it should be handled gracefully
     """
-    # System-level errors should always bubble up - these indicate real problems we need to know about
     if isinstance(exception, (SystemExit, KeyboardInterrupt, MemoryError, OSError, RuntimeError)):
         return True
 
-    # MissingDependencyError should bubble up as it indicates a configuration issue
     if isinstance(exception, MissingDependencyError):
         return True
 
-    # ValidationError handling depends on context
     if isinstance(exception, ValidationError):
-        # In batch processing, validation errors should be handled gracefully
-        # to allow mixed file uploads where some files fail validation
         if context == "batch_processing":
             return False
 
-        # In optional feature processing, validation errors should be handled gracefully
-        # For single file extraction, validation errors should bubble up
         return context != "optional_feature"
 
-    # Other Kreuzberg errors in optional features should be handled gracefully
     if isinstance(exception, KreuzbergError) and context == "optional_feature":
         return False
 
-    # In batch processing, suppress ALL exceptions to allow partial results
     if context == "batch_processing":
-        # Only let truly critical system errors bubble up, suppress all others
         return isinstance(exception, (SystemExit, KeyboardInterrupt, MemoryError, OSError, RuntimeError))
 
-    # For optional features, handle common extraction errors gracefully
-    # For single extraction, most errors should bubble up
     return not (context == "optional_feature" and isinstance(exception, (IOError, ImportError)))
 
 
@@ -110,31 +98,25 @@ def safe_feature_execution(
     try:
         return execution_func()
     except Exception as e:
-        # Check if this exception should bubble up based on context
         if should_exception_bubble_up(e, context):
             raise
 
-        # Add error to metadata and return default value
         _add_processing_error(result, FeatureProcessingError(feature_name, e))
         return default_value
 
 
 def _add_processing_error(result: ExtractionResult, error: FeatureProcessingError) -> None:
     """Add a processing error to the result metadata in a type-safe way."""
-    # Ensure metadata exists
     if result.metadata is None:
         result.metadata = {}
 
-    # Initialize processing_errors if it doesn't exist
     if "processing_errors" not in result.metadata:
         result.metadata["processing_errors"] = []
 
-    # Add the error
     errors_list = result.metadata["processing_errors"]
     if isinstance(errors_list, list):
         errors_list.append(error.to_dict())
     else:
-        # If somehow it's not a list, replace it
         result.metadata["processing_errors"] = [error.to_dict()]
 
 

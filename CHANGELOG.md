@@ -123,6 +123,33 @@ The following internal GMFT options have been removed for simplicity:
 - **PPTX Extraction**: Enhanced image extraction and metadata handling
 - **Excel Float Formatting**: Improved decimal place display consistency
 
+## [3.19.0] - 2025-09-28
+
+### Added
+
+- **Systematic Error Handling**: Implemented context-aware exception handling with proper error tracking and metadata preservation
+- **Type-safe Error Utilities**: Added `_error_handling.py` module with type-safe error handling utilities
+- **Error Context Types**: Added `ErrorContextType` literal type for classifying error contexts (batch_processing, optional_feature, single_extraction)
+- **Processing Error Tracking**: Added structured `ProcessingErrorDict` type for comprehensive error information with tracebacks
+
+### Changed
+
+- **Critical System Errors Policy**: OSError and RuntimeError now always bubble up to users for proper bug reporting
+- **Batch Processing**: Now returns partial results with error information instead of failing completely
+- **Optional Features**: Preserve successful extraction results when optional features fail
+- **Entity/Keyword Extraction**: Removed silent suppression of RuntimeError/OSError - these now bubble up as per policy
+
+### Fixed
+
+- **Test Fixture Paths**: Corrected all test fixture paths to match actual file locations
+- **CI Configuration**: Fixed missing `needs` declaration in python-tests job
+- **Coverage Job**: Enabled coverage job for all branches to work with DeepSource
+- **spaCy Model Installation**: Properly handle SystemExit from spaCy CLI when pip is unavailable
+
+### Breaking Changes
+
+- **Error Handling**: RuntimeError and OSError in keyword extraction and OCR processing will now bubble up instead of being silently handled. This ensures critical system issues are reported to developers.
+
 ## [3.18.0] - 2025-09-27
 
 ### Added

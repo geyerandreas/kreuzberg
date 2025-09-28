@@ -45,7 +45,6 @@ logger = get_logger(__name__)
     help="Output file for aggregated results",
 )
 def main(iterations: int, timeout: int, framework: str | None, output: Path) -> None:
-    """Run benchmarks for specified framework(s) and categories."""
     console.print("[bold]Starting Benchmark Suite[/bold]")
     console.print(f"  Iterations: {iterations}")
     console.print(f"  Timeout: {timeout}s")
@@ -56,7 +55,6 @@ def main(iterations: int, timeout: int, framework: str | None, output: Path) -> 
     console.print(f"  Output: {output}")
     console.print()
 
-    # Use specified framework or all frameworks
     frameworks = [Framework(framework)] if framework else list(Framework)
 
     categories = list(DocumentCategory)
@@ -87,12 +85,10 @@ def main(iterations: int, timeout: int, framework: str | None, output: Path) -> 
         results = asyncio.run(runner.run_benchmark_suite())
         console.print(f"[green]✓ Completed {len(results)} benchmarks[/green]")
 
-        # Aggregate results immediately
         console.print("[cyan]Aggregating results...[/cyan]")
         aggregator = ResultAggregator()
         aggregated = aggregator.aggregate_results([output_dir])
 
-        # Save to output file
         output.parent.mkdir(parents=True, exist_ok=True)
         aggregator.save_results(aggregated, output.parent, output.name)
         console.print(f"[green]✓ Results saved to {output}[/green]")

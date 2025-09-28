@@ -317,9 +317,8 @@ async def test_extract_with_all_query_params(test_client: AsyncTestClient[Any], 
     data = response.json()
     assert len(data) == 1
     assert len(data[0]["chunks"]) > 0
-    assert "entities" in data[0]  # Will be empty but should exist
-    assert "keywords" in data[0]  # Will be empty but should exist
-    # language detection is disabled so no assertion for detected_languages
+    assert "entities" in data[0]
+    assert "keywords" in data[0]
 
 
 @pytest.mark.anyio

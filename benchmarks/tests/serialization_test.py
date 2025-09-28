@@ -1,5 +1,3 @@
-"""Tests for data serialization and field mappings."""
-
 import json
 
 import msgspec
@@ -14,7 +12,6 @@ from src.types import (
 
 
 def create_test_result(status: ExtractionStatus = ExtractionStatus.SUCCESS, **kwargs) -> BenchmarkResult:
-    """Create a test BenchmarkResult with defaults."""
     defaults = {
         "file_path": "test.pdf",
         "file_size": 1000,
@@ -34,10 +31,8 @@ def create_test_result(status: ExtractionStatus = ExtractionStatus.SUCCESS, **kw
 
 
 def test_benchmark_result_has_required_fields() -> None:
-    """Test that BenchmarkResult has all required fields."""
     result = create_test_result()
 
-    # These fields should exist
     assert hasattr(result, "status")
     assert hasattr(result, "file_size")
     assert hasattr(result, "extraction_time")
@@ -47,10 +42,8 @@ def test_benchmark_result_has_required_fields() -> None:
 
 
 def test_benchmark_result_serialization() -> None:
-    """Test that BenchmarkResult serializes correctly."""
     result = create_test_result(character_count=1000, error_message="Test error")
 
-    # Should serialize without errors
     serialized = msgspec.json.encode(result)
     data = json.loads(serialized)
 
@@ -63,7 +56,6 @@ def test_benchmark_result_serialization() -> None:
 
 
 def test_failed_result_serialization() -> None:
-    """Test serialization of failed results."""
     results = [
         BenchmarkResult(
             file_path=f"test{i}.pdf",
@@ -94,7 +86,6 @@ def test_failed_result_serialization() -> None:
 
 
 def test_none_value_serialization() -> None:
-    """Test that None values serialize correctly."""
     result = create_test_result(
         extraction_time=None,
         character_count=None,
@@ -112,7 +103,6 @@ def test_none_value_serialization() -> None:
 
 
 def test_benchmark_summary_with_all_failed() -> None:
-    """Test BenchmarkSummary when all extractions fail."""
     summary = BenchmarkSummary(
         framework=Framework.KREUZBERG_ASYNC,
         category=DocumentCategory.LARGE,
@@ -137,7 +127,6 @@ def test_benchmark_summary_with_all_failed() -> None:
     assert summary.success_rate == 0.0
     assert summary.files_per_second is None
 
-    # Should serialize without errors
     serialized = msgspec.json.encode(summary)
     data = json.loads(serialized)
     assert data["success_rate"] == 0.0

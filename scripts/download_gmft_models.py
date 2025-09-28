@@ -1,12 +1,3 @@
-#!/usr/bin/env -S uv run --script
-# /// script
-# dependencies = [
-#   "transformers>=4.40.0",
-#   "torch>=2.0.0",
-#   "pillow>=10.0.0",
-#   "timm>=0.9.0",
-# ]
-# ///
 """Download GMFT (Table Transformer) models for offline use and CI caching."""
 
 from __future__ import annotations
@@ -29,7 +20,6 @@ def download_models() -> None:
 
     cache_dir = os.environ.get("HF_HOME") or os.environ.get("TRANSFORMERS_CACHE")
     if cache_dir:
-        # Expand ~ to home directory
         cache_path = Path(cache_dir).expanduser()
         cache_path.mkdir(parents=True, exist_ok=True)
         cache_dir = str(cache_path)

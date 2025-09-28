@@ -138,7 +138,6 @@ def xerox_pdf() -> Path:
 
 @pytest.fixture(scope="session")
 def german_image_pdf() -> Path:
-    """Path to German image-only PDF that previously caused EmptyHtmlError."""
     return test_documents_folder / "pdfs" / "image_only_german_pdf.pdf"
 
 

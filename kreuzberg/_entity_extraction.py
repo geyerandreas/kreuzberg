@@ -144,10 +144,9 @@ def load_spacy_model(model_name: str, spacy_config: SpacyEntityExtractionConfig)
     try:
         nlp = spacy.load(model_name)
     except OSError:
-        # Try to download the model automatically
+
         async def install_model() -> tuple[bool, str | None]:
             """Install model and return success status and error message."""
-            # First try spaCy's built-in download
             try:
                 success = await install_spacy_model_with_spacy(model_name)
                 if success:
@@ -157,7 +156,6 @@ def load_spacy_model(model_name: str, spacy_config: SpacyEntityExtractionConfig)
             else:
                 spacy_error = "spaCy download failed"
 
-            # If spaCy download failed and uv is available, try uv as fallback
             if is_uv_available():
                 try:
                     result = await install_spacy_model_with_uv(model_name)
@@ -167,15 +165,12 @@ def load_spacy_model(model_name: str, spacy_config: SpacyEntityExtractionConfig)
 
             return False, spacy_error
 
-        # Run the async installation in a sync context
         try:
             success, error_details = anyio.run(install_model)
         except SystemExit as e:
-            # Convert SystemExit from spacy CLI to proper error handling
             success, error_details = False, f"spaCy CLI exit code: {e.code}"
 
         if not success:
-            # Generate appropriate error message based on available tools
             if is_uv_available():
                 model_url = get_spacy_model_url(model_name)
                 manual_install_cmd = f"uv pip install {model_url}"
@@ -236,7 +231,6 @@ def extract_keywords(
         keywords = kw_model.extract_keywords(text, top_n=keyword_count)
         return [(kw, float(score)) for kw, score in keywords]
     except ValueError:
-        # ValueError is acceptable to handle gracefully (e.g., invalid input)
         return []
     except ImportError as e:  # pragma: no cover
         raise MissingDependencyError.create_for_package(

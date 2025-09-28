@@ -1,17 +1,3 @@
-#!/usr/bin/env python3
-# /// script
-# dependencies = [
-#   "matplotlib>=3.8.0",
-#   "plotly>=5.18.0",
-#   "polars>=1.0.0",
-#   "seaborn>=0.13.0",
-#   "msgspec>=0.18.0",
-#   "click>=8.2.1",
-#   "rich>=13.0.0",
-# ]
-# requires-python = ">=3.11"
-# ///
-
 from __future__ import annotations
 
 import json

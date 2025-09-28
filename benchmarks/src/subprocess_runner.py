@@ -63,7 +63,6 @@ def _extract_in_subprocess(
 
     faulthandler.enable()
 
-    # Apply resource limits if provided
     if resource_limits_json:
         limits = msgspec.json.decode(resource_limits_json, type=ResourceLimits)
         _apply_resource_limits(limits)
@@ -108,18 +107,15 @@ def _extract_in_subprocess(
         framework_enum = Framework(framework)
         extractor = get_extractor(framework_enum)
 
-        # Apply config overrides for Kreuzberg extractors
         if config_overrides_json and "kreuzberg" in framework.lower():
             config_overrides = msgspec.json.decode(config_overrides_json.encode(), type=dict)
             if hasattr(extractor, "_apply_config_overrides"):
                 extractor._apply_config_overrides(config_overrides)
             elif hasattr(extractor, "_get_optimized_config"):
-                # Patch the config method to include overrides
                 original_config_method = extractor._get_optimized_config
 
                 def _get_config_with_overrides(file_path: str) -> Any:
                     config = original_config_method(file_path)
-                    # Apply overrides to the config object
                     for key, value in config_overrides.items():
                         if hasattr(config, key):
                             setattr(config, key, value)
@@ -171,27 +167,19 @@ def _extract_in_subprocess(
 
 
 def _apply_resource_limits(limits: ResourceLimits) -> None:
-    """Apply resource limits to the current process."""
     if limits.max_memory_mb:
-        # Set virtual memory limit in bytes
         memory_limit_bytes = limits.max_memory_mb * 1024 * 1024
         resource.setrlimit(resource.RLIMIT_AS, (memory_limit_bytes, memory_limit_bytes))
 
     if limits.max_open_files:
-        # Set file descriptor limit
         resource.setrlimit(resource.RLIMIT_NOFILE, (limits.max_open_files, limits.max_open_files))
-
-    # Note: CPU limits are not directly enforceable via resource module on most systems
-    # They would require cgroups or other OS-specific mechanisms
 
 
 class ResourceLimits(msgspec.Struct):
-    """Resource limits for subprocess execution."""
-
-    max_memory_mb: int | None = None  # Maximum memory in MB
-    max_cpu_percent: float | None = None  # Maximum CPU percentage (not enforced on all OS)
-    max_open_files: int | None = None  # Maximum open file descriptors
-    max_execution_time: float | None = None  # Maximum execution time override
+    max_memory_mb: int | None = None
+    max_cpu_percent: float | None = None
+    max_open_files: int | None = None
+    max_execution_time: float | None = None
 
 
 class SubprocessRunner:
@@ -263,7 +251,6 @@ class SubprocessRunner:
                 except (AttributeError, psutil.AccessDenied):
                     pass
 
-                # Check resource limit violations
                 if self.resource_limits.max_memory_mb and memory_mb > self.resource_limits.max_memory_mb:
                     process.terminate()
                     process.wait(timeout=5)
@@ -343,7 +330,6 @@ class SubprocessRunner:
             benchmarks_dir = Path(__file__).parent.parent
             main_kreuzberg_dir = benchmarks_dir.parent
 
-            # Serialize resource limits and config overrides for subprocess
             resource_limits_json = msgspec.json.encode(self.resource_limits).decode() if self.resource_limits else None
             config_overrides_json = msgspec.json.encode(config_overrides).decode() if config_overrides else None
 
@@ -365,7 +351,6 @@ _extract_in_subprocess({framework!r}, {file_path!r}, {result_file!r}, {resource_
 
             env = os.environ.copy()
 
-            # Apply framework-specific environment variables
             if framework_env:
                 env.update(framework_env)
 

@@ -110,10 +110,9 @@ def _get_max_upload_size() -> int:
     Environment Variables:
         KREUZBERG_MAX_UPLOAD_SIZE: Maximum upload size in bytes (default: 1073741824 = 1GB)
     """
-    default_size = 1024 * 1024 * 1024  # 1GB
+    default_size = 1024 * 1024 * 1024
     try:
         size = int(os.environ.get("KREUZBERG_MAX_UPLOAD_SIZE", default_size))
-        # Return default if negative
         return size if size >= 0 else default_size
     except ValueError:
         return default_size
@@ -311,7 +310,6 @@ async def handle_files_upload(  # noqa: PLR0913
     """
     static_config = discover_config_cached()
 
-    # Validate that at least one file was uploaded
     if not data:
         raise ValidationError("No files provided for extraction", context={"file_count": 0})
 
