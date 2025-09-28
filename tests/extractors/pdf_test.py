@@ -905,12 +905,6 @@ async def test_pdf_extract_path_async_table_import_error(
     assert result.tables == []
 
 
-@pytest.fixture
-def german_image_pdf() -> Path:
-    """Path to German image-only PDF that previously caused EmptyHtmlError."""
-    return Path(__file__).parent.parent / "test_source_files" / "image-only-german-pdf.pdf"
-
-
 @pytest.mark.anyio
 async def test_extract_german_image_pdf_async_with_force_ocr(german_image_pdf: Path) -> None:
     """Test that German image-only PDF extracts successfully with force_ocr=True.

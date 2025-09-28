@@ -25,7 +25,7 @@ def scanned_pdf() -> Path:
 
 @pytest.fixture(scope="session")
 def non_searchable_pdf() -> Path:
-    return test_documents_folder / "pdfs" / "non-searchable.pdf"
+    return test_documents_folder / "pdfs" / "non_searchable.pdf"
 
 
 @pytest.fixture(scope="session")
@@ -35,7 +35,7 @@ def non_ascii_pdf() -> Path:
 
 @pytest.fixture(scope="session")
 def test_article() -> Path:
-    return test_documents_folder / "pdfs" / "test-article.pdf"
+    return test_documents_folder / "pdfs" / "test_article.pdf"
 
 
 @pytest.fixture(scope="session")
@@ -75,7 +75,7 @@ def excel_document() -> Path:
 
 @pytest.fixture(scope="session")
 def excel_multi_sheet_document() -> Path:
-    return test_documents_folder / "spreadsheets" / "excel-multi-sheet.xlsx"
+    return test_documents_folder / "spreadsheets" / "excel_multi_sheet.xlsx"
 
 
 @pytest.fixture(scope="session")
@@ -124,7 +124,7 @@ def clean_cache_session() -> Generator[None, None, None]:
 
 @pytest.fixture(scope="session")
 def google_doc_pdf() -> Path:
-    return test_documents_folder / "pdfs" / "google-doc-document.pdf"
+    return test_documents_folder / "pdfs" / "google_doc_document.pdf"
 
 
 @pytest.fixture(scope="session")
@@ -133,12 +133,18 @@ def xerox_pdf() -> Path:
 
     if os.environ.get("CI") == "true":
         return test_documents_folder / "pdfs" / "scanned.pdf"
-    return test_documents_folder / "pdfs" / "Xerox_AltaLink_series_mfp_sag_en-US 2.pdf"
+    return test_documents_folder / "pdfs" / "xerox_alta_link_series_mfp_sag_en_us_2.pdf"
+
+
+@pytest.fixture(scope="session")
+def german_image_pdf() -> Path:
+    """Path to German image-only PDF that previously caused EmptyHtmlError."""
+    return test_documents_folder / "pdfs" / "image_only_german_pdf.pdf"
 
 
 @pytest.fixture(scope="session")
 def test_xls() -> Path:
-    return test_documents_folder / "spreadsheets" / "test-excel.xls"
+    return test_documents_folder / "spreadsheets" / "test_excel.xls"
 
 
 @pytest.fixture

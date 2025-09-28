@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -13,6 +12,9 @@ from kreuzberg._extractors._pandoc import PandocExtractor
 from kreuzberg._extractors._pdf import PDFExtractor
 from kreuzberg._extractors._presentation import PresentationExtractor
 from kreuzberg._types import ExtractedImage
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @pytest.mark.anyio
@@ -189,8 +191,8 @@ class TestAllExtractorsImageIntegration:
         assert result.images[0].filename == "photo.jpg"
         assert result.images[0].data == b"fake_jpeg_data"
 
-    async def test_pdf_extractor_complete_pipeline(self) -> None:
-        pdf_path = Path(__file__).parent.parent / "test_source_files" / "searchable.pdf"
+    async def test_pdf_extractor_complete_pipeline(self, searchable_pdf: Path) -> None:
+        pdf_path = searchable_pdf
 
         config = ExtractionConfig(
             extract_images=True,

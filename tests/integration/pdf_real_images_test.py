@@ -11,14 +11,14 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 REAL_PDFS = (
-    "test-article.pdf",
-    "google-doc-document.pdf",
-    "sharable-web-guide.pdf",
+    "test_article.pdf",
+    "google_doc_document.pdf",
+    "sharable_web_guide.pdf",
 )
 
 
 def _candidate_paths(base: Path) -> list[Path]:
-    return [base / name for name in REAL_PDFS if (base / name).exists()]
+    return [base / "pdfs" / name for name in REAL_PDFS if (base / "pdfs" / name).exists()]
 
 
 @pytest.mark.anyio
