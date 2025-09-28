@@ -41,7 +41,7 @@ jobs:
 
       - name: Install Python dependencies
         run: |
-          uv sync --all-extras
+          uv sync --all-packages --all-extras --all-groups
 
       - name: Build Rust extension
         run: |

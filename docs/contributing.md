@@ -15,7 +15,7 @@ Thank you for contributing to Kreuzberg!
     ```bash
     git clone https://github.com/Goldziher/kreuzberg.git
     cd kreuzberg
-    uv sync --all-extras --dev
+    uv sync --all-packages --all-extras --all-groups
     ```
 
 1. **Install prek and hooks**:

@@ -41,7 +41,7 @@ jobs:
               echo "Removing existing .venv directory on Windows"
               rm -rf .venv
             fi
-            uv sync --all-extras --dev
+            uv sync --all-packages --all-extras --all-groups
           shell: bash
 
       - name: Install prek
@@ -98,7 +98,7 @@ jobs:
           max_attempts: 3
           retry_wait_seconds: 30
           command: |
-            uv sync --all-extras --dev
+            uv sync --all-packages --all-extras --all-groups
           shell: bash
 
       - name: Install System Dependencies
@@ -234,7 +234,7 @@ jobs:
               echo "Removing existing .venv directory on Windows"
               rm -rf .venv
             fi
-            uv sync --all-extras --dev
+            uv sync --all-packages --all-extras --all-groups
           shell: bash
 
       - name: Cache Test Artifacts

@@ -220,7 +220,7 @@ git clone https://github.com/Goldziher/kreuzberg.git
 cd kreuzberg
 
 # Install with benchmark dependencies
-uv sync --all-packages --all-extras
+uv sync --all-packages --all-extras --all-groups
 
 # Run comprehensive benchmarks
 cd benchmarks

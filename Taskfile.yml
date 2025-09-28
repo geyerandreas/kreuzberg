@@ -8,7 +8,7 @@ tasks:
   setup:
     desc: "Install dependencies with uv"
     cmds:
-      - uv sync --all-extras --all-packages
+      - uv sync --all-packages --all-extras --all-groups
       - prek install && prek install --hook-type commit-msg
 
   update:
@@ -16,7 +16,7 @@ tasks:
     cmds:
       - uv run uv-bump
       - cd benchmarks && uv run uv-bump && cd -
-      - uv sync --all-extras --all-packages --upgrade
+      - uv sync --all-packages --all-extras --all-groups --upgrade
       - prek autoupdate
 
   test:

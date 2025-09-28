@@ -354,7 +354,7 @@ rules:
   - content: |
       ### Dependencies
       - Install dependencies: `uv sync`
-      - Install with all optional dependencies: `uv sync --all-extras`
+      - Install with all optional dependencies: `uv sync --all-packages --all-extras --all-groups`
 
       ### Testing
       - Run all tests: `pytest`
@@ -376,7 +376,6 @@ rules:
       ### Documentation
       - Build docs: `uv run mkdocs build --clean --strict`
       - Serve docs locally: `uv run mkdocs serve`
-      - Install doc dependencies: `uv sync --group doc`
     name: Development Commands
     priority: critical
   - content: |
@@ -521,7 +520,6 @@ rules:
 
       ### Common Issues
       - **Docker version detection**: Use `git tag --sort=-version:refname | head -n1` not `git describe`
-      - **Docs dependencies**: Use `uv sync --group doc` for proper mkdocs-material[imaging] support
       - **Docker Hub README**: May fail due to permissions, use `continue-on-error: true`
     name: CI/CD and Deployment
     priority: minimal
@@ -592,11 +590,7 @@ rules:
       ```
 
       ### Installation Patterns
-      - Basic: `pip install kreuzberg`
-      - With features: `pip install "kreuzberg[api,cli]"`
-      - With crypto support: `pip install "kreuzberg[crypto]"`
-      - All features: `pip install "kreuzberg[all]"`
-      - Development: `uv sync --all-extras`
+      - Development: `uv sync --all-packages --all-extras --all-groups`
 
       ### Dependencies
       - **Core**: pypdfium2, playa-pdf, python-pptx, etc.
