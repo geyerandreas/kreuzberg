@@ -49,7 +49,9 @@ class EnhancedResourceMonitor:
 
     def _get_io_counters(self) -> dict[str, int] | None:
         try:
-            io = self.process.io_counters()
+            io = getattr(self.process, "io_counters", lambda: None)()
+            if io is None:
+                return None
             return {
                 "read_bytes": io.read_bytes,
                 "write_bytes": io.write_bytes,
@@ -274,9 +276,11 @@ def profile_performance(sampling_interval_ms: int = 50) -> Iterator[PerformanceM
     baseline_io = None
 
     with suppress(AttributeError, psutil.AccessDenied):
-        baseline_io = process.io_counters()._asdict()
+        io_counters = getattr(process, "io_counters", lambda: None)()
+        if io_counters:
+            baseline_io = io_counters._asdict()
 
-    samples = []
+    samples: list[ResourceMetrics] = []
 
     def collect_sample() -> ResourceMetrics | None:
         try:
@@ -286,13 +290,15 @@ def profile_performance(sampling_interval_ms: int = 50) -> Iterator[PerformanceM
             io_metrics = {}
             if baseline_io:
                 try:
-                    current_io = process.io_counters()._asdict()
-                    io_metrics = {
-                        "io_read_bytes": current_io["read_bytes"] - baseline_io["read_bytes"],
-                        "io_write_bytes": current_io["write_bytes"] - baseline_io["write_bytes"],
-                        "io_read_count": current_io["read_count"] - baseline_io["read_count"],
-                        "io_write_count": current_io["write_count"] - baseline_io["write_count"],
-                    }
+                    io_counters = getattr(process, "io_counters", lambda: None)()
+                    if io_counters:
+                        current_io = io_counters._asdict()
+                        io_metrics = {
+                            "io_read_bytes": current_io["read_bytes"] - baseline_io["read_bytes"],
+                            "io_write_bytes": current_io["write_bytes"] - baseline_io["write_bytes"],
+                            "io_read_count": current_io["read_count"] - baseline_io["read_count"],
+                            "io_write_count": current_io["write_count"] - baseline_io["write_count"],
+                        }
                 except (AttributeError, psutil.AccessDenied):
                     pass
 

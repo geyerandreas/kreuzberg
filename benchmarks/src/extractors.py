@@ -38,10 +38,15 @@ except ImportError:
 try:
     from extractous import Extractor
 except ImportError:
-    Extractor = None  # type: ignore[assignment,misc]
+    Extractor = None
 
 
-from typing import TYPE_CHECKING, Any, Never
+from typing import TYPE_CHECKING, Any
+
+try:
+    from typing import Never
+except ImportError:
+    from typing_extensions import Never
 
 if TYPE_CHECKING:
     from .types import AsyncExtractorProtocol, ExtractorProtocol
@@ -198,7 +203,7 @@ class DoclingExtractor:
             text = result.document.export_to_text()
             text = text if text else ""
 
-            metadata = {}
+            metadata: dict[str, Any] = {}
             if hasattr(result.document, "origin"):
                 metadata["origin"] = {
                     "mimetype": getattr(result.document.origin, "mimetype", None),
@@ -415,7 +420,7 @@ class UnstructuredExtractor:
                     if hasattr(elem_meta, "languages"):
                         metadata["languages"] = elem_meta.languages
 
-                element_types = {}
+                element_types: dict[str, int] = {}
                 for elem in elements:
                     elem_type = type(elem).__name__
                     element_types[elem_type] = element_types.get(elem_type, 0) + 1
