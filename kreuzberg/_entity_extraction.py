@@ -170,8 +170,9 @@ def load_spacy_model(model_name: str, spacy_config: SpacyEntityExtractionConfig)
         # Run the async installation in a sync context
         try:
             success, error_details = anyio.run(install_model)
-        except (OSError, RuntimeError) as e:
-            success, error_details = False, str(e)
+        except SystemExit as e:
+            # Convert SystemExit from spacy CLI to proper error handling
+            success, error_details = False, f"spaCy CLI exit code: {e.code}"
 
         if not success:
             # Generate appropriate error message based on available tools

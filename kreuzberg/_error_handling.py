@@ -22,8 +22,8 @@ def should_exception_bubble_up(exception: Exception, context: ErrorContextType =
     Returns:
         True if the exception should bubble up, False if it should be handled gracefully
     """
-    # System-level errors should always bubble up
-    if isinstance(exception, (SystemExit, KeyboardInterrupt, MemoryError)):
+    # System-level errors should always bubble up - these indicate real problems we need to know about
+    if isinstance(exception, (SystemExit, KeyboardInterrupt, MemoryError, OSError, RuntimeError)):
         return True
 
     # MissingDependencyError should bubble up as it indicates a configuration issue
@@ -48,11 +48,11 @@ def should_exception_bubble_up(exception: Exception, context: ErrorContextType =
     # In batch processing, suppress ALL exceptions to allow partial results
     if context == "batch_processing":
         # Only let truly critical system errors bubble up, suppress all others
-        return isinstance(exception, (SystemExit, KeyboardInterrupt, MemoryError))
+        return isinstance(exception, (SystemExit, KeyboardInterrupt, MemoryError, OSError, RuntimeError))
 
     # For optional features, handle common extraction errors gracefully
     # For single extraction, most errors should bubble up
-    return not (context == "optional_feature" and isinstance(exception, (RuntimeError, IOError, ImportError)))
+    return not (context == "optional_feature" and isinstance(exception, (IOError, ImportError)))
 
 
 class FeatureProcessingError:
