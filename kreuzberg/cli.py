@@ -177,7 +177,7 @@ def _perform_extraction(file: Path | None, extraction_config: ExtractionConfig, 
             progress.add_task("Extracting text...", total=None)
 
             try:
-                import magic  # type: ignore[import-not-found] # noqa: PLC0415
+                import magic  # noqa: PLC0415
 
                 mime_type = magic.from_buffer(input_bytes, mime=True)
             except ImportError:  # pragma: no cover

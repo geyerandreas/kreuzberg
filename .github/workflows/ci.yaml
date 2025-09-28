@@ -28,7 +28,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version-file: "pyproject.toml"
+          python-version: "3.13"
+
+      - name: Setup Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt, clippy
+
 
       - name: Install Dependencies
         uses: nick-fields/retry@v3
@@ -61,7 +67,7 @@ jobs:
         run: prek run --show-diff-on-failure --color=always --all-files
 
   coverage:
-    needs: validate
+    needs: [validate]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 120
@@ -112,20 +118,47 @@ jobs:
             sudo apt-get install -y tesseract-ocr tesseract-ocr-deu pandoc
           shell: bash
 
+      - name: Install SpaCy Model for Testing
+        run: |
+          uv pip install "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+
+      - name: Cache HuggingFace Models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-models-gmft-v1-${{ runner.os }}
+          restore-keys: |
+            huggingface-models-gmft-v1-
+
+      - name: Download GMFT Models if Not Cached
+        env:
+          HF_HOME: ~/.cache/huggingface
+          TRANSFORMERS_CACHE: ~/.cache/huggingface
+        run: |
+          if [ ! -d ~/.cache/huggingface ] || [ -z "$(ls -A ~/.cache/huggingface 2>/dev/null)" ]; then
+            echo "Cache miss - downloading GMFT models..."
+            uv run python scripts/download_gmft_models.py
+          else
+            echo "Using cached GMFT models"
+          fi
+
       - name: Run Tests with Coverage
         uses: nick-fields/retry@v3
+        env:
+          HF_HOME: ~/.cache/huggingface
+          TRANSFORMERS_CACHE: ~/.cache/huggingface
         with:
           timeout_minutes: 15
           max_attempts: 3
           retry_wait_seconds: 10
           command: |
             uv run coverage erase
-            uv run pytest -s -vvv --cov=kreuzberg --cov-report=lcov:coverage.lcov --cov-report=term --cov-config=pyproject.toml --reruns 2 --reruns-delay 1
+            uv run pytest -s -vvv --cov=kreuzberg --cov-report=lcov:coverage.lcov --cov-report=term --cov-config=pyproject.toml --reruns 2 --reruns-delay 1 --ignore=benchmarks/
             uv run coverage report --precision=2
           shell: bash
 
       - name: Upload Coverage to DeepSource
-        if: always() && secrets.DEEPSOURCE_DSN != ''
+        if: always() && needs.python-tests-pr.result == 'success'
         env:
           DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
         run: |
@@ -144,107 +177,9 @@ jobs:
             .coverage
           retention-days: 7
 
-  test-pr:
-    needs: validate
-    if: github.event_name == 'pull_request' && needs.validate.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@v6
-        with:
-          enable-cache: true
-
-      - name: Install Python
-        uses: actions/setup-python@v6
-        id: setup-python
-        with:
-          python-version: "3.13"
-
-      - name: Cache Python Dependencies
-        id: python-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/uv
-            .venv
-          key: python-dependencies-ubuntu-latest-3.13-${{ hashFiles('uv.lock') }}
-          restore-keys: |
-            python-dependencies-ubuntu-latest-3.13-
-
-      - name: Install Dependencies
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 5
-          max_attempts: 3
-          retry_wait_seconds: 30
-          command: |
-            uv sync --all-extras --dev
-          shell: bash
-
-      - name: Install System Dependencies
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 5
-          max_attempts: 3
-          retry_wait_seconds: 30
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y tesseract-ocr tesseract-ocr-deu pandoc
-          shell: bash
-
-      - name: Run All Tests with Coverage
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 15
-          max_attempts: 3
-          retry_wait_seconds: 10
-          command: |
-            uv run coverage erase
-            uv run pytest -s -vvv --cov=kreuzberg --cov-report=lcov:coverage.lcov --cov-report=term --cov-config=pyproject.toml --reruns 2 --reruns-delay 1
-            uv run coverage report --precision=2
-          shell: bash
-
-      - name: Upload Coverage Artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-pr-${{ github.sha }}
-          path: |
-            coverage.lcov
-            .coverage
-          retention-days: 1
-
-  coverage-pr:
-    needs: test-pr
-    if: github.event_name == 'pull_request' && needs.test-pr.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Download Coverage Artifacts
-        uses: actions/download-artifact@v5
-        with:
-          name: coverage-pr-${{ github.sha }}
-
-      - name: Upload Coverage to DeepSource
-        if: always() && secrets.DEEPSOURCE_DSN != '' && needs.test-pr.result == 'success'
-        env:
-          DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
-        run: |
-          # Install DeepSource CLI
-          curl -fsSL https://deepsource.io/cli | sh
-          # Upload coverage report
-          ./bin/deepsource report --analyzer test-coverage --key python --value-file ./coverage.lcov
-
-  test-full:
-    needs: validate
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.validate.result == 'success'
+  python-tests:
+    needs: [validate]
+    if: needs.validate.result == 'success'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -268,19 +203,6 @@ jobs:
             path: "tests/features,tests/interfaces,tests/mcp,tests/multiprocessing,tests/ocr"
             system-deps: true
             timeout: 25
-        exclude:
-          - test-category: {name: "extractors"}
-            python: "3.11"
-          - test-category: {name: "extractors"}
-            python: "3.12"
-          - test-category: {name: "integration"}
-            python: "3.11"
-          - test-category: {name: "integration"}
-            python: "3.12"
-          - test-category: {name: "features"}
-            python: "3.11"
-          - test-category: {name: "features"}
-            python: "3.12"
     timeout-minutes: ${{ matrix.test-category.timeout }}
     steps:
       - name: Checkout
@@ -329,7 +251,7 @@ jobs:
           key: pytest-cache-${{ matrix.os }}-${{ matrix.python }}
 
       - name: Cache and Install Homebrew (macOS)
-        if: runner.os == 'macOS' && matrix.test-category.system-deps
+        if: runner.os == 'macOS'
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 10
@@ -343,7 +265,7 @@ jobs:
           shell: bash
 
       - name: Cache and Install APT Packages (Linux)
-        if: runner.os == 'Linux' && matrix.test-category.system-deps
+        if: runner.os == 'Linux'
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 5
@@ -355,7 +277,7 @@ jobs:
           shell: bash
 
       - name: Install System Dependencies (Windows)
-        if: runner.os == 'Windows' && matrix.test-category.system-deps
+        if: runner.os == 'Windows'
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 10
@@ -370,6 +292,32 @@ jobs:
             pandoc --version
           shell: pwsh
 
+      - name: Install SpaCy Model for Testing
+        if: matrix.test-category.system-deps
+        run: |
+          uv pip install "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+
+      - name: Cache HuggingFace Models
+        if: contains(matrix.test-category.path, 'gmft')
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: huggingface-models-gmft-v1-${{ runner.os }}
+          restore-keys: |
+            huggingface-models-gmft-v1-
+
+      - name: Download GMFT Models if Not Cached
+        if: contains(matrix.test-category.path, 'gmft')
+        env:
+          TRANSFORMERS_CACHE: ~/.cache/huggingface
+        run: |
+          if [ ! -d ~/.cache/huggingface ] || [ -z "$(ls -A ~/.cache/huggingface 2>/dev/null)" ]; then
+            echo "Cache miss - downloading GMFT models..."
+            uv run python scripts/download_gmft_models.py
+          else
+            echo "Using cached GMFT models"
+          fi
+
       - name: Run Tests - ${{ matrix.test-category.name }}
         uses: nick-fields/retry@v3
         with:
@@ -377,5 +325,6 @@ jobs:
           max_attempts: 2
           retry_wait_seconds: 5
           command: |
-            uv run pytest $(echo "${{ matrix.test-category.path }}" | tr ',' ' ') -v --reruns 1 --reruns-delay 1
+            # Run tests from specified paths, explicitly excluding benchmarks
+            uv run pytest $(echo "${{ matrix.test-category.path }}" | tr ',' ' ') -v --reruns 1 --reruns-delay 1 --ignore=benchmarks/ --ignore=tests/benchmarks/
           shell: bash

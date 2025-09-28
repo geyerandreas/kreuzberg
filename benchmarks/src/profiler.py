@@ -1,161 +1,411 @@
 from __future__ import annotations
 
+import asyncio
 import gc
-import subprocess
-import tempfile
-import threading
 import time
-from contextlib import contextmanager
-from pathlib import Path
-from typing import TYPE_CHECKING, TypeVar
+from contextlib import contextmanager, suppress
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import psutil
 
-from .models import FlameGraphConfig, PerformanceMetrics
+from src.logger import get_logger
+from src.types import ResourceMetrics
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
+    import types
+    from collections.abc import Iterator
 
-T = TypeVar("T")
+logger = get_logger(__name__)
 
 
-class PerformanceProfiler:
-    def __init__(self) -> None:
+@dataclass
+class PerformanceMetrics:
+    extraction_time: float
+    peak_memory_mb: float
+    avg_memory_mb: float
+    peak_cpu_percent: float
+    avg_cpu_percent: float
+    total_io_read_mb: float | None = None
+    total_io_write_mb: float | None = None
+    samples: list[ResourceMetrics] = field(default_factory=list)
+    startup_time: float | None = None
+    baseline_cpu_percent: float = 0.0
+    baseline_memory_mb: float = 0.0
+    cpu_measurement_accuracy: float | None = None
+
+
+class EnhancedResourceMonitor:
+    def __init__(self, sampling_interval_ms: int = 50) -> None:
+        self.sampling_interval = sampling_interval_ms / 1000.0
+        self.metrics_buffer: list[ResourceMetrics] = []
+        self.monitoring = False
         self.process = psutil.Process()
-        self.start_time: float = 0
-        self.memory_samples: list[float] = []
-        self.cpu_samples: list[float] = []
-        self.monitoring_thread: threading.Thread | None = None
-        self.monitoring_active = False
-        self.gc_start: dict[int, int] = {}
+        self._monitor_task: asyncio.Task[None] | None = None
+        self._baseline_io: dict[str, int] | None = None
+        self._baseline_cpu_samples: list[float] = []
+        self._baseline_memory_mb: float = 0.0
+        self._cpu_validation_samples: list[float] = []
 
-    def start_monitoring(self) -> None:
-        self.start_time = time.perf_counter()
-        self.memory_samples.clear()
-        self.cpu_samples.clear()
-        self.gc_start = {gen: gc.get_count()[gen] for gen in range(3)}
+    def _get_io_counters(self) -> dict[str, int] | None:
+        try:
+            io = self.process.io_counters()
+            return {
+                "read_bytes": io.read_bytes,
+                "write_bytes": io.write_bytes,
+                "read_count": io.read_count,
+                "write_count": io.write_count,
+            }
+        except (AttributeError, psutil.AccessDenied):
+            return None
 
-        self.monitoring_active = True
-        self.monitoring_thread = threading.Thread(target=self._monitor_resources, daemon=True)
-        self.monitoring_thread.start()
+    def _get_open_files_count(self) -> int:
+        try:
+            return len(self.process.open_files())
+        except (psutil.AccessDenied, AttributeError):
+            return 0
 
-    def stop_monitoring(self) -> PerformanceMetrics:
-        self.monitoring_active = False
-        if self.monitoring_thread:
-            self.monitoring_thread.join(timeout=1.0)
+    async def _establish_baseline(self, duration_seconds: float = 1.0) -> None:
+        logger.debug("Establishing baseline measurements", duration_seconds=f"{duration_seconds:.1f}s")
 
-        duration = time.perf_counter() - self.start_time
-        gc_end = {gen: gc.get_count()[gen] for gen in range(3)}
-        gc_collections = {gen: gc_end[gen] - self.gc_start[gen] for gen in range(3)}
+        self.process.cpu_percent(interval=None)
+        await asyncio.sleep(0.1)
 
-        return PerformanceMetrics(
-            duration_seconds=duration,
-            memory_peak_mb=max(self.memory_samples) if self.memory_samples else 0.0,
-            memory_average_mb=sum(self.memory_samples) / len(self.memory_samples) if self.memory_samples else 0.0,
-            cpu_percent_average=sum(self.cpu_samples) / len(self.cpu_samples) if self.cpu_samples else 0.0,
-            cpu_percent_peak=max(self.cpu_samples) if self.cpu_samples else 0.0,
-            gc_collections=gc_collections,
-        )
+        baseline_start = time.time()
+        baseline_samples = []
 
-    def _monitor_resources(self) -> None:
-        while self.monitoring_active:
+        while time.time() - baseline_start < duration_seconds:
             try:
-                memory_info = self.process.memory_info()
-                memory_mb = memory_info.rss / (1024 * 1024)
-                self.memory_samples.append(memory_mb)
+                cpu_percent = self.process.cpu_percent(interval=self.sampling_interval)
+                memory_mb = self.process.memory_info().rss / (1024 * 1024)
 
-                cpu_percent = self.process.cpu_percent()
-                self.cpu_samples.append(cpu_percent)
+                baseline_samples.append({"cpu_percent": cpu_percent, "memory_mb": memory_mb, "timestamp": time.time()})
 
-                time.sleep(0.01)
-            except (psutil.NoSuchProcess, psutil.AccessDenied):  # noqa: PERF203
+                await asyncio.sleep(0.001)
+
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
                 break
 
-    @contextmanager
-    def profile(self) -> Generator[None, None, PerformanceMetrics]:
-        self.start_monitoring()
+        if baseline_samples:
+            cpu_values = [s["cpu_percent"] for s in baseline_samples]
+            memory_values = [s["memory_mb"] for s in baseline_samples]
+
+            self._baseline_cpu_samples = cpu_values
+            self._baseline_memory_mb = sum(memory_values) / len(memory_values)
+
+            if len(cpu_values) > 1:
+                cpu_std = (
+                    sum((x - sum(cpu_values) / len(cpu_values)) ** 2 for x in cpu_values) / (len(cpu_values) - 1)
+                ) ** 0.5
+                cpu_mean = sum(cpu_values) / len(cpu_values)
+                cpu_cv = cpu_std / cpu_mean if cpu_mean > 0 else 0
+                self._cpu_validation_samples = [cpu_cv]
+
+            logger.debug(
+                "Baseline established",
+                cpu_avg_percent=f"{sum(cpu_values) / len(cpu_values):.1f}",
+                memory_avg_mb=f"{self._baseline_memory_mb:.1f}",
+            )
+
+    def _get_baseline_cpu_percent(self) -> float:
+        if not self._baseline_cpu_samples:
+            return 0.0
+        return sum(self._baseline_cpu_samples) / len(self._baseline_cpu_samples)
+
+    def _get_cpu_measurement_accuracy(self) -> float | None:
+        if not self._cpu_validation_samples:
+            return None
+        return 1.0 - min(self._cpu_validation_samples[0], 1.0)
+
+    async def _monitor_loop(self) -> None:
+        self.process.cpu_percent(interval=None)
+        await asyncio.sleep(0.1)
+
+        while self.monitoring:
+            try:
+                cpu_percent = self.process.cpu_percent(interval=self.sampling_interval)
+                mem_info = self.process.memory_info()
+
+                io_counters = self._get_io_counters()
+                io_metrics = {}
+                if io_counters and self._baseline_io:
+                    io_metrics = {
+                        "io_read_bytes": io_counters["read_bytes"] - self._baseline_io["read_bytes"],
+                        "io_write_bytes": io_counters["write_bytes"] - self._baseline_io["write_bytes"],
+                        "io_read_count": io_counters["read_count"] - self._baseline_io["read_count"],
+                        "io_write_count": io_counters["write_count"] - self._baseline_io["write_count"],
+                    }
+
+                metric = ResourceMetrics(
+                    timestamp=time.time(),
+                    cpu_percent=cpu_percent,
+                    memory_rss=mem_info.rss,
+                    memory_vms=mem_info.vms,
+                    num_threads=self.process.num_threads(),
+                    open_files=self._get_open_files_count(),
+                    **io_metrics,
+                )
+
+                self.metrics_buffer.append(metric)
+
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                break
+
+            await asyncio.sleep(0.001)
+
+    async def start(self) -> None:
+        self.monitoring = True
+        self.metrics_buffer.clear()
+
+        await self._establish_baseline(duration_seconds=0.5)
+
+        self._baseline_io = self._get_io_counters()
+        self.process.cpu_percent(interval=None)
+
         try:
-            yield
-        finally:
-            metrics = self.stop_monitoring()
-            return metrics  # noqa: B012
+            baseline_metric = ResourceMetrics(
+                timestamp=time.time(),
+                cpu_percent=0.0,
+                memory_rss=self.process.memory_info().rss,
+                memory_vms=self.process.memory_info().vms,
+                num_threads=self.process.num_threads(),
+                open_files=self._get_open_files_count(),
+            )
+            self.metrics_buffer.append(baseline_metric)
+        except Exception as e:
+            emergency_metric = ResourceMetrics(
+                timestamp=time.time(),
+                cpu_percent=0.0,
+                memory_rss=1024 * 1024,
+                memory_vms=1024 * 1024,
+                num_threads=1,
+                open_files=10,
+            )
+            self.metrics_buffer.append(emergency_metric)
+            logger.warning("Failed to collect baseline metric", error=str(e))
 
+        self._monitor_task = asyncio.create_task(self._monitor_loop())
 
-class FlameGraphProfiler:
-    def __init__(self, config: FlameGraphConfig) -> None:
-        self.config = config
+    async def stop(self) -> PerformanceMetrics:
+        self.monitoring = False
 
-    def profile_function(
-        self, func: Callable[[], T], output_path: Path, name: str = "benchmark"
-    ) -> tuple[T, Path | None]:
-        if not self.config.enabled:
-            result = func()
-            return result, None
+        if self._monitor_task:
+            await self._monitor_task
 
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            temp_script = Path(f.name)
-            f.write(f"""
-import sys
-sys.path.insert(0, '{Path.cwd()}')
+        return self._calculate_metrics()
 
-# Import and run the benchmark function
-{self._generate_function_call_code(func)}
-""")
+    def _calculate_metrics(self) -> PerformanceMetrics:
+        if not self.metrics_buffer:
+            try:
+                mem_info = self.process.memory_info()
+                emergency_sample = ResourceMetrics(
+                    timestamp=time.time(),
+                    cpu_percent=0.0,
+                    memory_rss=mem_info.rss,
+                    memory_vms=mem_info.vms,
+                    num_threads=self.process.num_threads(),
+                    open_files=self._get_open_files_count(),
+                )
+                self.metrics_buffer.append(emergency_sample)
+            except Exception as e:
+                logger.warning("Failed to create emergency sample", error=str(e))
 
-        try:
-            flame_output = output_path / f"{name}_flame.{self.config.output_format}"
+            if not self.metrics_buffer:
+                return PerformanceMetrics(
+                    extraction_time=0,
+                    peak_memory_mb=1.0,
+                    avg_memory_mb=1.0,
+                    peak_cpu_percent=0,
+                    avg_cpu_percent=0,
+                    samples=[],
+                )
 
-            cmd = [
-                "py-spy",
-                "record",
-                "-o",
-                str(flame_output),
-                "-d",
-                str(self.config.duration_seconds),
-                "-r",
-                str(self.config.rate_hz),
-                "-f",
-                self.config.output_format,
-            ]
+        start_time = self.metrics_buffer[0].timestamp
+        end_time = self.metrics_buffer[-1].timestamp
+        extraction_time = max(end_time - start_time, 0.001)
 
-            if self.config.subprocesses:
-                cmd.append("-s")
-            if not self.config.include_idle:
-                cmd.append("--idle")
+        memory_samples = [m.memory_rss / (1024 * 1024) for m in self.metrics_buffer]
+        peak_memory_mb = max(memory_samples)
+        avg_memory_mb = sum(memory_samples) / len(memory_samples)
 
-            cmd.extend(["--", "python", str(temp_script)])
+        baseline_memory_mb = self._baseline_memory_mb
+        peak_memory_mb = max(0, peak_memory_mb - baseline_memory_mb)
+        avg_memory_mb = max(0, avg_memory_mb - baseline_memory_mb)
 
-            process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        cpu_samples = [m.cpu_percent for m in self.metrics_buffer]
+        peak_cpu_percent = max(cpu_samples) if cpu_samples else 0
+        avg_cpu_percent = sum(cpu_samples) / len(cpu_samples) if cpu_samples else 0
 
-            result = func()
+        baseline_cpu_percent = self._get_baseline_cpu_percent()
+        peak_cpu_percent = max(0, peak_cpu_percent - baseline_cpu_percent)
+        avg_cpu_percent = max(0, avg_cpu_percent - baseline_cpu_percent)
 
-            process.communicate()
+        total_io_read_mb = None
+        total_io_write_mb = None
+        if self.metrics_buffer and self.metrics_buffer[-1].io_read_bytes is not None:
+            total_io_read_mb = self.metrics_buffer[-1].io_read_bytes / (1024 * 1024)
+        if self.metrics_buffer and self.metrics_buffer[-1].io_write_bytes is not None:
+            total_io_write_mb = self.metrics_buffer[-1].io_write_bytes / (1024 * 1024)
 
-            if process.returncode == 0 and flame_output.exists():
-                return result, flame_output
-            return result, None
-
-        finally:
-            temp_script.unlink(missing_ok=True)
-
-    def _generate_function_call_code(self, func: Callable[[], T]) -> str:
-        # sophisticated serialization for complex functions  # ~keep
-        _ = func
-        return f"""
-# Placeholder for function execution
-# In a real implementation, this would serialize and execute the benchmark
-import time
-time.sleep({self.config.duration_seconds})
-"""
+        return PerformanceMetrics(
+            extraction_time=extraction_time,
+            peak_memory_mb=peak_memory_mb,
+            avg_memory_mb=avg_memory_mb,
+            peak_cpu_percent=peak_cpu_percent,
+            avg_cpu_percent=avg_cpu_percent,
+            total_io_read_mb=total_io_read_mb,
+            total_io_write_mb=total_io_write_mb,
+            samples=self.metrics_buffer.copy(),
+            baseline_cpu_percent=baseline_cpu_percent,
+            baseline_memory_mb=baseline_memory_mb,
+            cpu_measurement_accuracy=self._get_cpu_measurement_accuracy(),
+        )
 
 
 @contextmanager
-def profile_benchmark() -> Generator[PerformanceProfiler, None, PerformanceMetrics]:
-    profiler = PerformanceProfiler()
-    profiler.start_monitoring()
+def profile_performance(sampling_interval_ms: int = 50) -> Iterator[PerformanceMetrics]:  # noqa: ARG001
+    gc.collect()
+
+    process = psutil.Process()
+    start_time = time.time()
+
+    process.cpu_percent(interval=None)
+    baseline_memory = process.memory_info().rss
+    baseline_io = None
+
+    with suppress(AttributeError, psutil.AccessDenied):
+        baseline_io = process.io_counters()._asdict()
+
+    samples = []
+
+    def collect_sample() -> ResourceMetrics | None:
+        try:
+            cpu = process.cpu_percent(interval=None)
+            mem_info = process.memory_info()
+
+            io_metrics = {}
+            if baseline_io:
+                try:
+                    current_io = process.io_counters()._asdict()
+                    io_metrics = {
+                        "io_read_bytes": current_io["read_bytes"] - baseline_io["read_bytes"],
+                        "io_write_bytes": current_io["write_bytes"] - baseline_io["write_bytes"],
+                        "io_read_count": current_io["read_count"] - baseline_io["read_count"],
+                        "io_write_count": current_io["write_count"] - baseline_io["write_count"],
+                    }
+                except (AttributeError, psutil.AccessDenied):
+                    pass
+
+            try:
+                open_files = len(process.open_files())
+            except (psutil.AccessDenied, AttributeError):
+                open_files = 0
+
+            return ResourceMetrics(
+                timestamp=time.time(),
+                cpu_percent=cpu,
+                memory_rss=mem_info.rss,
+                memory_vms=mem_info.vms,
+                num_threads=process.num_threads(),
+                open_files=open_files,
+                **io_metrics,
+            )
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            return None
+
+    metrics = PerformanceMetrics(
+        extraction_time=0,
+        peak_memory_mb=0,
+        avg_memory_mb=0,
+        peak_cpu_percent=0,
+        avg_cpu_percent=0,
+        samples=samples,
+    )
+
+    if baseline_sample := collect_sample():
+        samples.append(baseline_sample)
 
     try:
-        yield profiler
+        yield metrics
+
+        if final_sample := collect_sample():
+            samples.append(final_sample)
+
+        if len(samples) < 3:
+            for _ in range(3):
+                if sample := collect_sample():
+                    samples.append(sample)
+                time.sleep(0.01)
+
     finally:
-        metrics = profiler.stop_monitoring()
-        return metrics  # noqa: B012
+        end_time = time.time()
+
+        if samples:
+            memory_samples = [s.memory_rss / (1024 * 1024) for s in samples]
+            cpu_samples = [s.cpu_percent for s in samples if s.cpu_percent > 0]
+
+            metrics.extraction_time = end_time - start_time
+            metrics.peak_memory_mb = max(memory_samples)
+            metrics.avg_memory_mb = sum(memory_samples) / len(memory_samples)
+            metrics.peak_cpu_percent = max(cpu_samples) if cpu_samples else 0
+            metrics.avg_cpu_percent = sum(cpu_samples) / len(cpu_samples) if cpu_samples else 0
+
+            if samples and samples[-1].io_read_bytes is not None:
+                metrics.total_io_read_mb = samples[-1].io_read_bytes / (1024 * 1024)
+            if samples and samples[-1].io_write_bytes is not None:
+                metrics.total_io_write_mb = samples[-1].io_write_bytes / (1024 * 1024)
+        else:
+            try:
+                final_memory = process.memory_info().rss
+                metrics.extraction_time = end_time - start_time
+                metrics.peak_memory_mb = final_memory / (1024 * 1024)
+                metrics.avg_memory_mb = (baseline_memory + final_memory) / 2 / (1024 * 1024)
+                fallback_sample = collect_sample()
+                if fallback_sample:
+                    samples.append(fallback_sample)
+            except Exception:
+                metrics.extraction_time = end_time - start_time
+                metrics.peak_memory_mb = 1.0
+                metrics.avg_memory_mb = 1.0
+
+
+class AsyncPerformanceProfiler:
+    def __init__(self, sampling_interval_ms: int = 50) -> None:
+        self.monitor = EnhancedResourceMonitor(sampling_interval_ms)
+        self.metrics: PerformanceMetrics | None = None
+
+    async def __aenter__(self) -> PerformanceMetrics:
+        gc.collect()
+
+        await self.monitor.start()
+
+        self.metrics = PerformanceMetrics(
+            extraction_time=0,
+            peak_memory_mb=0,
+            avg_memory_mb=0,
+            peak_cpu_percent=0,
+            avg_cpu_percent=0,
+            samples=self.monitor.metrics_buffer,
+        )
+        return self.metrics
+
+    async def __aexit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
+        result = await self.monitor.stop()
+
+        if self.metrics:
+            self.metrics.extraction_time = result.extraction_time
+            self.metrics.peak_memory_mb = result.peak_memory_mb
+            self.metrics.avg_memory_mb = result.avg_memory_mb
+            self.metrics.peak_cpu_percent = result.peak_cpu_percent
+            self.metrics.avg_cpu_percent = result.avg_cpu_percent
+            self.metrics.total_io_read_mb = result.total_io_read_mb
+            self.metrics.total_io_write_mb = result.total_io_write_mb
+            self.metrics.startup_time = result.startup_time
+            self.metrics.baseline_cpu_percent = result.baseline_cpu_percent
+            self.metrics.baseline_memory_mb = result.baseline_memory_mb
+            self.metrics.cpu_measurement_accuracy = result.cpu_measurement_accuracy

@@ -526,6 +526,57 @@ rules:
     name: CI/CD and Deployment
     priority: minimal
   - content: |
+      ### Workspace Configuration
+      The project uses a uv workspace with multiple members:
+      - **Root Package** (`.`): The main kreuzberg library (v4.x)
+      - **Benchmarks** (`benchmarks/`): Performance benchmarking suite
+
+      ### Installation Commands
+      - **Always use this for syncing**: `uv sync --all-extras --all-packages --all-groups`
+      - This ensures all workspace members and their dependencies are properly installed
+
+      ### Benchmarks Package Overview
+      The benchmarks workspace member includes:
+      - Performance testing against other extraction libraries (docling, extractous, markitdown, unstructured)
+      - Kreuzberg v3 comparison via `kreuzberg-v3` optional dependency (installed from PyPI)
+      - Kreuzberg v4 (current) via workspace reference
+      - Comprehensive benchmarking CLI: `python -m src.cli`
+      - Test documents in `benchmarks/test_documents/` (94 real-world documents)
+      - Reports and visualizations in `benchmarks/reports/` and `benchmarks/visualizations/`
+      - Resource profiling with CPU/memory tracking at 100ms intervals
+      - 1800s timeout per file extraction
+
+      ### Benchmarks Architecture
+      - **Protocol-based extractors**: All extractors implement TextExtractor protocol
+      - **Factory pattern**: `get_extractor()` for instantiation
+      - **Data models**: msgspec.Struct for serialization (BenchmarkResult, BenchmarkSummary)
+      - **Resource monitoring**: ResourceProfiler context manager for all extractions
+      - **Error handling**: Wrap all calls in try-except, continue on failures
+      - **Cache management**: Clear Kreuzberg cache before benchmarks with `clear_cache_command()`
+
+      ### Benchmarks CLI Commands
+      ```bash
+      # Run benchmarks
+      uv run python -m src.cli benchmark --framework kreuzberg_sync,extractous
+      uv run python -m src.cli benchmark --category small --iterations 1
+
+      # Generate reports
+      uv run python -m src.cli report --output-format html
+      uv run python -m src.cli visualize
+
+      # Quality assessment
+      uv run python -m src.cli quality-assess --results-file results/results.json
+      ```
+
+      ### Adding New Benchmark Frameworks
+      1. Create extractor class in `benchmarks/src/extractors.py` implementing TextExtractor protocol
+      2. Add to Framework enum in `benchmarks/src/types.py`
+      3. Register in `get_extractor()` factory
+      4. Add dependencies to benchmarks pyproject.toml optional-dependencies
+      5. Configure format exclusions if needed in `benchmarks/src/config.py`
+    name: Workspace and Benchmarks
+    priority: high
+  - content: |
       ### Optional Dependencies Structure
       ```toml
       [project.optional-dependencies]

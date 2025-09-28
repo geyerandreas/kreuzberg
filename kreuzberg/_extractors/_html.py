@@ -75,7 +75,7 @@ class HTMLExtractor(Extractor):
         soup = BeautifulSoup(html_content, "xml")
 
         for img in soup.find_all("img"):
-            src_val = img.get("src")  # type: ignore[union-attr]
+            src_val = img.get("src")
             if isinstance(src_val, str) and src_val.startswith("data:image/"):
                 try:
                     header, data = src_val.split(",", 1)
@@ -105,7 +105,7 @@ class HTMLExtractor(Extractor):
                     except (OSError, ValueError) as e:  # pragma: no cover
                         logger.debug("Could not determine image dimensions for %s: %s", format_name, e)
 
-                    alt_val = img.get("alt")  # type: ignore[union-attr]
+                    alt_val = img.get("alt")
                     desc = alt_val if isinstance(alt_val, str) else None
                     images.append(
                         ExtractedImage(
