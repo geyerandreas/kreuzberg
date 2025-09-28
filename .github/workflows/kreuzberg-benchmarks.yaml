@@ -48,6 +48,8 @@ jobs:
           uv run maturin develop --release
 
       - name: Run benchmark tests
+        env:
+          RUN_BENCHMARKS: "1"
         run: |
           uv run pytest tests/benchmarks/ \
             --benchmark-only \

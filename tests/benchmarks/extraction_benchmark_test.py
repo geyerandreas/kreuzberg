@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -8,6 +9,11 @@ from kreuzberg import extract_file_sync
 from kreuzberg._types import ExtractionConfig, TesseractConfig
 from kreuzberg._utils._cache import clear_all_caches
 from tests.benchmarks.files_test import get_benchmark_files
+
+# Skip all benchmark tests unless RUN_BENCHMARKS environment variable is set
+pytestmark = pytest.mark.skipif(
+    not os.getenv("RUN_BENCHMARKS"), reason="Benchmark tests are slow and only run when RUN_BENCHMARKS=1 is set"
+)
 
 if TYPE_CHECKING:
     from pathlib import Path

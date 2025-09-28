@@ -225,7 +225,6 @@ norecursedirs = [
   "*.egg",
 ]
 markers = [
-  "benchmark: marks tests as benchmarks",
   "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
 filterwarnings = [

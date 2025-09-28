@@ -21,10 +21,9 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from typing_extensions import Self
-
 from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
+from typing_extensions import Self
 
 from src.categorizer import DocumentCategorizer
 from src.config import should_test_file
