@@ -127,11 +127,10 @@ jobs:
       - name: Download GMFT Models if Not Cached
         env:
           HF_HOME: ~/.cache/huggingface
-          TRANSFORMERS_CACHE: ~/.cache/huggingface
         run: |
           if [ ! -d ~/.cache/huggingface ] || [ -z "$(ls -A ~/.cache/huggingface 2>/dev/null)" ]; then
             echo "Cache miss - downloading GMFT models..."
-            uv run python scripts/download_gmft_models.py
+            uv run --script scripts/download_gmft_models.py
           else
             echo "Using cached GMFT models"
           fi
@@ -140,7 +139,6 @@ jobs:
         uses: nick-fields/retry@v3
         env:
           HF_HOME: ~/.cache/huggingface
-          TRANSFORMERS_CACHE: ~/.cache/huggingface
         with:
           timeout_minutes: 15
           max_attempts: 3
@@ -302,11 +300,11 @@ jobs:
       - name: Download GMFT Models if Not Cached
         if: contains(matrix.test-category.path, 'gmft')
         env:
-          TRANSFORMERS_CACHE: ~/.cache/huggingface
+          HF_HOME: ~/.cache/huggingface
         run: |
           if [ ! -d ~/.cache/huggingface ] || [ -z "$(ls -A ~/.cache/huggingface 2>/dev/null)" ]; then
             echo "Cache miss - downloading GMFT models..."
-            uv run python scripts/download_gmft_models.py
+            uv run --script scripts/download_gmft_models.py
           else
             echo "Using cached GMFT models"
           fi
