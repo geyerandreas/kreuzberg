@@ -1,5 +1,6 @@
 !benchmarks/baselines/
 tests/benchmarks/results/
+[Tt][Oo][Dd][Oo]*
 *$py.class
 *.Cache
 *.cscfg

@@ -311,6 +311,10 @@ async def handle_files_upload(  # noqa: PLR0913
     """
     static_config = discover_config_cached()
 
+    # Validate that at least one file was uploaded
+    if not data:
+        raise ValidationError("No files provided for extraction", context={"file_count": 0})
+
     min_dims = _create_dimension_tuple(image_ocr_min_width, image_ocr_min_height)
     max_dims = _create_dimension_tuple(image_ocr_max_width, image_ocr_max_height)
 
