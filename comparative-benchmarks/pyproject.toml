@@ -1,7 +1,7 @@
 [project]
-name = "benchmarks"
+name = "comparative-benchmarks"
 version = "0.1.0"
-description = "Comprehensive benchmarking suite for Python text extraction libraries"
+description = "Comprehensive comparative benchmarking suite for Python text extraction libraries"
 readme = "README.md"
 keywords = [  ]
 license = { text = "MIT" }
@@ -26,6 +26,8 @@ classifiers = [
 dependencies = [
   "click>=8.2.1",
   "msgspec>=0.18",
+  "plotly>=5.27",
+  "polars>=1.20",
   "psutil>=7",
   "rich>=13.7",
 ]

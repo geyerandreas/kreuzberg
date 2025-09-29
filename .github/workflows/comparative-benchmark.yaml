@@ -9,7 +9,7 @@ on:
       iterations:
         description: "Number of iterations per test"
         required: false
-        default: "3"
+        default: "5"
         type: string
       timeout:
         description: "Timeout per file in seconds"
@@ -50,7 +50,7 @@ jobs:
           enable-cache: true
           cache-dependency-glob: |
             uv.lock
-            benchmarks/uv.lock
+            comparative-benchmarks/uv.lock
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -63,8 +63,8 @@ jobs:
           path: |
             ~/.cache/uv
             .venv
-            benchmarks/.venv
-          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock', 'benchmarks/uv.lock') }}
+            comparative-benchmarks/.venv
+          key: uv-${{ runner.os }}-${{ hashFiles('uv.lock', 'comparative-benchmarks/uv.lock') }}
           restore-keys: |
             uv-${{ runner.os }}-
 
@@ -89,13 +89,13 @@ jobs:
       - name: Clear Kreuzberg Cache
         run: |
           echo "Clearing any existing Kreuzberg cache..."
-          rm -rf ~/.kreuzberg .kreuzberg benchmarks/.kreuzberg
+          rm -rf ~/.kreuzberg .kreuzberg comparative-benchmarks/.kreuzberg
           echo "Cache cleared"
 
       - name: Run Framework Benchmark
         id: benchmark
         run: |
-          cd benchmarks
+          cd comparative-benchmarks
 
           ITERATIONS="${{ github.event.inputs.iterations }}"
           TIMEOUT="${{ github.event.inputs.timeout }}"
@@ -110,7 +110,7 @@ jobs:
           mkdir -p results/$FRAMEWORK
 
           # Run benchmarks for specific framework
-          uv run python -m src.cli \
+          uv run python -m src.cli benchmark \
             --iterations "$ITERATIONS" \
             --timeout "$TIMEOUT" \
             --framework "$FRAMEWORK" \
@@ -123,7 +123,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-results-${{ matrix.framework }}-${{ github.run_id }}
-          path: benchmarks/results/${{ matrix.framework }}/
+          path: comparative-benchmarks/results/${{ matrix.framework }}/
           retention-days: 90
 
   aggregate-results:
@@ -155,12 +155,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: benchmark-results-*-${{ github.run_id }}
-          path: benchmarks/individual-results/
+          path: comparative-benchmarks/individual-results/
           merge-multiple: true
 
       - name: Aggregate Results
         run: |
-          cd benchmarks
+          cd comparative-benchmarks
           echo "=== Aggregating Results from All Frameworks ==="
 
           mkdir -p aggregated-results
@@ -202,12 +202,13 @@ jobs:
         if: always()
         run: |
           echo "=== Generating Visualizations ==="
-          mkdir -p docs/benchmarks/charts
+          mkdir -p docs/comparative-benchmarks/charts
 
-          if [ -f "benchmarks/aggregated-results/aggregated_results.json" ]; then
-            uv run scripts/generate_benchmark_visualizations.py \
-              --input benchmarks/aggregated-results/aggregated_results.json \
-              --output docs/benchmarks/charts
+          if [ -f "comparative-benchmarks/aggregated-results/aggregated_results.json" ]; then
+            cd comparative-benchmarks
+            uv run python -m src.cli visualize \
+              --input aggregated-results/aggregated_results.json \
+              --output-dir ../docs/comparative-benchmarks/charts
 
             echo "✅ Visualizations generated successfully"
           else
@@ -219,11 +220,12 @@ jobs:
         run: |
           echo "=== Generating Benchmark Documentation ==="
 
-          if [ -f "benchmarks/aggregated-results/aggregated_results.json" ]; then
-            uv run scripts/generate_benchmark_docs.py \
-              --input benchmarks/aggregated-results/aggregated_results.json \
-              --output docs/benchmarks \
-              --charts docs/benchmarks/charts
+          if [ -f "comparative-benchmarks/aggregated-results/aggregated_results.json" ]; then
+            cd comparative-benchmarks
+            uv run python -m src.cli generate-docs \
+              --input aggregated-results/aggregated_results.json \
+              --output-dir ../docs/comparative-benchmarks \
+              --charts-dir ../docs/comparative-benchmarks/charts
 
             echo "✅ Documentation generated successfully"
           else
@@ -242,9 +244,9 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
 
           # Add summary from aggregated results if available
-          if [ -f "benchmarks/aggregated-results/aggregated_results.json" ]; then
+          if [ -f "comparative-benchmarks/aggregated-results/aggregated_results.json" ]; then
             echo "### Results Summary" >> $GITHUB_STEP_SUMMARY
-            python -c 'import json; data=json.load(open("benchmarks/aggregated-results/aggregated_results.json")); print(f"- **Total Results**: {len(data) if isinstance(data, list) else 1}") if "error" not in str(data) else print("❌ Error in results")' >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "⚠️ Could not parse results" >> $GITHUB_STEP_SUMMARY
+            python -c 'import json; data=json.load(open("comparative-benchmarks/aggregated-results/aggregated_results.json")); print(f"- **Total Results**: {len(data) if isinstance(data, list) else 1}") if "error" not in str(data) else print("❌ Error in results")' >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "⚠️ Could not parse results" >> $GITHUB_STEP_SUMMARY
           else
             echo "⚠️ No aggregated results file found" >> $GITHUB_STEP_SUMMARY
           fi
@@ -254,7 +256,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-results-aggregated-${{ github.run_id }}
-          path: benchmarks/aggregated-results/
+          path: comparative-benchmarks/aggregated-results/
           retention-days: 90
 
       - name: Upload Documentation
@@ -262,5 +264,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: benchmark-docs-${{ github.run_id }}
-          path: docs/benchmarks/
+          path: docs/comparative-benchmarks/
           retention-days: 90

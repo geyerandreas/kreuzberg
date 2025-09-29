@@ -195,8 +195,8 @@ jobs:
             path: "tests/features,tests/interfaces,tests/mcp,tests/multiprocessing,tests/ocr"
             system-deps: true
             timeout: 25
-          - name: "benchmarks"
-            path: "benchmarks/tests"
+          - name: "comparative-benchmarks"
+            path: "comparative-benchmarks/tests"
             system-deps: false
             timeout: 15
     timeout-minutes: ${{ matrix.test-category.timeout }}
@@ -333,9 +333,9 @@ jobs:
           max_attempts: 2
           retry_wait_seconds: 5
           command: |
-            # Skip benchmarks/tests on Windows
-            if [[ "${{ runner.os }}" == "Windows" ]] && [[ "${{ matrix.test-category.name }}" == "benchmarks" ]]; then
-              echo "Skipping benchmarks/tests on Windows"
+            # Skip comparative-benchmarks/tests on Windows
+            if [[ "${{ runner.os }}" == "Windows" ]] && [[ "${{ matrix.test-category.name }}" == "comparative-benchmarks" ]]; then
+              echo "Skipping comparative-benchmarks/tests on Windows"
               exit 0
             fi
             # Run tests from specified paths, explicitly excluding benchmarks

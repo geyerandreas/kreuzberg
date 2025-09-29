@@ -286,7 +286,7 @@ ignore_missing_imports = true
 disallow_untyped_calls = false
 
 [tool.uv.workspace]
-members = [ ".", "benchmarks" ]
+members = [ ".", "comparative-benchmarks" ]
 
 [tool.uv.sources]
 uv-bump = { git = "https://github.com/Goldziher/uv-bump" }

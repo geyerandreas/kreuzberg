@@ -1,14 +1,14 @@
 from unittest.mock import MagicMock, patch
 
 from click.testing import CliRunner
-from src.cli import main
+from src.cli import cli
 
 
 def test_cli_help() -> None:
     runner = CliRunner()
-    result = runner.invoke(main, ["--help"])
+    result = runner.invoke(cli, ["--help"])
     assert result.exit_code == 0
-    assert "Run benchmarks for all frameworks" in result.output
+    assert "Benchmark suite for text extraction frameworks" in result.output
 
 
 def test_cli_default_options() -> None:
@@ -27,14 +27,14 @@ def test_cli_default_options() -> None:
         mock_aggregator_class.return_value = mock_aggregator
         mock_aggregator.aggregate_results.return_value = {}
 
-        result = runner.invoke(main, [])
+        result = runner.invoke(cli, ["benchmark"])
 
         assert result.exit_code == 0
         assert "Starting Benchmark Suite" in result.output
 
         mock_runner_class.assert_called_once()
         config = mock_runner_class.call_args[0][0]
-        assert config.iterations == 3
+        assert config.iterations == 5
         assert config.timeout_seconds == 300
 
 
@@ -54,7 +54,9 @@ def test_cli_custom_options() -> None:
         mock_aggregator_class.return_value = mock_aggregator
         mock_aggregator.aggregate_results.return_value = {}
 
-        result = runner.invoke(main, ["--iterations", "5", "--timeout", "600", "--output", "custom/output.json"])
+        result = runner.invoke(
+            cli, ["benchmark", "--iterations", "5", "--timeout", "600", "--output", "custom/output.json"]
+        )
 
         assert result.exit_code == 0
 
@@ -75,7 +77,7 @@ def test_cli_keyboard_interrupt() -> None:
         mock_runner_class.return_value = MagicMock()
         mock_asyncio.side_effect = KeyboardInterrupt()
 
-        result = runner.invoke(main, [])
+        result = runner.invoke(cli, ["benchmark"])
 
         assert result.exit_code == 1
         assert "interrupted by user" in result.output
@@ -91,7 +93,7 @@ def test_cli_benchmark_failure() -> None:
         mock_runner_class.return_value = MagicMock()
         mock_asyncio.side_effect = Exception("Test error")
 
-        result = runner.invoke(main, [])
+        result = runner.invoke(cli, ["benchmark"])
 
         assert result.exit_code == 1
         assert "Benchmark failed" in result.output
