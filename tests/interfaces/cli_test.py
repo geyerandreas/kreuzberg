@@ -306,55 +306,85 @@ def test_perform_extraction_from_stdin() -> None:
     mock_config = Mock()
     mock_result = ExtractionResult(content="Extracted", mime_type="text/plain")
 
-    with (
-        patch("sys.stdin.buffer.read") as mock_stdin,
-        patch("kreuzberg.cli.extract_bytes_sync") as mock_extract,
-        patch("magic.from_buffer") as mock_magic,
-    ):
-        mock_stdin.return_value = b"Test input"
-        mock_magic.return_value = "text/plain"
-        mock_extract.return_value = mock_result
+    # Mock the entire magic module to prevent import on Windows
+    import sys
 
-        result = _perform_extraction(None, mock_config, verbose=True)
-        assert result == mock_result
-        mock_extract.assert_called_once_with(b"Test input", "text/plain", config=mock_config)
+    mock_magic = Mock()
+    mock_magic.from_buffer = Mock(return_value="text/plain")
+    sys.modules["magic"] = mock_magic
+
+    try:
+        with (
+            patch("sys.stdin.buffer.read") as mock_stdin,
+            patch("kreuzberg.cli.extract_bytes_sync") as mock_extract,
+        ):
+            mock_stdin.return_value = b"Test input"
+            mock_extract.return_value = mock_result
+
+            result = _perform_extraction(None, mock_config, verbose=True)
+            assert result == mock_result
+            mock_extract.assert_called_once_with(b"Test input", "text/plain", config=mock_config)
+    finally:
+        # Clean up the mock
+        if "magic" in sys.modules and isinstance(sys.modules["magic"], Mock):
+            del sys.modules["magic"]
 
 
 def test_perform_extraction_from_stdin_text_fallback() -> None:
     mock_config = Mock()
     mock_result = ExtractionResult(content="Extracted", mime_type="text/plain")
 
-    with (
-        patch("sys.stdin") as mock_stdin,
-        patch("kreuzberg.cli.extract_bytes_sync") as mock_extract,
-        patch("magic.from_buffer") as mock_magic,
-    ):
-        mock_stdin.buffer.read.side_effect = Exception("No buffer")
-        mock_stdin.read.return_value = "Test input"
-        mock_magic.return_value = "text/plain"
-        mock_extract.return_value = mock_result
+    # Mock the entire magic module to prevent import on Windows
+    import sys
 
-        result = _perform_extraction(None, mock_config, verbose=False)
-        assert result == mock_result
-        mock_extract.assert_called_once_with(b"Test input", "text/plain", config=mock_config)
+    mock_magic = Mock()
+    mock_magic.from_buffer = Mock(return_value="text/plain")
+    sys.modules["magic"] = mock_magic
+
+    try:
+        with (
+            patch("sys.stdin") as mock_stdin,
+            patch("kreuzberg.cli.extract_bytes_sync") as mock_extract,
+        ):
+            mock_stdin.buffer.read.side_effect = Exception("No buffer")
+            mock_stdin.read.return_value = "Test input"
+            mock_extract.return_value = mock_result
+
+            result = _perform_extraction(None, mock_config, verbose=False)
+            assert result == mock_result
+            mock_extract.assert_called_once_with(b"Test input", "text/plain", config=mock_config)
+    finally:
+        # Clean up the mock
+        if "magic" in sys.modules and isinstance(sys.modules["magic"], Mock):
+            del sys.modules["magic"]
 
 
 def test_perform_extraction_stdin_detect_html() -> None:
     mock_config = Mock()
     mock_result = ExtractionResult(content="Extracted", mime_type="text/html")
 
-    with (
-        patch("sys.stdin.buffer.read") as mock_stdin,
-        patch("kreuzberg.cli.extract_bytes_sync") as mock_extract,
-        patch("magic.from_buffer") as mock_magic,
-    ):
-        mock_stdin.return_value = b"<html><body>Test</body></html>"
-        mock_magic.return_value = "text/html"
-        mock_extract.return_value = mock_result
+    # Mock the entire magic module to prevent import on Windows
+    import sys
 
-        result = _perform_extraction(Path("-"), mock_config, verbose=False)
-        assert result == mock_result
-        mock_extract.assert_called_once_with(b"<html><body>Test</body></html>", "text/html", config=mock_config)
+    mock_magic = Mock()
+    mock_magic.from_buffer = Mock(return_value="text/html")
+    sys.modules["magic"] = mock_magic
+
+    try:
+        with (
+            patch("sys.stdin.buffer.read") as mock_stdin,
+            patch("kreuzberg.cli.extract_bytes_sync") as mock_extract,
+        ):
+            mock_stdin.return_value = b"<html><body>Test</body></html>"
+            mock_extract.return_value = mock_result
+
+            result = _perform_extraction(Path("-"), mock_config, verbose=False)
+            assert result == mock_result
+            mock_extract.assert_called_once_with(b"<html><body>Test</body></html>", "text/html", config=mock_config)
+    finally:
+        # Clean up the mock
+        if "magic" in sys.modules and isinstance(sys.modules["magic"], Mock):
+            del sys.modules["magic"]
 
 
 def test_write_output_to_file(tmp_path: Path) -> None:

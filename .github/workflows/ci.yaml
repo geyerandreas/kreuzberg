@@ -333,6 +333,11 @@ jobs:
           max_attempts: 2
           retry_wait_seconds: 5
           command: |
+            # Skip benchmarks/tests on Windows
+            if [[ "${{ runner.os }}" == "Windows" ]] && [[ "${{ matrix.test-category.name }}" == "benchmarks" ]]; then
+              echo "Skipping benchmarks/tests on Windows"
+              exit 0
+            fi
             # Run tests from specified paths, explicitly excluding benchmarks
             uv run pytest $(echo "${{ matrix.test-category.path }}" | tr ',' ' ') -v --reruns 1 --reruns-delay 1 --ignore=tests/benchmarks/
           shell: bash
