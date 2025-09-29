@@ -240,7 +240,8 @@ def test_extract_pdf_path_sync(extractor: PDFExtractor, searchable_pdf: Path) ->
     assert isinstance(result, ExtractionResult)
     assert result.content.strip()
     assert result.mime_type == "text/plain"
-    assert result.metadata == {"quality_score": 1.0}
+    assert result.metadata
+    assert result.metadata.get("quality_score") == 1.0
 
 
 def test_extract_pdf_path_sync_with_tables(searchable_pdf: Path) -> None:
@@ -279,7 +280,7 @@ def test_extract_pdf_with_ocr_sync_error(extractor: PDFExtractor, tmp_path: Path
     pdf_path.write_text("invalid pdf content")
 
     with pytest.raises(ParsingError, match="Failed to OCR PDF"):
-        extractor._extract_pdf_with_ocr_sync(pdf_path)
+        extractor._extract_pdf_text_with_ocr_sync(pdf_path, ocr_backend="tesseract")
 
 
 @pytest.mark.anyio
@@ -753,19 +754,20 @@ def test_pdf_extract_path_sync_basic(pdf_extractor: PDFExtractor, tmp_path: Path
     mock_extract_searchable = mocker.patch.object(pdf_extractor, "_extract_pdf_searchable_text_sync")
     mock_extract_searchable.return_value = "Extracted text"
 
-    mock_extract_playa = mocker.patch.object(pdf_extractor, "_extract_with_playa_sync")
-    mock_extract_playa.return_value = "Enhanced text with structure"
+    mock_validate = mocker.patch.object(pdf_extractor, "_validate_extracted_text")
+    mock_validate.return_value = True
 
-    mock_normalize = mocker.patch("kreuzberg._extractors._pdf.normalize_spaces")
-    mock_normalize.return_value = "Normalized text"
+    mock_extract_metadata = mocker.patch.object(pdf_extractor, "_extract_metadata_with_password_attempts_sync")
+    mock_extract_metadata.return_value = {"test": "metadata"}
 
     mock_apply_quality = mocker.patch.object(pdf_extractor, "_apply_quality_processing")
     mock_apply_quality.side_effect = lambda x: x
 
     result = pdf_extractor.extract_path_sync(test_file)
 
-    assert result.content == "Normalized text"
-    mock_extract_playa.assert_called_once_with(test_file, fallback_text="Extracted text")
+    assert result.content == "Extracted text"
+    assert result.metadata == {"test": "metadata"}
+    mock_extract_searchable.assert_called_once_with(test_file)
 
 
 def test_pdf_extract_path_sync_parsing_error(
@@ -778,19 +780,21 @@ def test_pdf_extract_path_sync_parsing_error(
     mock_extract_searchable.side_effect = ParsingError("Sync parsing failed")
 
     pdf_extractor.config = replace(pdf_extractor.config, ocr_backend="tesseract")
-    mock_extract_ocr = mocker.patch.object(pdf_extractor, "_extract_pdf_with_ocr_sync")
-    mock_extract_ocr.return_value = "OCR sync content"
 
-    mock_normalize = mocker.patch("kreuzberg._extractors._pdf.normalize_spaces")
-    mock_normalize.return_value = "Normalized OCR content"
+    ocr_result = ExtractionResult(content="OCR sync content", mime_type="text/plain", metadata={})
+    mock_extract_ocr = mocker.patch.object(pdf_extractor, "_extract_pdf_text_with_ocr_sync")
+    mock_extract_ocr.return_value = ocr_result
+
+    mock_extract_metadata = mocker.patch.object(pdf_extractor, "_extract_metadata_with_password_attempts_sync")
+    mock_extract_metadata.return_value = {"test": "metadata"}
 
     mock_apply_quality = mocker.patch.object(pdf_extractor, "_apply_quality_processing")
     mock_apply_quality.side_effect = lambda x: x
 
     result = pdf_extractor.extract_path_sync(test_file)
 
-    assert result.content == "Normalized OCR content"
-    mock_extract_ocr.assert_called_once_with(test_file)
+    assert result.content == "OCR sync content"
+    mock_extract_ocr.assert_called_once_with(test_file, "tesseract")
 
 
 def test_pdf_extract_path_sync_tables_import_error(
@@ -804,11 +808,11 @@ def test_pdf_extract_path_sync_tables_import_error(
     mock_extract_searchable = mocker.patch.object(pdf_extractor, "_extract_pdf_searchable_text_sync")
     mock_extract_searchable.return_value = "Text content"
 
-    mock_extract_playa = mocker.patch.object(pdf_extractor, "_extract_with_playa_sync")
-    mock_extract_playa.return_value = "Enhanced text"
+    mock_validate = mocker.patch.object(pdf_extractor, "_validate_extracted_text")
+    mock_validate.return_value = True
 
-    mock_normalize = mocker.patch("kreuzberg._extractors._pdf.normalize_spaces")
-    mock_normalize.return_value = "Normalized text"
+    mock_extract_metadata = mocker.patch.object(pdf_extractor, "_extract_metadata_with_password_attempts_sync")
+    mock_extract_metadata.return_value = {}
 
     with patch.dict("sys.modules", {"kreuzberg._gmft": None}):
         mock_apply_quality = mocker.patch.object(pdf_extractor, "_apply_quality_processing")
@@ -816,7 +820,7 @@ def test_pdf_extract_path_sync_tables_import_error(
 
         result = pdf_extractor.extract_path_sync(test_file)
 
-    assert result.content == "Normalized text"
+    assert result.content == "Text content"
     assert result.tables == []
 
 
@@ -831,19 +835,23 @@ def test_pdf_extract_path_sync_invalid_text_ocr_fallback(
     mock_extract_searchable = mocker.patch.object(pdf_extractor, "_extract_pdf_searchable_text_sync")
     mock_extract_searchable.return_value = ""
 
-    mock_extract_ocr = mocker.patch.object(pdf_extractor, "_extract_pdf_with_ocr_sync")
-    mock_extract_ocr.return_value = "Valid OCR text"
+    mock_validate = mocker.patch.object(pdf_extractor, "_validate_extracted_text")
+    mock_validate.return_value = False
 
-    mock_normalize = mocker.patch("kreuzberg._extractors._pdf.normalize_spaces")
-    mock_normalize.return_value = "Normalized OCR text"
+    ocr_result = ExtractionResult(content="Valid OCR text", mime_type="text/plain", metadata={})
+    mock_extract_ocr = mocker.patch.object(pdf_extractor, "_extract_pdf_text_with_ocr_sync")
+    mock_extract_ocr.return_value = ocr_result
+
+    mock_extract_metadata = mocker.patch.object(pdf_extractor, "_extract_metadata_with_password_attempts_sync")
+    mock_extract_metadata.return_value = {}
 
     mock_apply_quality = mocker.patch.object(pdf_extractor, "_apply_quality_processing")
     mock_apply_quality.side_effect = lambda x: x
 
     result = pdf_extractor.extract_path_sync(test_file)
 
-    assert result.content == "Normalized OCR text"
-    mock_extract_ocr.assert_called_once_with(test_file)
+    assert result.content == "Valid OCR text"
+    mock_extract_ocr.assert_called_once_with(test_file, "tesseract")
 
 
 def test_pdf_corrupted_pattern_matching(pdf_extractor: PDFExtractor) -> None:
@@ -955,3 +963,87 @@ def test_extract_german_image_pdf_sync_default_config(german_image_pdf: Path) ->
 
     assert result.content.strip(), "Should extract text content with default config"
     assert result.mime_type == "text/plain"
+
+
+def test_extract_pdf_searchable_text_sync(extractor: PDFExtractor, searchable_pdf: Path) -> None:
+    result = extractor._extract_pdf_searchable_text_sync(searchable_pdf)
+    assert isinstance(result, str)
+    assert result.strip()
+
+
+@pytest.mark.xfail(IS_CI, reason="OCR tests may fail in CI due to Tesseract issues")
+def test_extract_pdf_text_with_ocr_sync(extractor: PDFExtractor, scanned_pdf: Path) -> None:
+    result = extractor._extract_pdf_text_with_ocr_sync(scanned_pdf, ocr_backend="tesseract")
+    assert isinstance(result, ExtractionResult)
+    assert result.content.strip()
+
+
+@pytest.mark.xfail(IS_CI, reason="OCR tests may fail in CI due to Tesseract issues")
+def test_extract_pdf_file_non_searchable_sync(extractor: PDFExtractor, non_searchable_pdf: Path) -> None:
+    result = extractor.extract_path_sync(non_searchable_pdf)
+    assert isinstance(result.content, str)
+    assert result.content.strip()
+    assert result.mime_type == "text/plain"
+
+    assert result.metadata
+    assert "summary" in result.metadata
+
+
+def test_extract_pdf_file_invalid_sync(extractor: PDFExtractor) -> None:
+    with pytest.raises(FileNotFoundError):
+        extractor.extract_path_sync(Path("/invalid/path.pdf"))
+
+
+def test_extract_pdf_with_rich_metadata_sync(extractor: PDFExtractor, test_article: Path) -> None:
+    result = extractor.extract_path_sync(test_article)
+
+    assert result.content.strip()
+
+    metadata = result.metadata
+    assert metadata
+
+    assert "title" in metadata
+    assert isinstance(metadata["title"], str)
+
+    assert not any(isinstance(value, bytes) for value in metadata.values())
+
+    if "authors" in metadata:
+        assert isinstance(metadata["authors"], list)
+        assert all(isinstance(author, str) for author in metadata["authors"])
+
+    if "keywords" in metadata:
+        assert isinstance(metadata["keywords"], list)
+        assert all(isinstance(kw, str) for kw in metadata["keywords"])
+
+    assert "summary" in metadata
+    assert "PDF document with" in metadata["summary"]
+
+
+def test_extract_pdf_no_ocr_backend_fallback_sync(non_searchable_pdf: Path) -> None:
+    config = ExtractionConfig(force_ocr=False, ocr_backend=None)
+    extractor = PDFExtractor(mime_type="application/pdf", config=config)
+
+    result = extractor.extract_path_sync(non_searchable_pdf)
+
+    assert result.content == ""
+    assert result.mime_type == "text/plain"
+
+
+@pytest.mark.xfail(IS_CI, reason="OCR tests may fail in CI due to Tesseract issues")
+def test_extract_pdf_force_ocr_when_valid_text_exists_sync(searchable_pdf: Path) -> None:
+    config = ExtractionConfig(force_ocr=True, ocr_backend="tesseract")
+    extractor = PDFExtractor(mime_type="application/pdf", config=config)
+
+    result = extractor.extract_path_sync(searchable_pdf)
+
+    assert isinstance(result, ExtractionResult)
+    assert result.content.strip()
+    assert result.mime_type == "text/plain"
+
+
+def test_extract_pdf_searchable_not_fallback_to_ocr_sync(test_contract: Path) -> None:
+    extractor = PDFExtractor(mime_type="application/pdf", config=ExtractionConfig(force_ocr=False))
+    result = extractor.extract_path_sync(test_contract)
+    assert "Sample Contract" in result.content
+    assert "PROFESSIONAL SERVICES AGREEMENT" in result.content
+    assert "THIS AGREEMENT made and entered into this" in result.content
