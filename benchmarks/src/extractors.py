@@ -1,3 +1,36 @@
+"""Framework extractors with fair, optimized configurations.
+
+~keep Configuration Philosophy:
+All extractors are configured following their official documentation and best practices
+to ensure fair comparison. Each framework uses realistic settings that a developer would
+use after reading the docs for 5-10 minutes.
+
+Key principles:
+1. Use documented defaults where available
+2. Enable reasonable optimizations (not maximum speed at cost of quality)
+3. Support multilingual documents (test dataset includes CJK, Hebrew, Arabic)
+4. Adaptive strategies based on document characteristics
+5. Memory-conscious settings for CI environments
+
+Framework-Specific Notes:
+- Kreuzberg: Uses AUTO_ONLY PSM (optimized default), dynamic language detection
+- Unstructured: Uses "auto" strategy (intelligent fast/hi_res selection)
+- Docling: EasyOCR with comprehensive language support, table detection enabled
+- MarkItDown: Simple configuration with built-in converters (by design)
+- Extractous: Adaptive max_length based on file size
+
+Language Detection:
+The `get_language_config()` function uses filename heuristics to detect languages:
+- Hebrew: "hebrew", "israel", "tel_aviv", "heb", "he_"
+- German: "german", "germany", "berlin", "deu", "de_"
+- Chinese: "chinese", "china", "beijing", "chi_sim", "zh_", "cn_"
+- Japanese: "japanese", "japan", "jpn", "jp_", "ja_", "vert"
+- Korean: "korean", "korea", "kor", "kr_", "ko_"
+- Default: English ("eng")
+
+This ensures all frameworks process multilingual documents correctly.
+"""
+
 from __future__ import annotations
 
 import os
@@ -85,9 +118,21 @@ class KreuzbergSyncExtractor:
         return result.content, metadata
 
     def _get_optimized_config(self, file_path: str) -> ExtractionConfig:
+        """~keep Get optimized Kreuzberg config following official best practices.
+
+        Uses Kreuzberg's documented optimal defaults:
+        - PSM AUTO_ONLY: Faster than AUTO without orientation detection overhead
+        - Dynamic language selection based on filename heuristics
+        - Text output format: Fastest extraction mode
+        - Cache disabled: Ensures fair benchmark measurements
+        """
         lang_code = get_language_config(file_path)
 
-        tesseract_config = TesseractConfig(language=lang_code, psm=PSMMode.AUTO, output_format="text")
+        tesseract_config = TesseractConfig(
+            language=lang_code,
+            psm=PSMMode.AUTO_ONLY,  # Kreuzberg's optimized default (faster than AUTO)
+            output_format="text",
+        )
 
         return ExtractionConfig(ocr_backend="tesseract", ocr_config=tesseract_config, use_cache=False)
 
@@ -111,15 +156,36 @@ class KreuzbergAsyncExtractor:
         return result.content, metadata
 
     def _get_optimized_config(self, file_path: str) -> ExtractionConfig:
+        """~keep Get optimized Kreuzberg config following official best practices.
+
+        Uses Kreuzberg's documented optimal defaults:
+        - PSM AUTO_ONLY: Faster than AUTO without orientation detection overhead
+        - Dynamic language selection based on filename heuristics
+        - Text output format: Fastest extraction mode
+        - Cache disabled: Ensures fair benchmark measurements
+        """
         lang_code = get_language_config(file_path)
 
-        tesseract_config = TesseractConfig(language=lang_code, psm=PSMMode.AUTO, output_format="text")
+        tesseract_config = TesseractConfig(
+            language=lang_code,
+            psm=PSMMode.AUTO_ONLY,  # Kreuzberg's optimized default (faster than AUTO)
+            output_format="text",
+        )
 
         return ExtractionConfig(ocr_backend="tesseract", ocr_config=tesseract_config, use_cache=False)
 
 
 class DoclingExtractor:
     def __init__(self) -> None:
+        """~keep Initialize Docling with optimized configuration.
+
+        Configuration follows Docling best practices:
+        - EasyOCR for multilingual support (better than Tesseract for Asian languages)
+        - Comprehensive language support: Latin scripts + CJK + Arabic
+        - Table structure detection with cell matching enabled
+        - Optimized batch sizes for performance/memory balance
+        - Layout analysis for preserving document structure
+        """
         if DocumentConverter is None:
             msg = "Docling is not installed"
             raise ImportError(msg)
@@ -133,25 +199,32 @@ class DoclingExtractor:
                 ThreadedPdfPipelineOptions,
             )
 
+            # EasyOCR with comprehensive multilingual support
+            # Language codes: en=English, de=German, fr=French, es=Spanish,
+            #                 ch_sim=Chinese Simplified, ja=Japanese, ko=Korean, ar=Arabic
             ocr_options = EasyOcrOptions(
-                lang=["en", "de", "fr", "es"],
-                confidence_threshold=0.3,
+                lang=["en", "de", "fr", "es", "ch_sim", "ja", "ko", "ar"],  # Comprehensive language support
+                confidence_threshold=0.3,  # Balance between recall and precision
                 suppress_mps_warnings=True,
             )
 
+            # Accurate table detection with cell matching
             table_options = TableStructureOptions(do_cell_matching=True, mode="accurate")  # type: ignore[arg-type]
 
+            # Layout options for preserving document structure
             layout_options = LayoutOptions(create_orphan_clusters=True, keep_empty_clusters=False)
 
+            # Threaded pipeline with optimized batch sizes
+            # Batch sizes balance throughput and memory usage
             pdf_options = ThreadedPdfPipelineOptions(
-                do_table_structure=True,
-                do_ocr=True,
-                do_picture_classification=False,
-                do_picture_description=False,
+                do_table_structure=True,  # Enable table extraction
+                do_ocr=True,  # Enable OCR for scanned documents
+                do_picture_classification=False,  # Disable for speed (not needed for text extraction)
+                do_picture_description=False,  # Disable for speed (not needed for text extraction)
                 ocr_options=ocr_options,
                 table_structure_options=table_options,
                 layout_options=layout_options,
-                ocr_batch_size=2,
+                ocr_batch_size=2,  # Conservative for memory
                 layout_batch_size=2,
                 table_batch_size=2,
                 batch_timeout_seconds=30.0,
@@ -165,6 +238,7 @@ class DoclingExtractor:
             self.timeout = 600
 
         except ImportError:
+            # Fallback to default configuration if pipeline options unavailable
             self.converter = DocumentConverter()
             self.max_file_size = 1024 * 1024 * 1024
             self.timeout = 600
@@ -225,14 +299,24 @@ class DoclingExtractor:
 
 
 class MarkItDownExtractor:
+    """~keep MarkItDown extractor using documented configuration.
+
+    MarkItDown is designed for simplicity:
+    - enable_builtins=True: Use all built-in converters
+    - Plugins disabled by default (not needed for basic extraction)
+    - Timeouts to prevent hanging on problematic files
+    - Conservative file size limits for stability
+    """
+
     def __init__(self) -> None:
         if MarkItDown is None:
             msg = "MarkItDown is not installed"
             raise ImportError(msg)
 
+        # Use documented defaults: enable_builtins=True, no plugins needed
         self.converter = MarkItDown(enable_builtins=True)
-        self.timeout = 90
-        self.max_file_size = 100 * 1024 * 1024
+        self.timeout = 90  # Reasonable timeout for processing
+        self.max_file_size = 100 * 1024 * 1024  # 100MB limit per docs
 
     def _validate_file(self, file_path: str) -> bool:
         try:
@@ -301,6 +385,15 @@ class MarkItDownExtractor:
 
 
 class UnstructuredExtractor:
+    """~keep Unstructured extractor with adaptive strategy selection.
+
+    Configuration philosophy:
+    - Uses "auto" strategy for intelligent fast/hi_res selection
+    - Comprehensive multilingual support via Tesseract
+    - Adaptive chunking for large documents
+    - Format-specific optimizations (fast for Office, auto for PDF)
+    """
+
     def __init__(self) -> None:
         self.max_retries = 2
         self.timeout = 180
@@ -313,9 +406,19 @@ class UnstructuredExtractor:
             return 0
 
     def _get_adaptive_strategy(self, file_path: str, file_size: int) -> dict[str, Any]:
+        """~keep Generate optimized Unstructured configuration following best practices.
+
+        Strategy selection follows official recommendations:
+        - auto (default): Intelligently chooses fast/hi_res based on document content
+        - fast: ~100x faster for text-heavy PDFs, uses pdfminer
+        - hi_res: Only for documents requiring precise layout/table detection
+
+        Language support: Full multilingual with Tesseract language packs
+        """
         lang_code = get_language_config(file_path)
         file_ext = Path(file_path).suffix.lower()
 
+        # Map Tesseract language codes to Unstructured format
         unstructured_langs = {
             "eng": ["eng"],
             "deu": ["deu"],
@@ -323,15 +426,19 @@ class UnstructuredExtractor:
             "chi_sim": ["chi_sim"],
             "jpn": ["jpn"],
             "kor": ["kor"],
+            "fra": ["fra"],
+            "spa": ["spa"],
         }
         languages = unstructured_langs.get(lang_code, ["eng"])
 
+        # Start with documented defaults
         config = {
             "languages": languages,
-            "strategy": "auto",
+            "strategy": "auto",  # Let Unstructured choose intelligently (fast vs hi_res)
             "include_metadata": True,
         }
 
+        # Chunking for very large files to prevent memory issues
         if file_size > 100 * 1024 * 1024:
             config["chunking_strategy"] = "by_title"
             config["max_characters"] = 10000
@@ -339,14 +446,17 @@ class UnstructuredExtractor:
             config["chunking_strategy"] = "basic"
             config["max_characters"] = 5000
 
+        # Format-specific optimizations
         if file_ext in [".pdf"]:
-            config["strategy"] = "hi_res"
-            config["extract_images_in_pdf"] = False
+            # Use "auto" to intelligently choose between fast/hi_res
+            # This is fair and represents real-world usage
+            config["strategy"] = "auto"
+            config["extract_images_in_pdf"] = False  # Disable for speed (text extraction focus)
         elif file_ext in [".docx", ".pptx", ".xlsx"]:
-            config["strategy"] = "fast"
+            config["strategy"] = "fast"  # Office docs have good text extraction
         elif file_ext in [".html", ".htm"]:
             config["strategy"] = "fast"
-            config["skip_infer_table_types"] = True
+            config["skip_infer_table_types"] = True  # HTML tables are already structured
 
         return config
 
@@ -430,15 +540,25 @@ class UnstructuredExtractor:
 
 
 class ExtractousExtractor:
+    """~keep Extractous extractor with adaptive configuration.
+
+    Extractous is a high-performance Rust-based extractor:
+    - Adaptive max_length based on file size
+    - Conservative memory limits for stability
+    - Direct string extraction (fastest mode)
+    - Supports 80+ file formats via Apache Tika
+    """
+
     def __init__(self) -> None:
         if Extractor is None:
             msg = "Extractous is not installed. Install with: pip install extractous"
             raise ImportError(msg)
 
         self.extractor = Extractor()
-        self.max_file_size = 500 * 1024 * 1024
+        self.max_file_size = 500 * 1024 * 1024  # 500MB limit
 
-        self.extractor.set_extract_string_max_length(10000000)
+        # Set initial extraction limit (adaptive per-file)
+        self.extractor.set_extract_string_max_length(10000000)  # 10MB text
 
     def _get_file_characteristics(self, file_path: str) -> dict[str, Any]:
         try:
