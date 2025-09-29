@@ -45,6 +45,7 @@ logger = get_logger(__name__)
     help="Output file for aggregated results",
 )
 def main(iterations: int, timeout: int, framework: str | None, output: Path) -> None:
+    """Run benchmarks for all frameworks."""
     console.print("[bold]Starting Benchmark Suite[/bold]")
     console.print(f"  Iterations: {iterations}")
     console.print(f"  Timeout: {timeout}s")
