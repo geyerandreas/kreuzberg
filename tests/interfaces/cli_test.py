@@ -313,7 +313,9 @@ def test_perform_extraction_from_stdin() -> None:
         mock_stdin.return_value = b"Test input"
         mock_extract.return_value = mock_result
 
-        result = _perform_extraction(None, mock_config, verbose=True)
+        # Mock magic import to prevent Windows access violations
+        with patch.dict("sys.modules", {"magic": Mock()}):
+            result = _perform_extraction(None, mock_config, verbose=True)
 
         assert result == mock_result
         mock_extract.assert_called_once()
@@ -331,7 +333,9 @@ def test_perform_extraction_from_stdin_text_fallback() -> None:
         mock_stdin.read.return_value = "Test input"
         mock_extract.return_value = mock_result
 
-        result = _perform_extraction(None, mock_config, verbose=False)
+        # Mock magic import to prevent Windows access violations
+        with patch.dict("sys.modules", {"magic": Mock()}):
+            result = _perform_extraction(None, mock_config, verbose=False)
 
         assert result == mock_result
         mock_extract.assert_called_once_with(b"Test input", "text/plain", config=mock_config)
@@ -348,7 +352,9 @@ def test_perform_extraction_stdin_detect_html() -> None:
         mock_stdin.return_value = b"<html><body>Test</body></html>"
         mock_extract.return_value = mock_result
 
-        result = _perform_extraction(Path("-"), mock_config, verbose=False)
+        # Mock magic import to prevent Windows access violations
+        with patch.dict("sys.modules", {"magic": Mock()}):
+            result = _perform_extraction(Path("-"), mock_config, verbose=False)
 
         assert result == mock_result
         mock_extract.assert_called_once_with(b"<html><body>Test</body></html>", "text/html", config=mock_config)
