@@ -129,3 +129,40 @@ async def test_batch_extract_bytes_regression(google_doc_pdf: Path, test_xls: Pa
     for result in results:
         assert result.content is not None
         assert len(result.content) > 0
+
+
+@pytest.mark.parametrize("test_mode", ["async", "sync"])
+@pytest.mark.anyio
+async def test_issue_149_windows_tesseract_hocr_regression(test_mode: str) -> None:
+    """Regression test for Issue #149 - Windows Tesseract HOCR output compatibility.
+
+    Windows Tesseract 5.5.0 doesn't respect the 'hocr' configfile positional argument,
+    causing empty HTML errors. This test verifies that force_ocr=True works correctly
+    with default config on all platforms by using explicit -c tessedit_create_hocr=1.
+
+    The test uses a German language PDF that previously failed on Windows.
+    """
+    import re
+
+    pdf_path = Path("/tmp/issue_149_windows_tesseract_hocr.pdf")
+
+    if not pdf_path.exists():
+        pytest.skip("Test PDF not available - download from Issue #149")
+
+    config = ExtractionConfig(force_ocr=True)
+
+    if test_mode == "async":
+        result = await extract_file(str(pdf_path), config=config)
+    else:
+        result = extract_file_sync(str(pdf_path), config=config)
+
+    def normalize_whitespace(text: str) -> str:
+        return re.sub(r"\s+", " ", text.strip())
+
+    normalized_content = normalize_whitespace(result.content)
+
+    assert result.content is not None
+    assert len(result.content) > 1000, f"Expected substantial content, got {len(result.content)} chars"
+    assert "Freie Wohlfahrtspflege" in normalized_content
+    assert "Landesarbeitsgemeinschaft Bayern" in normalized_content
+    assert "Bayerischen" in normalized_content
