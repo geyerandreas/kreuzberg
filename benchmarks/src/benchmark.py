@@ -1,4 +1,4 @@
-"""Enhanced benchmark runner with comprehensive testing capabilities.
+"""Benchmark runner with testing capabilities.
 
 ~keep Core benchmarking logic that:
 - Runs multiple iterations with warmup/cooldown for statistical significance
@@ -48,7 +48,7 @@ if TYPE_CHECKING:
     from src.types import AsyncExtractorProtocol, ExtractorProtocol
 
 
-class ComprehensiveBenchmarkRunner:
+class BenchmarkRunner:
     """~keep Orchestrates multi-iteration benchmarks with resource monitoring.
 
     Key responsibilities:
@@ -112,7 +112,7 @@ class ComprehensiveBenchmarkRunner:
         max_duration_seconds = self.config.max_run_duration_minutes * 60
 
         self.console.print(
-            f"[bold blue]Starting comprehensive benchmark suite[/bold blue]\n"
+            f"[bold blue]Starting benchmark suite[/bold blue]\n"
             f"Iterations: {self.config.iterations}\n"
             f"Frameworks: {', '.join(f.value for f in self.config.frameworks)}\n"
             f"Categories: ALL (testing all file sizes and types)\n"

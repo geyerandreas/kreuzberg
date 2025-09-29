@@ -3,13 +3,13 @@ import asyncio
 import pytest
 from src.profiler import (
     AsyncPerformanceProfiler,
-    EnhancedResourceMonitor,
+    ResourceMonitor,
 )
 
 
 @pytest.mark.asyncio
-async def test_enhanced_resource_monitor_baseline_establishment() -> None:
-    monitor = EnhancedResourceMonitor(sampling_interval_ms=50)
+async def test_resource_monitor_baseline_establishment() -> None:
+    monitor = ResourceMonitor(sampling_interval_ms=50)
 
     await monitor._establish_baseline(duration_seconds=0.2)
 
@@ -19,8 +19,8 @@ async def test_enhanced_resource_monitor_baseline_establishment() -> None:
 
 
 @pytest.mark.asyncio
-async def test_enhanced_resource_monitor_baseline_subtraction() -> None:
-    monitor = EnhancedResourceMonitor(sampling_interval_ms=100)
+async def test_resource_monitor_baseline_subtraction() -> None:
+    monitor = ResourceMonitor(sampling_interval_ms=100)
 
     await monitor.start()
     await asyncio.sleep(0.2)
@@ -38,7 +38,7 @@ async def test_enhanced_resource_monitor_baseline_subtraction() -> None:
 
 @pytest.mark.asyncio
 async def test_cpu_measurement_accuracy_calculation() -> None:
-    monitor = EnhancedResourceMonitor(sampling_interval_ms=50)
+    monitor = ResourceMonitor(sampling_interval_ms=50)
 
     await monitor._establish_baseline(duration_seconds=0.3)
 
@@ -64,7 +64,7 @@ async def test_async_profiler_with_baseline() -> None:
 
 @pytest.mark.asyncio
 async def test_baseline_with_memory_allocation() -> None:
-    monitor = EnhancedResourceMonitor(sampling_interval_ms=50)
+    monitor = ResourceMonitor(sampling_interval_ms=50)
 
     await monitor.start()
 
@@ -80,14 +80,14 @@ async def test_baseline_with_memory_allocation() -> None:
 
 
 def test_baseline_cpu_percent_empty_samples() -> None:
-    monitor = EnhancedResourceMonitor()
+    monitor = ResourceMonitor()
 
     baseline_cpu = monitor._get_baseline_cpu_percent()
     assert baseline_cpu == 0.0
 
 
 def test_cpu_measurement_accuracy_no_validation() -> None:
-    monitor = EnhancedResourceMonitor()
+    monitor = ResourceMonitor()
 
     accuracy = monitor._get_cpu_measurement_accuracy()
     assert accuracy is None
@@ -95,7 +95,7 @@ def test_cpu_measurement_accuracy_no_validation() -> None:
 
 @pytest.mark.asyncio
 async def test_baseline_establishment_with_errors() -> None:
-    monitor = EnhancedResourceMonitor(sampling_interval_ms=10)
+    monitor = ResourceMonitor(sampling_interval_ms=10)
 
     await monitor._establish_baseline(duration_seconds=0.01)
 

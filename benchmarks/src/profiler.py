@@ -35,7 +35,7 @@ class PerformanceMetrics:
     cpu_measurement_accuracy: float | None = None
 
 
-class EnhancedResourceMonitor:
+class ResourceMonitor:
     def __init__(self, sampling_interval_ms: int = 50) -> None:
         self.sampling_interval = sampling_interval_ms / 1000.0
         self.metrics_buffer: list[ResourceMetrics] = []
@@ -377,7 +377,7 @@ def profile_performance(sampling_interval_ms: int = 50) -> Iterator[PerformanceM
 
 class AsyncPerformanceProfiler:
     def __init__(self, sampling_interval_ms: int = 50) -> None:
-        self.monitor = EnhancedResourceMonitor(sampling_interval_ms)
+        self.monitor = ResourceMonitor(sampling_interval_ms)
         self.metrics: PerformanceMetrics | None = None
 
     async def __aenter__(self) -> PerformanceMetrics:

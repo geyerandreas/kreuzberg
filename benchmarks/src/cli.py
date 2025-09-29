@@ -9,7 +9,7 @@ import click
 from rich.console import Console
 
 from .aggregate import ResultAggregator
-from .benchmark import ComprehensiveBenchmarkRunner
+from .benchmark import BenchmarkRunner
 from .logger import get_logger
 from .types import BenchmarkConfig, DocumentCategory, Framework
 
@@ -86,7 +86,7 @@ def main(iterations: int, timeout: int, framework: str | None, output: Path) -> 
 
     console.print("[cyan]Running benchmarks...[/cyan]")
 
-    runner = ComprehensiveBenchmarkRunner(config)
+    runner = BenchmarkRunner(config)
     runner.use_subprocess_isolation = True
 
     try:

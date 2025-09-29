@@ -15,7 +15,7 @@ def test_cli_default_options() -> None:
     runner = CliRunner()
 
     with (
-        patch("src.cli.ComprehensiveBenchmarkRunner") as mock_runner_class,
+        patch("src.cli.BenchmarkRunner") as mock_runner_class,
         patch("src.cli.ResultAggregator") as mock_aggregator_class,
         patch("src.cli.asyncio.run") as mock_asyncio,
     ):
@@ -42,7 +42,7 @@ def test_cli_custom_options() -> None:
     runner = CliRunner()
 
     with (
-        patch("src.cli.ComprehensiveBenchmarkRunner") as mock_runner_class,
+        patch("src.cli.BenchmarkRunner") as mock_runner_class,
         patch("src.cli.ResultAggregator") as mock_aggregator_class,
         patch("src.cli.asyncio.run") as mock_asyncio,
     ):
@@ -69,7 +69,7 @@ def test_cli_keyboard_interrupt() -> None:
     runner = CliRunner()
 
     with (
-        patch("src.cli.ComprehensiveBenchmarkRunner") as mock_runner_class,
+        patch("src.cli.BenchmarkRunner") as mock_runner_class,
         patch("src.cli.asyncio.run") as mock_asyncio,
     ):
         mock_runner_class.return_value = MagicMock()
@@ -85,7 +85,7 @@ def test_cli_benchmark_failure() -> None:
     runner = CliRunner()
 
     with (
-        patch("src.cli.ComprehensiveBenchmarkRunner") as mock_runner_class,
+        patch("src.cli.BenchmarkRunner") as mock_runner_class,
         patch("src.cli.asyncio.run") as mock_asyncio,
     ):
         mock_runner_class.return_value = MagicMock()
