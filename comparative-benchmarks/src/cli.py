@@ -97,8 +97,13 @@ def benchmark(
 
     categories = list(DocumentCategory)
 
-    output_dir = Path("results")
-    output_dir.mkdir(exist_ok=True)
+    # Use output file's parent directory for single-framework runs
+    # This ensures raw benchmark_results.json is saved alongside aggregated results.json
+    if framework:
+        output_dir = output.parent
+    else:
+        output_dir = Path("results")
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     config = BenchmarkConfig(
         frameworks=frameworks,

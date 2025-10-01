@@ -165,37 +165,60 @@ jobs:
 
           mkdir -p aggregated-results
 
-          # Find all individual result files
-          find individual-results -name "results.json" -type f | while read file; do
-            framework=$(basename $(dirname "$file"))
-            echo "Found results for framework: $framework"
+          # Find all individual result directories
+          find individual-results -name "benchmark_results.json" -type f | while read file; do
+            framework_dir=$(dirname "$file")
+            framework=$(basename "$framework_dir")
+            echo "Found benchmark results for: $framework"
           done
 
-          # Run aggregation script
+          # Run aggregation using ResultAggregator
           uv run python -c "
-          import json
-          import glob
           from pathlib import Path
+          from src.aggregate import ResultAggregator
 
-          all_results = []
+          # Collect all framework result directories
+          result_dirs = []
+          individual_results = Path('individual-results')
 
-          # Collect all individual results
-          for result_file in glob.glob('individual-results/*/results.json'):
-              try:
-                  with open(result_file) as f:
-                      data = json.load(f)
-                      if isinstance(data, list):
-                          all_results.extend(data)
-                      else:
-                          all_results.append(data)
-              except Exception as e:
-                  print(f'Error reading {result_file}: {e}')
+          if individual_results.exists():
+              # Each subdirectory should contain benchmark_results.json
+              for framework_dir in individual_results.iterdir():
+                  if framework_dir.is_dir():
+                      benchmark_file = framework_dir / 'benchmark_results.json'
+                      if benchmark_file.exists():
+                          result_dirs.append(framework_dir)
+                          print(f'Found results in: {framework_dir.name}')
+
+          if not result_dirs:
+              print('WARNING: No benchmark_results.json files found in individual-results/')
+              print('Creating empty aggregated results')
+              from src.types import AggregatedResults
+              aggregated = AggregatedResults(
+                  total_runs=0,
+                  total_files_processed=0,
+                  total_time_seconds=0,
+                  framework_summaries={},
+                  category_summaries={},
+                  framework_category_matrix={},
+                  failure_patterns={},
+                  timeout_files=[],
+                  performance_over_iterations={},
+                  platform_results={},
+              )
+          else:
+              print(f'Aggregating results from {len(result_dirs)} frameworks...')
+              aggregator = ResultAggregator()
+              aggregated = aggregator.aggregate_results(result_dirs)
 
           # Save aggregated results
-          with open('aggregated-results/aggregated_results.json', 'w') as f:
-              json.dump(all_results, f, indent=2)
+          output_dir = Path('aggregated-results')
+          output_dir.mkdir(parents=True, exist_ok=True)
+          aggregator = ResultAggregator()
+          aggregator.save_results(aggregated, output_dir, 'aggregated_results.json')
 
-          print(f'Aggregated {len(all_results)} results')
+          print(f'Aggregated results saved: {aggregated.total_files_processed} files from {aggregated.total_runs} runs')
+          print(f'Frameworks: {list(aggregated.framework_summaries.keys())}')
           "
 
       - name: Generate Visualizations

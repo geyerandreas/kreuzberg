@@ -117,10 +117,26 @@ def _extract_in_subprocess(
                 original_config_method = extractor._get_optimized_config
 
                 def _get_config_with_overrides(file_path: str) -> Any:
+                    from dataclasses import asdict, replace
+
                     config = original_config_method(file_path)
-                    for key, value in config_overrides.items():
-                        if hasattr(config, key):
-                            setattr(config, key, value)
+                    # Create new config instance with overrides (frozen dataclass safe) ~keep
+                    valid_overrides = {
+                        k: v for k, v in config_overrides.items() if hasattr(config, k)
+                    }
+                    if valid_overrides:
+                        try:
+                            # Try dataclass replace first
+                            return replace(config, **valid_overrides)
+                        except TypeError:
+                            # Fallback for non-dataclass configs (TypedDict)
+                            config_dict = (
+                                asdict(config)
+                                if hasattr(config, "__dataclass_fields__")
+                                else dict(config)
+                            )
+                            config_dict.update(valid_overrides)
+                            return type(config)(**config_dict)
                     return config
 
                 extractor._get_optimized_config = _get_config_with_overrides
