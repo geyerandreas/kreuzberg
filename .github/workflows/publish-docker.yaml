@@ -154,7 +154,7 @@ jobs:
 
       - name: Update Docker Hub README
         if: ${{ matrix.should_build }}
-        uses: peter-evans/dockerhub-description@v4
+        uses: peter-evans/dockerhub-description@v5
         continue-on-error: true
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
