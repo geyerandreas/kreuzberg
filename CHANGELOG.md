@@ -150,6 +150,12 @@ The following internal GMFT options have been removed for simplicity:
 
 - **Error Handling**: RuntimeError and OSError in keyword extraction and OCR processing will now bubble up instead of being silently handled. This ensures critical system issues are reported to developers.
 
+## [3.20.1] - 2025-10-11
+
+### Changed
+
+- Lowered the minimum `transformers` requirement to `>=4.55.0` to restore compatibility with projects depending on `sentence-transformers[onnx]`.
+
 ## [3.20.0] - 2025-10-11
 
 ### Added
