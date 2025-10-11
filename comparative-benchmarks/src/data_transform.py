@@ -25,9 +25,50 @@ def results_to_dataframe(results: list[BenchmarkResult]) -> pl.DataFrame:
     if not results:
         return pl.DataFrame()
 
-    data = [msgspec.structs.asdict(result) for result in results]
+    sanitized: list[dict[str, object]] = []
+    for result in results:
+        record = msgspec.structs.asdict(result)
 
-    df = pl.DataFrame(data)
+        # Drop heavy or nested fields that break DataFrame inference
+        record.pop("extracted_metadata", None)
+        record.pop("quality_metrics", None)
+        record.pop("extracted_text", None)
+
+        # Normalize Enum values so Polars sees consistent string columns
+        record["framework"] = record["framework"].value
+        record["category"] = record["category"].value
+        record["file_type"] = record["file_type"].value
+        record["status"] = record["status"].value
+
+        sanitized.append(record)
+
+    schema = {
+        "file_path": pl.String,
+        "file_size": pl.Int64,
+        "file_type": pl.String,
+        "category": pl.String,
+        "framework": pl.String,
+        "iteration": pl.Int64,
+        "extraction_time": pl.Float64,
+        "startup_time": pl.Float64,
+        "peak_memory_mb": pl.Float64,
+        "avg_memory_mb": pl.Float64,
+        "peak_cpu_percent": pl.Float64,
+        "avg_cpu_percent": pl.Float64,
+        "total_io_mb": pl.Float64,
+        "status": pl.String,
+        "character_count": pl.Int64,
+        "word_count": pl.Int64,
+        "error_type": pl.String,
+        "error_message": pl.String,
+        "overall_quality_score": pl.Float64,
+        "attempts": pl.Int64,
+        "timestamp": pl.Float64,
+        "platform": pl.String,
+        "python_version": pl.String,
+    }
+
+    df = pl.DataFrame(sanitized, schema=schema, strict=False)
 
     if "framework" in df.columns:
         df = df.with_columns(pl.col("framework").cast(pl.String))

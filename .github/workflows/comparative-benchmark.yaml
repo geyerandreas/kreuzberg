@@ -146,7 +146,6 @@ jobs:
         with:
           pattern: benchmark-results-*-${{ github.run_id }}
           path: comparative-benchmarks/individual-results/
-          merge-multiple: true
 
       - name: Aggregate Results
         run: |
