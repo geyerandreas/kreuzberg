@@ -155,6 +155,7 @@ The following internal GMFT options have been removed for simplicity:
 ### Added
 
 - **Inline HTML Asset Extraction**: Inline `<img>` data URIs and inline SVGs are now captured automatically when `extract_images=True`, powered by html-to-markdown 2.1
+- **Python 3.14 (core)**: The core library is validated on Python 3.14; extras depending on EasyOCR, PaddleOCR, or spaCy remain unavailable until their upstream wheels add support
 
 ### Changed
 

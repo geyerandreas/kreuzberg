@@ -805,6 +805,10 @@ python -m spacy download de_core_news_sm   # German
 python -m spacy download fr_core_news_sm   # French
 ```
 
+!!! warning
+
+    spaCy has not yet published Python 3.14 wheels. Entity extraction is unavailable on 3.14 installations until upstream support arrives.
+
 Available spaCy models include: `en_core_web_sm`, `de_core_news_sm`, `fr_core_news_sm`, `es_core_news_sm`, `pt_core_news_sm`, `it_core_news_sm`, `nl_core_news_sm`, `zh_core_web_sm`, `ja_core_news_sm`, `ko_core_news_sm`, `ru_core_news_sm`, and many others.
 
 ### DPI and Image Processing
