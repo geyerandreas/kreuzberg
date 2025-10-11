@@ -579,8 +579,8 @@ requires-dist = [
     { name = "click", specifier = ">=8.2.1" },
     { name = "docling", marker = "extra == 'all'", specifier = ">=2.55.1" },
     { name = "docling", marker = "extra == 'docling'", specifier = ">=2.55.1" },
-    { name = "extractous", marker = "extra == 'all'", specifier = ">=0.3" },
-    { name = "extractous", marker = "extra == 'extractous'", specifier = ">=0.3" },
+    { name = "extractous", marker = "extra == 'all'", specifier = ">=0.3.0" },
+    { name = "extractous", marker = "extra == 'extractous'", specifier = ">=0.3.0" },
     { name = "kreuzberg", marker = "extra == 'all'", editable = "." },
     { name = "kreuzberg", marker = "extra == 'kreuzberg'", editable = "." },
     { name = "markitdown", marker = "extra == 'all'", specifier = ">=0.1.3" },
@@ -1595,13 +1595,13 @@ wheels = [
 
 [[package]]
 name = "html-to-markdown"
-version = "2.1.0"
+version = "2.1.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/44/05/de4e8cd57394e9bce6bbf50a2f284a00557a00d315892e6d1e9540eb4c59/html_to_markdown-2.1.0.tar.gz", hash = "sha256:f6d23ff2c5c011b01918f406d2f21c1aa542cfe861ff14896c4da3ccafdc8093", size = 90226, upload-time = "2025-10-11T11:09:47.848Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/32/50/23cb5201d050f43da35bd570f4fb64ef3d650605269b9ee4b85e0ce20f51/html_to_markdown-2.1.2.tar.gz", hash = "sha256:0fe464bda2247510b1e00de9824a23581e37a22adf8efded315637a17a99297c", size = 90240, upload-time = "2025-10-11T15:47:32.565Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c2/df/82b2b971925018a1e06b3ffff014b6dff6c9d978d031fd1943cc200d8637/html_to_markdown-2.1.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:b6520e79d6fc866b80d368052cbcaad397c67729e3670ff2a009fe7a26a9141f", size = 4753615, upload-time = "2025-10-11T11:09:43.176Z" },
-    { url = "https://files.pythonhosted.org/packages/09/c2/02b60cc5c2ed17c5ddb91d16972d247bc0de52e246edd251ccd18f123668/html_to_markdown-2.1.0-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:eadf401d363d270e9798e2553eed27a1a2b548fc4bf26fbb25ee2159767bd02c", size = 5266082, upload-time = "2025-10-11T11:09:44.811Z" },
-    { url = "https://files.pythonhosted.org/packages/84/f1/8eb6e85e50bc6f80cb5428ff55b36196622441b474677cfd32beca260c36/html_to_markdown-2.1.0-cp310-abi3-win_amd64.whl", hash = "sha256:3c880ef4e0559c45c5b988a554c0b2a2f953bc365caa37e1410057259ec26cbb", size = 5009392, upload-time = "2025-10-11T11:09:46.364Z" },
+    { url = "https://files.pythonhosted.org/packages/36/d9/871721a26611ea1e911c681f9401cfa5a8d1f0d539977b7897234d2c111b/html_to_markdown-2.1.2-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:564b86a383525b4f1129c4087698f0ca0520c0255ef55b66fada13e4ec58f233", size = 4755110, upload-time = "2025-10-11T15:47:26.963Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/3c/1f14b8405544e9b688104f6e204afab0d62836ff7898e93bd761220da6e1/html_to_markdown-2.1.2-cp310-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:a302ebea5264f83063538fdd2304a6d4e0c3db80a3b02d42cd3a49303e639449", size = 5265513, upload-time = "2025-10-11T15:47:29.102Z" },
+    { url = "https://files.pythonhosted.org/packages/7b/83/9f46fa88bdbea28d3778d780175123094d19cab51cbe4675694516d74b58/html_to_markdown-2.1.2-cp310-abi3-win_amd64.whl", hash = "sha256:92665d766e04848a965e4404cef7d0b9fb1e264dba4a91361e1a7f4d95e91743", size = 5009229, upload-time = "2025-10-11T15:47:30.841Z" },
 ]
 
 [[package]]
@@ -2089,7 +2089,7 @@ requires-dist = [
     { name = "exceptiongroup", marker = "python_full_version < '3.11'", specifier = ">=1.2.2" },
     { name = "fast-langdetect", marker = "extra == 'langdetect'", specifier = ">=1.0.0" },
     { name = "gmft", marker = "extra == 'gmft'", specifier = ">=0.4.2" },
-    { name = "html-to-markdown", specifier = ">=2.1.0" },
+    { name = "html-to-markdown", specifier = ">=2.1.2" },
     { name = "keybert", marker = "extra == 'entity-extraction'", specifier = ">=0.9.0" },
     { name = "kreuzberg", extras = ["additional-extensions", "api", "chunking", "cli", "crypto", "document-classification", "easyocr", "entity-extraction", "gmft", "langdetect", "paddleocr"], marker = "extra == 'all'" },
     { name = "langcodes", specifier = ">=3.5.0" },
