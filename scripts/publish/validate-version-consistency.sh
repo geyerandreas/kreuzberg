@@ -61,7 +61,7 @@ echo "packages/ruby/lib/kreuzberg/version.rb: $ruby_version"
 }
 
 # Java pom.xml (first <version> tag is the project version)
-java_version="$(grep '<version>' packages/java/pom.xml | head -1 | sed 's/.*<version>\\(.*\\)<\\/version>.*/\\1/')"
+java_version="$(grep '<version>' packages/java/pom.xml | head -1 | sed -E 's|.*<version>([^<]+)</version>.*|\1|')"
 echo "packages/java/pom.xml: $java_version"
 [ "$java_version" = "$expected" ] || {
 	echo "❌ Java pom.xml mismatch"
@@ -69,7 +69,7 @@ echo "packages/java/pom.xml: $java_version"
 }
 
 # C# Kreuzberg.csproj
-csharp_version="$(grep '<Version>' packages/csharp/Kreuzberg/Kreuzberg.csproj | head -1 | sed 's/.*<Version>\\(.*\\)<\\/Version>.*/\\1/')"
+csharp_version="$(grep '<Version>' packages/csharp/Kreuzberg/Kreuzberg.csproj | head -1 | sed -E 's|.*<Version>([^<]+)</Version>.*|\1|')"
 echo "packages/csharp/Kreuzberg/Kreuzberg.csproj: $csharp_version"
 [ "$csharp_version" = "$expected" ] || {
 	echo "❌ C# csproj mismatch"
@@ -77,7 +77,7 @@ echo "packages/csharp/Kreuzberg/Kreuzberg.csproj: $csharp_version"
 }
 
 # Go doc.go version comment
-go_version="$(grep 'This binding targets Kreuzberg' packages/go/kreuzberg/doc.go | sed 's/.*Kreuzberg \\([^ ]*\\).*/\\1/')"
+go_version="$(grep 'This binding targets Kreuzberg' packages/go/kreuzberg/doc.go | sed -E 's|.*Kreuzberg ([^ ]+).*|\1|')"
 echo "packages/go/kreuzberg/doc.go: $go_version"
 [ "$go_version" = "$expected" ] || {
 	echo "❌ Go doc.go mismatch"

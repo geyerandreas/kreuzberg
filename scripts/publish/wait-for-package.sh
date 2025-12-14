@@ -55,9 +55,22 @@ check_package() {
 		return $?
 		;;
 	cratesio)
-		# Use cargo search with strict output format
-		# grep -qF for fixed string matching only
-		cargo search "$package" --limit 1 2>/dev/null | grep -qF "$version"
+		PKG="$package" VER="$version" python3 - <<'PY'
+import json
+import os
+import sys
+import urllib.request
+
+crate = os.environ["PKG"]
+version = os.environ["VER"].lstrip("v")
+
+url = f"https://crates.io/api/v1/crates/{crate}"
+with urllib.request.urlopen(url, timeout=20) as resp:
+    data = json.load(resp)
+
+versions = [item.get("num") for item in data.get("versions", [])]
+sys.exit(0 if version in versions else 1)
+PY
 		return $?
 		;;
 	maven)
@@ -76,15 +89,38 @@ check_package() {
 		fi
 		;;
 	rubygems)
-		# Query RubyGems API using curl
-		# Use grep -qF for fixed string matching
 		if command -v curl >/dev/null 2>&1; then
-			curl -s "https://rubygems.org/api/v1/gems/${package}.json" 2>/dev/null | grep -qF "\"version\":\"${version}\""
+			PKG="$package" VER="$version" python3 - <<'PY'
+import json
+import os
+import sys
+import urllib.request
+
+package = os.environ["PKG"]
+version = os.environ["VER"].lstrip("v")
+
+def normalize_rubygems_version(v: str) -> str:
+    if "-" not in v:
+        return v
+    base, prerelease = v.split("-", 1)
+    return f"{base}.pre.{prerelease.replace('-', '.')}"
+
+candidates = [version]
+normalized = normalize_rubygems_version(version)
+if normalized != version:
+    candidates.append(normalized)
+
+url = f"https://rubygems.org/api/v1/versions/{package}.json"
+with urllib.request.urlopen(url, timeout=20) as resp:
+    data = json.load(resp)
+existing = {entry.get("number") for entry in data if isinstance(entry, dict)}
+sys.exit(0 if any(c in existing for c in candidates) else 1)
+PY
 			return $?
-		else
-			echo "curl is required for RubyGems registry check" >&2
-			return 1
 		fi
+
+		echo "curl is required for RubyGems registry check" >&2
+		return 1
 		;;
 	*)
 		echo "Unknown registry: $registry" >&2

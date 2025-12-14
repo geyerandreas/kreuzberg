@@ -19,15 +19,32 @@ if [[ $# -lt 1 ]]; then
 	exit 1
 fi
 
-version="$1"
+version="${1#v}"
 package_name="kreuzberg"
 url="https://rubygems.org/api/v1/versions/${package_name}.json"
 max_attempts=3
 attempt=1
 http_code=""
 
+normalize_rubygems_version() {
+	local v="$1"
+	if [[ "$v" == *-* ]]; then
+		local base="${v%%-*}"
+		local prerelease="${v#*-}"
+		echo "${base}.pre.${prerelease//-/.}"
+	else
+		echo "$v"
+	fi
+}
+
+rubygems_version="$(normalize_rubygems_version "$version")"
+version_candidates=("$version")
+if [[ "$rubygems_version" != "$version" ]]; then
+	version_candidates+=("$rubygems_version")
+fi
+
 while [ $attempt -le $max_attempts ]; do
-	echo "::debug::Checking RubyGems for ${package_name}==${version} (attempt ${attempt}/${max_attempts})" >&2
+	echo "::debug::Checking RubyGems for ${package_name} versions: ${version_candidates[*]} (attempt ${attempt}/${max_attempts})" >&2
 
 	http_code=$(curl \
 		--silent \
@@ -55,12 +72,22 @@ done
 
 if [ "$http_code" = "200" ]; then
 	# Check if the specific version exists in the response
-	if jq -e ".[] | select(.number == \"${version}\")" /tmp/rubygems-check.json >/dev/null 2>&1; then
+	found=false
+	found_version=""
+	for candidate in "${version_candidates[@]}"; do
+		if jq -e ".[] | select(.number == \"${candidate}\")" /tmp/rubygems-check.json >/dev/null 2>&1; then
+			found=true
+			found_version="$candidate"
+			break
+		fi
+	done
+
+	if [ "$found" = "true" ]; then
 		echo "exists=true"
-		echo "::notice::Ruby gem ${package_name}==${version} already exists on RubyGems" >&2
+		echo "::notice::Ruby gem ${package_name}==${found_version} already exists on RubyGems" >&2
 	else
 		echo "exists=false"
-		echo "::notice::Ruby gem ${package_name}==${version} not found on RubyGems, will build and publish" >&2
+		echo "::notice::Ruby gem ${package_name} not found on RubyGems for versions: ${version_candidates[*]} (will build/publish)" >&2
 	fi
 elif [ "$http_code" = "404" ]; then
 	# Package doesn't exist yet (first publish)

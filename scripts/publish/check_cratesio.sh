@@ -19,69 +19,60 @@ if [[ $# -lt 1 ]]; then
 	exit 1
 fi
 
-version="$1"
-max_attempts=3
+version="${1#v}"
+export VERSION="$version"
 
-check_crate() {
-	local crate_name="$1"
-	local version="$2"
-	local max_attempts="$3"
-	local attempt=1
-	local found=false
+python3 - <<'PY'
+import json
+import os
+import sys
+import time
+import urllib.request
 
-	while [ "$attempt" -le "$max_attempts" ]; do
-		echo "::debug::Checking crates.io for ${crate_name} ${version} (attempt ${attempt}/${max_attempts})" >&2
+version = os.environ["VERSION"]
 
-		if cargo search "$crate_name" --limit 1 2>/dev/null | grep -q "${crate_name} = \"${version}\""; then
-			found=true
-			break
-		elif [ "$attempt" -lt "$max_attempts" ]; then
-			sleep_time=$((attempt * 5))
-			echo "::warning::crates.io check for ${crate_name} failed, retrying in ${sleep_time}s..." >&2
-			sleep "$sleep_time"
-		fi
+crates = [
+    ("kreuzberg", "kreuzberg_exists"),
+    ("kreuzberg-tesseract", "tesseract_exists"),
+    ("kreuzberg-cli", "cli_exists"),
+]
 
-		attempt=$((attempt + 1))
-	done
+max_attempts = 3
+sleep_base = 5
 
-	echo "$found"
-}
+results: dict[str, bool] = {}
 
-# Check kreuzberg crate
-if [ "$(check_crate "kreuzberg" "$version" "$max_attempts")" = "true" ]; then
-	kreuzberg_exists=true
-	echo "::notice::Rust crate kreuzberg ${version} already exists on crates.io" >&2
-else
-	kreuzberg_exists=false
-	echo "::notice::Rust crate kreuzberg ${version} not found on crates.io" >&2
-fi
+for crate, output_key in crates:
+    exists = False
+    for attempt in range(1, max_attempts + 1):
+        try:
+            url = f"https://crates.io/api/v1/crates/{crate}"
+            with urllib.request.urlopen(url, timeout=20) as resp:
+                data = json.load(resp)
+            versions = [item.get("num") for item in data.get("versions", [])]
+            exists = version in versions
+            break
+        except Exception as exc:
+            if attempt >= max_attempts:
+                print(
+                    f"::warning::crates.io check failed for {crate} {version} ({exc})",
+                    file=sys.stderr,
+                )
+            else:
+                sleep_time = attempt * sleep_base
+                print(
+                    f"::warning::crates.io check failed for {crate} {version} (attempt {attempt}/{max_attempts}), retrying in {sleep_time}s...",
+                    file=sys.stderr,
+                )
+                time.sleep(sleep_time)
 
-# Check kreuzberg-tesseract crate
-if [ "$(check_crate "kreuzberg-tesseract" "$version" "$max_attempts")" = "true" ]; then
-	tesseract_exists=true
-	echo "::notice::Rust crate kreuzberg-tesseract ${version} already exists on crates.io" >&2
-else
-	tesseract_exists=false
-	echo "::notice::Rust crate kreuzberg-tesseract ${version} not found on crates.io" >&2
-fi
+    results[output_key] = exists
+    status = "already exists" if exists else "not found"
+    print(f"::notice::Rust crate {crate} {version} {status} on crates.io", file=sys.stderr)
 
-# Check kreuzberg-cli crate
-if [ "$(check_crate "kreuzberg-cli" "$version" "$max_attempts")" = "true" ]; then
-	cli_exists=true
-	echo "::notice::Rust crate kreuzberg-cli ${version} already exists on crates.io" >&2
-else
-	cli_exists=false
-	echo "::notice::Rust crate kreuzberg-cli ${version} not found on crates.io" >&2
-fi
+for key, value in results.items():
+    print(f"{key}={'true' if value else 'false'}")
 
-# Output results
-echo "kreuzberg_exists=$kreuzberg_exists"
-echo "tesseract_exists=$tesseract_exists"
-echo "cli_exists=$cli_exists"
-
-# Set all_exist if all three crates exist
-if [ "$kreuzberg_exists" = "true" ] && [ "$tesseract_exists" = "true" ] && [ "$cli_exists" = "true" ]; then
-	echo "all_exist=true"
-else
-	echo "all_exist=false"
-fi
+all_exist = all(results.values())
+print(f"all_exist={'true' if all_exist else 'false'}")
+PY

@@ -13,10 +13,25 @@ if ! retry_with_backoff sudo apt-get update; then
 	echo "::warning::apt-get update failed after retries, continuing anyway..."
 fi
 
-packages="libreoffice libreoffice-writer libreoffice-calc libreoffice-impress tesseract-ocr tesseract-ocr-eng tesseract-ocr-tur tesseract-ocr-deu fonts-liberation fonts-dejavu-core fonts-noto-core libssl-dev pkg-config build-essential"
+packages=(
+	libreoffice
+	libreoffice-writer
+	libreoffice-calc
+	libreoffice-impress
+	tesseract-ocr
+	tesseract-ocr-eng
+	tesseract-ocr-tur
+	tesseract-ocr-deu
+	fonts-liberation
+	fonts-dejavu-core
+	fonts-noto-core
+	libssl-dev
+	pkg-config
+	build-essential
+)
 
 echo "Installing dependencies..."
-if retry_with_backoff_timeout 900 sudo apt-get install -y "${packages}"; then
+if retry_with_backoff_timeout 900 sudo apt-get install -y "${packages[@]}"; then
 	echo "✓ All packages installed successfully"
 else
 	exit_code=$?
