@@ -1056,10 +1056,7 @@ jobs:
           - os: ubuntu-latest
             label: linux-x86_64
             rid: linux-x86_64
-          - os: macos-15-intel
-            label: macos-x86_64
-            rid: macos-x86_64
-          - os: macos-14
+          - os: macos-latest
             label: macos-arm64
             rid: macos-arm64
           - os: windows-latest
@@ -1417,20 +1414,6 @@ jobs:
             pdfium_platform: linux
             pdfium_arch: x64
             ffi_name: libkreuzberg_ffi.so
-          - rid: linux-arm64
-            os: ubuntu-latest
-            rust_target: aarch64-unknown-linux-gnu
-            ort_arch: arm64
-            pdfium_platform: linux
-            pdfium_arch: arm64
-            ffi_name: libkreuzberg_ffi.so
-          - rid: osx-x64
-            os: macos-latest
-            rust_target: x86_64-apple-darwin
-            ort_arch: x64
-            pdfium_platform: mac
-            pdfium_arch: x64
-            ffi_name: libkreuzberg_ffi.dylib
           - rid: osx-arm64
             os: macos-latest
             rust_target: aarch64-apple-darwin
@@ -1444,13 +1427,6 @@ jobs:
             ort_arch: x64
             pdfium_platform: win
             pdfium_arch: x64
-            ffi_name: kreuzberg_ffi.dll
-          - rid: win-arm64
-            os: windows-latest
-            rust_target: aarch64-pc-windows-msvc
-            ort_arch: arm64
-            pdfium_platform: win
-            pdfium_arch: arm64
             ffi_name: kreuzberg_ffi.dll
     steps:
       - name: Checkout
@@ -1474,11 +1450,6 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: publish-csharp-native-${{ matrix.rid }}
-
-      - name: Install Linux cross toolchain (arm64)
-        if: ${{ runner.os == 'Linux' && matrix.rid == 'linux-arm64' }}
-        shell: bash
-        run: scripts/publish/csharp/install-linux-cross-toolchain-arm64.sh
 
       - name: Cache PDFium
         uses: ./.github/actions/cache-pdfium
