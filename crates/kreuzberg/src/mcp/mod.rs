@@ -26,6 +26,9 @@ mod server;
 
 pub use server::{start_mcp_server, start_mcp_server_with_config};
 
+#[cfg(feature = "mcp-http")]
+pub use server::{start_mcp_server_http, start_mcp_server_http_with_config};
+
 pub use server::{BatchExtractFilesParams, DetectMimeTypeParams, ExtractBytesParams, ExtractFileParams, KreuzbergMcp};
 
 #[doc(hidden)]

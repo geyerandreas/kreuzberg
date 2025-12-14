@@ -12,6 +12,9 @@ use rmcp::{
     transport::stdio,
 };
 
+#[cfg(feature = "mcp-http")]
+use rmcp::transport::streamable_http_server::{StreamableHttpService, session::local::LocalSessionManager};
+
 use crate::{
     ExtractionConfig, ExtractionResult as KreuzbergResult, KreuzbergError, batch_extract_file, batch_extract_file_sync,
     cache, detect_mime_type, extract_bytes, extract_bytes_sync, extract_file, extract_file_sync,
@@ -450,6 +453,109 @@ pub async fn start_mcp_server_with_config(
     let service = KreuzbergMcp::with_config(config).serve(stdio()).await?;
 
     service.waiting().await?;
+    Ok(())
+}
+
+/// Start MCP server with HTTP Stream transport.
+///
+/// Uses rmcp's built-in StreamableHttpService for HTTP/SSE support per MCP spec.
+///
+/// # Arguments
+///
+/// * `host` - Host to bind to (e.g., "127.0.0.1" or "0.0.0.0")
+/// * `port` - Port number (e.g., 8001)
+///
+/// # Example
+///
+/// ```no_run
+/// use kreuzberg::mcp::start_mcp_server_http;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+///     start_mcp_server_http("127.0.0.1", 8001).await?;
+///     Ok(())
+/// }
+/// ```
+#[cfg(feature = "mcp-http")]
+pub async fn start_mcp_server_http(
+    host: impl AsRef<str>,
+    port: u16,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use axum::Router;
+    use std::net::SocketAddr;
+
+    let http_service = StreamableHttpService::new(
+        || KreuzbergMcp::new().map_err(|e| std::io::Error::other(e.to_string())),
+        LocalSessionManager::default().into(),
+        Default::default(),
+    );
+
+    let router = Router::new().nest_service("/mcp", http_service);
+
+    let addr: SocketAddr = format!("{}:{}", host.as_ref(), port)
+        .parse()
+        .map_err(|e| format!("Invalid address: {}", e))?;
+
+    #[cfg(feature = "api")]
+    tracing::info!("Starting MCP HTTP server on http://{}", addr);
+
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, router).await?;
+
+    Ok(())
+}
+
+/// Start MCP HTTP server with custom extraction config.
+///
+/// This variant allows specifying a custom extraction configuration
+/// while using HTTP Stream transport.
+///
+/// # Arguments
+///
+/// * `host` - Host to bind to (e.g., "127.0.0.1" or "0.0.0.0")
+/// * `port` - Port number (e.g., 8001)
+/// * `config` - Custom extraction configuration
+///
+/// # Example
+///
+/// ```no_run
+/// use kreuzberg::mcp::start_mcp_server_http_with_config;
+/// use kreuzberg::ExtractionConfig;
+///
+/// #[tokio::main]
+/// async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+///     let config = ExtractionConfig::default();
+///     start_mcp_server_http_with_config("127.0.0.1", 8001, config).await?;
+///     Ok(())
+/// }
+/// ```
+#[cfg(feature = "mcp-http")]
+pub async fn start_mcp_server_http_with_config(
+    host: impl AsRef<str>,
+    port: u16,
+    config: ExtractionConfig,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    use axum::Router;
+    use std::net::SocketAddr;
+
+    let http_service = StreamableHttpService::new(
+        move || Ok(KreuzbergMcp::with_config(config.clone())),
+        LocalSessionManager::default().into(),
+        Default::default(),
+    );
+
+    let router = Router::new().nest_service("/mcp", http_service);
+
+    let addr: SocketAddr = format!("{}:{}", host.as_ref(), port)
+        .parse()
+        .map_err(|e| format!("Invalid address: {}", e))?;
+
+    #[cfg(feature = "api")]
+    tracing::info!("Starting MCP HTTP server on http://{}", addr);
+
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, router).await?;
+
     Ok(())
 }
 

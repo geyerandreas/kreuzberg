@@ -74,6 +74,7 @@ keywords = ["keywords-yake", "keywords-rake"]
 # Server features
 api = ["dep:axum", "dep:tower", "dep:tower-http", "tokio-runtime"]
 mcp = ["dep:rmcp", "tokio-runtime"]
+mcp-http = ["mcp", "api"]                                          # NEW - enables HTTP transport
 
 # Observability features
 otel = ["dep:opentelemetry", "dep:opentelemetry_sdk", "dep:tracing-opentelemetry"]
@@ -191,6 +192,8 @@ rmcp = { version = "0.11.0", features = [
     "macros",
     "base64",
     "transport-io",
+    "transport-streamable-http-server",
+    "axum",
 ], optional = true }
 # Observability features (optional)
 opentelemetry = { version = "0.31", features = ["trace"], optional = true }

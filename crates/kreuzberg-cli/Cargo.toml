@@ -25,7 +25,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 default = []
 api = ["kreuzberg/api"]
 mcp = ["kreuzberg/mcp"]
-all = ["api", "mcp"]
+mcp-http = ["kreuzberg/mcp-http"]
+all = ["api", "mcp", "mcp-http"]
 
 [[bin]]
 name = "kreuzberg"

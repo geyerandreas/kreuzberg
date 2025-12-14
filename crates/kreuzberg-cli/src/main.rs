@@ -189,6 +189,18 @@ enum Commands {
         /// Path to config file (TOML, YAML, or JSON). If not specified, searches for kreuzberg.toml/yaml/json in current and parent directories.
         #[arg(short, long)]
         config: Option<PathBuf>,
+
+        /// Transport mode: stdio (default) or http
+        #[arg(long, default_value = "stdio")]
+        transport: String,
+
+        /// HTTP host (only for --transport http)
+        #[arg(long, default_value = "127.0.0.1")]
+        host: String,
+
+        /// HTTP port (only for --transport http)
+        #[arg(long, default_value = "8001")]
+        port: u16,
     },
 }
 
@@ -577,13 +589,42 @@ fn main() -> Result<()> {
         }
 
         #[cfg(feature = "mcp")]
-        Commands::Mcp { config: config_path } => {
+        Commands::Mcp {
+            config: config_path,
+            transport,
+            host,
+            port,
+        } => {
             let config = load_config(config_path)?;
 
-            tracing::debug!("Starting Kreuzberg MCP server...");
+            tracing::debug!("Starting Kreuzberg MCP server with transport: {}", transport);
             let rt = tokio::runtime::Runtime::new()?;
-            rt.block_on(kreuzberg::mcp::start_mcp_server_with_config(config))
-                .map_err(|e| anyhow::anyhow!("Failed to start MCP server: {}", e))?;
+
+            match transport.to_lowercase().as_str() {
+                "stdio" => {
+                    rt.block_on(kreuzberg::mcp::start_mcp_server_with_config(config))
+                        .map_err(|e| anyhow::anyhow!("Failed to start MCP server: {}", e))?;
+                }
+                "http" => {
+                    #[cfg(not(feature = "mcp-http"))]
+                    {
+                        anyhow::bail!(
+                            "HTTP transport requires 'mcp-http' feature. \
+                             Rebuild with: cargo build --features mcp-http"
+                        );
+                    }
+
+                    #[cfg(feature = "mcp-http")]
+                    {
+                        tracing::debug!("Starting MCP server on http://{}:{}", host, port);
+                        rt.block_on(kreuzberg::mcp::start_mcp_server_http_with_config(&host, port, config))
+                            .map_err(|e| anyhow::anyhow!("Failed to start MCP server on {}:{}: {}", host, port, e))?;
+                    }
+                }
+                other => {
+                    anyhow::bail!("Unknown transport '{}'. Use 'stdio' or 'http'", other);
+                }
+            }
         }
 
         Commands::Cache { command } => {

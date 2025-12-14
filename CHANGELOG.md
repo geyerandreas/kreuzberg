@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **MCP HTTP Stream transport** (GitHub #207)
+  - HTTP Stream transport for MCP server using rmcp's built-in support
+  - SSE (Server-Sent Events) for bidirectional communication per MCP spec
+  - Session management with secure session IDs handled by rmcp
+  - CLI flag to select transport: `kreuzberg mcp --transport http --host 127.0.0.1 --port 8001`
+  - Enable with `mcp-http` feature flag
+  - Production-ready for cloud deployments, Docker, and serverless
+
 ## [4.0.0-rc.7] - 2025-12-12
 
 ### Added
