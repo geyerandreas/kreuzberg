@@ -201,24 +201,32 @@ jobs:
           cd crates/kreuzberg-wasm
           pnpm run build:wasm:web
         shell: bash
+        env:
+          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
 
       - name: Build WASM for Bundler
         run: |
           cd crates/kreuzberg-wasm
           pnpm run build:wasm:bundler
         shell: bash
+        env:
+          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
 
       - name: Build WASM for Node.js
         run: |
           cd crates/kreuzberg-wasm
           pnpm run build:wasm:nodejs
         shell: bash
+        env:
+          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
 
       - name: Build WASM for Deno
         run: |
           cd crates/kreuzberg-wasm
           pnpm run build:wasm:deno
         shell: bash
+        env:
+          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
 
       - name: Validate build artifacts (Web)
         shell: bash
@@ -272,6 +280,8 @@ jobs:
           cd crates/kreuzberg-wasm
           pnpm run build:wasm:bundler
         shell: bash
+        env:
+          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
 
       - name: Check WASM file sizes
         run: |
@@ -354,6 +364,8 @@ jobs:
           cd crates/kreuzberg-wasm
           pnpm run build:wasm:bundler
         shell: bash
+        env:
+          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
 
       - name: Run TypeScript type check
         run: |
@@ -492,6 +504,8 @@ jobs:
         run: |
           cd crates/kreuzberg-wasm
           pnpm run build:wasm:bundler
+        env:
+          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
 
       - name: Build TypeScript wrapper
         shell: bash
@@ -560,6 +574,8 @@ jobs:
         run: |
           cd crates/kreuzberg-wasm
           pnpm run build:wasm:bundler
+        env:
+          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
 
       - name: Build TypeScript wrapper
         run: |

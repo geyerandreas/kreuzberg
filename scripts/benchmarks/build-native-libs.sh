@@ -23,7 +23,11 @@ echo "  DYLD_LIBRARY_PATH: ${DYLD_LIBRARY_PATH:-<not set>}"
 echo
 
 cd "$REPO_ROOT"
-cargo build --workspace --release --all-features
+# Build with all features except mutually-exclusive PDF linking strategies
+# The default PDF strategy (dynamic linking) is used when 'pdf' feature is enabled
+# without pdf-static, pdf-bundled, or pdf-system
+cargo build --workspace --release \
+	--features full,profiling,api,mcp,otel
 cargo build --manifest-path tools/benchmark-harness/Cargo.toml --release
 
 echo "Native libraries build complete"
