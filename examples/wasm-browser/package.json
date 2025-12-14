@@ -14,7 +14,7 @@
 		"format": "biome format --write ."
 	},
 	"dependencies": {
-		"@kreuzberg/wasm": "4.0.0-rc.8"
+		"@kreuzberg/wasm": "workspace:*"
 	},
 	"devDependencies": {
 		"typescript": "^5.9.3",

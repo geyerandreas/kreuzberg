@@ -16,7 +16,7 @@
 		"format": "biome format --write ."
 	},
 	"dependencies": {
-		"@kreuzberg/node": "4.0.0-rc.8"
+		"@kreuzberg/node": "workspace:*"
 	},
 	"devDependencies": {
 		"@types/node": "^24.10.1",
