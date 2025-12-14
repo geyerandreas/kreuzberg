@@ -1,4 +1,7 @@
-$ErrorActionPreference = "Stop"
+#!/usr/bin/env pwsh
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
 Write-Host "::group::Installing Windows dependencies"
 

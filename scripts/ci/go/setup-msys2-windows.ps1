@@ -1,6 +1,10 @@
+#!/usr/bin/env pwsh
 # Setup and verify MSYS2 UCRT64 MinGW toolchain for Windows builds
 # This script should be run after msys2/setup-msys2@v2 action
 # It verifies required tools are installed and adds MSYS2 to PATH for subsequent steps
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
 $msys2Path = "C:\msys64\ucrt64\bin"
 $msys2BashExe = "C:\msys64\usr\bin\bash.exe"

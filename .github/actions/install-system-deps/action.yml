@@ -21,7 +21,7 @@ runs:
       if: runner.os == 'macOS'
       id: detect-tesseract-macos
       shell: bash
-      run: bash scripts/ci/install-system-deps/detect-tesseract-macos.sh
+      run: scripts/ci/install-system-deps/detect-tesseract-macos.sh
 
     - name: Cache Tesseract & tessdata (macOS)
       if: runner.os == 'macOS'
@@ -49,7 +49,7 @@ runs:
     - name: Install dependencies (macOS)
       if: runner.os == 'macOS'
       shell: bash
-      run: bash scripts/ci/install-system-deps/install-macos.sh
+      run: scripts/ci/install-system-deps/install-macos.sh
 
     # ============================================================================
     # Linux: Tesseract, LibreOffice, Fonts & Build Tools with Caching
@@ -59,7 +59,7 @@ runs:
       if: runner.os == 'Linux'
       id: detect-tesseract-linux
       shell: bash
-      run: bash scripts/ci/install-system-deps/detect-tesseract-linux.sh
+      run: scripts/ci/install-system-deps/detect-tesseract-linux.sh
 
     - name: Cache Tesseract data (Linux)
       if: runner.os == 'Linux'
@@ -85,7 +85,7 @@ runs:
     - name: Install dependencies (Linux)
       if: runner.os == 'Linux'
       shell: bash
-      run: bash scripts/ci/install-system-deps/install-linux.sh
+      run: scripts/ci/install-system-deps/install-linux.sh
 
     # ============================================================================
     # Windows: Tesseract & LibreOffice Installation with Caching via Chocolatey

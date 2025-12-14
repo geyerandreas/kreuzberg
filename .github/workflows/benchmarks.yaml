@@ -48,18 +48,10 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Ensure benchmark harness exists
-        run: |
-          bash scripts/benchmarks/ensure-benchmark-harness-exists.sh
+        run: scripts/benchmarks/ensure-benchmark-harness-exists.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -78,7 +70,7 @@ jobs:
           pdfium-version: ${{ env.PDFIUM_VERSION }}
 
       - name: Download PDFium runtime
-        run: bash scripts/download_pdfium_runtime.sh
+        run: scripts/download_pdfium_runtime.sh
 
       - name: Setup ONNX Runtime
         uses: ./.github/actions/setup-onnx-runtime
@@ -86,14 +78,10 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Build workspace (native libs + harness)
-        run: |
-          set -euo pipefail
-          bash scripts/benchmarks/build-native-libs.sh
+        run: scripts/benchmarks/build-native-libs.sh
 
       - name: Log disk space before artifact upload
-        run: |
-          echo "Disk space before artifact upload:"
-          df -h
+        run: scripts/ci/validate/show-disk-space.sh "Disk space before artifact upload"
 
       - name: Upload target artifact
         uses: actions/upload-artifact@v5
@@ -104,9 +92,7 @@ jobs:
           retention-days: 7
 
       - name: Log disk space after artifact upload
-        run: |
-          echo "Disk space after artifact upload:"
-          df -h
+        run: scripts/ci/validate/show-disk-space.sh "Disk space after artifact upload"
 
   bench-native:
     name: kreuzberg-native (${{ matrix.mode }})
@@ -125,14 +111,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -141,7 +120,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -165,7 +144,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -192,14 +171,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -208,7 +180,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -233,7 +205,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Build Python bindings
-        run: bash scripts/benchmarks/build-python-bindings.sh
+        run: scripts/benchmarks/build-python-bindings.sh
 
       - name: Run benchmark
         env:
@@ -241,7 +213,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -268,14 +240,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -284,7 +249,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -309,7 +274,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Build Python bindings
-        run: bash scripts/benchmarks/build-python-bindings.sh
+        run: scripts/benchmarks/build-python-bindings.sh
 
       - name: Run benchmark
         env:
@@ -317,7 +282,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -344,14 +309,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -360,7 +318,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -385,7 +343,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Build Python bindings
-        run: bash scripts/benchmarks/build-python-bindings.sh
+        run: scripts/benchmarks/build-python-bindings.sh
 
       - name: Run benchmark
         env:
@@ -393,7 +351,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -420,14 +378,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -436,7 +387,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -453,12 +404,7 @@ jobs:
         uses: ./.github/actions/setup-node-workspace
 
       - name: Verify Node setup (async)
-        run: |
-          echo "Node version: $(node --version)"
-          echo "pnpm version: $(pnpm --version)"
-          echo "tsx availability: $(which tsx || echo 'NOT FOUND')"
-          echo "pnpm workspace structure:"
-          pnpm list --depth=0 || true
+        run: scripts/ci/benchmarks/verify-node-setup.sh "Node setup (async)"
 
       - name: Setup ONNX Runtime
         uses: ./.github/actions/setup-onnx-runtime
@@ -468,7 +414,7 @@ jobs:
       - name: Build Node bindings and install locally
         env:
           TARGET: x86_64-unknown-linux-gnu
-        run: bash scripts/benchmarks/build-node-bindings.sh
+        run: scripts/benchmarks/build-node-bindings.sh
 
       - name: Run benchmark
         env:
@@ -476,7 +422,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -503,14 +449,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -519,7 +458,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -536,12 +475,7 @@ jobs:
         uses: ./.github/actions/setup-node-workspace
 
       - name: Verify Node setup (batch)
-        run: |
-          echo "Node version: $(node --version)"
-          echo "pnpm version: $(pnpm --version)"
-          echo "tsx availability: $(which tsx || echo 'NOT FOUND')"
-          echo "pnpm workspace structure:"
-          pnpm list --depth=0 || true
+        run: scripts/ci/benchmarks/verify-node-setup.sh "Node setup (batch)"
 
       - name: Setup ONNX Runtime
         uses: ./.github/actions/setup-onnx-runtime
@@ -551,7 +485,7 @@ jobs:
       - name: Build Node bindings and install locally
         env:
           TARGET: x86_64-unknown-linux-gnu
-        run: bash scripts/benchmarks/build-node-bindings.sh
+        run: scripts/benchmarks/build-node-bindings.sh
 
       - name: Run benchmark
         env:
@@ -559,7 +493,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -586,14 +520,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -602,7 +529,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -619,7 +546,7 @@ jobs:
         uses: ./.github/actions/setup-node-workspace
 
       - name: Build WASM bindings
-        run: bash scripts/benchmarks/build-wasm-bindings.sh
+        run: scripts/benchmarks/build-wasm-bindings.sh
 
       - name: Run benchmark
         env:
@@ -627,7 +554,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -654,14 +581,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -670,7 +590,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -687,7 +607,7 @@ jobs:
         uses: ./.github/actions/setup-node-workspace
 
       - name: Build WASM bindings
-        run: bash scripts/benchmarks/build-wasm-bindings.sh
+        run: scripts/benchmarks/build-wasm-bindings.sh
 
       - name: Run benchmark
         env:
@@ -695,7 +615,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -722,14 +642,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -738,7 +651,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -762,12 +675,12 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Vendor kreuzberg core for Ruby
-        run: bash scripts/ci/ruby/vendor-kreuzberg-core.sh
+        run: scripts/ci/ruby/vendor-kreuzberg-core.sh
 
       - name: Build Ruby native gem
         env:
           PLATFORM: x86_64-linux
-        run: bash scripts/benchmarks/build-ruby-gem.sh
+        run: scripts/benchmarks/build-ruby-gem.sh
 
       - name: Run benchmark
         env:
@@ -775,7 +688,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -802,14 +715,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -818,7 +724,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -842,12 +748,12 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Vendor kreuzberg core for Ruby
-        run: bash scripts/ci/ruby/vendor-kreuzberg-core.sh
+        run: scripts/ci/ruby/vendor-kreuzberg-core.sh
 
       - name: Build Ruby native gem
         env:
           PLATFORM: x86_64-linux
-        run: bash scripts/benchmarks/build-ruby-gem.sh
+        run: scripts/benchmarks/build-ruby-gem.sh
 
       - name: Run benchmark
         env:
@@ -855,7 +761,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -882,14 +788,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -898,7 +797,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -927,7 +826,7 @@ jobs:
         run: go mod download
 
       - name: Build Go bindings
-        run: bash scripts/benchmarks/build-go-bindings.sh
+        run: scripts/benchmarks/build-go-bindings.sh
 
       - name: Run benchmark
         env:
@@ -936,7 +835,7 @@ jobs:
           ITERATIONS: ${{ env.ITERATIONS }}
           KREUZBERG_BENCHMARK_DEBUG: "true"
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -963,14 +862,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -979,7 +871,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -1008,7 +900,7 @@ jobs:
         run: go mod download
 
       - name: Build Go bindings
-        run: bash scripts/benchmarks/build-go-bindings.sh
+        run: scripts/benchmarks/build-go-bindings.sh
 
       - name: Run benchmark
         env:
@@ -1017,7 +909,7 @@ jobs:
           ITERATIONS: ${{ env.ITERATIONS }}
           KREUZBERG_BENCHMARK_DEBUG: "true"
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -1044,14 +936,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -1060,7 +945,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -1085,7 +970,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Build Java bindings
-        run: bash scripts/benchmarks/build-java-package.sh
+        run: scripts/benchmarks/build-java-package.sh
 
       - name: Run benchmark
         env:
@@ -1093,7 +978,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -1120,14 +1005,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -1136,7 +1014,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -1160,7 +1038,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Build C# bindings
-        run: bash scripts/benchmarks/build-csharp-benchmark.sh
+        run: scripts/benchmarks/build-csharp-benchmark.sh
 
       - name: Run benchmark
         env:
@@ -1168,7 +1046,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -1195,14 +1073,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -1211,7 +1082,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -1244,7 +1115,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -1271,14 +1142,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -1287,7 +1151,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -1320,7 +1184,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -1347,14 +1211,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -1363,7 +1220,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -1396,7 +1253,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -1423,14 +1280,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -1439,7 +1289,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -1472,7 +1322,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -1499,14 +1349,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -1515,7 +1358,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -1545,7 +1388,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -1572,14 +1415,7 @@ jobs:
           ref: ${{ github.event.inputs.branch || github.ref_name }}
 
       - name: Free disk space
-        run: |
-          echo "Disk before cleanup:"
-          df -h
-          sudo docker system prune -af
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
-          echo "Disk after cleanup:"
-          df -h
+        run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download build artifacts
         uses: actions/download-artifact@v6
@@ -1588,7 +1424,7 @@ jobs:
           path: target/release
 
       - name: Restore benchmark binary permissions
-        run: bash scripts/benchmarks/restore-binary-permissions.sh
+        run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
@@ -1618,7 +1454,7 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
-        run: bash scripts/benchmarks/run-benchmark.sh
+        run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
@@ -1656,11 +1492,7 @@ jobs:
         run: cargo build --release -p benchmark-harness
 
       - name: Generate HTML visualization
-        run: |
-          ./target/release/benchmark-harness run \
-            --fixtures benchmark-results/ \
-            --output benchmark-output/ \
-            --format html
+        run: scripts/ci/benchmarks/generate-html-visualization.sh
 
       - name: Upload visualization artifacts
         uses: actions/upload-artifact@v5

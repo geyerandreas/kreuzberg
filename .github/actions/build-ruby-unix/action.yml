@@ -21,39 +21,20 @@ runs:
     - name: Install Ruby dependencies
       shell: bash
       working-directory: packages/ruby
-      run: |
-        bundle config set --local path 'vendor/bundle'
-        bundle install --jobs 4 --retry 3
+      run: ../../scripts/ci/actions/build-ruby-unix/install-deps.sh
 
     - name: Build native gem
       shell: bash
       working-directory: packages/ruby
       env:
         RB_SYS_CARGO_PROFILE: release
-      run: |
-        RUBY_ARCH=$(ruby -e "require 'rbconfig'; print RbConfig::CONFIG['arch']")
-        bundle exec rake native:kreuzberg:${RUBY_ARCH}
+      run: ../../scripts/ci/actions/build-ruby-unix/build-native.sh
 
     - name: Package native gem
       id: package
       shell: bash
       working-directory: packages/ruby
-      run: |
-        set -euo pipefail
-        RUBY_ARCH=$(ruby -e "require 'rbconfig'; print RbConfig::CONFIG['arch']")
-        STAGE_DIR="tmp/${RUBY_ARCH}/stage"
-        mkdir -p pkg
-
-        if [ ! -f "${STAGE_DIR}/kreuzberg.gemspec" ]; then
-          echo "Stage directory ${STAGE_DIR} missing" >&2
-          exit 1
-        fi
-
-        (cd "${STAGE_DIR}" && gem build kreuzberg.gemspec)
-        mv "${STAGE_DIR}"/kreuzberg-*.gem pkg/
-
-        gem_file=$(find pkg -name "kreuzberg-*.gem" -type f | head -n 1)
-        echo "gem-path=${GITHUB_WORKSPACE}/packages/ruby/$gem_file" >> "$GITHUB_OUTPUT"
+      run: ../../scripts/ci/actions/build-ruby-unix/package.sh
 
     - name: Build source gem
       if: inputs.build-source-gem == 'true'

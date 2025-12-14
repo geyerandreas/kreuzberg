@@ -9,7 +9,8 @@ param(
     [string]$StagingDir = "artifact-staging/kreuzberg-ffi"
 )
 
-$ErrorActionPreference = "Stop"
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
 $TargetDir = "target\x86_64-pc-windows-gnu\release"
 

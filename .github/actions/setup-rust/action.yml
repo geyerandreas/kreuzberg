@@ -42,14 +42,7 @@ runs:
 
     - name: Verify Rust installation
       shell: bash
-      run: |
-        set -euo pipefail
-        echo "Rust toolchain information:"
-        rustc --version
-        rustup --version
-        cargo --version
-        echo "Available targets:"
-        rustup target list | grep -E "installed|${{ inputs.target }}" | head -5
+      run: scripts/ci/actions/setup-rust/verify-install.sh "${{ inputs.target }}"
 
     - name: Setup sccache
       if: inputs.use-sccache == 'true'
@@ -58,88 +51,12 @@ runs:
 
     - name: Configure Rust flags
       shell: bash
-      run: |
-        set -euo pipefail
-        echo "Configuring Rust compilation environment..."
-
-        if [ "${{ inputs.use-sccache }}" = "true" ]; then
-          # Check if sccache is actually available before enabling it
-          if command -v sccache &> /dev/null; then
-            sccache_version=$(sccache --version 2>&1 || echo "unknown")
-            echo "sccache is available (version: $sccache_version), enabling as RUSTC_WRAPPER"
-            echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
-            echo "RUSTC_WRAPPER=sccache" >> "$GITHUB_ENV"
-          else
-            echo "Warning: sccache requested but not found in PATH"
-            echo "Checking SCCACHE_PATH environment variable..."
-            if [ -n "${SCCACHE_PATH:-}" ] && [ -f "${SCCACHE_PATH}/sccache" ]; then
-              echo "Found sccache at SCCACHE_PATH: ${SCCACHE_PATH}/sccache"
-              echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
-              echo "RUSTC_WRAPPER=${SCCACHE_PATH}/sccache" >> "$GITHUB_ENV"
-            else
-              echo "sccache not available, proceeding with direct compilation"
-              echo "SCCACHE_GHA_ENABLED=false" >> "$GITHUB_ENV"
-              echo "RUSTC_WRAPPER=" >> "$GITHUB_ENV"
-            fi
-          fi
-        else
-          echo "sccache disabled by configuration"
-          echo "SCCACHE_GHA_ENABLED=false" >> "$GITHUB_ENV"
-          echo "RUSTC_WRAPPER=" >> "$GITHUB_ENV"
-        fi
-
-        base="-D warnings"
-        # IMPORTANT: Do NOT add WASM-specific RUSTFLAGS here. They will break host builds
-        # (build scripts, proc-macros) and native target builds (aarch64-apple-darwin, etc).
-        # The .cargo/config.toml in crates/kreuzberg-wasm/ already configures WASM flags
-        # correctly with target-applies-to-host=false to prevent this exact issue.
-
-        # Check if unpredictable-function-pointer-comparisons lint is available
-        if ! check_output="$(printf 'fn main() {}\n' | RUSTC_COLOR=never rustc -W unpredictable-function-pointer-comparisons - 2>&1)"; then
-          :
-        fi
-        if grep -qi "unknown lint" <<<"$check_output"; then
-          echo "unpredictable-function-pointer-comparisons lint unavailable on $(rustc -V); skipping flag"
-        else
-          base+=" -A unpredictable-function-pointer-comparisons"
-          echo "Detected unpredictable-function-pointer-comparisons lint support; appended suppression flag"
-        fi
-
-        # Check for fn_ptr_eq lint (newer Rust versions)
-        if ! check_output="$(printf 'fn main() {}\n' | RUSTC_COLOR=never rustc -W fn_ptr_eq - 2>&1)"; then
-          :
-        fi
-        if grep -qi "unknown lint" <<<"$check_output"; then
-          echo "fn_ptr_eq lint unavailable on $(rustc -V); skipping flag"
-        else
-          base+=" -A fn_ptr_eq --cfg has_fn_ptr_eq_lint"
-          echo "Detected fn_ptr_eq lint support; appended suppression flags"
-        fi
-        echo "RUSTFLAGS=$base" >> "$GITHUB_ENV"
+      run: scripts/ci/actions/setup-rust/configure-flags.sh "${{ inputs.use-sccache }}"
 
     - name: Generate Cargo.lock hash
       id: cargo-hash
       shell: bash
-      run: |
-        set -euo pipefail
-        # Generate hash from Cargo.lock files, with fallback if hashFiles fails
-        # Primary: root Cargo.lock (workspace lock file)
-        # Works on both Linux (sha256sum) and macOS (shasum -a 256)
-        if [ -f "Cargo.lock" ]; then
-          if command -v sha256sum &> /dev/null; then
-            hash=$(sha256sum Cargo.lock | cut -d' ' -f1)
-          elif command -v shasum &> /dev/null; then
-            hash=$(shasum -a 256 Cargo.lock | cut -d' ' -f1)
-          else
-            # Fallback to file modification time if no hash tool available
-            hash=$(stat -c %Y Cargo.lock 2>/dev/null || stat -f %m Cargo.lock)
-          fi
-        else
-          # Fallback to a timestamp-based hash if no Cargo.lock exists
-          hash=$(date +%Y%m%d)
-        fi
-        echo "hash=$hash" >> "$GITHUB_OUTPUT"
-        echo "Using Cargo.lock hash: $hash"
+      run: scripts/ci/actions/setup-rust/cargo-lock-hash.sh
 
     - name: Cache Rust build artifacts
       id: cache-rust
@@ -163,70 +80,18 @@ runs:
     - name: Validate sccache installation
       if: inputs.use-sccache == 'true'
       shell: bash
-      run: |
-        set +e  # Don't exit on error for diagnostics
-        echo "Checking sccache installation..."
-        if command -v sccache &> /dev/null; then
-          echo "sccache found in PATH"
-          which sccache
-          sccache --version || echo "sccache version check failed"
-        elif [ -n "${SCCACHE_PATH:-}" ] && [ -d "${SCCACHE_PATH}" ]; then
-          echo "SCCACHE_PATH is set to: ${SCCACHE_PATH}"
-          if [ -f "${SCCACHE_PATH}/sccache" ]; then
-            echo "sccache executable found at SCCACHE_PATH"
-            "${SCCACHE_PATH}/sccache" --version || echo "sccache version check failed"
-          else
-            echo "sccache executable NOT found at SCCACHE_PATH"
-            ls -la "${SCCACHE_PATH}" || echo "Failed to list SCCACHE_PATH contents"
-          fi
-        else
-          echo "Warning: sccache not found in PATH and SCCACHE_PATH not set or invalid"
-          echo "Continuing without sccache"
-        fi
-        set -e
+      run: scripts/ci/actions/setup-rust/validate-sccache.sh
 
     - name: Ensure sccache is on PATH
       if: inputs.use-sccache == 'true' && env.SCCACHE_PATH != ''
       shell: bash
-      run: |
-        if [ -d "${SCCACHE_PATH}" ] && [ -f "${SCCACHE_PATH}/sccache" ]; then
-          echo "${SCCACHE_PATH}" >> "$GITHUB_PATH"
-          echo "Added sccache to PATH"
-        else
-          echo "Warning: sccache not available at ${SCCACHE_PATH}, proceeding without sccache"
-        fi
+      run: scripts/ci/actions/setup-rust/ensure-sccache-path.sh
 
     - name: Add Rust target
       if: inputs.target != ''
       shell: bash
-      run: |
-        set -euo pipefail
-        target="${{ inputs.target }}"
-        echo "Checking Rust target: $target"
-
-        # Check if target is already installed
-        if rustup target list | grep -q "^$target (installed)"; then
-          echo "Target $target is already installed"
-        else
-          echo "Installing target: $target"
-          rustup target add "$target" || {
-            echo "Failed to install target $target"
-            echo "Available targets:"
-            rustup target list | head -20
-            exit 1
-          }
-          echo "Successfully installed target: $target"
-        fi
-
-        # Verify installation
-        rustup target list | grep "$target"
+      run: scripts/ci/actions/setup-rust/add-target.sh "${{ inputs.target }}"
 
     - name: Install cargo-llvm-cov if not cached
       shell: bash
-      run: |
-        if ! command -v cargo-llvm-cov &> /dev/null; then
-          echo "Installing cargo-llvm-cov..."
-          cargo install cargo-llvm-cov
-        else
-          echo "cargo-llvm-cov already installed"
-        fi
+      run: scripts/ci/actions/setup-rust/install-cargo-llvm-cov.sh

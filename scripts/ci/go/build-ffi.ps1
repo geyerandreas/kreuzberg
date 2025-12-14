@@ -1,3 +1,4 @@
+#!/usr/bin/env pwsh
 # Build FFI library for Go bindings
 # Used by: ci-go.yaml - Build FFI library step
 # Supports: Windows (MinGW), Unix (Linux/macOS)
@@ -7,6 +8,9 @@
 # - ORT_LIB_LOCATION: Path to ONNX Runtime lib directory
 # - ORT_SKIP_DOWNLOAD: Set to 1 to skip downloading ONNX Runtime
 # - ORT_PREFER_DYNAMIC_LINK: Set to 1 for dynamic linking
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
 
 $IsWindowsOS = $PSVersionTable.Platform -eq 'Win32NT' -or $PSVersionTable.PSVersion.Major -lt 6
 

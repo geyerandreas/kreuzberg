@@ -64,25 +64,27 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Free up disk space
+        shell: bash
         run: scripts/ci/docker/free-disk-space.sh
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
+        shell: bash
         run: scripts/ci/docker/build-image.sh "${{ matrix.variant }}"
 
       - name: Test Docker image size
+        shell: bash
         run: scripts/ci/docker/check-image-size.sh "${{ matrix.variant }}"
 
       - name: Run comprehensive feature tests
         if: ${{ !inputs.skip_tests }}
-        run: |
-          echo "=== Running Docker feature tests (${{ matrix.variant }}) ==="
-          ./scripts/test_docker.sh --skip-build --image kreuzberg:${{ matrix.variant }} --variant ${{ matrix.variant }} --verbose
+        run: scripts/ci/docker/run-feature-tests.sh "${{ matrix.variant }}"
 
       - name: Save Docker image as artifact
         if: success()
+        shell: bash
         run: scripts/ci/docker/save-image.sh "${{ matrix.variant }}" /tmp
 
       - name: Upload Docker image artifact
@@ -104,6 +106,7 @@ jobs:
 
       - name: Collect Docker logs on failure
         if: failure()
+        shell: bash
         run: scripts/ci/docker/collect-logs.sh /tmp/docker-logs
 
       - name: Upload Docker logs
@@ -116,8 +119,10 @@ jobs:
 
       - name: Clean up Docker resources
         if: always()
+        shell: bash
         run: scripts/ci/docker/cleanup.sh "${{ matrix.variant }}"
 
       - name: Summary
         if: success()
+        shell: bash
         run: scripts/ci/docker/summary.sh "${{ matrix.variant }}" /tmp/kreuzberg-docker-test-results.json

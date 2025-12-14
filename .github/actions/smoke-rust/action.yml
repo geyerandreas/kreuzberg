@@ -12,8 +12,4 @@ runs:
   steps:
     - name: Smoke test Rust crate
       shell: bash
-      run: |
-        set -euo pipefail
-        python scripts/smoke_rust.py \
-          --workspace "${GITHUB_WORKSPACE}" \
-          --source-path "${{ inputs.source-path }}"
+      run: scripts/ci/actions/smoke-rust/run.sh "${{ inputs.source-path }}"

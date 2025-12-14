@@ -100,33 +100,12 @@ jobs:
 
       - name: Install Bundler
         shell: bash
-        run: |
-          gem install bundler -v 4.0.0 --no-document || gem install bundler --no-document
-          bundler --version
+        run: scripts/ci/ruby/install-bundler.sh
 
       - name: Configure short paths for Windows MAX_PATH mitigation
         if: runner.os == 'Windows'
         shell: pwsh
-        run: |
-          # Create short path directories
-          New-Item -ItemType Directory -Path "C:\\t" -Force
-          New-Item -ItemType Directory -Path "C:\\b" -Force
-          New-Item -ItemType Directory -Path "C:\\g" -Force
-
-          # Configure bundler to use shorter path
-          cd packages/ruby
-          bundle config set path "C:\\b"
-          bundle config set no_prune true
-
-          # Export env vars for subsequent steps
-          Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=C:\\t"
-          Add-Content -Path $env:GITHUB_ENV -Value "BUNDLE_PATH=C:\\b"
-          Add-Content -Path $env:GITHUB_ENV -Value "GEM_HOME=C:\\g"
-
-          Write-Host "Windows MAX_PATH mitigation paths configured:"
-          Write-Host "  CARGO_TARGET_DIR: C:\\t"
-          Write-Host "  BUNDLE_PATH: C:\\b"
-          Write-Host "  GEM_HOME: C:\\g"
+        run: pwsh -File scripts/ci/ruby/windows-max-path-mitigation.ps1
 
       - name: Install Ruby deps
         if: runner.os != 'Windows'
@@ -240,9 +219,7 @@ jobs:
 
       - name: Install Bundler
         shell: bash
-        run: |
-          gem install bundler -v 4.0.0 --no-document || gem install bundler --no-document
-          bundler --version
+        run: scripts/ci/ruby/install-bundler.sh
 
       - name: Install Ruby deps
         if: runner.os != 'Windows'
@@ -252,34 +229,12 @@ jobs:
       - name: Configure short paths for Windows MAX_PATH mitigation
         if: runner.os == 'Windows'
         shell: pwsh
-        run: |
-          # Create short path directories
-          New-Item -ItemType Directory -Path "C:\\t" -Force
-          New-Item -ItemType Directory -Path "C:\\b" -Force
-          New-Item -ItemType Directory -Path "C:\\g" -Force
-
-          # Configure bundler to use shorter path
-          bundle config set path "C:\\b"
-          bundle config set no_prune true
-
-          # Export env vars for subsequent steps
-          Add-Content -Path $env:GITHUB_ENV -Value "CARGO_TARGET_DIR=C:\\t"
-          Add-Content -Path $env:GITHUB_ENV -Value "BUNDLE_PATH=C:\\b"
-          Add-Content -Path $env:GITHUB_ENV -Value "GEM_HOME=C:\\g"
-
-          Write-Host "Windows MAX_PATH mitigation paths configured:"
-          Write-Host "  CARGO_TARGET_DIR: C:\\t"
-          Write-Host "  BUNDLE_PATH: C:\\b"
-          Write-Host "  GEM_HOME: C:\\g"
+        run: pwsh -File scripts/ci/ruby/windows-max-path-mitigation.ps1
 
       - name: Install Ruby deps (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: |
-          cd packages/ruby
-          bundle config set path vendor/bundle
-          bundle config set deployment false
-          bundle install --jobs 4
+        run: scripts/ci/ruby/install-ruby-deps.ps1
 
       - name: Install rb_sys build helper
         run: gem install rb_sys -v "~> 0.9"
@@ -335,5 +290,4 @@ jobs:
         uses: ./.github/actions/install-task
 
       - name: Run E2E tests
-        run: |
-          task e2e:ruby:test
+        run: scripts/ci/ruby/run-e2e.sh

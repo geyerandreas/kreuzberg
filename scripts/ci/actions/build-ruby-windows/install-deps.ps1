@@ -1,0 +1,6 @@
+$ErrorActionPreference = "Stop"
+
+$workspace = ridk exec bash -lc "cygpath -au '$env:GITHUB_WORKSPACE'"
+$rubydir = "$workspace/packages/ruby"
+
+ridk exec bash -lc "cd $rubydir && export RUSTUP_TOOLCHAIN=stable-gnu CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ && bundle config set --local path 'vendor/bundle' && bundle install --jobs 4 --retry 3"

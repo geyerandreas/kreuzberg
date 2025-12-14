@@ -61,6 +61,7 @@ env:
   RUST_BACKTRACE: short
   RUST_MIN_STACK: 16777216
   MACOSX_DEPLOYMENT_TARGET: "14.0"
+  WASM_RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
 
 jobs:
   # ============================================================================
@@ -95,9 +96,7 @@ jobs:
         shell: bash
 
       - name: Run biome check (TypeScript)
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm biome check typescript
+        run: scripts/ci/wasm/biome-check.sh
         shell: bash
 
       - name: Cleanup Rust cache
@@ -138,7 +137,7 @@ jobs:
 
       - name: Install wasm-pack
         shell: bash
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        run: scripts/ci/wasm/install-wasm-pack.sh
 
       - name: Run Rust unit tests
         run: cargo test --lib --target wasm32-unknown-unknown --no-fail-fast
@@ -148,9 +147,7 @@ jobs:
           RUST_BACKTRACE: 1
 
       - name: Run TypeScript tests
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm test
+        run: scripts/ci/wasm/pnpm-test-wasm-crate.sh
         shell: bash
 
       - name: Cleanup Rust cache
@@ -194,49 +191,35 @@ jobs:
 
       - name: Install wasm-pack
         shell: bash
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        run: scripts/ci/wasm/install-wasm-pack.sh
 
       - name: Build WASM for Web
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm run build:wasm:web
+        run: scripts/ci/wasm/pnpm-build-wasm.sh web
         shell: bash
         env:
-          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
+          RUSTFLAGS: ${{ env.WASM_RUSTFLAGS }}
 
       - name: Build WASM for Bundler
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm run build:wasm:bundler
+        run: scripts/ci/wasm/pnpm-build-wasm.sh bundler
         shell: bash
         env:
-          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
+          RUSTFLAGS: ${{ env.WASM_RUSTFLAGS }}
 
       - name: Build WASM for Node.js
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm run build:wasm:nodejs
+        run: scripts/ci/wasm/pnpm-build-wasm.sh nodejs
         shell: bash
         env:
-          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
+          RUSTFLAGS: ${{ env.WASM_RUSTFLAGS }}
 
       - name: Build WASM for Deno
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm run build:wasm:deno
+        run: scripts/ci/wasm/pnpm-build-wasm.sh deno
         shell: bash
         env:
-          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
+          RUSTFLAGS: ${{ env.WASM_RUSTFLAGS }}
 
       - name: Validate build artifacts (Web)
         shell: bash
-        run: |
-          PKG_DIR="crates/kreuzberg-wasm/pkg"
-          if [ ! -f "$PKG_DIR/kreuzberg_wasm_bg.wasm" ]; then
-            echo "ERROR: Web WASM artifact not found"
-            exit 1
-          fi
-          echo "Web WASM artifact validated: $PKG_DIR/kreuzberg_wasm_bg.wasm"
+        run: scripts/ci/wasm/validate-web-artifact.sh
 
       - name: Upload WASM artifacts
         uses: actions/upload-artifact@v5
@@ -273,60 +256,16 @@ jobs:
 
       - name: Install wasm-pack
         shell: bash
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        run: scripts/ci/wasm/install-wasm-pack.sh
 
       - name: Build release WASM (Bundler target)
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm run build:wasm:bundler
+        run: scripts/ci/wasm/pnpm-build-wasm.sh bundler
         shell: bash
         env:
-          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
+          RUSTFLAGS: ${{ env.WASM_RUSTFLAGS }}
 
       - name: Check WASM file sizes
-        run: |
-          set -e
-          PKG_DIR="crates/kreuzberg-wasm/pkg"
-          WASM_FILE="$PKG_DIR/kreuzberg_wasm_bg.wasm"
-
-          if [ ! -f "$WASM_FILE" ]; then
-            echo "ERROR: WASM file not found at $WASM_FILE"
-            exit 1
-          fi
-
-          # Check uncompressed size
-          WASM_SIZE=$(wc -c < "$WASM_FILE")
-          WASM_SIZE_MB=$(echo "scale=2; $WASM_SIZE / 1048576" | bc)
-          echo "WASM size (uncompressed): ${WASM_SIZE_MB}MB (${WASM_SIZE} bytes)"
-
-          # Standardized limit: 13MB uncompressed
-          # (Current max: ~11.91MB with ~9% headroom for future features)
-          # This applies to all targets: web, bundler, nodejs, deno
-          LIMIT_UNCOMPRESSED=13631488
-          if [ "$WASM_SIZE" -gt "$LIMIT_UNCOMPRESSED" ]; then
-            echo "ERROR: WASM bundle exceeds 13MB limit: ${WASM_SIZE_MB}MB"
-            exit 1
-          fi
-
-          # Check gzipped size
-          gzip -c "$WASM_FILE" > "$WASM_FILE.gz"
-          GZIP_SIZE=$(wc -c < "$WASM_FILE.gz")
-          GZIP_SIZE_MB=$(echo "scale=2; $GZIP_SIZE / 1048576" | bc)
-          echo "WASM size (gzipped): ${GZIP_SIZE_MB}MB (${GZIP_SIZE} bytes)"
-
-          # Standardized limit: 6MB gzipped
-          # (Current max: ~5.22MB with ~15% headroom for future features)
-          # This applies to all environments: browser, Node.js, Deno, Cloudflare Workers
-          LIMIT_GZIPPED=6291456
-          if [ "$GZIP_SIZE" -gt "$LIMIT_GZIPPED" ]; then
-            echo "ERROR: Gzipped WASM exceeds 6MB limit: ${GZIP_SIZE_MB}MB"
-            exit 1
-          fi
-
-          echo ""
-          echo "Bundle size check passed!"
-          echo "- Uncompressed: ${WASM_SIZE_MB}MB / 13MB"
-          echo "- Gzipped: ${GZIP_SIZE_MB}MB / 6MB"
+        run: scripts/ci/wasm/check-wasm-file-sizes.sh
         shell: bash
 
       - name: Cleanup Rust cache
@@ -357,45 +296,21 @@ jobs:
 
       - name: Install wasm-pack
         shell: bash
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        run: scripts/ci/wasm/install-wasm-pack.sh
 
       - name: Build WASM (required for type generation)
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm run build:wasm:bundler
+        run: scripts/ci/wasm/pnpm-build-wasm.sh bundler
         shell: bash
         env:
-          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
+          RUSTFLAGS: ${{ env.WASM_RUSTFLAGS }}
 
       - name: Run TypeScript type check
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm typecheck
+        run: scripts/ci/wasm/typecheck-wasm-crate.sh
         shell: bash
 
       - name: Verify .d.ts files exist
         shell: bash
-        run: |
-          set -e
-          PKG_DIR="crates/kreuzberg-wasm/pkg"
-
-          echo "Checking for generated type definitions..."
-
-          REQUIRED_FILES=(
-            "$PKG_DIR/kreuzberg_wasm.d.ts"
-            "$PKG_DIR/index.d.ts"
-          )
-
-          for FILE in "${REQUIRED_FILES[@]}"; do
-            if [ ! -f "$FILE" ]; then
-              echo "ERROR: Type definition file not found: $FILE"
-              exit 1
-            fi
-            echo "Found: $FILE"
-          done
-
-          echo ""
-          echo "Type definitions validation passed!"
+        run: scripts/ci/wasm/verify-dts-files.sh
 
       - name: Cleanup Rust cache
         if: always()
@@ -431,21 +346,15 @@ jobs:
           path: crates/kreuzberg-wasm/
 
       - name: Install dependencies
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm install
+        run: scripts/ci/wasm/pnpm-install-wasm-crate.sh
         shell: bash
 
       - name: Build TypeScript wrapper
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm run build:ts
+        run: scripts/ci/wasm/pnpm-build-ts-wasm-crate.sh
         shell: bash
 
       - name: Run integration tests
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm test
+        run: scripts/ci/wasm/pnpm-test-wasm-crate.sh
         shell: bash
 
   # ============================================================================
@@ -491,8 +400,7 @@ jobs:
 
       - name: Install wasm-pack
         shell: bash
-        run: |
-          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        run: scripts/ci/wasm/install-wasm-pack.sh
 
       - name: Install Deno
         uses: denoland/setup-deno@v2
@@ -501,42 +409,29 @@ jobs:
 
       - name: Build WASM package
         shell: bash
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm run build:wasm:bundler
+        run: scripts/ci/wasm/pnpm-build-wasm.sh bundler
         env:
-          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
+          RUSTFLAGS: ${{ env.WASM_RUSTFLAGS }}
 
       - name: Build TypeScript wrapper
         shell: bash
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm run build:ts
+        run: scripts/ci/wasm/pnpm-build-ts-wasm-crate.sh
 
       - name: Generate Deno E2E tests
         shell: bash
-        run: |
-          cargo run -p kreuzberg-e2e-generator -- generate --lang wasm-deno --fixtures fixtures --output e2e
+        run: scripts/ci/wasm/generate-e2e-tests.sh wasm-deno
 
       - name: Link WASM package for testing
         shell: bash
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm pack
-          WASM_PKG_PATH="$(pwd)/$(ls kreuzberg-wasm-*.tgz)"
-          echo "WASM_PKG_PATH=$WASM_PKG_PATH" >> "$GITHUB_ENV"
+        run: scripts/ci/wasm/pack-wasm-and-export-path.sh
 
       - name: Install WASM package in Deno tests
         shell: bash
-        run: |
-          cd e2e/wasm-deno
-          echo "Using WASM package from: $WASM_PKG_PATH"
+        run: scripts/ci/wasm/deno-print-wasm-package-path.sh
 
       - name: Run Deno tests
         shell: bash
-        run: |
-          cd e2e/wasm-deno
-          deno task test
+        run: scripts/ci/wasm/run-deno-tests.sh
 
       - name: Cleanup Rust cache
         if: always()
@@ -568,59 +463,27 @@ jobs:
         uses: ./.github/actions/setup-node-workspace
 
       - name: Install wasm-pack
-        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+        run: scripts/ci/wasm/install-wasm-pack.sh
 
       - name: Build WASM package (size-optimized)
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm run build:wasm:bundler
+        run: scripts/ci/wasm/pnpm-build-wasm.sh bundler
         env:
-          RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
+          RUSTFLAGS: ${{ env.WASM_RUSTFLAGS }}
 
       - name: Build TypeScript wrapper
-        run: |
-          cd crates/kreuzberg-wasm
-          pnpm run build:ts
+        run: scripts/ci/wasm/pnpm-build-ts-wasm-crate.sh
 
       - name: Verify WASM size for Workers
-        run: |
-          cd crates/kreuzberg-wasm/pkg/bundler
-          WASM_SIZE=$(wc -c < kreuzberg_wasm_bg.wasm)
-          echo "WASM size (uncompressed): $(numfmt --to=iec-i --suffix=B "$WASM_SIZE")"
-
-          # Standardized limit: 13MB uncompressed
-          # (Current max: ~11.91MB with ~9% headroom for future features)
-          if [ "$WASM_SIZE" -gt 13631488 ]; then
-            echo "ERROR: WASM bundle exceeds standardized 13MB limit: $WASM_SIZE bytes"
-            exit 1
-          fi
-
-          # Check compressed size (what actually matters for Workers)
-          gzip -c kreuzberg_wasm_bg.wasm > kreuzberg_wasm_bg.wasm.gz
-          GZIP_SIZE=$(wc -c < kreuzberg_wasm_bg.wasm.gz)
-          echo "WASM size (gzipped): $(numfmt --to=iec-i --suffix=B "$GZIP_SIZE")"
-
-          # Standardized limit: 6MB gzipped
-          # (Current max: ~5.22MB with ~15% headroom for future features)
-          # Cloudflare Workers actual limit is 10MB compressed, we use stricter threshold
-          if [ "$GZIP_SIZE" -gt 6291456 ]; then
-            echo "ERROR: Gzipped WASM exceeds standardized 6MB limit: $GZIP_SIZE bytes"
-            exit 1
-          fi
+        run: scripts/ci/wasm/verify-workers-wasm-size.sh
 
       - name: Generate Workers E2E tests
-        run: |
-          cargo run -p kreuzberg-e2e-generator -- generate --lang wasm-workers --fixtures fixtures --output e2e
+        run: scripts/ci/wasm/generate-e2e-tests.sh wasm-workers
 
       - name: Install Workers test dependencies
-        run: |
-          cd e2e/wasm-workers
-          pnpm install
+        run: scripts/ci/wasm/pnpm-install-dir.sh e2e/wasm-workers
 
       - name: Run Miniflare tests
-        run: |
-          cd e2e/wasm-workers
-          pnpm test
+        run: scripts/ci/wasm/pnpm-test-dir.sh e2e/wasm-workers
 
       - name: Cleanup Rust cache
         if: always()
@@ -634,7 +497,6 @@ jobs:
     name: All WASM Checks Passed
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: always()
     needs:
       - lint-and-format
       - unit-tests
@@ -646,16 +508,13 @@ jobs:
       - workers-tests
     steps:
       - name: Decide whether all checks passed
-        run: |
-          if [[ "${{ needs.lint-and-format.result }}" == "failure" ||
-                "${{ needs.unit-tests.result }}" == "failure" ||
-                "${{ needs.build-wasm-targets.result }}" == "failure" ||
-                "${{ needs.bundle-size-check.result }}" == "failure" ||
-                "${{ needs.type-definitions.result }}" == "failure" ||
-                "${{ needs.integration-tests-node.result }}" == "failure" ||
-                "${{ needs.deno-tests.result }}" == "failure" ||
-                "${{ needs.workers-tests.result }}" == "failure" ]]; then
-            echo "One or more WASM CI checks failed"
-            exit 1
-          fi
-          echo "All WASM CI checks passed!"
+        env:
+          LINT_AND_FORMAT: ${{ needs.lint-and-format.result }}
+          UNIT_TESTS: ${{ needs.unit-tests.result }}
+          BUILD_WASM_TARGETS: ${{ needs.build-wasm-targets.result }}
+          BUNDLE_SIZE_CHECK: ${{ needs.bundle-size-check.result }}
+          TYPE_DEFINITIONS: ${{ needs.type-definitions.result }}
+          INTEGRATION_TESTS_NODE: ${{ needs.integration-tests-node.result }}
+          DENO_TESTS: ${{ needs.deno-tests.result }}
+          WORKERS_TESTS: ${{ needs.workers-tests.result }}
+        run: scripts/ci/wasm/all-checks-passed.sh

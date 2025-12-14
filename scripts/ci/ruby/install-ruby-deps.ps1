@@ -1,3 +1,4 @@
+#!/usr/bin/env pwsh
 # Install Ruby dependencies via bundle (Windows)
 # Used by: ci-ruby.yaml - Install Ruby deps step (Windows)
 

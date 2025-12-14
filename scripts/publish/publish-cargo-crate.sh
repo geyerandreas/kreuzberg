@@ -34,7 +34,7 @@ status=${PIPESTATUS[0]}
 set -e
 
 if [ "$status" -ne 0 ]; then
-	if grep -qi "already uploaded" "$publish_log"; then
+	if grep -qiE "(already uploaded|already exists)" "$publish_log"; then
 		echo "::notice::$crate already published; skipping."
 	else
 		rm -f "$publish_log"

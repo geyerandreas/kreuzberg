@@ -1,3 +1,4 @@
+#!/usr/bin/env pwsh
 # Configure bindgen compatibility headers for Windows
 # Used by: ci-ruby.yaml - Configure bindgen compatibility headers step
 

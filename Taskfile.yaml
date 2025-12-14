@@ -371,13 +371,11 @@ tasks:
   shell:lint:
     desc: Lint shell scripts with auto-fix (shfmt + shellcheck)
     cmds:
-      - bash -c 'files=$(git ls-files "*.sh"); [ -z "$files" ] || shfmt -w $files'
-      - bash -c 'files=$(git ls-files "*.sh"); [ -z "$files" ] || shellcheck $files'
+      - bash scripts/task/shell-lint.sh fix
   shell:lint:check:
     desc: Lint shell scripts in check-only mode (shfmt + shellcheck)
     cmds:
-      - bash -c 'files=$(git ls-files "*.sh"); [ -z "$files" ] || shfmt -d $files'
-      - bash -c 'files=$(git ls-files "*.sh"); [ -z "$files" ] || shellcheck $files'
+      - bash scripts/task/shell-lint.sh check
   github:lint:
     desc: Lint GitHub Actions workflows (actionlint)
     cmds:
@@ -393,8 +391,7 @@ tasks:
   e2e:rust:generate:
     desc: Generate Rust E2E tests from fixtures
     cmds:
-      - cargo run -p kreuzberg-e2e-generator -- generate --lang rust --fixtures fixtures
-        --output e2e
+      - bash scripts/task/e2e-generate.sh rust
   e2e:rust:format:
     desc: Format generated Rust E2E sources
     cmds:
@@ -417,8 +414,7 @@ tasks:
   e2e:python:generate:
     desc: Generate Python E2E tests from fixtures
     cmds:
-      - cargo run -p kreuzberg-e2e-generator -- generate --lang python --fixtures fixtures
-        --output e2e
+      - bash scripts/task/e2e-generate.sh python
   e2e:python:lint:
     desc: Lint generated Python E2E suite (ruff + mypy)
     dir: packages/python
@@ -441,10 +437,7 @@ tasks:
   e2e:ts:generate:
     desc: Generate TypeScript E2E tests from fixtures
     cmds:
-      - cargo run -p kreuzberg-e2e-generator -- generate --lang typescript --fixtures
-        fixtures --output e2e
-      - pnpm biome format --write e2e/typescript/tests
-      - pnpm biome check e2e/typescript/tests
+      - bash scripts/task/e2e-typescript-generate.sh
   e2e:ts:lint:
     desc: Lint generated TypeScript E2E suite (biome)
     cmds:
@@ -465,7 +458,7 @@ tasks:
   e2e:ruby:generate:
     desc: Generate Ruby E2E tests from fixtures
     cmds:
-      - cargo run -p kreuzberg-e2e-generator -- generate --lang ruby --fixtures fixtures --output e2e
+      - bash scripts/task/e2e-generate.sh ruby
   e2e:ruby:lint:
     desc: Lint generated Ruby E2E suite
     dir: packages/ruby
@@ -485,7 +478,7 @@ tasks:
   e2e:java:generate:
     desc: Generate Java E2E tests from fixtures
     cmds:
-      - cargo run -p kreuzberg-e2e-generator -- generate --lang java --fixtures fixtures --output e2e
+      - bash scripts/task/e2e-generate.sh java
   e2e:java:test:
     desc: Run Java E2E tests
     dir: e2e/java
@@ -500,7 +493,7 @@ tasks:
   e2e:go:generate:
     desc: Generate Go E2E tests from fixtures
     cmds:
-      - cargo run -p kreuzberg-e2e-generator -- generate --lang go --fixtures fixtures --output e2e
+      - bash scripts/task/e2e-generate.sh go
       - scripts/e2e/go/format.sh
   e2e:go:test:
     desc: Run Go E2E tests
@@ -514,7 +507,7 @@ tasks:
   e2e:csharp:generate:
     desc: Generate C# E2E tests from fixtures
     cmds:
-      - cargo run -p kreuzberg-e2e-generator -- generate --lang csharp --fixtures fixtures --output e2e
+      - bash scripts/task/e2e-generate.sh csharp
   e2e:csharp:test:
     desc: Run C# E2E tests
     cmds:
@@ -532,7 +525,7 @@ tasks:
   e2e:wasm-deno:generate:
     desc: Generate Deno WASM E2E tests from fixtures
     cmds:
-      - cargo run -p kreuzberg-e2e-generator -- generate --lang wasm-deno --fixtures fixtures --output e2e
+      - bash scripts/task/e2e-generate.sh wasm-deno
   e2e:wasm-deno:test:
     desc: Run Deno WASM E2E tests
     dir: e2e/wasm-deno
@@ -547,7 +540,7 @@ tasks:
   e2e:wasm-workers:generate:
     desc: Generate Cloudflare Workers WASM E2E tests from fixtures
     cmds:
-      - cargo run -p kreuzberg-e2e-generator -- generate --lang wasm-workers --fixtures fixtures --output e2e
+      - bash scripts/task/e2e-generate.sh wasm-workers
   e2e:wasm-workers:test:
     desc: Run Cloudflare Workers WASM E2E tests with Miniflare
     dir: e2e/wasm-workers
@@ -712,11 +705,11 @@ tasks:
   go:lint:
     desc: Lint Go code with auto-fix (gofmt + golangci-lint)
     cmds:
-      - bash -c 'cd packages/go && export PKG_CONFIG_PATH="$(pwd)/../../crates/kreuzberg-ffi:${PKG_CONFIG_PATH:-}" && go fmt ./... && golangci-lint run --config ../../.golangci.yml --fix ./...'
+      - bash scripts/task/go-lint.sh fix
   go:lint:check:
     desc: Lint Go code in check-only mode (gofmt + golangci-lint, no fixes)
     cmds:
-      - bash -c 'cd packages/go && export PKG_CONFIG_PATH="$(pwd)/../../crates/kreuzberg-ffi:${PKG_CONFIG_PATH:-}" && ../../scripts/go/format_check.sh && golangci-lint run --config ../../.golangci.yml ./...'
+      - bash scripts/task/go-lint.sh check
   go:format:
     desc: Format Go code with modifications (gofmt)
     dir: packages/go

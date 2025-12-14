@@ -21,43 +21,15 @@ runs:
     - name: Build CLI binary
       id: build
       shell: bash
-      run: |
-        set -euo pipefail
-        target="${{ inputs.target }}"
-        if [[ "${{ inputs.use-cross }}" == "true" ]]; then
-          cross build --release --target "$target" --package kreuzberg-cli
-        else
-          cargo build --release --target "$target" --package kreuzberg-cli
-        fi
+      run: scripts/ci/actions/build-cli/build.sh "${{ inputs.target }}" "${{ inputs.use-cross }}"
 
     - name: Package CLI archive (Unix)
       id: package
       if: runner.os != 'Windows'
       shell: bash
-      run: |
-        set -euo pipefail
-        target="${{ inputs.target }}"
-        stage="cli-${target}"
-        rm -rf "$stage"
-        mkdir -p "$stage"
-        cp "target/${target}/release/kreuzberg" "$stage/"
-        cp LICENSE "$stage/"
-        cp README.md "$stage/"
-        tar -czf "${stage}.tar.gz" "$stage"
-        rm -rf "$stage"
-        echo "archive-path=${GITHUB_WORKSPACE}/${stage}.tar.gz" >> "$GITHUB_OUTPUT"
+      run: scripts/ci/actions/build-cli/package-unix.sh "${{ inputs.target }}"
 
     - name: Package CLI archive (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      run: |
-        $target = '${{ inputs.target }}'
-        $stage = "cli-$target"
-        Remove-Item -Recurse -Force $stage -ErrorAction SilentlyContinue
-        New-Item -ItemType Directory -Path $stage | Out-Null
-        Copy-Item "target/$target/release/kreuzberg.exe" $stage
-        Copy-Item LICENSE $stage
-        Copy-Item README.md $stage
-        Compress-Archive -Path "$stage/*" -DestinationPath "$stage.zip" -Force
-        Remove-Item -Recurse -Force $stage
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "archive-path=$env:GITHUB_WORKSPACE/$stage.zip"
+      run: scripts/ci/actions/build-cli/package-windows.ps1 "${{ inputs.target }}"

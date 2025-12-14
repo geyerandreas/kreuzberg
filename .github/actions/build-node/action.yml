@@ -29,32 +29,10 @@ runs:
       id: build
       shell: bash
       working-directory: crates/kreuzberg-node
-      run: |
-        set -euo pipefail
-        pnpm install
-
-        if [[ "${{ inputs.use-cross }}" == "true" ]]; then
-          pnpm run build --target ${{ inputs.target }} --use-cross
-        else
-          pnpm run build --target ${{ inputs.target }}
-        fi
-
-        # Find the built .node file
-        binding=$(find . -name "*.node" -type f | head -n 1)
-        if [[ -z "$binding" ]]; then
-          echo "No .node binding file found" >&2
-          exit 1
-        fi
-        echo "binding-path=${GITHUB_WORKSPACE}/crates/kreuzberg-node/$binding" >> "$GITHUB_OUTPUT"
+      run: ../../scripts/ci/actions/build-node/build.sh "${{ inputs.target }}" "${{ inputs.use-cross }}"
 
     - name: Pack Node tarball
       if: inputs.pack-tarball == 'true'
       id: pack
       shell: bash
-      run: |
-        set -euo pipefail
-        pushd crates/kreuzberg-node >/dev/null
-        NODE_TGZ=$(npm pack | tail -1 | tr -d '\r')
-        mv "$NODE_TGZ" "$GITHUB_WORKSPACE/$NODE_TGZ"
-        popd >/dev/null
-        echo "tarball=$GITHUB_WORKSPACE/$NODE_TGZ" >> "$GITHUB_OUTPUT"
+      run: scripts/ci/actions/build-node/pack.sh

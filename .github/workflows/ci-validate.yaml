@@ -43,11 +43,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Show initial disk space
-        run: |
-          echo "=== Initial disk space ===" >&2
-          df -h / >&2
-          echo "Disk info:" >&2
-          df -B1 / | tail -1 >&2
+        run: scripts/ci/validate/show-disk-space.sh "Initial disk space"
         shell: bash
 
       - name: Free disk space before setup
@@ -98,9 +94,7 @@ jobs:
           dotnet-version: '10.0'
 
       - name: Check disk space before tool installations
-        run: |
-          echo "=== Disk space before tool installations ===" >&2
-          df -h / >&2
+        run: scripts/ci/validate/show-disk-space.sh "Disk space before tool installations"
         shell: bash
 
       - name: Install golangci-lint
@@ -111,41 +105,15 @@ jobs:
         uses: ./.github/actions/install-task
 
       - name: Install taplo (with cargo cleanup)
-        run: |
-          echo "=== Before taplo installation ===" >&2
-          df -h / >&2
-          if ! command -v taplo >/dev/null 2>&1; then
-            cargo install taplo-cli --locked
-          fi
-          # Clean cargo cache to free disk space
-          rm -rf ~/.cargo/registry/cache/* ~/.cargo/git/db/* 2>/dev/null || true
-          echo "=== After taplo installation and cleanup ===" >&2
-          df -h / >&2
+        run: scripts/ci/validate/install-taplo.sh
         shell: bash
 
       - name: Install cargo-deny (with cargo cleanup)
-        run: |
-          echo "=== Before cargo-deny installation ===" >&2
-          df -h / >&2
-          cargo install cargo-deny --locked
-          # Clean cargo cache to free disk space
-          rm -rf ~/.cargo/registry/cache/* ~/.cargo/git/db/* 2>/dev/null || true
-          echo "=== After cargo-deny installation and cleanup ===" >&2
-          df -h / >&2
+        run: scripts/ci/validate/install-cargo-deny.sh
         shell: bash
 
       - name: Install shfmt
-        run: |
-          echo "=== Before shfmt installation ===" >&2
-          df -h / >&2
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            curl -sSL "https://github.com/mvdan/sh/releases/download/v3.8.0/shfmt_v3.8.0_linux_amd64" -o /usr/local/bin/shfmt
-            chmod +x /usr/local/bin/shfmt
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            brew install shfmt
-          fi
-          echo "=== After shfmt installation ===" >&2
-          df -h / >&2
+        run: scripts/ci/validate/install-shfmt.sh
         shell: bash
 
       - name: Install actionlint
@@ -159,9 +127,7 @@ jobs:
           key: prek-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.pre-commit-config.yaml') }}-v2
 
       - name: Check disk space before lint
-        run: |
-          echo "=== Disk space before lint ===" >&2
-          df -h / >&2
+        run: scripts/ci/validate/show-disk-space.sh "Disk space before lint"
         shell: bash
 
       - name: Run lint
@@ -170,32 +136,10 @@ jobs:
 
       - name: Check final disk space
         if: always()
-        run: |
-          echo "=== Final disk space ===" >&2
-          df -h / >&2
+        run: scripts/ci/validate/show-disk-space.sh "Final disk space"
         shell: bash
 
       - name: Cleanup build artifacts after lint
         if: always()
-        run: |
-          echo "=== Cleaning up build artifacts ===" >&2
-          # Remove build artifacts that aren't needed after linting
-          rm -rf target/debug/incremental 2>/dev/null || true
-          rm -rf target/release/incremental 2>/dev/null || true
-          # Remove Pdfium artifacts if present - use explicit, safer patterns
-          if [ -d "target/debug/build" ]; then
-            find target/debug/build -type d -name pdfium -path "*/kreuzberg-ffi-*/out/pdfium" -delete 2>/dev/null || {
-              echo "Warning: Failed to clean some debug pdfium directories" >&2
-            }
-          fi
-          if [ -d "target/release/build" ]; then
-            find target/release/build -type d -name pdfium -path "*/kreuzberg-ffi-*/out/pdfium" -delete 2>/dev/null || {
-              echo "Warning: Failed to clean some release pdfium directories" >&2
-            }
-          fi
-          # Clean Python cache
-          find . -type d -name __pycache__ -delete 2>/dev/null || true
-          find . -type d -name .pytest_cache -delete 2>/dev/null || true
-          echo "=== Disk space after cleanup ===" >&2
-          df -h / >&2
+        run: scripts/ci/validate/cleanup-after-lint.sh
         shell: bash

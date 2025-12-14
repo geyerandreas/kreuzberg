@@ -1,3 +1,4 @@
+#!/usr/bin/env pwsh
 # Build Go bindings
 # Used by: ci-go.yaml - Build Go bindings step
 # Supports: Windows (MinGW), Unix (Linux/macOS)

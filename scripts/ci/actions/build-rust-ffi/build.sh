@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+crate_name="${CRATE_NAME:?CRATE_NAME required}"
+features="${FEATURES:-}"
+target="${TARGET:-}"
+build_profile="${BUILD_PROFILE:-release}"
+verbose="${VERBOSE:-true}"
+additional_flags="${ADDITIONAL_FLAGS:-}"
+
+echo "=== Building Rust FFI library ==="
+
+if [ "$crate_name" = "kreuzberg-rb" ]; then
+	CRATE_DIR="packages/ruby/ext/kreuzberg_rb/native"
+else
+	CRATE_DIR="crates/${crate_name}"
+fi
+export CRATE_DIR
+
+CARGO_ARGS=("build" "--package" "$crate_name")
+
+if [ "$build_profile" = "release" ]; then
+	CARGO_ARGS+=("--release")
+	PROFILE_DIR="release"
+else
+	PROFILE_DIR="debug"
+fi
+
+if [ -n "$features" ]; then
+	CARGO_ARGS+=("--features" "$features")
+fi
+
+if [ -n "$target" ]; then
+	CARGO_ARGS+=("--target" "$target")
+	TARGET_SUBDIR="${target}/"
+else
+	TARGET_SUBDIR=""
+fi
+
+if [ "$verbose" = "true" ]; then
+	CARGO_ARGS+=("--verbose")
+fi
+
+if [ -n "$additional_flags" ]; then
+	read -ra EXTRA_FLAGS <<<"$additional_flags"
+	CARGO_ARGS+=("${EXTRA_FLAGS[@]}")
+fi
+
+echo "Build command: cargo ${CARGO_ARGS[*]}"
+echo ""
+
+export RUSTC_WRAPPER=""
+export CARGO_BUILD_RUSTC_WRAPPER=""
+export SCCACHE_GHA_ENABLED="false"
+
+BUILD_LOG="$(mktemp)"
+trap 'rm -f "$BUILD_LOG"' EXIT
+
+if ! cargo "${CARGO_ARGS[@]}" 2>&1 | tee "$BUILD_LOG"; then
+	echo ""
+	echo "=== Build Failed ==="
+	echo "Command: cargo ${CARGO_ARGS[*]}"
+	echo ""
+	echo "Last 50 lines of build output:"
+	tail -50 "$BUILD_LOG"
+	echo ""
+	echo "Checking for common errors:"
+
+	if grep -i "link" "$BUILD_LOG" | grep -i "error" | head -5; then
+		echo "⚠️ Linking errors detected. Check library paths and dependencies."
+	fi
+
+	if grep -i "could not find" "$BUILD_LOG" | head -5; then
+		echo "⚠️ Missing dependencies detected."
+	fi
+
+	if grep -i "openssl" "$BUILD_LOG" | grep -i "error" | head -5; then
+		echo "⚠️ OpenSSL errors detected. Verify OPENSSL_DIR is set correctly."
+	fi
+
+	exit 1
+fi
+
+if [ -n "${CARGO_TARGET_DIR:-}" ]; then
+	TARGET_DIR="$CARGO_TARGET_DIR"
+else
+	TARGET_DIR="target"
+fi
+
+FULL_TARGET_DIR="${TARGET_DIR}/${TARGET_SUBDIR}${PROFILE_DIR}"
+
+echo ""
+echo "=== Build Successful ==="
+echo "Target directory: $FULL_TARGET_DIR"
+echo ""
+echo "Searching for built library artifacts..."
+
+case "$crate_name" in
+kreuzberg-ffi)
+	LIB_PATTERNS="libkreuzberg_ffi.so libkreuzberg_ffi.dylib kreuzberg_ffi.dll libkreuzberg_ffi.a libkreuzberg_ffi.rlib"
+	;;
+kreuzberg-py)
+	LIB_PATTERNS="lib_internal_bindings.so lib_internal_bindings.dylib _internal_bindings.pyd _internal_bindings.dll"
+	;;
+kreuzberg-node)
+	LIB_PATTERNS="libkreuzberg_node.so libkreuzberg_node.dylib kreuzberg_node.dll kreuzberg_node.node"
+	;;
+kreuzberg-rb)
+	LIB_PATTERNS="libkreuzberg_rb.so libkreuzberg_rb.dylib kreuzberg_rb.dll"
+	;;
+*)
+	LIB_PATTERNS="lib${crate_name}.so lib${crate_name}.dylib ${crate_name}.dll"
+	;;
+esac
+
+FOUND_LIB=""
+for pattern in $LIB_PATTERNS; do
+	if [ -f "$FULL_TARGET_DIR/$pattern" ]; then
+		FOUND_LIB="$FULL_TARGET_DIR/$pattern"
+		echo "✓ Found library: $FOUND_LIB"
+		ls -lh "$FOUND_LIB"
+		break
+	fi
+done
+
+if [ -z "$FOUND_LIB" ]; then
+	echo "⚠️ Could not find expected library artifact. Listing all files:"
+	shopt -s nullglob
+	candidates=(
+		"$FULL_TARGET_DIR"/*.so
+		"$FULL_TARGET_DIR"/*.dylib
+		"$FULL_TARGET_DIR"/*.dll
+		"$FULL_TARGET_DIR"/*.a
+		"$FULL_TARGET_DIR"/*.rlib
+		"$FULL_TARGET_DIR"/*.pyd
+	)
+	if ((${#candidates[@]})); then
+		ls -lh "${candidates[@]}"
+	else
+		echo "No library files found"
+	fi
+fi
+
+echo "library-path=$FOUND_LIB" >>"$GITHUB_OUTPUT"
+echo "target-dir=$FULL_TARGET_DIR" >>"$GITHUB_OUTPUT"
+
+echo ""
+echo "=== FFI Build Complete ==="

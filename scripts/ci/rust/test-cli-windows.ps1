@@ -1,3 +1,4 @@
+#!/usr/bin/env pwsh
 # Extract and test CLI binary (Windows)
 # Used by: ci-rust.yaml - Extract and test CLI (Windows) step
 # Arguments: TARGET (e.g., x86_64-pc-windows-msvc)

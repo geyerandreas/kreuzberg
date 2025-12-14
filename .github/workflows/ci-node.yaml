@@ -132,20 +132,7 @@ jobs:
 
       - name: Verify TypeScript build artifacts
         shell: bash
-        run: |
-          cd crates/kreuzberg-node
-          echo "Checking dist directory:"
-          ls -la dist/ || echo "ERROR: dist directory not found"
-          echo ""
-          echo "Checking tarball contents for dist files:"
-          tgz=$(find . -maxdepth 1 -name "*.tgz" -type f | head -n1)
-          if [ -n "$tgz" ]; then
-            echo "Found tarball: $tgz"
-            tar tzf "$tgz" | grep -c "^package/dist/" | xargs echo "dist files in tarball:"
-          else
-            echo "ERROR: No tarball found"
-            exit 1
-          fi
+        run: scripts/ci/node/verify-ts-artifacts.sh
 
       - name: Upload Node bindings
         uses: actions/upload-artifact@v5
@@ -244,20 +231,11 @@ jobs:
 
       - name: Build TypeScript wrapper
         shell: bash
-        run: |
-          cd crates/kreuzberg-node
-          pnpm build:ts
+        run: scripts/ci/node/build-ts-wrapper.sh
 
       - name: Run TypeScript tests
         shell: bash
-        run: |
-          source scripts/lib/library-paths.sh
-          setup_all_library_paths
-          if [ "${{ matrix.coverage }}" = "true" ]; then
-            pnpm vitest run --root e2e/typescript --config vitest.config.ts --coverage
-          else
-            pnpm vitest run --root e2e/typescript --config vitest.config.ts
-          fi
+        run: scripts/ci/node/run-typescript-tests.sh "${{ matrix.coverage }}"
 
       - name: Upload coverage
         if: matrix.coverage
@@ -272,9 +250,4 @@ jobs:
 
       - name: Run E2E tests
         shell: bash
-        run: |
-          source scripts/lib/library-paths.sh
-          setup_all_library_paths
-          # Reinstall kreuzberg-node in packages/typescript after build to ensure E2E tests can resolve it
-          cd packages/typescript && pnpm install && cd - > /dev/null
-          task e2e:ts:test
+        run: scripts/ci/node/run-e2e.sh

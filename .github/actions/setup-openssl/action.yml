@@ -17,41 +17,12 @@ runs:
     - name: Install OpenSSL (Linux)
       if: runner.os == 'Linux' && steps.cache-linux.outputs.cache-hit != 'true'
       shell: bash
-      run: |
-        set -euo pipefail
-        sudo apt-get update
-        sudo apt-get install -y pkg-config libssl-dev build-essential
+      run: scripts/ci/actions/setup-openssl/linux-install.sh
 
     - name: Configure OpenSSL environment (Linux)
       if: runner.os == 'Linux'
       shell: bash
-      run: |
-        set -euo pipefail
-        # Set environment variables for OpenSSL detection
-        # On Ubuntu, OpenSSL is typically in /usr with pkgconfig in arch-specific path
-        OPENSSL_ROOT="/usr"
-        PKG_CONFIG_DIR="/usr/lib/x86_64-linux-gnu/pkgconfig"
-
-        # Verify OpenSSL installation
-        if [ ! -f "${PKG_CONFIG_DIR}/openssl.pc" ]; then
-          echo "ERROR: openssl.pc not found at ${PKG_CONFIG_DIR}" >&2
-          echo "Searching for openssl.pc..." >&2
-          find /usr -name "openssl.pc" 2>/dev/null || true
-          exit 1
-        fi
-
-        # Export environment variables
-        {
-          echo "OPENSSL_DIR=${OPENSSL_ROOT}"
-          echo "OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu"
-          echo "OPENSSL_INCLUDE_DIR=/usr/include"
-          echo "PKG_CONFIG_PATH=${PKG_CONFIG_DIR}:${PKG_CONFIG_PATH:-}"
-        } >> "$GITHUB_ENV"
-
-        echo "OpenSSL configuration completed:"
-        echo "  OPENSSL_DIR=${OPENSSL_ROOT}"
-        echo "  PKG_CONFIG_PATH=${PKG_CONFIG_DIR}"
-        pkg-config --modversion openssl
+      run: scripts/ci/actions/setup-openssl/linux-configure.sh
 
     - name: Restore OpenSSL cache (macOS)
       if: runner.os == 'macOS'
@@ -66,28 +37,12 @@ runs:
     - name: Install OpenSSL (macOS)
       if: runner.os == 'macOS' && steps.cache-macos.outputs.cache-hit != 'true'
       shell: bash
-      run: |
-        set -euo pipefail
-        # Install packages only if not already present
-        brew list openssl@3 &>/dev/null || brew install openssl@3
-        brew list pkg-config &>/dev/null || brew install pkg-config
+      run: scripts/ci/actions/setup-openssl/macos-install.sh
 
     - name: Configure OpenSSL environment (macOS)
       if: runner.os == 'macOS'
       shell: bash
-      run: |
-        set -euo pipefail
-        prefix="$(brew --prefix openssl@3 2>/dev/null || brew --prefix openssl 2>/dev/null || true)"
-        if [ -z "$prefix" ]; then
-          echo "Failed to locate Homebrew OpenSSL prefix" >&2
-          exit 1
-        fi
-        {
-          echo "OPENSSL_DIR=$prefix"
-          echo "OPENSSL_LIB_DIR=$prefix/lib"
-          echo "OPENSSL_INCLUDE_DIR=$prefix/include"
-          echo "PKG_CONFIG_PATH=$prefix/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
-        } >> "$GITHUB_ENV"
+      run: scripts/ci/actions/setup-openssl/macos-configure.sh
 
     - name: Restore OpenSSL cache (Windows)
       if: runner.os == 'Windows'
@@ -104,136 +59,14 @@ runs:
     - name: Install OpenSSL (Windows)
       if: runner.os == 'Windows' && steps.cache-windows.outputs.cache-hit != 'true'
       shell: pwsh
-      run: |
-        $ErrorActionPreference = "Stop"
-        Write-Host "Attempting to locate vcpkg executable..." -ForegroundColor Green
-
-        # Try to find vcpkg in PATH first
-        $vcpkg = $null
-        try {
-          $vcpkg = (Get-Command vcpkg -ErrorAction SilentlyContinue)?.Source
-        } catch {
-          Write-Host "vcpkg not in PATH, checking standard locations..."
-        }
-
-        # Check standard installation location
-        if (-not $vcpkg) {
-          $candidate = "C:\vcpkg\vcpkg.exe"
-          if (Test-Path $candidate) {
-            $vcpkg = $candidate
-            Write-Host "Found vcpkg at: $vcpkg"
-          }
-        }
-
-        # Verify vcpkg was found
-        if (-not $vcpkg) {
-          Write-Error "vcpkg not found. Expected in PATH or at C:\vcpkg\vcpkg.exe"
-          exit 1
-        }
-
-        # Verify vcpkg executable exists
-        if (-not (Test-Path $vcpkg)) {
-          Write-Error "vcpkg executable not accessible at: $vcpkg"
-          exit 1
-        }
-
-        Write-Host "Using vcpkg from: $vcpkg" -ForegroundColor Green
-        Write-Host "vcpkg version:" -ForegroundColor Green
-        & $vcpkg --version
-
-        Write-Host "Installing OpenSSL via vcpkg..." -ForegroundColor Green
-        & $vcpkg install openssl:x64-windows-static-md
-
-        if ($LASTEXITCODE -ne 0) {
-          Write-Error "vcpkg installation failed with exit code: $LASTEXITCODE"
-          exit $LASTEXITCODE
-        }
-
-        Write-Host "OpenSSL installation completed successfully" -ForegroundColor Green
+      run: scripts/ci/actions/setup-openssl/windows-install.ps1
 
     - name: Verify OpenSSL installation (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      run: |
-        $ErrorActionPreference = "Stop"
-        $vcpkgRoot = "C:\vcpkg\installed\x64-windows-static-md"
-
-        Write-Host "Verifying OpenSSL installation at: $vcpkgRoot" -ForegroundColor Green
-
-        # Verify installation directory exists
-        if (-not (Test-Path $vcpkgRoot)) {
-          Write-Error "vcpkg OpenSSL installation directory not found: $vcpkgRoot"
-          exit 1
-        }
-
-        # Check for critical subdirectories
-        $requiredDirs = @("lib", "include")
-        foreach ($dir in $requiredDirs) {
-          $path = Join-Path $vcpkgRoot $dir
-          if (-not (Test-Path $path)) {
-            Write-Error "Required directory not found: $path"
-            exit 1
-          }
-          Write-Host "  Found $dir directory: $path"
-        }
-
-        # Check for key files
-        $libFiles = @("libssl.lib", "libcrypto.lib")
-        $libDir = Join-Path $vcpkgRoot "lib"
-        foreach ($file in $libFiles) {
-          $filePath = Join-Path $libDir $file
-          if (-not (Test-Path $filePath)) {
-            Write-Host "  Warning: Expected library file not found: $filePath (may be OK if in subdirectory)"
-          } else {
-            Write-Host "  Found library: $file"
-          }
-        }
-
-        # Check for header files
-        $headerDir = Join-Path $vcpkgRoot "include"
-        $headerFile = Join-Path $headerDir "openssl\ssl.h"
-        if (-not (Test-Path $headerFile)) {
-          Write-Host "  Warning: Expected header file not found: $headerFile"
-        } else {
-          Write-Host "  Found header: openssl/ssl.h"
-        }
-
-        Write-Host "OpenSSL installation verified successfully" -ForegroundColor Green
+      run: scripts/ci/actions/setup-openssl/windows-verify.ps1
 
     - name: Configure OpenSSL environment (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      run: |
-        $ErrorActionPreference = "Stop"
-        $vcpkgRoot = "C:\vcpkg\installed\x64-windows-static-md"
-
-        Write-Host "Configuring OpenSSL environment variables..." -ForegroundColor Green
-
-        # Final verification before setting environment
-        if (-not (Test-Path $vcpkgRoot)) {
-          Write-Error "vcpkg OpenSSL installation not found at: $vcpkgRoot"
-          exit 1
-        }
-
-        # Set environment variables
-        $envVars = @{
-          "VCPKG_ROOT"           = "C:\vcpkg"
-          "OPENSSL_DIR"          = $vcpkgRoot
-          "OPENSSL_ROOT_DIR"     = $vcpkgRoot
-          "OPENSSL_LIB_DIR"      = "$vcpkgRoot\lib"
-          "OPENSSL_INCLUDE_DIR"  = "$vcpkgRoot\include"
-          "OPENSSL_STATIC"       = "1"
-        }
-
-        foreach ($key in $envVars.Keys) {
-          $value = $envVars[$key]
-          Write-Host "  Setting $key=$value"
-          Add-Content -Path $env:GITHUB_ENV -Value "$key=$value"
-        }
-
-        Write-Host "OpenSSL environment configuration completed" -ForegroundColor Green
-        Write-Host "Summary:" -ForegroundColor Green
-        Write-Host "  OPENSSL_DIR=$vcpkgRoot"
-        Write-Host "  OPENSSL_LIB_DIR=$vcpkgRoot\lib"
-        Write-Host "  OPENSSL_INCLUDE_DIR=$vcpkgRoot\include"
-        Write-Host "  OPENSSL_STATIC=1"
+      run: scripts/ci/actions/setup-openssl/windows-configure.ps1

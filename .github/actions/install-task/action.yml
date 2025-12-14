@@ -11,44 +11,9 @@ runs:
     - name: Setup Task (Unix)
       if: runner.os != 'Windows'
       shell: bash
-      run: |
-        set -euo pipefail
-        TASK_BIN_DIR="${HOME}/.local/bin"
-        mkdir -p "$TASK_BIN_DIR"
-
-        # Check if task is already installed
-        if ! command -v task &> /dev/null || [[ "$(task --version 2>/dev/null || echo '')" != *"${{ inputs.version }}"* ]]; then
-          sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b "$TASK_BIN_DIR"
-        fi
-
-        echo "$TASK_BIN_DIR" >> "$GITHUB_PATH"
+      run: scripts/ci/actions/install-task/unix.sh "${{ inputs.version }}"
 
     - name: Setup Task (Windows)
       if: runner.os == 'Windows'
       shell: pwsh
-      run: |
-        $taskBinDir = "$env:USERPROFILE\AppData\Local\task"
-        New-Item -ItemType Directory -Force -Path $taskBinDir | Out-Null
-
-        $taskVersion = "${{ inputs.version }}"
-        $taskExe = "$taskBinDir\task.exe"
-
-        # Download and install task
-        if (-not (Test-Path $taskExe)) {
-          $releases = "https://api.github.com/repos/go-task/task/releases/tags/v$taskVersion"
-          $release = Invoke-RestMethod -Uri $releases
-          $asset = $release.assets | Where-Object { $_.name -match "windows_amd64\.zip" } | Select-Object -First 1
-
-          if ($asset) {
-            $downloadUrl = $asset.browser_download_url
-            $zipPath = "$taskBinDir\task.zip"
-            Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath
-            Expand-Archive -Path $zipPath -DestinationPath $taskBinDir -Force
-            Remove-Item $zipPath
-          } else {
-            Write-Error "Could not find Windows amd64 release for Task v$taskVersion"
-            exit 1
-          }
-        }
-
-        "$taskBinDir" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      run: scripts/ci/actions/install-task/windows.ps1 "${{ inputs.version }}"

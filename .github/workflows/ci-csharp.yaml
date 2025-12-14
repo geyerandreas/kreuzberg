@@ -189,10 +189,7 @@ jobs:
 
       - name: Setup Tesseract environment
         shell: bash
-        run: |
-          source scripts/lib/tessdata.sh
-          setup_tessdata
-          echo "TESSDATA_PREFIX=${TESSDATA_PREFIX}" >> "$GITHUB_ENV"
+        run: scripts/ci/csharp/setup-tessdata-env.sh
 
       - name: Download FFI library
         uses: actions/download-artifact@v6
@@ -215,5 +212,4 @@ jobs:
           KREUZBERG_FFI_DIR: ${{ github.workspace }}/target/release
           LD_LIBRARY_PATH: ${{ github.workspace }}/target/release:${{ env.LD_LIBRARY_PATH }}
           DYLD_LIBRARY_PATH: ${{ github.workspace }}/target/release:${{ env.DYLD_LIBRARY_PATH }}
-        run: |
-          task e2e:csharp:test
+        run: scripts/ci/csharp/run-e2e.sh

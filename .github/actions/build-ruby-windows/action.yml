@@ -28,33 +28,15 @@ runs:
 
     - name: Install Ruby dependencies
       shell: pwsh
-      run: |
-        $workspace = ridk exec bash -lc "cygpath -au '$env:GITHUB_WORKSPACE'"
-        $rubydir = "$workspace/packages/ruby"
-        ridk exec bash -lc "cd $rubydir && export RUSTUP_TOOLCHAIN=stable-gnu CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ && bundle config set --local path 'vendor/bundle' && bundle install --jobs 4 --retry 3"
+      run: scripts/ci/actions/build-ruby-windows/install-deps.ps1
 
     - name: Build native gem
       shell: pwsh
       env:
         RB_SYS_CARGO_PROFILE: release
-      run: |
-        $workspace = ridk exec bash -lc "cygpath -au '$env:GITHUB_WORKSPACE'"
-        $rubydir = "$workspace/packages/ruby"
-        $rubyPlatform = ruby -e "puts Gem::Platform.local.to_s"
-        ridk exec bash -lc "cd $rubydir && export RUSTUP_TOOLCHAIN=stable-gnu CC=x86_64-w64-mingw32-gcc CXX=x86_64-w64-mingw32-g++ && bundle exec rake native:kreuzberg:$rubyPlatform"
+      run: scripts/ci/actions/build-ruby-windows/build-native.ps1
 
     - name: Package native gem
       id: package
       shell: pwsh
-      run: |
-        $workspace = ridk exec bash -lc "cygpath -au '$env:GITHUB_WORKSPACE'"
-        $rubydir = "$workspace/packages/ruby"
-        $rubyPlatform = ruby -e "puts Gem::Platform.local.to_s"
-        ridk exec bash -lc "cd $rubydir && set -euo pipefail; mkdir -p pkg; stage_dir=\"tmp/$rubyPlatform/stage\"; if [ ! -f \"\$stage_dir/kreuzberg.gemspec\" ]; then echo \"Stage directory \$stage_dir missing\" >&2; exit 1; fi; (cd \"\$stage_dir\" && gem build kreuzberg.gemspec); mv \"\$stage_dir\"/kreuzberg-*.gem pkg/"
-
-        $gemFile = Get-ChildItem -Path "packages\ruby\pkg" -Filter "kreuzberg-*.gem" | Select-Object -First 1
-        if ($null -eq $gemFile) {
-          Write-Error "No gem file found in packages/ruby/pkg"
-          exit 1
-        }
-        Add-Content -Path $env:GITHUB_OUTPUT -Value "gem-path=$env:GITHUB_WORKSPACE\packages\ruby\pkg\$($gemFile.Name)"
+      run: scripts/ci/actions/build-ruby-windows/package.ps1

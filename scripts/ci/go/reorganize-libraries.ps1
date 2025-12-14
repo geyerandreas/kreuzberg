@@ -1,7 +1,9 @@
+#!/usr/bin/env pwsh
 # Reorganize FFI libraries for Windows GNU target
 # Used by: ci-go.yaml - Reorganize FFI libraries for Windows GNU target step
 # Note: Only used on Windows runners
 
+Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 Write-Host "=== Reorganizing FFI libraries for Windows GNU target ==="

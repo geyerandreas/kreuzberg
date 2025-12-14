@@ -107,7 +107,7 @@ jobs:
 
       - name: Clean previous wheel artifacts
         shell: bash
-        run: bash scripts/ci/python/clean-artifacts.sh
+        run: scripts/ci/python/clean-artifacts.sh
 
       - name: Build Rust FFI for Python (PyO3)
         uses: ./.github/actions/build-rust-ffi
@@ -143,7 +143,7 @@ jobs:
 
       - name: Smoke test wheel
         shell: bash
-        run: bash scripts/ci/python/smoke-test-wheel.sh
+        run: scripts/ci/python/smoke-test-wheel.sh
 
   build-python-sdist:
     name: Python Sdist
@@ -164,9 +164,7 @@ jobs:
           cache-prefix: sdist
 
       - name: Build sdist
-        run: |
-          cd packages/python
-          uv run maturin sdist --out ../../target/wheels
+        run: scripts/ci/python/build-sdist.sh
 
       - name: Upload sdist
         uses: actions/upload-artifact@v5
@@ -238,16 +236,15 @@ jobs:
 
       - name: Install wheel
         shell: bash
-        run: bash scripts/ci/python/install-wheel.sh
+        run: scripts/ci/python/install-wheel.sh
 
       - name: Install SpaCy model (Linux 3.10 only)
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.10'
-        run: |
-          uv pip install "https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl"
+        run: scripts/ci/python/install-spacy-model.sh
 
       - name: Run Python tests
         shell: bash
-        run: bash scripts/ci/python/run-tests.sh "${{ matrix.coverage }}"
+        run: scripts/ci/python/run-tests.sh "${{ matrix.coverage }}"
 
       - name: Upload coverage
         if: matrix.coverage
@@ -279,9 +276,4 @@ jobs:
         shell: bash
         env:
           PYTEST_TIMEOUT: 300
-        run: |
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            task e2e:python:test -- -m "not slow and not windows_slow" --timeout=60
-          else
-            task e2e:python:test -- -m "not slow" --timeout=60
-          fi
+        run: scripts/ci/python/run-e2e.sh

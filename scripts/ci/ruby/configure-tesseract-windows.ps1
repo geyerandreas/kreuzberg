@@ -1,3 +1,4 @@
+#!/usr/bin/env pwsh
 # Configure Tesseract build environment for Windows
 # Used by: ci-ruby.yaml - Configure Tesseract build environment step
 

@@ -124,35 +124,11 @@ jobs:
 
       - name: Configure Tesseract data path
         shell: bash
-        run: |
-          if [ "${RUNNER_OS}" = "macOS" ]; then
-            echo "TESSDATA_PREFIX=/opt/homebrew/share/tessdata" >> "$GITHUB_ENV"
-          else
-            echo "TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata" >> "$GITHUB_ENV"
-          fi
+        run: scripts/ci/rust/setup-tessdata-env.sh
 
       - name: Pre-build diagnostics
         shell: bash
-        run: |
-          set -eo pipefail
-          echo "=== Build Environment Diagnostics ==="
-          echo "OS: ${RUNNER_OS}"
-          echo "Arch: ${RUNNER_ARCH}"
-          echo "Rust toolchain:"
-          rustc --version
-          cargo --version
-          echo "Available targets (installed):"
-          rustup target list | grep installed || echo "No targets installed"
-          echo "Environment variables:"
-          echo "  CARGO_TERM_COLOR=${CARGO_TERM_COLOR:-not set}"
-          echo "  CARGO_INCREMENTAL=${CARGO_INCREMENTAL:-not set}"
-          echo "  RUST_BACKTRACE=${RUST_BACKTRACE:-not set}"
-          echo "  RUSTFLAGS=${RUSTFLAGS:-not set}"
-          echo "  RUSTC_WRAPPER=${RUSTC_WRAPPER:-not set}"
-          echo "  TESSDATA_PREFIX=${TESSDATA_PREFIX:-not set}"
-          echo "Disk space:"
-          df -h / || du -h / 2>/dev/null | head -1
-          echo "=== End diagnostics ==="
+        run: scripts/ci/rust/pre-build-diagnostics.sh
 
       - name: Run unit tests
         run: scripts/ci/rust/run-unit-tests.sh
@@ -235,21 +211,16 @@ jobs:
 
       - name: Install system PDFium (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: bash scripts/install-system-pdfium-linux.sh
+        run: scripts/install-system-pdfium-linux.sh
         shell: bash
 
       - name: Install system PDFium (macOS)
         if: matrix.os == 'macos-latest'
-        run: bash scripts/install-system-pdfium-macos.sh
+        run: scripts/install-system-pdfium-macos.sh
         shell: bash
 
       - name: Verify pkg-config detects pdfium
-        run: |
-          if [ "${RUNNER_OS}" = "macOS" ]; then
-            export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
-          fi
-          pkg-config --modversion pdfium
-          pkg-config --cflags --libs pdfium
+        run: scripts/ci/rust/verify-pdfium-pkg-config.sh
         shell: bash
 
       - name: Setup Rust
@@ -271,39 +242,17 @@ jobs:
           PKG_CONFIG_PATH: "${{ matrix.os == 'macos-latest' && '/usr/local/lib/pkgconfig' || '' }}"
 
       - name: Verify no bundled pdfium in library
-        run: |
-          LIB_PATH="target/debug/libkreuzberg.a"
-          if [ ! -f "${LIB_PATH}" ]; then
-            LIB_PATH="target/debug/libkreuzberg.so"
-          fi
-          if [ ! -f "${LIB_PATH}" ]; then
-            LIB_PATH="target/debug/libkreuzberg.dylib"
-          fi
-          if [ -f "${LIB_PATH}" ]; then
-            echo "Checking for bundled pdfium symbols..."
-            if nm "${LIB_PATH}" 2>/dev/null | grep -q "FPDF_GetDocument"; then
-              echo "Warning: Found PDFium symbols in library (expected with pdf feature)"
-            fi
-          fi
+        run: scripts/ci/rust/verify-no-bundled-pdfium.sh
         shell: bash
 
       - name: Verify binary links against system library (Linux)
         if: matrix.os == 'ubuntu-latest'
-        run: |
-          # Look for test binary or check symbols
-          echo "Verifying system PDFium linking on Linux..."
-          ldd /usr/local/lib/libpdfium.so | head -20
-          pkg-config --list-all | grep pdfium
+        run: scripts/ci/rust/verify-system-pdfium-linux.sh
         shell: bash
 
       - name: Verify binary links against system library (macOS)
         if: matrix.os == 'macos-latest'
-        run: |
-          # Check library dependencies
-          echo "Verifying system PDFium linking on macOS..."
-          otool -L /usr/local/lib/libpdfium.dylib | head -20
-          export PKG_CONFIG_PATH="/usr/local/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
-          pkg-config --list-all | grep pdfium
+        run: scripts/ci/rust/verify-system-pdfium-macos.sh
         shell: bash
 
       - name: Cleanup Rust cache
@@ -353,23 +302,7 @@ jobs:
 
       - name: Pre-build diagnostics (CLI)
         shell: bash
-        run: |
-          set -eo pipefail
-          echo "=== CLI Build Diagnostics ==="
-          echo "Target: ${{ matrix.target }}"
-          echo "Rust toolchain:"
-          rustc --version --verbose
-          echo "Cargo version:"
-          cargo --version
-          echo "PDFium environment:"
-          echo "  KREUZBERG_PDFIUM_PREBUILT=${KREUZBERG_PDFIUM_PREBUILT:-not set}"
-          if [ -n "${KREUZBERG_PDFIUM_PREBUILT:-}" ] && [ -d "${KREUZBERG_PDFIUM_PREBUILT}" ]; then
-            echo "  PDFium directory exists"
-            find "${KREUZBERG_PDFIUM_PREBUILT}" -maxdepth 1 -ls | head -10
-          fi
-          echo "Disk space (before build):"
-          df -h . || du -h . 2>/dev/null | head -1
-          echo "=== End diagnostics ==="
+        run: scripts/ci/rust/pre-build-diagnostics-cli.sh "${{ matrix.target }}"
 
       - name: Build CLI
         run: cargo build -p kreuzberg-cli --release --target ${{ matrix.target }}

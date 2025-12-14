@@ -30,45 +30,19 @@ runs:
   steps:
     - name: Clean cache directories
       shell: bash
-      run: |
-        rm -rf .tesseract-cache/${{ inputs.label }}
-        rm -rf .tesseract-home/${{ inputs.label }}
-        rm -rf .xdg-cache/${{ inputs.label }}
+      run: scripts/ci/actions/setup-tesseract-cache/clean-dirs.sh "${{ inputs.label }}"
 
     - name: Setup cache directories
       if: inputs.enable-cache == 'true'
       shell: bash
-      run: |
-        mkdir -p .tesseract-cache/${{ inputs.label }}
-        mkdir -p .tesseract-home/${{ inputs.label }}
-        mkdir -p .xdg-cache/${{ inputs.label }}
+      run: scripts/ci/actions/setup-tesseract-cache/setup-dirs.sh "${{ inputs.label }}"
 
     - name: Clean per-target Tesseract cache
       if: inputs.rust-target != ''
       shell: bash
-      run: rm -rf target/${{ inputs.rust-target }}/tesseract-rs-cache
+      run: scripts/ci/actions/setup-tesseract-cache/clean-target-cache.sh "${{ inputs.rust-target }}"
 
     - name: Set outputs and environment
       id: set-outputs
       shell: bash
-      run: |
-        if [ "${{ inputs.enable-cache }}" = "true" ]; then
-          CACHE_DIR="${GITHUB_WORKSPACE}/.tesseract-cache/${{ inputs.label }}"
-          echo "TESSERACT_RS_CACHE_DIR=${CACHE_DIR}" >> $GITHUB_ENV
-          echo "XDG_CACHE_HOME=${GITHUB_WORKSPACE}/.xdg-cache/${{ inputs.label }}" >> $GITHUB_ENV
-          echo "cache-dir=${CACHE_DIR}" >> $GITHUB_OUTPUT
-          echo "cache-enabled=true" >> $GITHUB_OUTPUT
-
-          # Docker options for manylinux containers
-          DOCKER_OPTS="--env TESSERACT_RS_CACHE_DIR=/io/.tesseract-cache/${{ inputs.label }}"
-          DOCKER_OPTS="${DOCKER_OPTS} --env XDG_CACHE_HOME=/io/.xdg-cache/${{ inputs.label }}"
-          DOCKER_OPTS="${DOCKER_OPTS} --env HOME=/io/.tesseract-home/${{ inputs.label }}"
-          DOCKER_OPTS="${DOCKER_OPTS} --env OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu"
-          DOCKER_OPTS="${DOCKER_OPTS} --env OPENSSL_INCLUDE_DIR=/usr/include"
-          echo "docker-options=${DOCKER_OPTS}" >> $GITHUB_OUTPUT
-        else
-          echo "TESSERACT_RS_CACHE_DIR=" >> $GITHUB_ENV
-          echo "cache-dir=" >> $GITHUB_OUTPUT
-          echo "cache-enabled=false" >> $GITHUB_OUTPUT
-          echo "docker-options=" >> $GITHUB_OUTPUT
-        fi
+      run: scripts/ci/actions/setup-tesseract-cache/set-outputs.sh "${{ inputs.label }}" "${{ inputs.enable-cache }}"
