@@ -390,7 +390,6 @@ jobs:
         run: scripts/publish/ubuntu/free-disk-space.sh
 
       - name: Prepare wheel staging directory
-        if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: mkdir -p target/wheels
 
@@ -414,7 +413,6 @@ jobs:
       - name: Build Linux wheels
         if: matrix.os == 'ubuntu-latest'
         uses: PyO3/maturin-action@v1
-        continue-on-error: true
         with:
           command: build
           args: --release -i python${{ matrix.python }} --out ../../target/wheels ${{ matrix.extra_args }}
@@ -439,7 +437,6 @@ jobs:
       - name: Build wheels (native)
         if: matrix.os != 'ubuntu-latest'
         uses: PyO3/maturin-action@v1
-        continue-on-error: true
         with:
           command: build
           args: --release -i python${{ matrix.python }} --out ../../target/wheels ${{ matrix.extra_args }}
@@ -607,9 +604,6 @@ jobs:
           node-version: 22
           check-latest: true
 
-      - name: Enable corepack
-        run: corepack enable
-
       - name: Prepare ONNX Runtime (macOS)
         if: startsWith(matrix.settings.target, 'aarch64-apple-darwin') || startsWith(matrix.settings.target, 'x86_64-apple-darwin')
         uses: ./.github/actions/setup-prebuilt-onnx
@@ -750,6 +744,7 @@ jobs:
         run: scripts/publish/cli/configure-cross-linker.sh
 
       - name: Build CLI
+        shell: bash
         run: scripts/build_cli_binary.sh ${{ matrix.target }}
 
       - name: Package CLI artifact
@@ -2018,9 +2013,6 @@ jobs:
         run: npm install -g npm
         shell: bash
 
-      - name: Enable corepack
-        run: corepack enable
-
       - name: Prepare artifact directory
         run: scripts/publish/prepare-node-artifacts.sh node-artifacts typescript-defs crates/kreuzberg-node
 
@@ -2083,8 +2075,11 @@ jobs:
           node-version: 22.6.0
           registry-url: https://registry.npmjs.org/
 
-      - name: Enable corepack
-        run: corepack enable
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.25.0
+          run_install: false
 
       - name: Setup Rust toolchain
         uses: ./.github/actions/setup-rust
@@ -2099,7 +2094,6 @@ jobs:
 
       - name: Install pnpm dependencies
         run: pnpm install --frozen-lockfile
-        working-directory: crates/kreuzberg-wasm
 
       - name: Run cargo audit
         run: cargo audit --deny warnings

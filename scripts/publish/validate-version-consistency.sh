@@ -61,7 +61,19 @@ echo "packages/ruby/lib/kreuzberg/version.rb: $ruby_version"
 }
 
 # Java pom.xml (first <version> tag is the project version)
-java_version="$(grep '<version>' packages/java/pom.xml | head -1 | sed -E 's|.*<version>([^<]+)</version>.*|\1|')"
+java_version="$(
+	python3 - <<'PY'
+import re
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+text = Path("packages/java/pom.xml").read_text(encoding="utf-8")
+text = re.sub(r'xmlns="[^"]+"', '', text, count=1)
+root = ET.fromstring(text)
+version = root.findtext("version") or ""
+print(version.strip())
+PY
+)"
 echo "packages/java/pom.xml: $java_version"
 [ "$java_version" = "$expected" ] || {
 	echo "❌ Java pom.xml mismatch"
@@ -69,7 +81,23 @@ echo "packages/java/pom.xml: $java_version"
 }
 
 # C# Kreuzberg.csproj
-csharp_version="$(grep '<Version>' packages/csharp/Kreuzberg/Kreuzberg.csproj | head -1 | sed -E 's|.*<Version>([^<]+)</Version>.*|\1|')"
+csharp_version="$(
+	python3 - <<'PY'
+import re
+import xml.etree.ElementTree as ET
+from pathlib import Path
+
+text = Path("packages/csharp/Kreuzberg/Kreuzberg.csproj").read_text(encoding="utf-8")
+text = re.sub(r'xmlns="[^"]+"', '', text, count=1)
+root = ET.fromstring(text)
+version = ""
+for elem in root.iter():
+    if elem.tag == "Version" and (elem.text or "").strip():
+        version = elem.text.strip()
+        break
+print(version)
+PY
+)"
 echo "packages/csharp/Kreuzberg/Kreuzberg.csproj: $csharp_version"
 [ "$csharp_version" = "$expected" ] || {
 	echo "❌ C# csproj mismatch"
@@ -77,7 +105,16 @@ echo "packages/csharp/Kreuzberg/Kreuzberg.csproj: $csharp_version"
 }
 
 # Go doc.go version comment
-go_version="$(grep 'This binding targets Kreuzberg' packages/go/kreuzberg/doc.go | sed -E 's|.*Kreuzberg ([^ ]+).*|\1|')"
+go_version="$(
+	python3 - <<'PY'
+import re
+from pathlib import Path
+
+text = Path("packages/go/kreuzberg/doc.go").read_text(encoding="utf-8")
+m = re.search(r"This binding targets Kreuzberg\s+([^\s]+)", text)
+print(m.group(1) if m else "")
+PY
+)"
 echo "packages/go/kreuzberg/doc.go: $go_version"
 [ "$go_version" = "$expected" ] || {
 	echo "❌ Go doc.go mismatch"

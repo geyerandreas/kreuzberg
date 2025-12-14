@@ -2,14 +2,29 @@
 
 set -euo pipefail
 
-# Enable arm64 architecture support and install cross-compilation toolchain
-sudo dpkg --add-architecture arm64
-sudo apt-get update
-sudo apt-get install -y \
+# Install cross-compilation toolchain (no multiarch needed)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="${REPO_ROOT:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
+
+source "$REPO_ROOT/scripts/lib/retry.sh"
+
+echo "::group::Installing aarch64 Linux cross toolchain"
+
+if ! retry_with_backoff sudo apt-get update; then
+	echo "::error::apt-get update failed after retries" >&2
+	exit 1
+fi
+
+if ! retry_with_backoff_timeout 900 sudo apt-get install -y \
 	gcc-aarch64-linux-gnu \
 	g++-aarch64-linux-gnu \
 	binutils-aarch64-linux-gnu \
-	pkg-config-aarch64-linux-gnu
+	pkg-config-aarch64-linux-gnu; then
+	echo "::error::apt-get install cross toolchain failed" >&2
+	exit 1
+fi
+
+echo "::endgroup::"
 
 {
 	echo "CC_aarch64_unknown_linux_gnu=aarch64-linux-gnu-gcc"
@@ -19,6 +34,6 @@ sudo apt-get install -y \
 } >>"${GITHUB_ENV:?GITHUB_ENV not set}"
 
 {
-	echo "PKG_CONFIG_PATH=/usr/lib/aarch64-linux-gnu/pkgconfig"
-	echo "PKG_CONFIG_LIBDIR=/usr/lib/aarch64-linux-gnu/pkgconfig"
+	echo "PKG_CONFIG_ALLOW_CROSS=1"
+	echo "PKG_CONFIG_aarch64_unknown_linux_gnu=aarch64-linux-gnu-pkg-config"
 } >>"${GITHUB_ENV:?GITHUB_ENV not set}"
