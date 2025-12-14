@@ -8,7 +8,46 @@ if [ ! -d "$pkg_dir" ]; then
 	exit 1
 fi
 
-# `npm publish` is invoked with `--ignore-scripts` in CI for safety, so we run
-# the prepublish step explicitly to ensure `optionalDependencies` for the
-# platform packages are present in the published manifest.
-pnpm -C "$pkg_dir" run prepublishOnly
+# `npm publish` is invoked with `--ignore-scripts` in CI, so `prepublishOnly`
+# won't run. In napi-rs projects, `prepublishOnly` typically runs
+# `napi prepublish` which also tries to create GitHub releases and republish
+# platform packages. In our workflow, we publish platform packages explicitly,
+# so we only need the *manifest* change: populate `optionalDependencies` on the
+# main package so npm can install the correct native binary package.
+
+npm_dir="$pkg_dir/npm"
+if [ ! -d "$npm_dir" ]; then
+	echo "Platform npm directory not found: $npm_dir" >&2
+	exit 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+	echo "jq is required to stage optionalDependencies for the main Node package" >&2
+	exit 1
+fi
+
+tmp_pkg_json="$(mktemp)"
+trap 'rm -f "$tmp_pkg_json"' EXIT
+
+optional_deps_json='{}'
+
+shopt -s nullglob
+for platform_pkg_json in "$npm_dir"/*/package.json; do
+	name="$(jq -r '.name // empty' "$platform_pkg_json")"
+	version="$(jq -r '.version // empty' "$platform_pkg_json")"
+
+	if [ -z "$name" ] || [ -z "$version" ]; then
+		echo "Invalid platform package.json: $platform_pkg_json" >&2
+		exit 1
+	fi
+
+	optional_deps_json="$(jq -c --arg n "$name" --arg v "$version" '. + {($n): $v}' <<<"$optional_deps_json")"
+done
+
+if [ "$optional_deps_json" = "{}" ]; then
+	echo "No platform packages found under $npm_dir" >&2
+	exit 1
+fi
+
+jq --argjson deps "$optional_deps_json" '.optionalDependencies = $deps' "$pkg_dir/package.json" >"$tmp_pkg_json"
+mv "$tmp_pkg_json" "$pkg_dir/package.json"
