@@ -71,7 +71,16 @@ fallback_files = Dir.chdir(__dir__) do
        .map { |path| "vendor/#{path.delete_prefix('crates/')}" }
   end
 
-  ruby_fallback + core_fallback + ffi_fallback
+  tesseract_fallback = Dir.chdir(repo_root) do
+    Dir.glob('crates/kreuzberg-tesseract/**/*', File::FNM_DOTMATCH)
+       .reject { |f| File.directory?(f) }
+       .reject { |f| f.include?('/target/') }
+       .grep_v(/\.(swp|bak|tmp)$/)
+       .grep_v(/~$/)
+       .map { |path| "vendor/#{path.delete_prefix('crates/')}" }
+  end
+
+  ruby_fallback + core_fallback + ffi_fallback + tesseract_fallback
 end
 
 # Check for vendored crates (copied during CI/packaging)
@@ -98,6 +107,16 @@ vendor_files = Dir.chdir(__dir__) do
                           []
                         end
 
+  kreuzberg_tesseract_files = if Dir.exist?('vendor/kreuzberg-tesseract')
+                                Dir.glob('vendor/kreuzberg-tesseract/**/*', File::FNM_DOTMATCH)
+                                   .reject { |f| File.directory?(f) }
+                                   .reject { |f| f.include?('/target/') }
+                                   .grep_v(/\.(swp|bak|tmp)$/)
+                                   .grep_v(/~$/)
+                              else
+                                []
+                              end
+
   rb_sys_files = if Dir.exist?('vendor/rb-sys')
                    Dir.glob('vendor/rb-sys/**/*', File::FNM_DOTMATCH)
                       .reject { |f| File.directory?(f) }
@@ -114,7 +133,7 @@ vendor_files = Dir.chdir(__dir__) do
                      []
                    end
 
-  kreuzberg_files + kreuzberg_ffi_files + rb_sys_files + workspace_toml
+  kreuzberg_files + kreuzberg_ffi_files + kreuzberg_tesseract_files + rb_sys_files + workspace_toml
 end
 
 # Use git-tracked files if available, otherwise fallback to glob
