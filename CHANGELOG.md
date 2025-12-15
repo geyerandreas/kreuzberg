@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **`PDFIUM_STATIC_LIB_PATH` environment variable for custom static library paths** (build.rs)
+  - Enables Docker builds with pdfium compiled from source
+  - Allows users to specify exact location of `libpdfium.a` for static linking
+  - Validates path existence and library presence with clear error messages
+  - Enables fully static binaries for minimal Docker images (FROM scratch)
+  - Platform-specific system library linking (pthread, dl on Linux)
+
 ### Fixed
 - **PDFium static linking (`pdf-static` feature)** (build.rs)
   - Fixed `link_statically()` to correctly search for static library (`libpdfium.a`) instead of dynamic library (`.dylib`/`.so`)

@@ -1,3 +1,32 @@
+// Kreuzberg Build Script - PDFium Linking Configuration
+//
+// This build script handles PDFium library downloading and linking for the kreuzberg crate.
+// It supports multiple linking strategies via Cargo features:
+//
+// 1. Default (pdf): Download dynamic library from bblanchon/pdfium-binaries, link dynamically
+//    - Requires .so/.dylib/.dll at runtime
+//    - Fastest build, standard behavior
+//
+// 2. pdf-static: Static linking (no runtime dependency)
+//    - REQUIRES: PDFIUM_STATIC_LIB_PATH environment variable pointing to libpdfium.a directory
+//    - Reason: bblanchon/pdfium-binaries only provides dynamic libraries
+//    - Use case: Docker with musl, fully static binaries
+//    - Note: libpdfium.a must be obtained separately (e.g., paulocoutinhox/pdfium-lib)
+//
+// 3. pdf-bundled: Embed dynamic library in binary
+//    - Self-contained binary that extracts library at runtime
+//    - Larger binary size but no external .so dependency
+//
+// 4. pdf-system: Use system-installed pdfium
+//    - Detected via pkg-config or KREUZBERG_PDFIUM_SYSTEM_PATH
+//
+// Environment Variables:
+// - PDFIUM_STATIC_LIB_PATH: Path to directory containing libpdfium.a (for pdf-static)
+// - KREUZBERG_PDFIUM_PREBUILT: Path to prebuilt pdfium directory (skip download)
+// - KREUZBERG_PDFIUM_SYSTEM_PATH: System pdfium library path (for pdf-system)
+// - PDFIUM_VERSION: Override version for bblanchon/pdfium-binaries
+// - KREUZBERG_PDFIUM_DOWNLOAD_RETRIES: Number of download retries (default: 5)
+
 use std::env;
 use std::fs;
 use std::io;
@@ -628,13 +657,54 @@ fn link_dynamically(pdfium_dir: &Path, target: &str) {
 /// dependencies required for static linking on Linux.
 /// Supports flexible archive structures by finding library in multiple locations.
 ///
+/// Environment Variables:
+/// - `PDFIUM_STATIC_LIB_PATH`: Path to directory containing libpdfium.a (for Docker/musl builds)
+///
 /// Note: bblanchon/pdfium-binaries only provides dynamic libraries.
 /// On macOS, this will fallback to dynamic linking with a warning.
-/// On Linux, static libraries may not be available either - will provide helpful error.
+/// On Linux, you must provide PDFIUM_STATIC_LIB_PATH pointing to a static build.
 fn link_statically(pdfium_dir: &Path, target: &str) {
     // For static linking, we need libpdfium.a (not .dylib or .so)
     let static_lib_name = "libpdfium.a";
     let lib_subdir = "lib";
+
+    // First, check if user provided a static library path via environment variable
+    if let Ok(custom_path) = env::var("PDFIUM_STATIC_LIB_PATH") {
+        let custom_lib_dir = PathBuf::from(&custom_path);
+
+        if !custom_lib_dir.exists() {
+            panic!(
+                "PDFIUM_STATIC_LIB_PATH points to '{}' but the directory does not exist",
+                custom_path
+            );
+        }
+
+        let custom_lib = custom_lib_dir.join(static_lib_name);
+        if !custom_lib.exists() {
+            panic!(
+                "PDFIUM_STATIC_LIB_PATH points to '{}' but {} not found.\n\
+                 Expected to find: {}",
+                custom_path,
+                static_lib_name,
+                custom_lib.display()
+            );
+        }
+
+        tracing::debug!("Using custom static PDFium from: {}", custom_lib.display());
+        println!("cargo:rustc-link-search=native={}", custom_lib_dir.display());
+        println!("cargo:rustc-link-lib=static=pdfium");
+
+        // Static linking requires additional system dependencies
+        if target.contains("linux") {
+            println!("cargo:rustc-link-lib=dylib=pthread");
+            println!("cargo:rustc-link-lib=dylib=dl");
+        } else if target.contains("windows") {
+            println!("cargo:rustc-link-lib=dylib=ws2_32");
+            println!("cargo:rustc-link-lib=dylib=userenv");
+        }
+
+        return;
+    }
 
     // Find the actual library location (handles multiple possible archive structures)
     let lib_path = match find_pdfium_library(pdfium_dir, static_lib_name, lib_subdir) {
@@ -645,20 +715,33 @@ fn link_statically(pdfium_dir: &Path, target: &str) {
                 eprintln!("cargo:warning=Static PDFium library (libpdfium.a) not found for macOS.");
                 eprintln!("cargo:warning=bblanchon/pdfium-binaries only provides dynamic libraries.");
                 eprintln!("cargo:warning=Falling back to dynamic linking for local development.");
-                eprintln!("cargo:warning=Production Linux builds will attempt static linking.");
+                eprintln!("cargo:warning=Production Linux builds require PDFIUM_STATIC_LIB_PATH.");
 
                 // Fallback to dynamic linking on macOS
                 link_dynamically(pdfium_dir, target);
                 return;
             } else {
-                // On Linux/Windows, provide helpful error
+                // On Linux/Windows, provide helpful error with actionable steps
                 panic!(
                     "Static PDFium library (libpdfium.a) not found.\n\n\
-                     bblanchon/pdfium-binaries only provides dynamic libraries.\n\
-                     For static linking, either:\n\
-                     1. Build PDFium yourself: https://github.com/ajrcarey/pdfium-render/issues/53\n\
-                     2. Set PDFIUM_STATIC_LIB_PATH to point to your static library directory\n\
-                     3. Use 'pdf' (dynamic) or 'pdf-bundled' features instead of 'pdf-static'"
+                     bblanchon/pdfium-binaries only provides dynamic libraries.\n\n\
+                     For static linking (required for Docker with musl), you must:\n\n\
+                     1. Build static PDFium or obtain from a source that provides it\n\
+                        - See: https://github.com/ajrcarey/pdfium-render/issues/53\n\
+                        - Or use: https://github.com/paulocoutinhox/pdfium-lib (provides static builds)\n\n\
+                     2. Set environment variable pointing to the directory containing libpdfium.a:\n\
+                        export PDFIUM_STATIC_LIB_PATH=/path/to/pdfium/lib\n\n\
+                     3. Or use alternative features:\n\
+                        - 'pdf' (dynamic linking, requires .so at runtime)\n\
+                        - 'pdf-bundled' (embeds dynamic library in binary)\n\
+                        - 'pdf-system' (use system-installed pdfium)\n\n\
+                     Example Dockerfile pattern:\n\
+                        FROM alpine:latest as pdfium-builder\n\
+                        # Download/build static libpdfium.a\n\
+                        \n\
+                        FROM rust:alpine as builder\n\
+                        ENV PDFIUM_STATIC_LIB_PATH=/pdfium/lib\n\
+                        COPY --from=pdfium-builder /path/to/libpdfium.a /pdfium/lib/"
                 );
             }
         }
@@ -681,9 +764,11 @@ fn link_statically(pdfium_dir: &Path, target: &str) {
 
     // Static linking requires additional system dependencies
     if target.contains("linux") {
-        // Linux requires additional libraries for static linking
         println!("cargo:rustc-link-lib=dylib=pthread");
         println!("cargo:rustc-link-lib=dylib=dl");
+    } else if target.contains("windows") {
+        println!("cargo:rustc-link-lib=dylib=ws2_32");
+        println!("cargo:rustc-link-lib=dylib=userenv");
     }
 }
 
