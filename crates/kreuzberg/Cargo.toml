@@ -85,7 +85,7 @@ wasm-threads = ["dep:wasm-bindgen-rayon"]
 
 # Convenience bundles
 full = [
-    "pdf",
+    "pdf-bundled",
     "excel",
     "office",
     "email",
@@ -98,8 +98,8 @@ full = [
     "quality",
     "keywords",
 ]
-server = ["pdf", "excel", "html", "ocr", "api", "mcp"]
-cli = ["pdf", "excel", "office", "html", "ocr", "language-detection", "chunking", "quality"]
+server = ["pdf-bundled", "excel", "html", "ocr", "api", "mcp"]
+cli = ["pdf-bundled", "excel", "office", "html", "ocr", "language-detection", "chunking", "quality"]
 
 [build-dependencies]
 tracing = { workspace = true }

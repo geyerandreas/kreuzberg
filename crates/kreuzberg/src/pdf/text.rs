@@ -1,3 +1,4 @@
+use super::bindings::bind_pdfium;
 use super::error::{PdfError, Result};
 use crate::core::config::PageConfig;
 use crate::types::{PageBoundary, PageContent};
@@ -13,8 +14,7 @@ pub struct PdfTextExtractor {
 
 impl PdfTextExtractor {
     pub fn new() -> Result<Self> {
-        let binding = Pdfium::bind_to_system_library()
-            .map_err(|e| PdfError::TextExtractionFailed(format!("Failed to initialize Pdfium: {}", e)))?;
+        let binding = bind_pdfium(PdfError::TextExtractionFailed, "text extraction")?;
 
         let pdfium = Pdfium::new(binding);
         Ok(Self { pdfium })

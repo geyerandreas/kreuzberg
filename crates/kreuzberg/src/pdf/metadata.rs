@@ -1,3 +1,4 @@
+use super::bindings::bind_pdfium;
 use super::error::{PdfError, Result};
 use crate::types::{PageBoundary, PageInfo, PageStructure, PageUnitType};
 use pdfium_render::prelude::*;
@@ -85,8 +86,7 @@ pub fn extract_metadata(pdf_bytes: &[u8]) -> Result<PdfMetadata> {
 ///
 /// Returns only PDF-specific metadata (version, producer, encryption status, dimensions).
 pub fn extract_metadata_with_password(pdf_bytes: &[u8], password: Option<&str>) -> Result<PdfMetadata> {
-    let bindings = Pdfium::bind_to_system_library()
-        .map_err(|e| PdfError::MetadataExtractionFailed(format!("Failed to initialize Pdfium: {}", e)))?;
+    let bindings = bind_pdfium(PdfError::MetadataExtractionFailed, "metadata extraction")?;
 
     let pdfium = Pdfium::new(bindings);
 

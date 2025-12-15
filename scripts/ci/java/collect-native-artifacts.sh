@@ -9,7 +9,9 @@ mkdir -p "$out"
 case "$rid" in
 windows-x86_64)
 	cp -f target/release/kreuzberg_ffi.dll "$out/"
-	cp -f target/release/pdfium.dll "$out/"
+	if [ -f target/release/pdfium.dll ]; then
+		cp -f target/release/pdfium.dll "$out/"
+	fi
 	shopt -s nullglob
 	copied_ort=0
 	for dll in target/release/*onnxruntime*.dll target/release/DirectML.dll; do
@@ -25,7 +27,9 @@ windows-x86_64)
 	;;
 macos-x86_64 | macos-arm64)
 	cp -f target/release/libkreuzberg_ffi.dylib "$out/"
-	cp -f target/release/libpdfium.dylib "$out/"
+	if [ -f target/release/libpdfium.dylib ]; then
+		cp -f target/release/libpdfium.dylib "$out/"
+	fi
 	shopt -s nullglob
 	copied_ort=0
 	for dylib in target/release/libonnxruntime*.dylib; do
@@ -39,7 +43,9 @@ macos-x86_64 | macos-arm64)
 	;;
 linux-x86_64)
 	cp -f target/release/libkreuzberg_ffi.so "$out/"
-	cp -f target/release/libpdfium.so "$out/"
+	if [ -f target/release/libpdfium.so ]; then
+		cp -f target/release/libpdfium.so "$out/"
+	fi
 	shopt -s nullglob
 	copied_ort=0
 	for so in target/release/libonnxruntime*.so*; do

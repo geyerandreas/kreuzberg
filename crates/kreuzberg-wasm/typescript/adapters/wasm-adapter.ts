@@ -174,12 +174,18 @@ export function jsToExtractionResult(jsValue: unknown): ExtractionResult {
 	}
 
 	const result = jsValue as Record<string, unknown>;
+	const mimeType =
+		typeof result.mimeType === "string"
+			? result.mimeType
+			: typeof result.mime_type === "string"
+				? result.mime_type
+				: null;
 
 	// Validate required fields
 	if (typeof result.content !== "string") {
 		throw new Error("Invalid extraction result: missing or invalid content");
 	}
-	if (typeof result.mimeType !== "string") {
+	if (typeof mimeType !== "string") {
 		throw new Error("Invalid extraction result: missing or invalid mimeType");
 	}
 	if (!result.metadata || typeof result.metadata !== "object") {
@@ -326,16 +332,19 @@ export function jsToExtractionResult(jsValue: unknown): ExtractionResult {
 
 	// Validate detectedLanguages array
 	let detectedLanguages: string[] | null = null;
-	if (Array.isArray(result.detectedLanguages)) {
-		if (!result.detectedLanguages.every((lang) => typeof lang === "string")) {
+	const detectedLanguagesRaw = Array.isArray(result.detectedLanguages)
+		? result.detectedLanguages
+		: result.detected_languages;
+	if (Array.isArray(detectedLanguagesRaw)) {
+		if (!detectedLanguagesRaw.every((lang) => typeof lang === "string")) {
 			throw new Error("Invalid result: detectedLanguages must contain only strings");
 		}
-		detectedLanguages = result.detectedLanguages;
+		detectedLanguages = detectedLanguagesRaw;
 	}
 
 	return {
 		content: result.content,
-		mimeType: result.mimeType,
+		mimeType,
 		metadata: result.metadata,
 		tables,
 		detectedLanguages,
@@ -395,7 +404,7 @@ export function isValidExtractionResult(value: unknown): value is ExtractionResu
 	const obj = value as Record<string, unknown>;
 	return (
 		typeof obj.content === "string" &&
-		typeof obj.mimeType === "string" &&
+		(typeof obj.mimeType === "string" || typeof obj.mime_type === "string") &&
 		obj.metadata !== null &&
 		typeof obj.metadata === "object" &&
 		Array.isArray(obj.tables)

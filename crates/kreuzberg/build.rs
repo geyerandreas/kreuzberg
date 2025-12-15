@@ -483,13 +483,14 @@ fn copy_dir_all(src: &Path, dst: &Path) -> io::Result<()> {
 /// Get platform-specific runtime library name and subdirectory
 ///
 /// Returns tuple of (library_name, subdirectory) for the target platform:
-/// - WASM: ("libpdfium.a", "lib")
+/// - WASM: ("libpdfium.a", "release/lib")
 /// - Windows: ("pdfium.dll", "bin")
 /// - macOS: ("libpdfium.dylib", "lib")
 /// - Linux: ("libpdfium.so", "lib")
 fn runtime_library_info(target: &str) -> (String, &'static str) {
     if target.contains("wasm") {
-        ("libpdfium.a".to_string(), "lib")
+        // pdfium-lib `wasm.tgz` extracts into `release/lib/libpdfium.a`
+        ("libpdfium.a".to_string(), "release/lib")
     } else if target.contains("windows") {
         ("pdfium.dll".to_string(), "bin")
     } else if target.contains("darwin") {
@@ -684,7 +685,7 @@ fn link_dynamically(pdfium_dir: &Path, target: &str) {
 fn link_statically(pdfium_dir: &Path, target: &str) {
     // For static linking, we need libpdfium.a (not .dylib or .so)
     let static_lib_name = "libpdfium.a";
-    let lib_subdir = "lib";
+    let lib_subdir = if target.contains("wasm") { "release/lib" } else { "lib" };
 
     // First, check if user provided a static library path via environment variable
     if let Ok(custom_path) = env::var("PDFIUM_STATIC_LIB_PATH") {
@@ -796,9 +797,6 @@ fn link_statically(pdfium_dir: &Path, target: &str) {
 /// Each binary extracts and uses its own copy of the PDFium library.
 /// Supports flexible archive structures by finding library in multiple locations.
 fn link_bundled(pdfium_dir: &Path, target: &str, out_dir: &Path) {
-    // Link dynamically for build
-    link_dynamically(pdfium_dir, target);
-
     // Copy library to OUT_DIR for bundling using flexible detection
     let (runtime_lib_name, runtime_subdir) = runtime_library_info(target);
     let src_lib = match find_pdfium_library(pdfium_dir, &runtime_lib_name, runtime_subdir) {

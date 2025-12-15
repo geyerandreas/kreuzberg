@@ -64,12 +64,36 @@ import urllib.request
 crate = os.environ["PKG"]
 version = os.environ["VER"].lstrip("v")
 
-url = f"https://crates.io/api/v1/crates/{crate}"
-with urllib.request.urlopen(url, timeout=20) as resp:
-    data = json.load(resp)
+def index_path(crate_name: str) -> str:
+    normalized = crate_name.lower()
+    n = len(normalized)
+    if n == 1:
+        return f"1/{normalized}"
+    if n == 2:
+        return f"2/{normalized}"
+    if n == 3:
+        return f"3/{normalized[0]}/{normalized}"
+    return f"{normalized[0:2]}/{normalized[2:4]}/{normalized}"
 
-versions = [item.get("num") for item in data.get("versions", [])]
-sys.exit(0 if version in versions else 1)
+url = f"https://index.crates.io/{index_path(crate)}"
+with urllib.request.urlopen(url, timeout=20) as resp:
+    body = resp.read().decode("utf-8", errors="replace")
+
+existing_versions: set[str] = set()
+for line in body.splitlines():
+    line = line.strip()
+    if not line:
+        continue
+    try:
+        entry = json.loads(line)
+    except json.JSONDecodeError:
+        continue
+    if isinstance(entry, dict):
+        vers = entry.get("vers")
+        if isinstance(vers, str):
+            existing_versions.add(vers)
+
+sys.exit(0 if version in existing_versions else 1)
 PY
 		return $?
 		;;

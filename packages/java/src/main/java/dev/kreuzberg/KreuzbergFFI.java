@@ -493,7 +493,7 @@ final class KreuzbergFFI {
             String msg = "Failed to load Kreuzberg native library. Expected resource: "
                 + nativesDir + "/" + libName + libExt + " (RID: " + nativesRid + "). "
                 + "Set KREUZBERG_FFI_DIR to a directory containing " + libName + libExt
-                + " and " + pdfiumLibName + libExt + ", or ensure the libraries are on the system library path.";
+                + ", or ensure the library is on the system library path.";
             UnsatisfiedLinkError out = new UnsatisfiedLinkError(msg + " Original error: " + e.getMessage());
             out.initCause(e);
             throw out;

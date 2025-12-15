@@ -1,3 +1,4 @@
+use super::bindings::bind_pdfium;
 use super::error::{PdfError, Result};
 use image::DynamicImage;
 use pdfium_render::prelude::*;
@@ -32,8 +33,7 @@ pub struct PdfRenderer {
 
 impl PdfRenderer {
     pub fn new() -> Result<Self> {
-        let binding = Pdfium::bind_to_system_library()
-            .map_err(|e| PdfError::RenderingFailed(format!("Failed to initialize Pdfium: {}", e)))?;
+        let binding = bind_pdfium(PdfError::RenderingFailed, "page rendering")?;
 
         let pdfium = Pdfium::new(binding);
         Ok(Self { pdfium })
