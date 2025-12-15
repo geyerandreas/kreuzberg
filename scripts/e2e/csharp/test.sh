@@ -27,4 +27,4 @@ Windows*)
 esac
 
 cd "${REPO_ROOT}/e2e/csharp"
-dotnet test Kreuzberg.E2E.csproj -c Release
+dotnet test Kreuzberg.E2E.csproj -c Release --logger "console;verbosity=detailed" --blame --blame-hang-timeout 20m

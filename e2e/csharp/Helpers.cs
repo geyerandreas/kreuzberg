@@ -246,42 +246,47 @@ public static class TestHelpers
             throw new XunitException($"Invalid expectation for {path}: {expectationJson}");
         }
 
-        if (spec.TryGetPropertyValue("eq", out var eq))
-        {
-            if (!JsonEquals(value, eq))
-            {
-                throw new XunitException($"Expected metadata {path} == {eq}, got {value}");
-            }
-        }
-        if (spec.TryGetPropertyValue("gte", out var gte))
-        {
-            if (!CompareFloat(value, gte, true))
-            {
-                throw new XunitException($"Expected metadata {path} >= {gte}, got {value}");
-            }
-        }
-        if (spec.TryGetPropertyValue("lte", out var lte))
-        {
-            if (!CompareFloat(value, lte, false))
-            {
-                throw new XunitException($"Expected metadata {path} <= {lte}, got {value}");
-            }
-        }
-        if (spec.TryGetPropertyValue("contains", out var contains))
-        {
-            if (!ValueContains(value, contains))
-            {
-                throw new XunitException($"Expected metadata {path} to contain {contains}, got {value}");
-            }
-        }
-    }
+	        if (spec.TryGetPropertyValue("eq", out var eq))
+	        {
+	            if (!JsonEquals(value, eq))
+	            {
+	                throw new XunitException($"Expected metadata {path} == {eq}, got {value}");
+	            }
+	        }
+	        if (spec.TryGetPropertyValue("gte", out var gte))
+	        {
+	            if (!CompareFloat(value, gte, true))
+	            {
+	                throw new XunitException($"Expected metadata {path} >= {gte}, got {value}");
+	            }
+	        }
+	        if (spec.TryGetPropertyValue("lte", out var lte))
+	        {
+	            if (!CompareFloat(value, lte, false))
+	            {
+	                throw new XunitException($"Expected metadata {path} <= {lte}, got {value}");
+	            }
+	        }
+	        if (spec.TryGetPropertyValue("contains", out var contains))
+	        {
+	            if (!ValueContains(value, contains))
+	            {
+	                throw new XunitException($"Expected metadata {path} to contain {contains}, got {value}");
+	            }
+	        }
+	    }
 
-    private static bool JsonEquals(JsonNode a, JsonNode b)
-    {
-        if (a is JsonValue av && b is JsonValue bv)
-        {
-            if (av.TryGetValue<string>(out var aStr) && bv.TryGetValue<string>(out var bStr))
-            {
+	    private static bool JsonEquals(JsonNode a, JsonNode? b)
+	    {
+	        if (b is null)
+	        {
+	            return false;
+	        }
+
+	        if (a is JsonValue av && b is JsonValue bv)
+	        {
+	            if (av.TryGetValue<string>(out var aStr) && bv.TryGetValue<string>(out var bStr))
+	            {
                 return aStr == bStr;
             }
             if (av.TryGetValue<double>(out var aNum) && bv.TryGetValue<double>(out var bNum))
@@ -294,11 +299,11 @@ public static class TestHelpers
             }
         }
 
-        if (a is JsonArray aa && b is JsonArray ba && aa.Count == ba.Count)
-        {
-            for (var i = 0; i < aa.Count; i++)
-            {
-                if (!JsonEquals(aa[i]!, ba[i]!))
+	        if (a is JsonArray aa && b is JsonArray ba && aa.Count == ba.Count)
+	        {
+	            for (var i = 0; i < aa.Count; i++)
+	            {
+	                if (!JsonEquals(aa[i]!, ba[i]!))
                 {
                     return false;
                 }
@@ -306,15 +311,20 @@ public static class TestHelpers
             return true;
         }
 
-        return a.ToJsonString() == b.ToJsonString();
-    }
+	        return a.ToJsonString() == b.ToJsonString();
+	    }
 
-    private static bool CompareFloat(JsonNode actual, JsonNode expected, bool gte)
-    {
-        try
-        {
-            double? actualVal = null;
-            double? expectedVal = null;
+	    private static bool CompareFloat(JsonNode actual, JsonNode? expected, bool gte)
+	    {
+	        if (expected is null)
+	        {
+	            return false;
+	        }
+
+	        try
+	        {
+	            double? actualVal = null;
+	            double? expectedVal = null;
 
             if (actual is JsonValue av)
             {
@@ -340,15 +350,20 @@ public static class TestHelpers
         catch
         {
             return false;
-        }
-    }
+	        }
+	    }
 
-    private static bool ValueContains(JsonNode value, JsonNode contains)
-    {
-        if (value is JsonValue valueAsJsonValue && contains is JsonValue containsAsJsonValue)
-        {
-            if (valueAsJsonValue.TryGetValue<string>(out var valueStr) && containsAsJsonValue.TryGetValue<string>(out var containsStr))
-            {
+	    private static bool ValueContains(JsonNode value, JsonNode? contains)
+	    {
+	        if (contains is null)
+	        {
+	            return false;
+	        }
+
+	        if (value is JsonValue valueAsJsonValue && contains is JsonValue containsAsJsonValue)
+	        {
+	            if (valueAsJsonValue.TryGetValue<string>(out var valueStr) && containsAsJsonValue.TryGetValue<string>(out var containsStr))
+	            {
                 return valueStr.Contains(containsStr, StringComparison.OrdinalIgnoreCase);
             }
         }
@@ -398,6 +413,6 @@ public static class TestHelpers
             return false;
         }
 
-        return false;
-    }
+	        return false;
+	    }
 }
