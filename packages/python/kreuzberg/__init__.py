@@ -41,6 +41,7 @@ from importlib.metadata import version
 from typing import TYPE_CHECKING, Any
 
 from kreuzberg import _setup_lib_path  # noqa: F401
+from kreuzberg._docstrings import apply_docstrings
 from kreuzberg._internal_bindings import (
     ChunkingConfig,
     EmbeddingConfig,
@@ -62,19 +63,14 @@ from kreuzberg._internal_bindings import (
     clear_post_processors,
     clear_validators,
     detect_mime_type_from_bytes,
-    detect_mime_type_from_path,
     get_embedding_preset,
     get_extensions_for_mime,
-    get_last_error_code,
     get_last_panic_context,
     list_document_extractors,
     list_embedding_presets,
     list_ocr_backends,
     list_post_processors,
     list_validators,
-    register_ocr_backend,
-    register_post_processor,
-    register_validator,
     unregister_document_extractor,
     unregister_ocr_backend,
     unregister_post_processor,
@@ -94,6 +90,9 @@ from kreuzberg._internal_bindings import (
     batch_extract_files_sync as batch_extract_files_sync_impl,
 )
 from kreuzberg._internal_bindings import (
+    detect_mime_type_from_path as _detect_mime_type_from_path_impl,
+)
+from kreuzberg._internal_bindings import (
     extract_bytes as extract_bytes_impl,
 )
 from kreuzberg._internal_bindings import (
@@ -104,6 +103,18 @@ from kreuzberg._internal_bindings import (
 )
 from kreuzberg._internal_bindings import (
     extract_file_sync as extract_file_sync_impl,
+)
+from kreuzberg._internal_bindings import (
+    get_last_error_code as _get_last_error_code_impl,
+)
+from kreuzberg._internal_bindings import (
+    register_ocr_backend as _register_ocr_backend_impl,
+)
+from kreuzberg._internal_bindings import (
+    register_post_processor as _register_post_processor_impl,
+)
+from kreuzberg._internal_bindings import (
+    register_validator as _register_validator_impl,
 )
 from kreuzberg.exceptions import (
     CacheError,
@@ -127,6 +138,9 @@ if TYPE_CHECKING:
     from kreuzberg.ocr.paddleocr import PaddleOCRBackend  # noqa: F401
 
 __version__ = version("kreuzberg")
+
+# Apply comprehensive docstrings to all configuration classes
+apply_docstrings()
 
 
 __all__ = [
@@ -534,3 +548,187 @@ def detect_mime_type(data: bytes | bytearray) -> str:
         >>> assert "pdf" in mime_type.lower()
     """
     return detect_mime_type_from_bytes(bytes(data))
+
+
+def detect_mime_type_from_path(path: str | Path) -> str:
+    """Detect MIME type from file path.
+
+    Reads the file at the given path and detects its MIME type using magic number detection.
+
+    Args:
+        path: Path to the file (str or pathlib.Path)
+
+    Returns:
+        Detected MIME type (e.g., "application/pdf", "text/plain")
+
+    Raises:
+        OSError: If file cannot be read (file not found, permission denied, etc.)
+        RuntimeError: If MIME type detection fails
+
+    Example:
+        >>> from kreuzberg import detect_mime_type_from_path
+        >>> mime_type = detect_mime_type_from_path("document.pdf")
+        >>> assert "pdf" in mime_type.lower()
+    """
+    return _detect_mime_type_from_path_impl(str(path))
+
+
+def register_ocr_backend(backend: Any) -> None:
+    """Register a Python OCR backend with the Rust core.
+
+    This function validates the Python backend object, wraps it in a Rust OcrBackend
+    implementation, and registers it with the global OCR backend registry. Once registered,
+    the backend can be used by the Rust CLI, API, and MCP server.
+
+    Args:
+        backend: Python object implementing the OCR backend protocol
+
+    Required methods on the backend object:
+        - name() -> str: Return backend name (must be non-empty)
+        - supported_languages() -> list[str]: Return list of supported language codes
+        - process_image(image_bytes: bytes, language: str) -> dict: Process image and return result dict
+
+    Optional methods:
+        - process_file(path: str, language: str) -> dict: Custom file processing
+        - initialize(): Called when backend is registered
+        - shutdown(): Called when backend is unregistered
+        - version() -> str: Backend version (defaults to "1.0.0")
+
+    Raises:
+        TypeError: If backend is missing required methods (name, supported_languages, process_image)
+        ValueError: If backend name is empty or already registered
+        RuntimeError: If registration with the Rust registry fails
+
+    Example:
+        >>> from kreuzberg import register_ocr_backend
+        >>> class MyOcrBackend:
+        ...     def name(self) -> str:
+        ...         return "my-ocr"
+        ...
+        ...     def supported_languages(self) -> list[str]:
+        ...         return ["eng", "deu", "fra"]
+        ...
+        ...     def process_image(self, image_bytes: bytes, language: str) -> dict:
+        ...         return {"content": "extracted text", "metadata": {"confidence": 0.95}, "tables": []}
+        >>> register_ocr_backend(MyOcrBackend())
+    """
+    return _register_ocr_backend_impl(backend)
+
+
+def register_post_processor(processor: Any) -> None:
+    """Register a Python PostProcessor with the Rust core.
+
+    This function validates the Python processor object, wraps it in a Rust PostProcessor
+    implementation, and registers it with the global PostProcessor registry. Once registered,
+    the processor will be called automatically after extraction to enrich results.
+
+    Args:
+        processor: Python object implementing the PostProcessor protocol
+
+    Required methods on the processor object:
+        - name() -> str: Return processor name (must be non-empty)
+        - process(result: dict) -> dict: Process and enrich the extraction result
+        - processing_stage() -> str: Return "early", "middle", or "late" (REQUIRED, not optional)
+
+    Optional methods:
+        - initialize(): Called when processor is registered
+        - shutdown(): Called when processor is unregistered
+        - version() -> str: Processor version (defaults to "1.0.0")
+
+    Raises:
+        TypeError: If processor is missing required methods (name, process, processing_stage)
+        ValueError: If processor name is empty or already registered
+        RuntimeError: If registration with the Rust registry fails
+
+    Example:
+        >>> from kreuzberg import register_post_processor
+        >>> class EntityExtractor:
+        ...     def name(self) -> str:
+        ...         return "entity_extraction"
+        ...
+        ...     def processing_stage(self) -> str:
+        ...         return "early"
+        ...
+        ...     def process(self, result: dict) -> dict:
+        ...         entities = {"PERSON": ["John Doe"], "ORG": ["Microsoft"]}
+        ...         result["metadata"]["entities"] = entities
+        ...         return result
+        >>> register_post_processor(EntityExtractor())
+    """
+    return _register_post_processor_impl(processor)
+
+
+def register_validator(validator: Any) -> None:
+    """Register a Python Validator with the Rust core.
+
+    This function validates the Python validator object, wraps it in a Rust Validator
+    implementation, and registers it with the global Validator registry. Once registered,
+    the validator will be called automatically after extraction to validate results.
+
+    Args:
+        validator: Python object implementing the Validator protocol
+
+    Required methods on the validator object:
+        - name() -> str: Return validator name (must be non-empty)
+        - validate(result: dict) -> None: Validate the extraction result (raise error to fail)
+
+    Optional methods:
+        - should_validate(result: dict) -> bool: Check if validator should run (defaults to True)
+        - priority() -> int: Return priority (defaults to 50, higher runs first)
+        - initialize(): Called when validator is registered
+        - shutdown(): Called when validator is unregistered
+        - version() -> str: Validator version (defaults to "1.0.0")
+
+    Raises:
+        TypeError: If validator is missing required methods (name, validate)
+        ValueError: If validator name is empty or already registered
+        RuntimeError: If registration with the Rust registry fails
+
+    Example:
+        >>> from kreuzberg import register_validator
+        >>> from kreuzberg.exceptions import ValidationError
+        >>> class MinLengthValidator:
+        ...     def name(self) -> str:
+        ...         return "min_length_validator"
+        ...
+        ...     def priority(self) -> int:
+        ...         return 100
+        ...
+        ...     def validate(self, result: dict) -> None:
+        ...         if len(result["content"]) < 100:
+        ...             raise ValidationError(f"Content too short")
+        >>> register_validator(MinLengthValidator())
+    """
+    return _register_validator_impl(validator)
+
+
+def get_last_error_code() -> int | None:
+    """Get the last error code from the FFI layer.
+
+    Returns the error code from the most recent operation. Useful for debugging
+    and understanding what went wrong when an operation fails.
+
+    Error codes:
+        - 0 (SUCCESS): No error occurred
+        - 1 (GENERIC_ERROR): Generic unspecified error
+        - 2 (PANIC): A panic occurred in the Rust core
+        - 3 (INVALID_ARGUMENT): Invalid argument provided
+        - 4 (IO_ERROR): I/O operation failed
+        - 5 (PARSING_ERROR): Document parsing failed
+        - 6 (OCR_ERROR): OCR operation failed
+        - 7 (MISSING_DEPENDENCY): Required dependency not available
+
+    Returns:
+        int: The error code (0 if no error has occurred)
+
+    Example:
+        >>> from kreuzberg import get_last_error_code, ErrorCode
+        >>> code = get_last_error_code()
+        >>> if code == ErrorCode.SUCCESS:
+        ...     print("No errors")
+        >>> elif code == ErrorCode.OCR_ERROR:
+        ...     print("OCR operation failed")
+        >>> elif code == 2:
+        ...     print("A panic occurred")
+    """
+    return _get_last_error_code_impl()
