@@ -9,7 +9,7 @@ export default defineConfig({
 		"typescript/ocr/tesseract-wasm-backend.ts",
 	],
 	format: ["esm", "cjs"],
-	bundle: false,
+	bundle: true,
 	dts: {
 		compilerOptions: {
 			skipLibCheck: true,
@@ -20,7 +20,7 @@ export default defineConfig({
 	sourcemap: true,
 	clean: true,
 	shims: false,
-	platform: "browser",
+	platform: "neutral",
 	target: "es2022",
-	external: ["@kreuzberg/core", /\.wasm$/, /@kreuzberg\/wasm-.*/, "./index.js", "../index.js"],
+	external: ["@kreuzberg/core", /\.wasm$/, /@kreuzberg\/wasm-.*/, /\.\.\/pkg\/.*/, "./index.js", "../index.js"],
 });
