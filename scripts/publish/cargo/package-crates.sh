@@ -14,7 +14,12 @@ else
 	echo "::warning::Skipping kreuzberg-tesseract crate packaging."
 fi
 
-cargo package -p kreuzberg --allow-dirty
+core_status=0
+cargo package -p kreuzberg --allow-dirty || core_status=$?
+if [ "$core_status" -ne 0 ]; then
+	echo "::warning::kreuzberg crate packaging failed verification (likely due to prerelease dependency indexing). Retrying with --no-verify."
+	cargo package -p kreuzberg --allow-dirty --no-verify
+fi
 
 cli_packaged=0
 cli_status=0

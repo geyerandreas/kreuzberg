@@ -105,15 +105,16 @@ def update_ruby_version(file_path: Path, version: str) -> Tuple[bool, str, str]:
     Returns: (changed, old_version, new_version)
     """
     content = file_path.read_text()
-    match = re.search(r'VERSION\s*=\s*["\']([^"\']+)["\']', content)
-    old_version = match.group(1) if match else "NOT FOUND"
+    match = re.search(r'VERSION\s*=\s*(["\'])([^"\']+)\1', content)
+    old_version = match.group(2) if match else "NOT FOUND"
+    quote = match.group(1) if match else '"'
 
     if old_version == version:
         return False, old_version, version
 
     new_content = re.sub(
-        r'(VERSION\s*=\s*)["\'][^"\']+["\']',
-        rf'\1"{version}"',
+        r'(VERSION\s*=\s*)(["\'])([^"\']+)\2',
+        rf"\g<1>{quote}{version}{quote}",
         content,
     )
 
@@ -191,7 +192,7 @@ def main():
     unchanged_files: List[str] = []
 
     for pkg_json in repo_root.rglob("package.json"):
-        if any(part in pkg_json.parts for part in ["node_modules", ".git", "target", "dist", "examples", "e2e"]):
+        if any(part in pkg_json.parts for part in ["node_modules", ".git", "target", "dist", "examples"]):
             continue
 
         changed, old_ver, new_ver = update_package_json(pkg_json, version)
@@ -246,6 +247,11 @@ def main():
         (
             repo_root / "packages/ruby/Gemfile.lock",
             r'(^\s{4}kreuzberg \()[^\)]+(\))',
+            rf"\g<1>{version}\g<2>",
+        ),
+        (
+            repo_root / "crates/kreuzberg/Cargo.toml",
+            r'^(kreuzberg-tesseract\s*=\s*\{\s*version\s*=\s*")[^"]+("\s*,\s*optional\s*=\s*true\s*\})',
             rf"\g<1>{version}\g<2>",
         ),
         (
