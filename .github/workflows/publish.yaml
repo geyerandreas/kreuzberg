@@ -2076,7 +2076,6 @@ jobs:
 
       - name: Run cargo audit
         run: cargo audit --deny warnings
-        working-directory: crates/kreuzberg-wasm
 
       - name: Build WASM for web target
         run: wasm-pack build --target web --out-dir pkg-web --release
@@ -2168,7 +2167,7 @@ jobs:
         if: ${{ needs.prepare.outputs.dry_run != 'true' }}
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
-        run: echo "exists=$(bash scripts/publish/check_maven.sh "${VERSION}" | cut -d= -f2)" >> "$GITHUB_OUTPUT"
+        run: scripts/publish/check_maven.sh "${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Install system dependencies
         if: ${{ needs.prepare.outputs.dry_run != 'true' && steps.maven_check.outputs.exists != 'true' }}
