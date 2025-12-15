@@ -161,6 +161,46 @@ setup_go_paths() {
 	local repo_root="${1:-${REPO_ROOT:-}}"
 	[ -z "$repo_root" ] && return 0
 
+	# Ensure kreuzberg-ffi pkg-config file exists for CGO builds.
+	# In CI, we often download prebuilt native libs without running the Rust build script
+	# that generates `crates/kreuzberg-ffi/kreuzberg-ffi.pc`.
+	local pc_path="${repo_root}/crates/kreuzberg-ffi/kreuzberg-ffi.pc"
+	if [ ! -f "$pc_path" ]; then
+		local version=""
+		version="$(sed -n 's/^version = \"\\(.*\\)\"/\\1/p' "${repo_root}/Cargo.toml" | head -n 1 || true)"
+		[ -z "$version" ] && version="unknown"
+
+		local platform="${RUNNER_OS:-$(uname -s)}"
+		local libs_private=""
+		case "$platform" in
+		Linux)
+			libs_private="-lpthread -ldl -lm"
+			;;
+		macOS | Darwin)
+			libs_private="-framework CoreFoundation -framework Security -lpthread"
+			;;
+		Windows | MINGW* | MSYS* | CYGWIN*)
+			libs_private="-lws2_32 -luserenv -lbcrypt"
+			;;
+		esac
+
+		mkdir -p "$(dirname "$pc_path")"
+		cat >"$pc_path" <<EOF
+prefix=${repo_root}
+exec_prefix=\${prefix}
+libdir=${repo_root}/target/release
+includedir=${repo_root}/crates/kreuzberg-ffi
+
+Name: kreuzberg-ffi
+Description: C FFI bindings for Kreuzberg document intelligence library
+Version: ${version}
+URL: https://kreuzberg.dev
+Libs: -L\${libdir} -lkreuzberg_ffi
+Libs.private: ${libs_private}
+Cflags: -I\${includedir}
+EOF
+	fi
+
 	# pkg-config path for finding kreuzberg-ffi.pc
 	export PKG_CONFIG_PATH="${repo_root}/crates/kreuzberg-ffi:${PKG_CONFIG_PATH:-}"
 
