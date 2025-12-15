@@ -130,7 +130,7 @@ jobs:
         run: scripts/ci/node/verify-ts-artifacts.sh
 
       - name: Upload Node bindings
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: napi-${{ matrix.target }}
           path: |
