@@ -149,6 +149,13 @@ publish_npm_package() {
 	# CRITICAL: Use --tag flag to control dist-tag (prevents pre-releases from being 'latest')
 	local status
 	set +e
+	project_npmrc=""
+	if [ -f ".npmrc" ] && grep -Eq '^(shared-workspace-lockfile|auto-install-peers|hoist)=' ".npmrc"; then
+		project_npmrc="$(mktemp)"
+		mv -f ".npmrc" "$project_npmrc"
+		register_cleanup "if [ -f '$project_npmrc' ]; then mv -f '$project_npmrc' .npmrc; fi"
+	fi
+
 	npm publish "$pkg_path" --access public --provenance --ignore-scripts --tag "$npm_tag" 2>&1 | tee "$publish_log"
 	status=${PIPESTATUS[0]}
 	set -e
@@ -203,6 +210,12 @@ publish_npm_from_directory() {
 	set +e
 	(
 		cd "$pkg_dir" || exit 1
+		project_npmrc=""
+		if [ -f ".npmrc" ] && grep -Eq '^(shared-workspace-lockfile|auto-install-peers|hoist)=' ".npmrc"; then
+			project_npmrc="$(mktemp)"
+			mv -f ".npmrc" "$project_npmrc"
+			trap 'if [ -f "$project_npmrc" ]; then mv -f "$project_npmrc" .npmrc; fi' EXIT
+		fi
 		npm publish --access public --provenance --ignore-scripts --tag "$npm_tag" 2>&1 | tee "$publish_log"
 	)
 	status=${PIPESTATUS[0]}

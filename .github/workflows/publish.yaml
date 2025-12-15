@@ -227,6 +227,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.prepare.outputs.tag }}
           ASSET_PREFIX: kreuzberg-cli-
+          REQUIRED_ASSETS: |
+            kreuzberg-cli-aarch64-apple-darwin.tar.gz
+            kreuzberg-cli-x86_64-unknown-linux-gnu.tar.gz
+            kreuzberg-cli-x86_64-pc-windows-msvc.zip
           SUMMARY_LABEL: CLI
         run: scripts/publish/check-release-assets.sh
 
@@ -251,6 +255,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.prepare.outputs.tag }}
           ASSET_PREFIX: go-ffi-
+          REQUIRED_ASSETS: |
+            go-ffi-linux-x86_64.tar.gz
+            go-ffi-macos-arm64.tar.gz
+            go-ffi-windows-x86_64.tar.gz
           SUMMARY_LABEL: Go FFI
         run: scripts/publish/check-release-assets.sh
 

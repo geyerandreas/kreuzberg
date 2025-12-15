@@ -5,13 +5,34 @@ set -euo pipefail
 tag="${TAG:?TAG not set}"
 asset_prefix="${ASSET_PREFIX:?ASSET_PREFIX not set}"
 summary_label="${SUMMARY_LABEL:-assets}"
+required_assets="${REQUIRED_ASSETS:-}"
 
 tmp_json="$(mktemp)"
 exists=false
 
 if gh release view "$tag" --json assets >"$tmp_json" 2>/dev/null; then
-	if jq -e --arg prefix "$asset_prefix" '.assets[].name | select(startswith($prefix))' "$tmp_json" >/dev/null; then
-		exists=true
+	if [ -n "$required_assets" ]; then
+		missing=0
+		while IFS= read -r asset; do
+			asset="$(echo "$asset" | xargs)"
+			if [ -z "$asset" ]; then
+				continue
+			fi
+			if ! jq -e --arg name "$asset" '.assets[].name | select(. == $name)' "$tmp_json" >/dev/null; then
+				missing=1
+				if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+					echo "${summary_label}: missing release asset '${asset}'" >>"$GITHUB_STEP_SUMMARY"
+				fi
+			fi
+		done <<<"$required_assets"
+
+		if [ "$missing" -eq 0 ]; then
+			exists=true
+		fi
+	else
+		if jq -e --arg prefix "$asset_prefix" '.assets[].name | select(startswith($prefix))' "$tmp_json" >/dev/null; then
+			exists=true
+		fi
 	fi
 fi
 
