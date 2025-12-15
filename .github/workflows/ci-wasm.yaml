@@ -218,7 +218,7 @@ jobs:
         run: scripts/ci/wasm/validate-web-artifact.sh
 
       - name: Upload WASM artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: wasm-${{ matrix.target }}
           path: crates/kreuzberg-wasm/pkg**/

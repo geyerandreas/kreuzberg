@@ -144,7 +144,7 @@ jobs:
           manylinux: off
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: wheels-${{ matrix.platform }}
           path: target/wheels/*.whl
@@ -180,7 +180,7 @@ jobs:
         run: scripts/ci/python/build-sdist.sh
 
       - name: Upload sdist
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: python-sdist
           path: target/wheels/*.tar.gz

@@ -305,7 +305,7 @@ jobs:
         run: scripts/ci/rust/package-cli-windows.ps1 -Target ${{ matrix.target }}
 
       - name: Upload CLI binary
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: cli-${{ matrix.target }}
           path: kreuzberg-cli-${{ matrix.target }}.${{ matrix.archive }}
