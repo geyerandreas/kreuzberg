@@ -331,9 +331,8 @@ impl DocumentExtractor for PdfExtractor {
             let pages_config = config.pages.clone();
             tokio::task::spawn_blocking(move || {
                 let _guard = span.entered();
-                let bindings = Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path("./"))
-                    .or_else(|_| Pdfium::bind_to_system_library())
-                    .map_err(|e| PdfError::MetadataExtractionFailed(format!("Failed to initialize Pdfium: {}", e)))?;
+                let bindings =
+                    crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")?;
 
                 let pdfium = Pdfium::new(bindings);
 
@@ -369,9 +368,7 @@ impl DocumentExtractor for PdfExtractor {
             .await
             .map_err(|e| crate::error::KreuzbergError::Other(format!("PDF extraction task failed: {}", e)))??
         } else {
-            let bindings = Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path("./"))
-                .or_else(|_| Pdfium::bind_to_system_library())
-                .map_err(|e| PdfError::MetadataExtractionFailed(format!("Failed to initialize Pdfium: {}", e)))?;
+            let bindings = crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")?;
 
             let pdfium = Pdfium::new(bindings);
 

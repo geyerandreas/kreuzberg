@@ -13,9 +13,11 @@ use pdfium_render::prelude::*;
 /// Spacing threshold for word boundary detection (in PDF units).
 ///
 /// Characters separated by more than this distance are considered separate words.
+#[cfg(feature = "ocr")]
 const WORD_SPACING_THRESHOLD: f32 = 3.0;
 
 /// Minimum word length for table detection (filter out noise).
+#[cfg(feature = "ocr")]
 const MIN_WORD_LENGTH: usize = 1;
 
 /// Extract words with positions from PDF page for table detection.
@@ -80,6 +82,7 @@ pub fn extract_words_from_page(_page: &PdfPage, _min_confidence: f64) -> Result<
 }
 
 /// Character with position information extracted from PDF.
+#[cfg(feature = "ocr")]
 #[derive(Debug, Clone)]
 struct CharInfo {
     text: char,

@@ -1952,10 +1952,9 @@ fn batch_extract_bytes_sync(args: &[Value]) -> Result<RArray, Error> {
 
     let config = parse_extraction_config(&ruby, opts)?;
 
-    let bytes_values: Vec<Value> = bytes_array.to_vec::<Value>()?;
-    let bytes_vec: Vec<RString> = bytes_values
+    let bytes_vec: Vec<RString> = bytes_array
         .into_iter()
-        .map(|value| value.try_convert::<RString>())
+        .map(RString::try_convert)
         .collect::<Result<_, _>>()?;
     let mime_types: Vec<String> = mime_types_array.to_vec::<String>()?;
 
@@ -2000,10 +1999,9 @@ fn batch_extract_bytes(args: &[Value]) -> Result<RArray, Error> {
 
     let config = parse_extraction_config(&ruby, opts)?;
 
-    let bytes_values: Vec<Value> = bytes_array.to_vec::<Value>()?;
-    let bytes_vec: Vec<RString> = bytes_values
+    let bytes_vec: Vec<RString> = bytes_array
         .into_iter()
-        .map(|value| value.try_convert::<RString>())
+        .map(RString::try_convert)
         .collect::<Result<_, _>>()?;
     let mime_types: Vec<String> = mime_types_array.to_vec::<String>()?;
 

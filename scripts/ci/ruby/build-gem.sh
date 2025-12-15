@@ -12,5 +12,6 @@ REPO_ROOT="${REPO_ROOT:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
 
 echo "=== Building Ruby gem ==="
 cd "$REPO_ROOT/packages/ruby"
+bundle exec rake compile
 bundle exec rake build
 echo "Gem build complete"

@@ -750,9 +750,9 @@ checksum = "a1d728cc89cf3aee9ff92b05e62b19ee65a02b5702cff7d5a377e32c6ae29d8d"
 
 [[package]]
 name = "cmake"
-version = "0.1.54"
+version = "0.1.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e7caa3f9de89ddbe2c607f4101924c5abec803763ae9534e4f4d7d8f84aa81f0"
+checksum = "b042e5d8a74ae91bb0961acd039822472ec99f8ab0948cbf6d1369588f8be586"
 dependencies = [
  "cc",
 ]
@@ -1814,9 +1814,9 @@ dependencies = [
 
 [[package]]
 name = "html-to-markdown-rs"
-version = "2.14.1"
+version = "2.14.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4c5648cf0023eeccd94b7374bb998af20a976bffb863cca1d8cf1ec1b1b12ef"
+checksum = "4429f80b314f56e8ebf55fd5810d324ea7486228c8a5681652e8a4fb23cf1e96"
 dependencies = [
  "astral-tl",
  "base64 0.22.1",
@@ -1826,6 +1826,8 @@ dependencies = [
  "markup5ever_rcdom",
  "once_cell",
  "regex",
+ "serde",
+ "serde_json",
  "thiserror 2.0.17",
 ]
 
@@ -2349,7 +2351,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg"
-version = "4.0.0-rc.7"
+version = "4.0.0-rc.9"
 dependencies = [
  "ahash",
  "async-trait",
@@ -2383,6 +2385,7 @@ dependencies = [
  "org",
  "paste",
  "pdfium-render",
+ "pkg-config",
  "polars",
  "pulldown-cmark",
  "quick-xml 0.38.4",
@@ -2415,7 +2418,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-ffi"
-version = "4.0.0-rc.7"
+version = "4.0.0-rc.9"
 dependencies = [
  "async-trait",
  "cbindgen",
@@ -2443,9 +2446,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-tesseract"
-version = "4.0.0-rc.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4977f0d2fdb7f1983bd55b76cc53e0fe4846b3e3dbfdcfd5bba7ef8aa895a97c"
+version = "4.0.0-rc.9"
 dependencies = [
  "cc",
  "cmake",

@@ -1,7 +1,7 @@
 use super::error::PdfError;
 use pdfium_render::prelude::*;
 
-pub(super) fn bind_pdfium(
+pub(crate) fn bind_pdfium(
     map_err: fn(String) -> PdfError,
     context: &'static str,
 ) -> Result<Box<dyn PdfiumLibraryBindings>, PdfError> {
