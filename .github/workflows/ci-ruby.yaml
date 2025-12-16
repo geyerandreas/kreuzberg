@@ -53,7 +53,6 @@ env:
   RUST_BACKTRACE: short
   RUST_MIN_STACK: 16777216
   PDFIUM_VERSION: "7578"
-  PDFIUM_STATIC_VERSION: "7578"
   ORT_VERSION: "1.23.2"
   MACOSX_DEPLOYMENT_TARGET: "14.0"
   CARGO_TARGET_DIR: target
@@ -138,11 +137,6 @@ jobs:
         uses: ./.github/actions/download-pdfium
         with:
           pdfium-version: ${{ env.PDFIUM_VERSION }}
-
-      - name: Setup static PDFium
-        uses: ./.github/actions/setup-pdfium-static
-        with:
-          pdfium-version: ${{ env.PDFIUM_STATIC_VERSION }}
 
       - name: Stage PDFium runtime
         uses: ./.github/actions/stage-pdfium-runtime
