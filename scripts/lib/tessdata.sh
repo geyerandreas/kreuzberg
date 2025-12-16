@@ -14,6 +14,82 @@
 
 set -euo pipefail
 
+# Return file size in bytes, cross-platform.
+file_size_bytes() {
+	local path="$1"
+	if [ ! -f "$path" ]; then
+		echo 0
+		return
+	fi
+	if stat -c%s "$path" >/dev/null 2>&1; then
+		stat -c%s "$path"
+		return
+	fi
+	stat -f%z "$path"
+}
+
+min_traineddata_size_bytes() {
+	local lang="$1"
+	case "$lang" in
+	eng) echo 1000000 ;; # tessdata_fast ~10MB+
+	osd) echo 100000 ;;  # tessdata_fast ~1MB+
+	deu) echo 1000000 ;;
+	*) echo 100000 ;;
+	esac
+}
+
+download_traineddata() {
+	local lang="$1"
+	local dest="$2"
+	local url="$3"
+	local tmp="${dest}.tmp"
+	local min_size
+	min_size="$(min_traineddata_size_bytes "$lang")"
+
+	rm -f "$tmp"
+
+	for attempt in 1 2 3 4 5; do
+		if curl -fsSL --retry 5 --retry-delay 5 --retry-all-errors "$url" -o "$tmp"; then
+			local size
+			size="$(file_size_bytes "$tmp")"
+			if [ "$size" -ge "$min_size" ]; then
+				mv -f "$tmp" "$dest"
+				return 0
+			fi
+			echo "Downloaded ${lang}.traineddata too small (${size} bytes < ${min_size}), retrying..." >&2
+		else
+			echo "Failed to download ${lang}.traineddata (attempt ${attempt}), retrying..." >&2
+		fi
+		rm -f "$tmp"
+		sleep "$attempt"
+	done
+
+	echo "ERROR: Failed to download valid ${lang}.traineddata after retries" >&2
+	return 1
+}
+
+ensure_valid_traineddata() {
+	local dest_dir="$1"
+	local lang="$2"
+	local url="$3"
+	local dest_file="${dest_dir}/${lang}.traineddata"
+	local min_size
+	min_size="$(min_traineddata_size_bytes "$lang")"
+
+	local size
+	size="$(file_size_bytes "$dest_file")"
+	if [ "$size" -ge "$min_size" ]; then
+		return 0
+	fi
+
+	if [ -f "$dest_file" ]; then
+		echo "Invalid ${lang}.traineddata at ${dest_file} (${size} bytes < ${min_size}); re-downloading..." >&2
+		rm -f "$dest_file"
+	fi
+
+	download_traineddata "$lang" "$dest_file" "$url"
+}
+
 # ensure_tessdata: Ensure Tesseract language data exists at destination
 # Downloads from GitHub tessdata_fast if not found locally
 # Args:
@@ -69,17 +145,9 @@ ensure_tessdata() {
 		fi
 	done
 
-	# Download eng and osd if not present (required for OCR operations)
-	if [ ! -f "$dest/eng.traineddata" ]; then
-		echo "Downloading eng.traineddata from tessdata_fast..."
-		curl -sSL "https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata" \
-			-o "$dest/eng.traineddata"
-	fi
-	if [ ! -f "$dest/osd.traineddata" ]; then
-		echo "Downloading osd.traineddata from tessdata_fast..."
-		curl -sSL "https://github.com/tesseract-ocr/tessdata_fast/raw/main/osd.traineddata" \
-			-o "$dest/osd.traineddata"
-	fi
+	# Ensure the required language data is present and not corrupt/truncated.
+	ensure_valid_traineddata "$dest" "eng" "https://github.com/tesseract-ocr/tessdata_fast/raw/main/eng.traineddata"
+	ensure_valid_traineddata "$dest" "osd" "https://github.com/tesseract-ocr/tessdata_fast/raw/main/osd.traineddata"
 }
 
 # setup_tessdata: Configure TESSDATA_PREFIX and ensure language data exists
