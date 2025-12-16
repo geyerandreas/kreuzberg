@@ -110,7 +110,7 @@
 		"build:wasm:bundler": "wasm-pack build --target bundler --out-dir pkg --release",
 		"build:wasm:nodejs": "wasm-pack build --target nodejs --out-dir pkg --release",
 		"build:wasm:deno": "wasm-pack build --target deno --out-dir pkg --release",
-		"build:ts": "tsup",
+		"build:ts": "tsup && node scripts/fix-type-exports.js",
 		"build": "npm run build:wasm:nodejs && npm run build:ts",
 		"build:all": "npm run build:wasm:web && npm run build:wasm:bundler && npm run build:wasm:nodejs && npm run build:wasm:deno && npm run build:ts",
 		"typecheck": "tsc --noEmit",
