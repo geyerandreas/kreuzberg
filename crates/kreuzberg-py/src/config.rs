@@ -243,13 +243,11 @@ impl ExtractionConfig {
         self.inner.language_detection = value.map(Into::into);
     }
 
-    #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
     #[getter]
     fn keywords(&self) -> Option<KeywordConfig> {
         self.inner.keywords.clone().map(Into::into)
     }
 
-    #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
     #[setter]
     fn set_keywords(&mut self, value: Option<KeywordConfig>) {
         self.inner.keywords = value.map(Into::into);
@@ -1890,7 +1888,6 @@ impl From<kreuzberg::types::TesseractConfig> for TesseractConfig {
     }
 }
 
-#[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
 /// Keyword extraction algorithm.
 ///
 /// Example:
@@ -1900,33 +1897,25 @@ impl From<kreuzberg::types::TesseractConfig> for TesseractConfig {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum KeywordAlgorithm {
     /// YAKE (Yet Another Keyword Extractor) - statistical approach
-    #[cfg(feature = "keywords-yake")]
     Yake,
 
     /// RAKE (Rapid Automatic Keyword Extraction) - co-occurrence based
-    #[cfg(feature = "keywords-rake")]
     Rake,
 }
 
-#[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
 impl From<KeywordAlgorithm> for kreuzberg::keywords::KeywordAlgorithm {
     fn from(algo: KeywordAlgorithm) -> Self {
         match algo {
-            #[cfg(feature = "keywords-yake")]
             KeywordAlgorithm::Yake => kreuzberg::keywords::KeywordAlgorithm::Yake,
-            #[cfg(feature = "keywords-rake")]
             KeywordAlgorithm::Rake => kreuzberg::keywords::KeywordAlgorithm::Rake,
         }
     }
 }
 
-#[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
 impl From<kreuzberg::keywords::KeywordAlgorithm> for KeywordAlgorithm {
     fn from(algo: kreuzberg::keywords::KeywordAlgorithm) -> Self {
         match algo {
-            #[cfg(feature = "keywords-yake")]
             kreuzberg::keywords::KeywordAlgorithm::Yake => KeywordAlgorithm::Yake,
-            #[cfg(feature = "keywords-rake")]
             kreuzberg::keywords::KeywordAlgorithm::Rake => KeywordAlgorithm::Rake,
         }
     }
@@ -1937,14 +1926,12 @@ impl From<kreuzberg::keywords::KeywordAlgorithm> for KeywordAlgorithm {
 /// Example:
 ///     >>> from kreuzberg import YakeParams
 ///     >>> params = YakeParams(window_size=3, deduplicate=True, dedup_threshold=0.8)
-#[cfg(feature = "keywords-yake")]
 #[pyclass(name = "YakeParams", module = "kreuzberg")]
 #[derive(Clone)]
 pub struct YakeParams {
     inner: kreuzberg::keywords::YakeParams,
 }
 
-#[cfg(feature = "keywords-yake")]
 #[pymethods]
 impl YakeParams {
     #[new]
@@ -1972,14 +1959,12 @@ impl YakeParams {
     }
 }
 
-#[cfg(feature = "keywords-yake")]
 impl From<YakeParams> for kreuzberg::keywords::YakeParams {
     fn from(params: YakeParams) -> Self {
         params.inner
     }
 }
 
-#[cfg(feature = "keywords-yake")]
 impl From<kreuzberg::keywords::YakeParams> for YakeParams {
     fn from(params: kreuzberg::keywords::YakeParams) -> Self {
         Self { inner: params }
@@ -1991,14 +1976,12 @@ impl From<kreuzberg::keywords::YakeParams> for YakeParams {
 /// Example:
 ///     >>> from kreuzberg import RakeParams
 ///     >>> params = RakeParams(min_word_length=2, max_words_per_phrase=4)
-#[cfg(feature = "keywords-rake")]
 #[pyclass(name = "RakeParams", module = "kreuzberg")]
 #[derive(Clone)]
 pub struct RakeParams {
     inner: kreuzberg::keywords::RakeParams,
 }
 
-#[cfg(feature = "keywords-rake")]
 #[pymethods]
 impl RakeParams {
     #[new]
@@ -2040,14 +2023,12 @@ impl RakeParams {
     }
 }
 
-#[cfg(feature = "keywords-rake")]
 impl From<RakeParams> for kreuzberg::keywords::RakeParams {
     fn from(params: RakeParams) -> Self {
         params.inner
     }
 }
 
-#[cfg(feature = "keywords-rake")]
 impl From<kreuzberg::keywords::RakeParams> for RakeParams {
     fn from(params: kreuzberg::keywords::RakeParams) -> Self {
         Self { inner: params }
@@ -2064,18 +2045,15 @@ impl From<kreuzberg::keywords::RakeParams> for RakeParams {
 ///     ...     min_score=0.1,
 ///     ...     language="en"
 ///     ... )
-#[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
 #[pyclass(name = "KeywordConfig", module = "kreuzberg")]
 #[derive(Clone)]
 pub struct KeywordConfig {
     inner: kreuzberg::keywords::KeywordConfig,
 }
 
-#[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
 #[pymethods]
 impl KeywordConfig {
     #[new]
-    #[cfg(all(feature = "keywords-yake", feature = "keywords-rake"))]
     #[pyo3(signature = (
         algorithm=None,
         max_keywords=None,
@@ -2103,96 +2081,6 @@ impl KeywordConfig {
                 language: language.or_else(|| Some("en".to_string())),
                 yake_params: yake_params.map(Into::into),
                 rake_params: rake_params.map(Into::into),
-            },
-        }
-    }
-
-    #[new]
-    #[cfg(all(feature = "keywords-yake", not(feature = "keywords-rake")))]
-    #[pyo3(signature = (
-        algorithm=None,
-        max_keywords=None,
-        min_score=None,
-        ngram_range=None,
-        language=None,
-        yake_params=None
-    ))]
-    fn new(
-        algorithm: Option<KeywordAlgorithm>,
-        max_keywords: Option<usize>,
-        min_score: Option<f32>,
-        ngram_range: Option<(usize, usize)>,
-        language: Option<String>,
-        yake_params: Option<YakeParams>,
-    ) -> Self {
-        Self {
-            inner: kreuzberg::keywords::KeywordConfig {
-                algorithm: algorithm.map(Into::into).unwrap_or_default(),
-                max_keywords: max_keywords.unwrap_or(10),
-                min_score: min_score.unwrap_or(0.0),
-                ngram_range: ngram_range.unwrap_or((1, 3)),
-                language: language.or_else(|| Some("en".to_string())),
-                yake_params: yake_params.map(Into::into),
-            },
-        }
-    }
-
-    #[new]
-    #[cfg(all(feature = "keywords-rake", not(feature = "keywords-yake")))]
-    #[pyo3(signature = (
-        algorithm=None,
-        max_keywords=None,
-        min_score=None,
-        ngram_range=None,
-        language=None,
-        rake_params=None
-    ))]
-    fn new(
-        algorithm: Option<KeywordAlgorithm>,
-        max_keywords: Option<usize>,
-        min_score: Option<f32>,
-        ngram_range: Option<(usize, usize)>,
-        language: Option<String>,
-        rake_params: Option<RakeParams>,
-    ) -> Self {
-        #[allow(unused_variables)]
-        let (yake_params, rake_params) = (None::<()>, rake_params);
-
-        Self {
-            inner: kreuzberg::keywords::KeywordConfig {
-                algorithm: algorithm.map(Into::into).unwrap_or_default(),
-                max_keywords: max_keywords.unwrap_or(10),
-                min_score: min_score.unwrap_or(0.0),
-                ngram_range: ngram_range.unwrap_or((1, 3)),
-                language: language.or_else(|| Some("en".to_string())),
-                rake_params: rake_params.map(Into::into),
-            },
-        }
-    }
-
-    #[new]
-    #[cfg(not(any(feature = "keywords-yake", feature = "keywords-rake")))]
-    #[pyo3(signature = (
-        algorithm=None,
-        max_keywords=None,
-        min_score=None,
-        ngram_range=None,
-        language=None
-    ))]
-    fn new(
-        algorithm: Option<KeywordAlgorithm>,
-        max_keywords: Option<usize>,
-        min_score: Option<f32>,
-        ngram_range: Option<(usize, usize)>,
-        language: Option<String>,
-    ) -> Self {
-        Self {
-            inner: kreuzberg::keywords::KeywordConfig {
-                algorithm: algorithm.map(Into::into).unwrap_or_default(),
-                max_keywords: max_keywords.unwrap_or(10),
-                min_score: min_score.unwrap_or(0.0),
-                ngram_range: ngram_range.unwrap_or((1, 3)),
-                language: language.or_else(|| Some("en".to_string())),
             },
         }
     }
@@ -2247,25 +2135,21 @@ impl KeywordConfig {
         self.inner.language = value;
     }
 
-    #[cfg(feature = "keywords-yake")]
     #[getter]
     fn yake_params(&self) -> Option<YakeParams> {
         self.inner.yake_params.clone().map(Into::into)
     }
 
-    #[cfg(feature = "keywords-yake")]
     #[setter]
     fn set_yake_params(&mut self, value: Option<YakeParams>) {
         self.inner.yake_params = value.map(Into::into);
     }
 
-    #[cfg(feature = "keywords-rake")]
     #[getter]
     fn rake_params(&self) -> Option<RakeParams> {
         self.inner.rake_params.clone().map(Into::into)
     }
 
-    #[cfg(feature = "keywords-rake")]
     #[setter]
     fn set_rake_params(&mut self, value: Option<RakeParams>) {
         self.inner.rake_params = value.map(Into::into);
@@ -2279,10 +2163,15 @@ impl KeywordConfig {
     }
 }
 
-#[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
 impl From<KeywordConfig> for kreuzberg::keywords::KeywordConfig {
     fn from(config: KeywordConfig) -> Self {
         config.inner
+    }
+}
+
+impl From<kreuzberg::keywords::KeywordConfig> for KeywordConfig {
+    fn from(config: kreuzberg::keywords::KeywordConfig) -> Self {
+        Self { inner: config }
     }
 }
 

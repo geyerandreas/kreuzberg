@@ -15,7 +15,7 @@ categories = ["api-bindings", "text-processing"]
 crate-type = ["cdylib"]
 
 [dependencies]
-kreuzberg = { path = "../kreuzberg", features = ["full", "pdf-static", "embeddings"] }
+kreuzberg = { path = "../kreuzberg", features = ["full", "embeddings"] }
 kreuzberg-ffi = { path = "../kreuzberg-ffi", features = ["embeddings"] }
 napi = { version = "3", default-features = false, features = ["napi8", "async", "serde-json"] }
 napi-derive = "3"
@@ -24,7 +24,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 async-trait = { workspace = true }
 base64 = { workspace = true }
-html-to-markdown-rs = { version = "2.14.8", default-features = false }
+html-to-markdown-rs = { version = "2.14.11", default-features = false }
 
 [build-dependencies]
 napi-build = "2.3"

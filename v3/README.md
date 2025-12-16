@@ -4,7 +4,7 @@
 [![PyPI](https://badge.fury.io/py/kreuzberg.svg)](https://badge.fury.io/py/kreuzberg)
 [![npm](https://img.shields.io/npm/v/kreuzberg)](https://www.npmjs.com/package/kreuzberg)
 [![RubyGems](https://badge.fury.io/rb/kreuzberg.svg)](https://rubygems.org/gems/kreuzberg)
-[![Go Reference](https://pkg.go.dev/badge/github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg.svg)](https://pkg.go.dev/github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg)
+[![Go Reference](https://pkg.go.dev/badge/github.com/kreuzberg-dev/kreuzberg/packages/go/v4.svg)](https://pkg.go.dev/github.com/kreuzberg-dev/kreuzberg/packages/go/v4)
 [![Crates.io](https://img.shields.io/crates/v/kreuzberg)](https://crates.io/crates/kreuzberg)
 [![Documentation](https://img.shields.io/badge/docs-kreuzberg.dev-blue)](https://kreuzberg.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -55,7 +55,7 @@ npm install @kreuzberg/node
 ### Go
 
 ```bash
-go get github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg@latest
+go get github.com/kreuzberg-dev/kreuzberg/packages/go/v4@latest
 ```
 
 Build the FFI crate (`cargo build -p kreuzberg-ffi --release`) and set `LD_LIBRARY_PATH`/`DYLD_FALLBACK_LIBRARY_PATH` to `target/release` so cgo can locate `libkreuzberg_ffi`.

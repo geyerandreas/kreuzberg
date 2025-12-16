@@ -34,7 +34,7 @@ export DYLD_FALLBACK_LIBRARY_PATH="$HOME/.local/lib:$DYLD_FALLBACK_LIBRARY_PATH"
 ## Using with Go:
 ```bash
 pkg-config --modversion kreuzberg-ffi  # Verify installation
-go get github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg@latest
+go get github.com/kreuzberg-dev/kreuzberg/packages/go/v4@latest
 ```
 EOF
 

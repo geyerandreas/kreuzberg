@@ -296,7 +296,7 @@ def main():
             version,
         ),
         (
-            repo_root / "packages/go/kreuzberg/doc.go",
+            repo_root / "packages/go/v4/doc.go",
             r'\d+\.\d+\.\d+-rc\.\d+',
             version,
         ),

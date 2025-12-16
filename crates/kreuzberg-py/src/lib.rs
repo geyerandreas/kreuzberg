@@ -72,15 +72,10 @@ fn _internal_bindings(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<config::TesseractConfig>()?;
     m.add_class::<config::ImagePreprocessingConfig>()?;
 
-    #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-    {
-        m.add_class::<config::KeywordAlgorithm>()?;
-        m.add_class::<config::KeywordConfig>()?;
-    }
-    #[cfg(feature = "keywords-yake")]
     m.add_class::<config::YakeParams>()?;
-    #[cfg(feature = "keywords-rake")]
     m.add_class::<config::RakeParams>()?;
+    m.add_class::<config::KeywordAlgorithm>()?;
+    m.add_class::<config::KeywordConfig>()?;
 
     m.add_class::<types::ExtractionResult>()?;
     m.add_class::<types::ExtractedTable>()?;

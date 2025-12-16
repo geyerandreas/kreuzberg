@@ -17,7 +17,7 @@ import (
 	"testing"
 	"unicode"
 
-	"github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg"
+	"github.com/kreuzberg-dev/kreuzberg/packages/go/v4"
 )
 
 var (
@@ -615,7 +615,7 @@ fn generate_plugin_api_tests(go_root: &Utf8Path, fixtures: &[&Fixture]) -> Resul
     writeln!(buffer)?;
     writeln!(
         buffer,
-        "    kreuzberg \"github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg\""
+        "    kreuzberg \"github.com/kreuzberg-dev/kreuzberg/packages/go/v4\""
     )?;
     writeln!(buffer, ")")?;
     writeln!(buffer)?;

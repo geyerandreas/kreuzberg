@@ -23,6 +23,12 @@ module Kreuzberg
 
   # Alias for API consistency with other language bindings
   ExtractionConfig = Config::Extraction
+  PageConfig = Config::PageConfig
+
+  module KeywordAlgorithm
+    YAKE = :yake
+    RAKE = :rake
+  end
 
   @__cache_tracker = { entries: 0, bytes: 0 }
 

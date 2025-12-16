@@ -43,6 +43,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Context cancellation is checked before extraction starts; note that extraction operations cannot be interrupted once started
   - Added concurrent extraction test suite with goroutine-based tests for thread safety verification
   - All GoDoc documentation now properly accessible in IDE tooltips and `go doc` output
+  - **Updated all documentation and build scripts to reflect v4 module path migration**
+    - Updated E2E test generator (`tools/e2e-generator/src/go.rs`) to generate imports using `packages/go/v4`
+    - Updated version sync scripts (`scripts/sync_versions.py`, `scripts/publish/validate-version-consistency.sh`) to reference `packages/go/v4/doc.go`
+    - Updated CI scripts (`scripts/ci/go/generate-install-readme.sh`) to generate v4 installation commands
+    - Updated all user-facing documentation (`packages/go/README.md`, `v3/README.md`, `GO_AUDIT_REPORT.md`) with v4 module path
+    - Updated `ai-rulez.yaml` with correct v4 paths in agent instructions
+    - Updated FFI test documentation to reference v4 test locations
 - **Node/WASM TypeScript bindings: Complete strict typing and JSDoc coverage**
   - Replaced all `any` types with proper type definitions (`unknown` with runtime guards)
   - Fixed `Metadata` index signature to use `[key: string]: unknown` instead of `any`

@@ -41,7 +41,6 @@ from importlib.metadata import version
 from typing import TYPE_CHECKING, Any
 
 from kreuzberg import _setup_lib_path  # noqa: F401
-from kreuzberg._docstrings import apply_docstrings
 from kreuzberg._internal_bindings import (
     ChunkingConfig,
     EmbeddingConfig,
@@ -52,12 +51,17 @@ from kreuzberg._internal_bindings import (
     ExtractionResult,
     ImageExtractionConfig,
     ImagePreprocessingConfig,
+    KeywordAlgorithm,
+    KeywordConfig,
     LanguageDetectionConfig,
     OcrConfig,
+    PageConfig,
     PdfConfig,
     PostProcessorConfig,
+    RakeParams,
     TesseractConfig,
     TokenReductionConfig,
+    YakeParams,
     clear_document_extractors,
     clear_ocr_backends,
     clear_post_processors,
@@ -139,10 +143,6 @@ if TYPE_CHECKING:
 
 __version__ = version("kreuzberg")
 
-# Apply comprehensive docstrings to all configuration classes
-apply_docstrings()
-
-
 __all__ = [
     "CacheError",
     "Chunk",
@@ -159,21 +159,26 @@ __all__ = [
     "ImageExtractionConfig",
     "ImagePreprocessingConfig",
     "ImageProcessingError",
+    "KeywordAlgorithm",
+    "KeywordConfig",
     "KreuzbergError",
     "LanguageDetectionConfig",
     "Metadata",
     "MissingDependencyError",
     "OCRError",
     "OcrConfig",
+    "PageConfig",
     "PanicContext",
     "ParsingError",
     "PdfConfig",
     "PluginError",
     "PostProcessorConfig",
     "PostProcessorProtocol",
+    "RakeParams",
     "TesseractConfig",
     "TokenReductionConfig",
     "ValidationError",
+    "YakeParams",
     "__version__",
     "batch_extract_bytes",
     "batch_extract_bytes_sync",

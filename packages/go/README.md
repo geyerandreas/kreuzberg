@@ -21,7 +21,7 @@ High-performance document intelligence for Go backed by the Rust core that power
 ## Install
 
 ```bash
-go get github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg@latest
+go get github.com/kreuzberg-dev/kreuzberg/packages/go/v4@latest
 ```
 
 The Go binding uses cgo to link against the `kreuzberg-ffi` library.
@@ -69,7 +69,7 @@ sudo ldconfig  # Linux only
 pkg-config --modversion kreuzberg-ffi
 
 # Install Go package
-go get github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg@latest
+go get github.com/kreuzberg-dev/kreuzberg/packages/go/v4@latest
 ```
 
 For user-local installation (no sudo):
@@ -112,7 +112,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg"
+	"github.com/kreuzberg-dev/kreuzberg/packages/go/v4"
 )
 
 func main() {
@@ -208,7 +208,7 @@ func init() {
 
 ## API Reference
 
-- **GoDoc**: [pkg.go.dev/github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg](https://pkg.go.dev/github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg)
+- **GoDoc**: [pkg.go.dev/github.com/kreuzberg-dev/kreuzberg/packages/go/v4](https://pkg.go.dev/github.com/kreuzberg-dev/kreuzberg/packages/go/v4)
 - **Full documentation**: [kreuzberg.dev](https://kreuzberg.dev) (configuration, formats, OCR backends)
 
 ## Troubleshooting

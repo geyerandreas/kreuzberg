@@ -98,6 +98,20 @@ full = [
     "quality",
     "keywords",
 ]
+full-bundled = [
+    "pdf-bundled",
+    "excel",
+    "office",
+    "email",
+    "html",
+    "xml",
+    "archives",
+    "ocr",
+    "language-detection",
+    "chunking",
+    "quality",
+    "keywords",
+]
 server = ["pdf-static", "excel", "html", "ocr", "api", "mcp"]
 cli = ["pdf-static", "excel", "office", "html", "ocr", "language-detection", "chunking", "quality"]
 

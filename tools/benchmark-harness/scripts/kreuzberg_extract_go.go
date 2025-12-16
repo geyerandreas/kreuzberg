@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg"
+	kz "github.com/kreuzberg-dev/kreuzberg/packages/go/v4"
 )
 
 var debugEnabled = os.Getenv("KREUZBERG_BENCHMARK_DEBUG") != ""
@@ -81,7 +81,7 @@ func getWorkingDir() string {
 func extractSync(path string) (*payload, error) {
 	start := time.Now()
 	debug("ExtractFileSync called with path: %s", path)
-	result, err := kreuzberg.ExtractFileSync(path, nil)
+	result, err := kz.ExtractFileSync(path, nil)
 	if err != nil {
 		debug("ExtractFileSync failed: %v", err)
 		return nil, err
@@ -103,7 +103,7 @@ func extractSync(path string) (*payload, error) {
 func extractBatch(paths []string) (any, error) {
 	start := time.Now()
 	debug("BatchExtractFilesSync called with %d files", len(paths))
-	results, err := kreuzberg.BatchExtractFilesSync(paths, nil)
+	results, err := kz.BatchExtractFilesSync(paths, nil)
 	if err != nil {
 		debug("BatchExtractFilesSync failed: %v", err)
 		return nil, err
@@ -143,7 +143,7 @@ func extractBatch(paths []string) (any, error) {
 	return out, nil
 }
 
-func metadataMap(meta kreuzberg.Metadata) (map[string]any, error) {
+func metadataMap(meta kz.Metadata) (map[string]any, error) {
 	bytes, err := json.Marshal(meta)
 	if err != nil {
 		return nil, err
