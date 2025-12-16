@@ -475,7 +475,7 @@ checksum = "0e050f626429857a27ddccb31e0aca21356bfa709c04041aefddac081a8f068a"
 
 [[package]]
 name = "benchmark-harness"
-version = "4.0.0-rc.9"
+version = "4.0.0-rc.10"
 dependencies = [
  "ahash",
  "async-trait",
@@ -1526,7 +1526,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
 name = "e2e-rust"
-version = "4.0.0-rc.9"
+version = "4.0.0-rc.10"
 dependencies = [
  "async-trait",
  "hex",
@@ -2771,7 +2771,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg"
-version = "4.0.0-rc.9"
+version = "4.0.0-rc.10"
 dependencies = [
  "ahash",
  "anyhow",
@@ -2854,7 +2854,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-cli"
-version = "4.0.0-rc.9"
+version = "4.0.0-rc.10"
 dependencies = [
  "anyhow",
  "clap",
@@ -2869,7 +2869,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-e2e-generator"
-version = "4.0.0-rc.9"
+version = "4.0.0-rc.10"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -2887,7 +2887,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-ffi"
-version = "4.0.0-rc.9"
+version = "4.0.0-rc.10"
 dependencies = [
  "async-trait",
  "cbindgen",
@@ -2901,7 +2901,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-node"
-version = "4.0.0-rc.9"
+version = "4.0.0-rc.10"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2919,7 +2919,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-py"
-version = "4.0.0-rc.9"
+version = "4.0.0-rc.10"
 dependencies = [
  "async-trait",
  "html-to-markdown-rs",
@@ -2934,7 +2934,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-tesseract"
-version = "4.0.0-rc.9"
+version = "4.0.0-rc.10"
 dependencies = [
  "cc",
  "cmake",
@@ -2947,7 +2947,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-wasm"
-version = "4.0.0-rc.9"
+version = "4.0.0-rc.10"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -3036,13 +3036,13 @@ checksum = "f9fbbcab51052fe104eb5e5d351cf728d30a5be1fe14d9be8a3b097481fb97de"
 
 [[package]]
 name = "libredox"
-version = "0.1.10"
+version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "416f7e718bdb06000964960ffa43b4335ad4012ae8b99060261aa4a8088d5ccb"
+checksum = "df15f6eac291ed1cf25865b1ee60399f57e7c227e7f51bdbd4c5270396a9ed50"
 dependencies = [
  "bitflags 2.10.0",
  "libc",
- "redox_syscall",
+ "redox_syscall 0.6.0",
 ]
 
 [[package]]
@@ -4024,7 +4024,7 @@ checksum = "2621685985a2ebf1c516881c026032ac7deafcda1a2c9b7850dc81e3dfcb64c1"
 dependencies = [
  "cfg-if",
  "libc",
- "redox_syscall",
+ "redox_syscall 0.5.18",
  "smallvec 1.15.1",
  "windows-link 0.2.1",
 ]
@@ -5315,6 +5315,15 @@ name = "redox_syscall"
 version = "0.5.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed2bf2547551a7053d6fdfafda3f938979645c44812fbfcda098faae3f1a362d"
+dependencies = [
+ "bitflags 2.10.0",
+]
+
+[[package]]
+name = "redox_syscall"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec96166dafa0886eb81fe1c0a388bece180fbef2135f97c1e2cf8302e74b43b5"
 dependencies = [
  "bitflags 2.10.0",
 ]

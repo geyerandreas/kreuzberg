@@ -151,6 +151,41 @@ def update_cargo_toml(file_path: Path, version: str) -> Tuple[bool, str, str]:
     return True, old_version, version
 
 
+def update_go_mod(file_path: Path, version: str) -> Tuple[bool, str, str]:
+    """
+    Update a go.mod file module version in require statements.
+
+    Returns: (changed, old_version, new_version)
+    """
+    content = file_path.read_text()
+
+    # Look for kreuzberg module dependencies
+    # Pattern: github.com/kreuzberg-dev/kreuzberg[/path] v0.0.0 => version
+    pattern = r'(github\.com/kreuzberg-dev/kreuzberg(?:/[^\s]+)?\s+)v[0-9]+\.[0-9]+\.[0-9]+'
+    match = re.search(pattern, content)
+    old_version = match.group(2) if match and match.groups() else "NOT FOUND"
+
+    if old_version == version:
+        return False, old_version, version
+
+    # Only update if there are kreuzberg dependencies
+    if not re.search(pattern, content):
+        return False, "NOT FOUND", version
+
+    new_content = re.sub(
+        pattern,
+        rf'\g<1>v{version}',
+        content,
+        flags=re.MULTILINE
+    )
+
+    if new_content != content:
+        file_path.write_text(new_content)
+        return True, old_version, version
+
+    return False, old_version, version
+
+
 def update_text_file(file_path: Path, pattern: str, repl: str) -> Tuple[bool, str, str]:
     """
     Update a plain text file using regex substitution.
@@ -241,11 +276,6 @@ def main():
 
     text_targets = [
         (
-            repo_root / "packages/typescript/src/index.ts",
-            r'__version__ = "([^"]+)"',
-            f'__version__ = "{version}"',
-        ),
-        (
             repo_root / "crates/kreuzberg-node/typescript/index.ts",
             r'__version__ = "([^"]+)"',
             f'__version__ = "{version}"',
@@ -269,6 +299,11 @@ def main():
             repo_root / "crates/kreuzberg-cli/Cargo.toml",
             r'^(kreuzberg\s*=\s*\{\s*path\s*=\s*"../kreuzberg"\s*,\s*version\s*=\s*")[^"]+(".*\}\s*)$',
             rf"\g<1>{version}\g<2>",
+        ),
+        (
+            repo_root / "crates/kreuzberg-ffi/kreuzberg-ffi.pc",
+            r"^Version:\s*([0-9A-Za-z\.\-]+)\s*$",
+            f"Version: {version}",
         ),
         (
             repo_root / "crates/kreuzberg-ffi/kreuzberg-ffi-install.pc",
@@ -363,6 +398,20 @@ def main():
                     updated_files.append(str(rel_path))
                 else:
                     unchanged_files.append(str(rel_path))
+
+    # Sync Go modules
+    for go_mod in repo_root.rglob("go.mod"):
+        if "target" in go_mod.parts or "vendor" in go_mod.parts:
+            continue
+
+        changed, old_ver, new_ver = update_go_mod(go_mod, f"{version}")
+        rel_path = go_mod.relative_to(repo_root)
+
+        if changed:
+            print(f"✓ {rel_path}: {old_ver} → {new_ver}")
+            updated_files.append(str(rel_path))
+        elif old_ver != "NOT FOUND":
+            unchanged_files.append(str(rel_path))
 
     print(f"\n📊 Summary:")
     print(f"   Updated: {len(updated_files)} files")

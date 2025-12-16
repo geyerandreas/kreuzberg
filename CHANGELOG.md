@@ -5,149 +5,40 @@ All notable changes to Kreuzberg will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [4.0.0-rc.10] - 2025-12-16
 
 ### Breaking Changes
 
-#### PDFium Feature Restructuring (v4.0.0-rc.10)
-
-**Feature names changed for clarity:**
-- `pdf-static` → `static-pdfium`
-- `pdf-bundled` → `bundled-pdfium`
-- `pdf-system` → `system-pdfium`
-- `full-bundled` → REMOVED (use `full` + `bundled-pdfium`)
-
-**Default behavior changed:**
-- When only `pdf` feature enabled: Now defaults to `bundled-pdfium` (downloads + bundles automatically)
-- `full` feature: No longer includes linking strategy (previously was `pdf-static`)
-
-**Migration guide:**
-```toml
-# OLD
-kreuzberg = { version = "4.0.0-rc.9", features = ["static-pdfium"] }
-kreuzberg = { version = "4.0.0-rc.9", features = ["full-bundled"] }
-
-# NEW
-kreuzberg = { version = "4.0.0-rc.10", features = ["static-pdfium"] }
-kreuzberg = { version = "4.0.0-rc.10", features = ["full", "bundled-pdfium"] }
-```
-
-**Rationale:**
-- Clearer naming (strategy suffix, not prefix)
-- Better defaults (bundled works out of the box)
-- Simpler feature combinations
-
-- **Go bindings: Module path restructured to v4 for semantic versioning compliance**
-  - Old module path: `github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg`
-  - New module path: `github.com/kreuzberg-dev/kreuzberg/packages/go/v4`
-  - Old import statement: `import "github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg"`
-  - New import statement: `import "github.com/kreuzberg-dev/kreuzberg/packages/go/v4"`
-  - All users must update their import statements and run `go mod tidy`
-  - Package name remains `package kreuzberg` (only module path changes)
-  - Git tag format changed from `packages/go/v<version>` to `packages/go/v4/v<version>`
-  - Migration guide: See `/packages/go/v4/README.md`
-- **`full` feature now uses static PDFium linking (`pdf-static`)**
-  - Previous behavior: `full` feature included `pdf-bundled` (embeds dynamic library)
-  - New behavior: `full` feature now includes `pdf-static` (static linking, no runtime PDFium dependency)
-  - Impact: Binaries using `full` feature are now ~50MB smaller but ~200MB larger (embedded static lib vs external dynamic lib)
-  - **On macOS**: Automatically falls back to dynamic linking if static library unavailable (development-friendly)
-  - **On Linux/Windows**: Requires `PDFIUM_STATIC_LIB_PATH` environment variable pointing to static PDFium libraries
-  - **WASM Exception**: `wasm-target` bundle unchanged (no PDF support, cannot use static linking)
-  - **Migration**: Use `pdf-bundled` feature for old behavior; see [PDFium Linking Guide](docs/guides/pdfium-linking.md#migration-guide)
+- **PDFium feature names changed**: `pdf-static`→`static-pdfium`, `pdf-bundled`→`bundled-pdfium`, `pdf-system`→`system-pdfium`. Feature `full-bundled` removed (use `full` + `bundled-pdfium`).
+- **Default PDFium linking**: `pdf` feature now defaults to `bundled-pdfium` (auto-downloads and embeds PDFium).
+- **Go module path**: Moved from `github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg` to `github.com/kreuzberg-dev/kreuzberg/packages/go/v4`. Update your imports and run `go mod tidy`.
 
 ### Fixed
 
-- **CI**: Fixed PDFium version bug - version 7529 doesn't exist in paulocoutinhox/pdfium-lib (static PDFium)
-  - Static builds now use version 7442b from paulocoutinhox/pdfium-lib
-  - Bundled builds use version 7578 from bblanchon/pdfium-binaries
-  - Added separate environment variables: `PDFIUM_STATIC_VERSION` and `PDFIUM_VERSION`
-- **CI**: Added comprehensive bundling verification for all language bindings (Python, Node, Ruby, Java, Go, C#)
-  - New GitHub Action: `verify-pdfium-bundled` validates PDFium is properly embedded in packages
-- **CLI**: Fixed missing PDFium bundling on Windows
-  - CLI now properly stages PDFium runtime before packaging
-- **WASM**: Added PDFium support for native WASM targets (nodejs/deno)
-  - Edge runtime continues to use lopdf fallback (no pdfium)
+- **Windows CLI**: Now includes bundled PDFium runtime
+- **WASM Node.js/Deno**: PDFium support for native targets (edge runtimes continue using lopdf)
+- **Go bindings**: Added `ExtractFileWithContext()` and batch variants for context cancellation support
+- **Node/TypeScript**: Replaced `any` types with proper definitions. Fixed data loss in page metadata.
+- **Ruby bindings**: Complete YARD documentation for all API methods
+- **C# bindings**: Complete XML documentation for all public methods
 
-### Added
-- **Dependency cleanup and optimization across all bindings**
-  - `kreuzberg-ffi`: Now uses minimal default features (`html` only), drastically reducing bloat for Java/Go/TypeScript/Ruby consumers
-  - Added explicit `embeddings` feature to `kreuzberg-node` and `kreuzberg-ffi` when needed for optional OCR/ML features
-  - Removed unused `core` feature alias from `kreuzberg-ffi` (dead code)
-  - Removed redundant `api` and `mcp` (server features) from `kreuzberg-py` (not exposed in Python API)
-  - Added `pdf-static` passthrough feature to `kreuzberg-ffi` for static linking in bindings
-  - Consolidated workspace dependencies: `toml` version now managed in `Cargo.toml` workspace.dependencies
+## [Unreleased]
 
-### Fixed
-- **Go bindings: Complete struct field documentation and Context.Context support**
-  - Added comprehensive documentation comments for all 37+ struct fields across types.go and config.go
-  - Documented field semantics, valid value ranges, defaults, and usage patterns for IDE tooltips
-  - Added `ExtractFileWithContext()`, `ExtractBytesWithContext()`, `BatchExtractFilesWithContext()`, and `BatchExtractBytesWithContext()` for context cancellation support
-  - Context cancellation is checked before extraction starts; note that extraction operations cannot be interrupted once started
-  - Added concurrent extraction test suite with goroutine-based tests for thread safety verification
-  - All GoDoc documentation now properly accessible in IDE tooltips and `go doc` output
-  - **Updated all documentation and build scripts to reflect v4 module path migration**
-    - Updated E2E test generator (`tools/e2e-generator/src/go.rs`) to generate imports using `packages/go/v4`
-    - Updated version sync scripts (`scripts/sync_versions.py`, `scripts/publish/validate-version-consistency.sh`) to reference `packages/go/v4/doc.go`
-    - Updated CI scripts (`scripts/ci/go/generate-install-readme.sh`) to generate v4 installation commands
-    - Updated all user-facing documentation (`packages/go/README.md`, `v3/README.md`, `GO_AUDIT_REPORT.md`) with v4 module path
-    - Updated `ai-rulez.yaml` with correct v4 paths in agent instructions
-    - Updated FFI test documentation to reference v4 test locations
-- **Node/WASM TypeScript bindings: Complete strict typing and JSDoc coverage**
-  - Replaced all `any` types with proper type definitions (`unknown` with runtime guards)
-  - Fixed `Metadata` index signature to use `[key: string]: unknown` instead of `any`
-  - Added `NativeBinding` interface with explicit method signatures for Node bindings
-  - Implemented `convertPageContent()` function to properly convert page data (fixes data loss bug)
-  - All conversion functions now use bracket notation for `noPropertyAccessFromIndexSignature` compliance
-  - Added comprehensive `@throws` documentation to all extraction functions
-  - Documented all 70+ config interface fields with inline JSDoc comments
-  - WASM `Metadata` interface now aligned with Node binding for API parity
-  - 100% JSDoc coverage on all public APIs (functions, parameters, return types)
-  - Build success: zero TypeScript errors, zero linting warnings
-- **Ruby bindings: Complete YARD documentation coverage**
-  - Added comprehensive YARD documentation to ExtractionAPI module (8 extraction methods)
-  - Added YARD documentation to CacheAPI module (2 cache methods)
-  - Added @return tags to ErrorContext module (3 error handling methods)
-  - All 13 previously undocumented methods now have complete @param/@return/@raise/@example tags
-  - Documentation fully aligned with RBS type definitions and Node/WASM TypeScript bindings
-  - All tests passing (207 examples, 0 failures), Rubocop clean, Steep type checking passes
-- **C# bindings: Complete XML documentation coverage**
-  - Added comprehensive XML documentation to 9 utility methods (List/Unregister/Clear variants)
-  - Added <summary>, <param>, <returns>, <exception>, <remarks>, and <seealso> tags
-  - All methods now have practical <example> code blocks where applicable
-  - Documentation fully aligned with TypeScript/Ruby/Java bindings
-  - Build verified: zero warnings, zero errors, proper P/Invoke safety patterns
-- **Ruby gem publishing: Switched to comprehensive vendoring script**
-  - Publish workflow now uses `scripts/ci/ruby/vendor-kreuzberg-core.sh` (comprehensive) instead of `scripts/publish/ruby/vendor-kreuzberg-crate.sh` (minimal)
-  - Ensures all vendored crates are included: `kreuzberg`, `kreuzberg-ffi`, `kreuzberg-tesseract`, `rb-sys`
-  - Vendor Cargo.lock is now properly updated when dependencies change, eliminating risk of stale dependencies in published gems
+_No unreleased changes yet._
 
 ## [4.0.0-rc.9] - 2025-12-15
 
 ### Added
-- **`PDFIUM_STATIC_LIB_PATH` environment variable for custom static library paths** (build.rs)
-  - Enables Docker builds with pdfium compiled from source
-  - Allows users to specify exact location of `libpdfium.a` for static linking
-  - Validates path existence and library presence with clear error messages
-  - Enables fully static binaries for minimal Docker images (FROM scratch)
-  - Platform-specific system library linking (pthread, dl on Linux)
+
+- **`PDFIUM_STATIC_LIB_PATH` environment variable**: Enables custom static PDFium paths for Docker builds and static binaries
 
 ### Fixed
-- **Python: published wheels now include typing metadata**
-  - Added `kreuzberg/_internal_bindings.pyi` and `kreuzberg/py.typed` to the wheel so IDEs and type checkers can discover types (Issue #238)
-- **Java: Maven publish now bundles native libraries** (including Windows DLLs)
-  - Fixed Maven Central publish step to stage `java-natives-*` into the JAR and fail early if missing
-- **Node: npm optional native packages now contain the `.node` binary**
-  - Fixed packaging to copy the built `.node` into each `@kreuzberg/node-<rid>` platform package before publish
-  - Added a publish-time guard to fail if any platform package is missing its `.node` file
-- **WASM: Node.js runtime no longer crashes with `self is not defined`**
-  - Made `wasm-bindgen-rayon` thread pool support opt-in and removed it from default Node-target WASM builds
-  - Fixed Node.js WASM initialization to import the wasm-pack glue from `pkg/kreuzberg_wasm.js`
-- **PDFium static linking (`pdf-static` feature)** (build.rs)
-  - Fixed `link_statically()` to correctly search for static library (`libpdfium.a`) instead of dynamic library (`.dylib`/`.so`)
-  - Added macOS fallback to dynamic linking when static library unavailable (bblanchon/pdfium-binaries only provides dynamic libraries)
-  - Improved error messages explaining that `bblanchon/pdfium-binaries` doesn't provide static archives
-  - Added clear guidance for users needing static linking: build PDFium yourself, use `PDFIUM_STATIC_LIB_PATH`, or use alternative features
-  - Prevents build failures with helpful warnings on macOS, actionable errors on Linux
+
+- **Python**: Wheels now include typing metadata (`.pyi` stubs) for IDE support
+- **Java**: Maven packages now bundle platform-specific native libraries (including Windows DLLs)
+- **Node**: npm platform packages now contain compiled `.node` binaries
+- **WASM**: Node.js runtime no longer crashes with `self is not defined`
+- **PDFium static linking**: Fixed to correctly search for `libpdfium.a` (was searching for dynamic library). Added macOS fallback to dynamic when static unavailable.
 
 ## [4.0.0-rc.8] - 2025-12-14
 
@@ -162,37 +53,12 @@ kreuzberg = { version = "4.0.0-rc.10", features = ["full", "bundled-pdfium"] }
 
 ### Fixed
 
-**CI/CD Workflow Improvements**:
-- **publish.yaml**: Fixed workflow/tag synchronization by adding re-checkout step after metadata computation, preventing race conditions where metadata is computed against main but build happens against different ref
-- **publish.yaml**: Increased C# test timeout from 60 to 90 minutes to prevent timeout failures
-- **publish.yaml**: Added `continue-on-error: true` for sccache steps to allow graceful fallback to direct compilation
-- **benchmarks.yaml**: Added `RUSTFLAGS="-C strip=symbols"` to reduce binary size (~30-40% reduction) for faster artifact transfer
-- **benchmarks.yaml**: Added comprehensive disk cleanup to all 16 benchmark jobs (docker prune, apt clean, removing dotnet/android/ghc) to prevent disk space exhaustion
-- **benchmarks.yaml**: Added disk space monitoring before/after artifact upload for visibility
-- **ci-go.yaml**: Fixed CGO library path configuration with explicit LD_LIBRARY_PATH/DYLD_LIBRARY_PATH setup for both Linux and macOS
-- **ci-go.yaml**: Added Tesseract version-aware cache keys for improved cache hit rates
-- **ci-go.yaml**: Enhanced FFI library verification with comprehensive diagnostics
-- **ci-rust.yaml**: Added pre-build diagnostics showing environment state (OS, Rust toolchain, cargo version)
-- **ci-rust.yaml**: Enhanced test scripts with verbose output and tessdata directory auto-creation
-- **ci-validate.yaml**: Changed from `task lint` to `task lint:check` for check-only mode (no auto-fixes in CI)
-- **ci-validate.yaml**: Added aggressive disk cleanup before linting to prevent disk space issues
-- **ci-validate.yaml**: Enhanced error reporting with trap handlers for better failure diagnostics
-- **scripts/ci/rust/run-unit-tests.sh**: Enhanced with test environment configuration reporting and error collection
-- **scripts/ci/rust/test-cli-windows.ps1**: Complete rewrite with comprehensive error handling and colored output
-- **scripts/publish/ubuntu/free-disk-space.sh**: Added aggressive APT package removal and journalctl log cleanup
-
-**Composite Actions Created/Enhanced**:
-- **build-rust-ffi** (NEW): Reusable composite action for building FFI libraries (kreuzberg-ffi, kreuzberg-py, kreuzberg-node, kreuzberg-rb) with comprehensive error diagnostics and artifact verification
-- **install-system-deps** (ENHANCED): Added retry logic with exponential backoff (3 attempts: 5s, 10s, 20s delays), timeout handling (900s Linux, 1200s LibreOffice), architecture-aware caching (x64, arm64), and version-aware cache keys
-- **setup-rust** (ENHANCED): Added Rust installation verification and improved sccache detection with SCCACHE_PATH fallback
-- Standardized FFI builds across ci-python.yaml, ci-node.yaml, ci-ruby.yaml, and ci-java.yaml workflows using new build-rust-ffi action
-
-**Build System Fixes**:
-- **crates/kreuzberg-ffi/build.rs**: Eliminated all `.unwrap()` calls for panic-safe error handling, added Windows MSVC linker compatibility, fixed cross-platform path normalization
-
-### Documentation
-- Created comprehensive CI/CD improvement documentation: SYSTEM_DEPS_AUDIT.md, SYSTEM_DEPS_IMPROVEMENTS.md, CI_RUST_BUILD_FIXES.md, BENCHMARK_FAILURE_ANALYSIS.md
-- Created README.md for build-rust-ffi and install-system-deps composite actions
+- **CI/CD reliability**: Improved publish workflows, increased test timeouts, and fixed disk space issues
+- **Go bindings**: Fixed CGO library path configuration for Linux and macOS
+- **Python wheels**: Now built with correct manylinux compatibility (`manylinux: auto`)
+- **Ruby gems**: Removed embedding model cache from distribution (was adding 567MB of bloat)
+- **Maven Central**: Updated publishing to use modern Sonatype Central API
+- **Docker publishing**: Added checks to skip redundant builds for already-released versions
 
 ## [4.0.0-rc.7] - 2025-12-12
 

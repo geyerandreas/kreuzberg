@@ -102,11 +102,6 @@ jobs:
         with:
           pdfium-version: ${{ env.PDFIUM_VERSION }}
 
-      - name: Setup static PDFium
-        uses: ./.github/actions/setup-pdfium-static
-        with:
-          pdfium-version: ${{ env.PDFIUM_VERSION }}
-
       - name: Stage PDFium runtime
         uses: ./.github/actions/stage-pdfium-runtime
         with:

@@ -17,7 +17,7 @@ categories = ["development-tools::ffi", "text-processing"]
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
-kreuzberg = { path = "../kreuzberg", features = ["full", "pdf-bundled"] }
+kreuzberg = { path = "../kreuzberg", features = ["full", "bundled-pdfium"] }
 serde_json = { workspace = true }
 serde = { workspace = true }
 async-trait = { workspace = true }

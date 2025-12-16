@@ -42,14 +42,14 @@ native libraries (`libkreuzberg_ffi` and `libpdfium` for your platform).
 <dependency>
     <groupId>dev.kreuzberg</groupId>
     <artifactId>kreuzberg</artifactId>
-    <version>4.0.0-rc.9</version>
+    <version>4.0.0-rc.10</version>
 </dependency>
 ```
 
 ### Gradle
 
 ```gradle
-implementation 'dev.kreuzberg:kreuzberg:4.0.0-rc.9'
+implementation 'dev.kreuzberg:kreuzberg:4.0.0-rc.10'
 ```
 
 ## Usage

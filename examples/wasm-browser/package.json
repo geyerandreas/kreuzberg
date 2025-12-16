@@ -1,7 +1,7 @@
 {
 	"name": "kreuzberg-wasm-browser",
 	"description": "Browser example for Kreuzberg WASM document extraction with Vite",
-	"version": "4.0.0-rc.8",
+	"version": "4.0.0-rc.10",
 	"type": "module",
 	"private": true,
 	"scripts": {

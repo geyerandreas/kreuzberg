@@ -100,11 +100,6 @@ jobs:
         with:
           pdfium-version: ${{ env.PDFIUM_VERSION }}
 
-      - name: Setup static PDFium
-        uses: ./.github/actions/setup-pdfium-static
-        with:
-          pdfium-version: ${{ env.PDFIUM_VERSION }}
-
       - name: Configure bindgen compatibility headers (Windows)
         if: matrix.os == 'windows-latest'
         shell: pwsh
@@ -162,11 +157,6 @@ jobs:
 
       - name: Download PDFium
         uses: ./.github/actions/download-pdfium
-        with:
-          pdfium-version: ${{ env.PDFIUM_VERSION }}
-
-      - name: Setup static PDFium
-        uses: ./.github/actions/setup-pdfium-static
         with:
           pdfium-version: ${{ env.PDFIUM_VERSION }}
 
@@ -229,14 +219,14 @@ jobs:
           cache-key-prefix: system-pdfium-${{ matrix.os }}
           target: ${{ matrix.target }}
 
-      - name: Build kreuzberg with pdf,pdf-system features
-        run: cargo build -p kreuzberg --features pdf,pdf-system
+      - name: Build kreuzberg with pdf,system-pdfium features
+        run: cargo build -p kreuzberg --features pdf,system-pdfium
         shell: bash
         env:
           PKG_CONFIG_PATH: "${{ matrix.os == 'macos-latest' && '/usr/local/lib/pkgconfig' || '' }}"
 
-      - name: Run tests with pdf,pdf-system features
-        run: cargo test -p kreuzberg --features pdf,pdf-system
+      - name: Run tests with pdf,system-pdfium features
+        run: cargo test -p kreuzberg --features pdf,system-pdfium
         shell: bash
         env:
           PKG_CONFIG_PATH: "${{ matrix.os == 'macos-latest' && '/usr/local/lib/pkgconfig' || '' }}"
@@ -295,11 +285,6 @@ jobs:
 
       - name: Download PDFium
         uses: ./.github/actions/download-pdfium
-        with:
-          pdfium-version: ${{ env.PDFIUM_VERSION }}
-
-      - name: Setup static PDFium
-        uses: ./.github/actions/setup-pdfium-static
         with:
           pdfium-version: ${{ env.PDFIUM_VERSION }}
 

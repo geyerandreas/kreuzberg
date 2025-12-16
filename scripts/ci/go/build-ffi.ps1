@@ -69,9 +69,9 @@ if ($IsWindowsOS) {
     $TargetTriple = "x86_64-pc-windows-gnu"
 
     # MinGW cannot use ONNX Runtime (ort-sys) because Windows ONNX Runtime only provides
-    # MSVC .lib files, not MinGW-compatible import libraries. Use core feature without embeddings.
-    Write-Host "Building with core feature (without embeddings - ONNX Runtime incompatible with MinGW)"
-    cargo build -p kreuzberg-ffi --release --target $TargetTriple --no-default-features --features core
+    # MSVC .lib files, not MinGW-compatible import libraries. Build with defaults.
+    Write-Host "Building kreuzberg-ffi (ONNX Runtime incompatible with MinGW)"
+    cargo build -p kreuzberg-ffi --release --target $TargetTriple
     $builtLibs = Get-ChildItem -Path "target\$TargetTriple\release" -Filter "libkreuzberg_ffi.*" -ErrorAction SilentlyContinue
     if (-not (Test-Path "target\release")) { New-Item -ItemType Directory -Path "target\release" | Out-Null }
     foreach ($lib in $builtLibs) {
