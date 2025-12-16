@@ -17,12 +17,12 @@ categories = ["development-tools::ffi", "text-processing"]
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
-kreuzberg = { path = "../kreuzberg", features = ["full"] }
+kreuzberg = { path = "../kreuzberg", features = ["full", "pdf-bundled"] }
 serde_json = { workspace = true }
 serde = { workspace = true }
 async-trait = { workspace = true }
 tokio = { workspace = true }
-html-to-markdown-rs = { version = "2.14.8", default-features = false }
+html-to-markdown-rs = { version = "2.14.11", default-features = false }
 
 [build-dependencies]
 cbindgen = "0.29"

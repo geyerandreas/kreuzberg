@@ -17,5 +17,5 @@ validate_repo_root "$REPO_ROOT" || exit 1
 setup_go_paths "$REPO_ROOT"
 
 # Run tests
-cd "${REPO_ROOT}/packages/go"
+cd "${REPO_ROOT}/packages/go/v4"
 go test ./...

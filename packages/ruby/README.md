@@ -417,6 +417,23 @@ bundle exec rubocop
 
 **Note**: The Ruby bindings use a vendored copy of the core `kreuzberg` Rust crate. For local development, create a symlink at `vendor/kreuzberg` pointing to `../../crates/kreuzberg`. In CI and gem packaging, the actual vendored files are copied to this location.
 
+## PDFium Integration
+
+PDF extraction is powered by PDFium, which is automatically bundled with this package. No system installation required.
+
+### Platform Support
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| Linux x86_64 | ✅ | Bundled |
+| macOS ARM64 | ✅ | Bundled |
+| macOS x86_64 | ✅ | Bundled |
+| Windows x86_64 | ✅ | Bundled |
+
+### Binary Size Impact
+
+PDFium adds approximately 8-15 MB to the package size depending on platform. This ensures consistent PDF extraction across all environments without external dependencies.
+
 ## License
 
 MIT License. See [LICENSE](../../LICENSE) for details.

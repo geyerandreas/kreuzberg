@@ -223,6 +223,23 @@ func init() {
 | `undefined: C.customValidator` during build | Export the callback with `//export` in a `*_cgo.go` file before using it in `Register*` helpers. |
 | Embeddings not available on Windows | Windows Go bindings use MinGW which cannot link ONNX Runtime (MSVC-only). Embeddings are unavailable on Windows for Go. |
 
+## PDFium Integration
+
+PDF extraction is powered by PDFium, which is automatically bundled with this package. No system installation required.
+
+### Platform Support
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| Linux x86_64 | ✅ | Bundled |
+| macOS ARM64 | ✅ | Bundled |
+| macOS x86_64 | ✅ | Bundled |
+| Windows x86_64 | ✅ | Bundled |
+
+### Binary Size Impact
+
+PDFium adds approximately 8-15 MB to the package size depending on platform. This ensures consistent PDF extraction across all environments without external dependencies.
+
 ## Testing / Tooling
 
 - `task go:lint` – runs `gofmt` and `golangci-lint` (`golangci-lint` pinned to v2.7.2).

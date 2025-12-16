@@ -56,6 +56,8 @@ env:
   CARGO_PROFILE_DEV_DEBUG: 0
   RUST_BACKTRACE: short
   RUST_MIN_STACK: 16777216
+  PDFIUM_VERSION: "7578"
+  PDFIUM_STATIC_VERSION: "7442b"
   MACOSX_DEPLOYMENT_TARGET: "14.0"
   WASM_RUSTFLAGS: "-C target-feature=+atomics,+bulk-memory -C link-arg=--shared-memory -C link-arg=--max-memory=2147483648 -C link-arg=--import-memory -C link-arg=--export=__wasm_init_tls -C link-arg=--export=__tls_size -C link-arg=--export=__tls_align -C link-arg=--export=__tls_base"
 
@@ -214,6 +216,21 @@ jobs:
         run: scripts/ci/wasm/pnpm-build-wasm.sh deno
         shell: bash
         env:
+          RUSTFLAGS: ${{ env.WASM_RUSTFLAGS }}
+
+      - name: Download PDFium WASM
+        shell: bash
+        run: |
+          curl -fL --retry 5 -o /tmp/pdfium-wasm.tgz \
+            "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium/${{ env.PDFIUM_VERSION }}/pdfium-wasm.tgz"
+          mkdir -p wasm-libs
+          tar -xzf /tmp/pdfium-wasm.tgz -C wasm-libs
+
+      - name: Build WASM with PDFium (native target)
+        run: scripts/ci/wasm/pnpm-build-wasm.sh nodejs
+        shell: bash
+        env:
+          PDFIUM_WASM_LIB: ${{ github.workspace }}/wasm-libs
           RUSTFLAGS: ${{ env.WASM_RUSTFLAGS }}
 
       - name: Validate build artifacts (Web)

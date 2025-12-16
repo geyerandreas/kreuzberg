@@ -50,17 +50,36 @@ runs:
         if [ ! -d ~/pdfium-static/lib ]; then
           mkdir -p ~/pdfium-static
 
+          # Use PDFIUM_STATIC_VERSION env var, fallback to input
+          STATIC_VERSION="${PDFIUM_STATIC_VERSION:-${{ inputs.pdfium-version }}}"
+
           # Download from pdfium-lib releases
-          URL="https://github.com/paulocoutinhox/pdfium-lib/releases/download/chromium/${{ inputs.pdfium-version }}-${{ env.PDFIUM_PLATFORM }}/pdfium-${{ inputs.pdfium-version }}-${{ env.PDFIUM_PLATFORM }}.tar.bz2"
+          URL="https://github.com/paulocoutinhox/pdfium-lib/releases/download/chromium/${STATIC_VERSION}-${{ env.PDFIUM_PLATFORM }}/pdfium-${STATIC_VERSION}-${{ env.PDFIUM_PLATFORM }}.tar.bz2"
 
-          echo "Downloading static PDFium from: $URL"
-          curl -L --retry 5 --retry-delay 2 -o /tmp/pdfium.tar.bz2 "$URL"
+          echo "Downloading static PDFium ${STATIC_VERSION} from: $URL"
+          curl -fL --retry 5 --retry-delay 2 -o /tmp/pdfium.tar.bz2 "$URL" || {
+            echo "ERROR: Failed to download static PDFium from $URL"
+            echo "Available versions: https://github.com/paulocoutinhox/pdfium-lib/releases"
+            exit 1
+          }
 
-          tar -xjf /tmp/pdfium.tar.bz2 -C ~/pdfium-static
+          # Verify it's actually a tar.bz2
+          file /tmp/pdfium.tar.bz2 | grep -q "bzip2" || {
+            echo "ERROR: Downloaded file is not a valid tar.bz2 archive"
+            echo "File type: $(file /tmp/pdfium.tar.bz2)"
+            cat /tmp/pdfium.tar.bz2 | head -20
+            exit 1
+          }
+
+          tar -xjf /tmp/pdfium.tar.bz2 -C ~/pdfium-static || {
+            echo "ERROR: Failed to extract PDFium archive"
+            exit 1
+          }
           rm /tmp/pdfium.tar.bz2
 
           if [ ! -f ~/pdfium-static/lib/libpdfium.a ]; then
-            echo "Error: Static PDFium library not found after extraction"
+            echo "ERROR: libpdfium.a not found after extraction"
+            ls -la ~/pdfium-static/lib/ || echo "lib/ directory not found"
             exit 1
           fi
 

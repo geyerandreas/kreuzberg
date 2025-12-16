@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
-kreuzberg = { path = "../../crates/kreuzberg", features = ["full-bundled"] }
+kreuzberg = { path = "../../crates/kreuzberg", features = ["full", "bundled-pdfium"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 

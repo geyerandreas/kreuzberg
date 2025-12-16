@@ -17,7 +17,7 @@ fix)
 	golangci-lint run --config "$root/.golangci.yml" --fix ./...
 	;;
 check)
-	"$root/scripts/go/v4/format_check.sh"
+	"$root/scripts/go/format_check.sh"
 	golangci-lint run --config "$root/.golangci.yml" ./...
 	;;
 *)

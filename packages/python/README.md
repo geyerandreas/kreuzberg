@@ -454,6 +454,23 @@ config = ExtractionConfig(
 - [Format Support](https://kreuzberg.dev/reference/formats/)
 - [OCR Backends](https://kreuzberg.dev/guides/ocr/)
 
+## PDFium Integration
+
+PDF extraction is powered by PDFium, which is automatically bundled with this package. No system installation required.
+
+### Platform Support
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| Linux x86_64 | ✅ | Bundled |
+| macOS ARM64 | ✅ | Bundled |
+| macOS x86_64 | ✅ | Bundled |
+| Windows x86_64 | ✅ | Bundled |
+
+### Binary Size Impact
+
+PDFium adds approximately 8-15 MB to the package size depending on platform. This ensures consistent PDF extraction across all environments without external dependencies.
+
 ## License
 
 MIT License - see [LICENSE](../../LICENSE) for details.

@@ -29,8 +29,15 @@ default = []
 
 [dependencies]
 async-trait = "0.1.89"
-kreuzberg = { path = "../../../vendor/kreuzberg", features = ["full", "pdf-static", "embeddings"] }
-kreuzberg-ffi = { path = "../../../vendor/kreuzberg-ffi", features = ["embeddings", "pdf-static"] }
+kreuzberg = { path = "../../../vendor/kreuzberg", features = [
+    "full",
+    "static-pdfium",
+    "embeddings",
+] }
+kreuzberg-ffi = { path = "../../../vendor/kreuzberg-ffi", features = [
+    "embeddings",
+    "static-pdfium",
+] }
 magnus = { git = "https://github.com/matsadler/magnus", rev = "f6db11769efb517427bf7f121f9c32e18b059b38", features = [
     "rb-sys",
 ] }

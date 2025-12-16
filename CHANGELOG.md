@@ -8,6 +8,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Breaking Changes
+
+#### PDFium Feature Restructuring (v4.0.0-rc.10)
+
+**Feature names changed for clarity:**
+- `pdf-static` → `static-pdfium`
+- `pdf-bundled` → `bundled-pdfium`
+- `pdf-system` → `system-pdfium`
+- `full-bundled` → REMOVED (use `full` + `bundled-pdfium`)
+
+**Default behavior changed:**
+- When only `pdf` feature enabled: Now defaults to `bundled-pdfium` (downloads + bundles automatically)
+- `full` feature: No longer includes linking strategy (previously was `pdf-static`)
+
+**Migration guide:**
+```toml
+# OLD
+kreuzberg = { version = "4.0.0-rc.9", features = ["static-pdfium"] }
+kreuzberg = { version = "4.0.0-rc.9", features = ["full-bundled"] }
+
+# NEW
+kreuzberg = { version = "4.0.0-rc.10", features = ["static-pdfium"] }
+kreuzberg = { version = "4.0.0-rc.10", features = ["full", "bundled-pdfium"] }
+```
+
+**Rationale:**
+- Clearer naming (strategy suffix, not prefix)
+- Better defaults (bundled works out of the box)
+- Simpler feature combinations
+
 - **Go bindings: Module path restructured to v4 for semantic versioning compliance**
   - Old module path: `github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg`
   - New module path: `github.com/kreuzberg-dev/kreuzberg/packages/go/v4`
@@ -25,6 +54,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **On Linux/Windows**: Requires `PDFIUM_STATIC_LIB_PATH` environment variable pointing to static PDFium libraries
   - **WASM Exception**: `wasm-target` bundle unchanged (no PDF support, cannot use static linking)
   - **Migration**: Use `pdf-bundled` feature for old behavior; see [PDFium Linking Guide](docs/guides/pdfium-linking.md#migration-guide)
+
+### Fixed
+
+- **CI**: Fixed PDFium version bug - version 7529 doesn't exist in paulocoutinhox/pdfium-lib (static PDFium)
+  - Static builds now use version 7442b from paulocoutinhox/pdfium-lib
+  - Bundled builds use version 7578 from bblanchon/pdfium-binaries
+  - Added separate environment variables: `PDFIUM_STATIC_VERSION` and `PDFIUM_VERSION`
+- **CI**: Added comprehensive bundling verification for all language bindings (Python, Node, Ruby, Java, Go, C#)
+  - New GitHub Action: `verify-pdfium-bundled` validates PDFium is properly embedded in packages
+- **CLI**: Fixed missing PDFium bundling on Windows
+  - CLI now properly stages PDFium runtime before packaging
+- **WASM**: Added PDFium support for native WASM targets (nodejs/deno)
+  - Edge runtime continues to use lopdf fallback (no pdfium)
 
 ### Added
 - **Dependency cleanup and optimization across all bindings**

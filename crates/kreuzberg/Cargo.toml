@@ -26,9 +26,13 @@ tokio-runtime = ["dep:tokio"]
 
 # Format extractors
 pdf = ["dep:pdfium-render", "dep:lopdf", "dep:image"]
-pdf-static = ["pdf"] # Static link (no runtime dep) - requires PDFIUM_STATIC_LIB_PATH env var
-pdf-bundled = ["pdf"] # Embed library in binary (self-contained, dynamic link)
-pdf-system = ["pdf"] # Use system-installed pdfium via pkg-config
+static-pdfium = ["pdf"]                               # Static link (no runtime dep) - requires PDFIUM_STATIC_LIB_PATH env var
+bundled-pdfium = ["pdf"]                              # Embed library in binary (self-contained, dynamic link)
+system-pdfium = ["pdf"]                               # Use system-installed pdfium via pkg-config
+# Legacy names for backward compatibility
+pdf-static = ["static-pdfium"]
+pdf-bundled = ["bundled-pdfium"]
+pdf-system = ["system-pdfium"]
 excel = ["dep:calamine", "dep:polars", "tokio-runtime"]
 office = [
     "dep:roxmltree",
@@ -85,7 +89,7 @@ wasm-threads = ["dep:wasm-bindgen-rayon"]
 
 # Convenience bundles (all use static PDF linking except wasm)
 full = [
-    "pdf-static",
+    "pdf",
     "excel",
     "office",
     "email",
@@ -102,26 +106,17 @@ full = [
     "mcp",
     "otel",
 ]
-full-bundled = [
-    "pdf-bundled",
+server = ["static-pdfium", "excel", "html", "ocr", "api", "mcp"]
+cli = [
+    "static-pdfium",
     "excel",
     "office",
-    "email",
     "html",
-    "xml",
-    "archives",
     "ocr",
     "language-detection",
     "chunking",
-    "embeddings",
     "quality",
-    "keywords",
-    "api",
-    "mcp",
-    "otel",
 ]
-server = ["pdf-static", "excel", "html", "ocr", "api", "mcp"]
-cli = ["pdf-static", "excel", "office", "html", "ocr", "language-detection", "chunking", "quality"]
 
 [build-dependencies]
 tracing = { workspace = true }

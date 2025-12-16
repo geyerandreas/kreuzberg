@@ -169,46 +169,35 @@ kreuzberg = { version = "4.0", features = ["server"] }
 kreuzberg = { version = "4.0", features = ["cli"] }
 ```
 
-## PDFium Linking Options
+## PDF Support and Linking Options
 
-When using the `pdf` feature, you can choose how PDFium is linked to your binary. Four strategies are supported:
+Kreuzberg supports three PDFium linking strategies. **Default is `bundled-pdfium`** (best developer experience).
 
-| Strategy | Feature | Use Case |
-|----------|---------|----------|
-| **Dynamic (default)** | `pdf` | Fast builds, runtime library dependency |
-| **Static** | `pdf`, `pdf-static` | Embed PDFium in binary, larger binary size |
-| **Bundled** | `pdf`, `pdf-bundled` | Self-contained per-binary copies |
-| **System** | `pdf`, `pdf-system` | Use system-installed PDFium |
+| Strategy | Feature | Use Case | Binary Size | Runtime Deps |
+|----------|---------|----------|-------------|--------------|
+| **Bundled (default)** | `bundled-pdfium` | Development, production | +8-15MB | None |
+| **Static** | `static-pdfium` | Docker, musl, standalone binaries | +200MB | None |
+| **System** | `system-pdfium` | Package managers, distros | +2MB | libpdfium.so |
 
-### Examples
+### Quick Start
 
-**Default (dynamic linking)** - Fastest compilation, requires libpdfium at runtime:
 ```toml
+# Default - bundled PDFium (recommended)
 [dependencies]
-kreuzberg = { version = "4.0", features = ["pdf"] }
+kreuzberg = "4.0"
+
+# Static linking (Docker, musl)
+[dependencies]
+kreuzberg = { version = "4.0", features = ["static-pdfium"] }
+
+# System PDFium (package managers)
+[dependencies]
+kreuzberg = { version = "4.0", features = ["system-pdfium"] }
 ```
 
-**Static linking** - Larger binary, no runtime dependency:
-```toml
-[dependencies]
-kreuzberg = { version = "4.0", features = ["pdf", "pdf-static"] }
-```
+For detailed information, see the [PDFium Linking Guide](../../docs/guides/pdfium-linking.md).
 
-**Bundled** - Each binary extracts its own copy:
-```toml
-[dependencies]
-kreuzberg = { version = "4.0", features = ["pdf", "pdf-bundled"] }
-```
-
-**System-installed** - Use pkg-config or manual paths:
-```toml
-[dependencies]
-kreuzberg = { version = "4.0", features = ["pdf", "pdf-system"] }
-```
-
-For comprehensive guidance on linking strategies, environment variables, and troubleshooting, see the [PDFium Linking Guide](../../docs/guides/pdfium-linking.md).
-
-**Note:** Language bindings (Python, TypeScript, Ruby, Java, Go) bundle PDFium automatically and do not expose linking options.
+**Note:** Language bindings (Python, TypeScript, Ruby, Java, Go) automatically bundle PDFium. No configuration needed.
 
 ## Documentation
 

@@ -15,7 +15,7 @@ categories = ["api-bindings", "text-processing"]
 crate-type = ["cdylib"]
 
 [dependencies]
-kreuzberg = { path = "../kreuzberg", features = ["full"] }
+kreuzberg = { path = "../kreuzberg", features = ["full", "bundled-pdfium"] }
 kreuzberg-ffi = { path = "../kreuzberg-ffi" }
 napi = { version = "3", default-features = false, features = ["napi8", "async", "serde-json"] }
 napi-derive = "3"

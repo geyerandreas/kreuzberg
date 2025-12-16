@@ -695,12 +695,12 @@ tasks:
   go:install:
     desc: Install Go tools and modules
     cmds:
-      - scripts/go/v4/install.sh {{.GOLANGCI_LINT_VERSION}}
+      - scripts/go/install.sh {{.GOLANGCI_LINT_VERSION}}
 
   go:update:
     desc: Update Go dependencies and linters
     cmds:
-      - scripts/go/v4/update.sh {{.GOLANGCI_LINT_VERSION}}
+      - scripts/go/update.sh {{.GOLANGCI_LINT_VERSION}}
 
   go:lint:
     desc: Lint Go code with auto-fix (gofmt + golangci-lint)
@@ -718,12 +718,12 @@ tasks:
   go:format:check:
     desc: Check Go code formatting without modifications (gofmt)
     cmds:
-      - scripts/go/v4/format_check.sh
+      - scripts/go/format_check.sh
 
   go:test:
     desc: Run Go tests
     cmds:
-      - scripts/go/v4/test.sh
+      - scripts/go/test.sh
 
   csharp:install:
     desc: Restore C# dependencies

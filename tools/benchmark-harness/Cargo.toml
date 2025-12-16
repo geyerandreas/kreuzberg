@@ -18,7 +18,7 @@ path = "src/lib.rs"
 
 [dependencies]
 # Core dependencies
-kreuzberg = { path = "../../crates/kreuzberg", features = ["full-bundled"] }
+kreuzberg = { path = "../../crates/kreuzberg", features = ["full", "bundled-pdfium"] }
 tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
