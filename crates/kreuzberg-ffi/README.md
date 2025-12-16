@@ -669,7 +669,25 @@ private static extern IntPtr kreuzberg_extract_file(
 
 ### Default Features
 - `html`: HTML to Markdown conversion support
-- `embeddings`: Text embedding extraction via fastembed-rs (requires ONNX Runtime)
+- `embeddings`: Text embedding extraction via fastembed-rs (requires ONNX Runtime - must be installed separately)
+
+### System Requirements for Embeddings
+
+If using the `embeddings` feature, ONNX Runtime must be installed on the system:
+
+```bash
+# macOS
+brew install onnxruntime
+
+# Ubuntu/Debian
+sudo apt install libonnxruntime libonnxruntime-dev
+
+# Windows (MSVC)
+scoop install onnxruntime
+# OR download from https://github.com/microsoft/onnxruntime/releases
+```
+
+Without ONNX Runtime, embeddings functionality will raise errors at runtime.
 
 ### Core Feature (Windows MinGW Compatibility)
 - `core`: Minimal feature set for cross-platform compatibility

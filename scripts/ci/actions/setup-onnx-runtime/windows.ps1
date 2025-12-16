@@ -77,6 +77,7 @@ $RustFlags = if ($env:RUSTFLAGS) { "$env:RUSTFLAGS -L $OrtLib" } else { "-L $Ort
   "ORT_PREFER_DYNAMIC_LINK=1"
   "ORT_SKIP_DOWNLOAD=1"
   "ORT_STRATEGY=system"
+  "ORT_DYLIB_PATH=$OrtLib\onnxruntime.dll"
   "RUSTFLAGS=$RustFlags"
   "LIB=$OrtLib;$env:LIB"
   "LIBRARY_PATH=$OrtLib;$env:LIBRARY_PATH"

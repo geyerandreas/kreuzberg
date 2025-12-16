@@ -39,6 +39,26 @@ pip install "kreuzberg[paddleocr]"
 pip install "kreuzberg[all]"
 ```
 
+## System Requirements
+
+### ONNX Runtime (for embeddings)
+
+If using embeddings functionality, ONNX Runtime must be installed:
+
+```bash
+# macOS
+brew install onnxruntime
+
+# Ubuntu/Debian
+sudo apt install libonnxruntime libonnxruntime-dev
+
+# Windows (MSVC)
+scoop install onnxruntime
+# OR download from https://github.com/microsoft/onnxruntime/releases
+```
+
+Without ONNX Runtime, embeddings will raise `MissingDependencyError` with installation instructions.
+
 ## Quick Start
 
 ### Simple Extraction
@@ -384,7 +404,25 @@ if result.detected_languages and "en" in result.detected_languages:
     print(result.content)
 ```
 
-## System Dependencies
+## System Requirements
+
+### ONNX Runtime (for embeddings)
+
+If using embeddings functionality, ONNX Runtime must be installed:
+
+```bash
+# macOS
+brew install onnxruntime
+
+# Ubuntu/Debian
+sudo apt install libonnxruntime libonnxruntime-dev
+
+# Windows (MSVC)
+scoop install onnxruntime
+# OR download from https://github.com/microsoft/onnxruntime/releases
+```
+
+Without ONNX Runtime, embeddings will raise `MissingDependencyError` with installation instructions.
 
 ### Tesseract OCR (Required for OCR)
 

@@ -11,6 +11,30 @@
 //! - Batch processing for efficient embedding generation
 //! - Optional GPU acceleration via ONNX Runtime execution providers
 //!
+//! # ONNX Runtime Requirement
+//!
+//! **CRITICAL**: This module requires ONNX Runtime to be installed on the system.
+//! The `embeddings` feature uses dynamic loading (`ort-load-dynamic`), which detects
+//! the ONNX Runtime library at runtime.
+//!
+//! ## Installation Instructions
+//!
+//! - **macOS**: `brew install onnxruntime`
+//! - **Linux (Ubuntu/Debian)**: `apt install libonnxruntime libonnxruntime-dev`
+//! - **Linux (Fedora)**: `dnf install onnxruntime onnxruntime-devel`
+//! - **Linux (Arch)**: `pacman -S onnxruntime`
+//! - **Windows (MSVC)**: Download from https://github.com/microsoft/onnxruntime/releases and add to PATH
+//!
+//! Alternatively, set the `ORT_DYLIB_PATH` environment variable to the ONNX Runtime library path.
+//!
+//! For Docker/containers, install via package manager in your base image.
+//! Verified packages: Ubuntu 22.04+, Fedora 38+, Arch Linux.
+//!
+//! ## Platform Limitations
+//!
+//! **Windows MinGW builds are not supported**. ONNX Runtime requires the MSVC toolchain on Windows.
+//! Please use Windows MSVC builds or disable the embeddings feature.
+//!
 //! # Example
 //!
 //! ```rust,ignore
@@ -145,6 +169,35 @@ lazy_static! {
     static ref MODEL_CACHE: RwLock<HashMap<String, CachedEmbedding>> = RwLock::new(HashMap::new());
 }
 
+/// Returns installation instructions for ONNX Runtime.
+#[cfg(feature = "embeddings")]
+fn onnx_runtime_install_message() -> String {
+    #[cfg(all(windows, target_env = "gnu"))]
+    {
+        return "ONNX Runtime embeddings are not supported on Windows MinGW builds. \
+        ONNX Runtime requires MSVC toolchain. \
+        Please use Windows MSVC builds or disable embeddings feature."
+            .to_string();
+    }
+
+    #[cfg(not(all(windows, target_env = "gnu")))]
+    {
+        "ONNX Runtime is required for embeddings functionality. \
+        Install: \
+        macOS: 'brew install onnxruntime', \
+        Linux (Ubuntu/Debian): 'apt install libonnxruntime libonnxruntime-dev', \
+        Linux (Fedora): 'dnf install onnxruntime onnxruntime-devel', \
+        Linux (Arch): 'pacman -S onnxruntime', \
+        Windows (MSVC): Download from https://github.com/microsoft/onnxruntime/releases and add to PATH. \
+        \
+        Alternatively, set ORT_DYLIB_PATH environment variable to the ONNX Runtime library path. \
+        \
+        For Docker/containers: Install via package manager in your base image. \
+        Verified packages: Ubuntu 22.04+, Fedora 38+, Arch Linux."
+            .to_string()
+    }
+}
+
 /// Get or initialize a text embedding model from cache.
 ///
 /// This function ensures models are initialized only once and reused across
@@ -193,9 +246,24 @@ pub fn get_or_init_model(
         let mut init_options = InitOptions::new(model);
         init_options = init_options.with_cache_dir(cache_directory);
 
-        let embedding_model = TextEmbedding::try_new(init_options).map_err(|e| crate::KreuzbergError::Plugin {
-            message: format!("Failed to initialize embedding model: {}", e),
-            plugin_name: "embeddings".to_string(),
+        let embedding_model = TextEmbedding::try_new(init_options).map_err(|e| {
+            let error_msg = e.to_string();
+
+            // Detect ONNX Runtime loading errors by checking for common patterns
+            if error_msg.contains("onnxruntime")
+                || error_msg.contains("ORT")
+                || error_msg.contains("libonnxruntime")
+                || error_msg.contains("onnxruntime.dll")
+                || error_msg.contains("Unable to load")
+                || error_msg.contains("library load failed")
+            {
+                crate::KreuzbergError::MissingDependency(format!("ONNX Runtime - {}", onnx_runtime_install_message()))
+            } else {
+                crate::KreuzbergError::Plugin {
+                    message: format!("Failed to initialize embedding model: {}", e),
+                    plugin_name: "embeddings".to_string(),
+                }
+            }
         })?;
 
         let leaked_model = LeakedModel::new(embedding_model);

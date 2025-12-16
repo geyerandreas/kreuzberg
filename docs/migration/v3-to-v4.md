@@ -2,6 +2,211 @@
 
 Kreuzberg v4 represents a complete architectural rewrite with a Rust-first design. This guide helps you migrate from v3 to v4.
 
+---
+
+## RC.10 to RC.11 Migration (Embeddings Breaking Change)
+
+**⚠️ BREAKING CHANGE**: RC.11 switches embeddings from bundled ONNX Runtime to dynamic loading, requiring separate installation.
+
+### Overview
+
+RC.11 replaces the `ort-download-binaries` dependency with `ort-load-dynamic` for ONNX Runtime. This change:
+
+- **Reduces package sizes** by 150-200MB per platform
+- **Enables Windows MSVC support** for embeddings (previously unavailable)
+- **Requires manual ONNX Runtime installation** if you use embeddings
+
+### Who Is Affected?
+
+- **If you use embeddings** (chunking with embeddings, RAG pipelines): **Action required**
+- **If you don't use embeddings**: **No action needed** - all other features work without ONNX Runtime
+
+### Installation Instructions
+
+Install ONNX Runtime for your platform:
+
+#### macOS
+
+```bash
+brew install onnxruntime
+```
+
+#### Ubuntu/Debian
+
+```bash
+sudo apt install libonnxruntime libonnxruntime-dev
+```
+
+#### Windows (MSVC)
+
+**Option 1: Scoop (recommended)**
+
+```bash
+scoop install onnxruntime
+```
+
+**Option 2: Manual download**
+
+1. Download from [ONNX Runtime releases](https://github.com/microsoft/onnxruntime/releases)
+2. Extract to a directory (e.g., `C:\onnxruntime`)
+3. Add the `lib` directory to your `PATH` environment variable
+4. Or set `ORT_DYLIB_PATH` to point to `onnxruntime.dll`
+
+### Verification
+
+Verify ONNX Runtime is installed correctly:
+
+```bash
+# Linux
+ldconfig -p | grep onnxruntime
+
+# macOS
+ls -la /opt/homebrew/lib/libonnxruntime*  # ARM64
+ls -la /usr/local/lib/libonnxruntime*      # x86_64
+
+# Windows (PowerShell)
+where.exe onnxruntime.dll
+```
+
+### Custom Installation Paths
+
+If ONNX Runtime is installed in a non-standard location, set the `ORT_DYLIB_PATH` environment variable:
+
+```bash
+# Linux/macOS
+export ORT_DYLIB_PATH=/custom/path/to/libonnxruntime.so
+
+# Windows (PowerShell)
+$env:ORT_DYLIB_PATH = "C:\custom\path\to\onnxruntime.dll"
+```
+
+### Platform-Specific Notes
+
+#### Windows MSVC (NEW Support)
+
+Embeddings now work on Windows MSVC builds. This was previously unavailable due to the bundled binary approach.
+
+**Requirements:**
+- Visual Studio 2019 or later
+- ONNX Runtime installed via Scoop or manual download
+- MSVC toolchain for Rust builds
+
+#### Windows MinGW (No Embeddings)
+
+Windows MinGW builds (used by Go bindings) still **do not support embeddings** because ONNX Runtime only provides MSVC-compatible libraries.
+
+**Workaround for Go on Windows:**
+- Use Windows MSVC Rust toolchain with MSVC Go compiler (experimental)
+- Or build Go bindings without embeddings feature
+
+#### Docker/Containerized Deployments
+
+Add ONNX Runtime to your Dockerfile:
+
+**Debian/Ubuntu base:**
+
+```dockerfile
+FROM debian:bookworm-slim
+
+# Install ONNX Runtime
+RUN apt-get update && apt-get install -y \
+    libonnxruntime \
+    libonnxruntime-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install your Kreuzberg application
+COPY . /app
+WORKDIR /app
+RUN pip install kreuzberg
+```
+
+**Alpine base:**
+
+ONNX Runtime is not available in Alpine repositories. Use Debian/Ubuntu base or build from source.
+
+### Troubleshooting
+
+#### Error: "Missing dependency: onnxruntime"
+
+**Cause:** ONNX Runtime is not installed or not in the library search path.
+
+**Solution:**
+1. Install ONNX Runtime using platform-specific instructions above
+2. Verify installation with verification commands
+3. If installed in custom location, set `ORT_DYLIB_PATH`
+
+#### Error: "onnxruntime.dll not found" (Windows)
+
+**Cause:** ONNX Runtime DLL is not in PATH or `ORT_DYLIB_PATH`.
+
+**Solution:**
+1. Add ONNX Runtime `lib` directory to PATH
+2. Or set `ORT_DYLIB_PATH` to the full path to `onnxruntime.dll`
+3. Restart your terminal/IDE after changing PATH
+
+#### Error: "libonnxruntime.so: cannot open shared object file" (Linux)
+
+**Cause:** Library not found by dynamic linker.
+
+**Solution:**
+1. Run `sudo ldconfig` after installing ONNX Runtime
+2. Or add library path to `LD_LIBRARY_PATH`:
+   ```bash
+   export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:$LD_LIBRARY_PATH
+   ```
+
+#### Error: "Library not loaded: @rpath/libonnxruntime.dylib" (macOS)
+
+**Cause:** ONNX Runtime library not in dynamic linker search path.
+
+**Solution:**
+1. Install via Homebrew (recommended): `brew install onnxruntime`
+2. Or set `DYLD_FALLBACK_LIBRARY_PATH`:
+   ```bash
+   export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib:/usr/local/lib
+   ```
+
+#### Embeddings work in development but fail in production
+
+**Cause:** ONNX Runtime installed locally but missing in production environment.
+
+**Solution:**
+1. Add ONNX Runtime to production dependencies (Docker, system packages)
+2. Document ONNX Runtime requirement in deployment guides
+3. Add verification step to CI/CD pipeline
+
+### Rollback Plan
+
+If you encounter issues with RC.11, you can roll back to RC.10:
+
+```bash
+# Python
+pip install kreuzberg==4.0.0-rc.10
+
+# Rust
+kreuzberg = "=4.0.0-rc.10"
+
+# TypeScript
+npm install @kreuzberg/node@4.0.0-rc.10
+
+# Ruby
+gem install kreuzberg -v 4.0.0-rc.10
+
+# Java
+<version>4.0.0-rc.10</version>
+
+# Go
+go get github.com/kreuzberg-dev/kreuzberg/packages/go/v4@v4.0.0-rc.10
+```
+
+Report issues at [GitHub Issues](https://github.com/kreuzberg-dev/kreuzberg/issues) with:
+- Platform and version (OS, architecture)
+- ONNX Runtime installation method
+- Full error message and stack trace
+- Output of verification commands
+
+---
+
 ## Overview of Changes
 
 v4 introduces several major changes:

@@ -67,6 +67,7 @@ fi
 	echo "ORT_PREFER_DYNAMIC_LINK=1"
 	echo "ORT_SKIP_DOWNLOAD=1"
 	echo "ORT_STRATEGY=system"
+	echo "ORT_DYLIB_PATH=$ort_root/lib/$(ls "$ort_root/lib"/libonnxruntime*.dylib | head -1 | xargs basename)"
 	echo "DYLD_LIBRARY_PATH=$ort_root/lib:$dest:${DYLD_LIBRARY_PATH:-}"
 	echo "DYLD_FALLBACK_LIBRARY_PATH=$ort_root/lib:$dest:${DYLD_FALLBACK_LIBRARY_PATH:-}"
 	echo "LIBRARY_PATH=$ort_root/lib:$dest:${LIBRARY_PATH:-}"

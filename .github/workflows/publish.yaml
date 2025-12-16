@@ -1497,12 +1497,7 @@ jobs:
           platform-id: ${{ matrix.pdfium_platform }}
           arch-id: ${{ matrix.pdfium_arch }}
 
-      - name: Setup ONNX Runtime
-        uses: ./.github/actions/setup-onnx-runtime
-        with:
-          ort-version: ${{ env.ORT_VERSION }}
-          arch-id: ${{ matrix.ort_arch }}
-          dest-dir: target/csharp-native/${{ matrix.rid }}
+      # ONNX Runtime removed - users provide their own
 
       - name: Stage PDFium runtime
         uses: ./.github/actions/stage-pdfium-runtime

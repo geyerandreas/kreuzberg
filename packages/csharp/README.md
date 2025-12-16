@@ -50,8 +50,53 @@ Published under the `kreuzberg.dev` organization.
 
 - **.NET 6.0 or higher**
 - **Windows, macOS, or Linux** (x64, ARM64)
-- **Tesseract OCR** (optional, for OCR functionality)
-- **LibreOffice** (optional, for legacy Office formats)
+
+## System Requirements
+
+### ONNX Runtime (for embeddings)
+
+If using embeddings functionality, ONNX Runtime must be installed:
+
+```bash
+# macOS
+brew install onnxruntime
+
+# Ubuntu/Debian
+sudo apt install libonnxruntime libonnxruntime-dev
+
+# Windows (MSVC)
+scoop install onnxruntime
+# OR download from https://github.com/microsoft/onnxruntime/releases
+```
+
+Without ONNX Runtime, embeddings will raise `MissingDependencyError` with installation instructions.
+
+### Tesseract OCR (Optional)
+
+**macOS:**
+```bash
+brew install tesseract
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install tesseract-ocr
+```
+
+**Windows:**
+Download from [Tesseract GitHub](https://github.com/tesseract-ocr/tesseract/wiki/Downloads)
+
+### LibreOffice (Optional, for legacy Office formats)
+
+**macOS:**
+```bash
+brew install libreoffice
+```
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install libreoffice
+```
 
 ## Quick Start
 
@@ -373,35 +418,6 @@ catch (KreuzbergException ex)
 - `GetVersion()` - Get native library version
 - `ListEmbeddingPresets()` - List embedding presets
 - `GetEmbeddingPreset()` - Get specific embedding preset
-
-## System Dependencies
-
-### Tesseract OCR (Optional)
-
-**macOS:**
-```bash
-brew install tesseract
-```
-
-**Ubuntu/Debian:**
-```bash
-sudo apt-get install tesseract-ocr
-```
-
-**Windows:**
-Download from [Tesseract GitHub](https://github.com/tesseract-ocr/tesseract/wiki/Downloads)
-
-### LibreOffice (Optional, for legacy Office formats)
-
-**macOS:**
-```bash
-brew install libreoffice
-```
-
-**Ubuntu/Debian:**
-```bash
-sudo apt-get install libreoffice
-```
 
 ## Build & Test
 

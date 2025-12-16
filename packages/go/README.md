@@ -49,6 +49,28 @@ The Go binding uses cgo to link against the `kreuzberg-ffi` library.
 
 3. Pdfium is bundled in `target/release`, so no extra system packages are required unless you customize the build.
 
+## System Requirements
+
+### ONNX Runtime (for embeddings)
+
+If using embeddings functionality, ONNX Runtime must be installed:
+
+```bash
+# macOS
+brew install onnxruntime
+
+# Ubuntu/Debian
+sudo apt install libonnxruntime libonnxruntime-dev
+
+# Windows (MSVC)
+scoop install onnxruntime
+# OR download from https://github.com/microsoft/onnxruntime/releases
+```
+
+Without ONNX Runtime, embeddings will raise `MissingDependencyError` with installation instructions.
+
+Note: Windows Go bindings use MinGW and cannot link ONNX Runtime (MSVC-only). Embeddings are unavailable on Windows for Go.
+
 ### Using Pre-built Binaries (Recommended)
 
 Download pre-built FFI libraries from the [releases page](https://github.com/kreuzberg-dev/kreuzberg/releases):

@@ -34,13 +34,13 @@ The Go binding uses cgo to link against the `kreuzberg-ffi` library.
    cargo build -p kreuzberg-ffi --release
    ```
 
-**Windows (MinGW):**
-1. Build the Rust FFI crate with the `core` feature (embeddings not available):
+**Windows (MSVC - embeddings supported):**
+1. Build the Rust FFI crate with full features:
    ```bash
-   cargo build -p kreuzberg-ffi --release --target x86_64-pc-windows-gnu --no-default-features --features core
+   cargo build -p kreuzberg-ffi --release --target x86_64-pc-windows-msvc
    ```
 
-   **Note:** The `embeddings` feature requires ONNX Runtime, which is only available with MSVC toolchain on Windows. MinGW builds must use the `core` feature.
+   **Note:** Embeddings are now fully supported on Windows MSVC. ONNX Runtime must be installed separately.
 
 2. Ensure the resulting shared libraries are discoverable at runtime:
    - macOS: `export DYLD_FALLBACK_LIBRARY_PATH=$PWD/target/release`
@@ -48,6 +48,28 @@ The Go binding uses cgo to link against the `kreuzberg-ffi` library.
    - Windows: add `target\release` or `target\x86_64-pc-windows-gnu\release` to `PATH`
 
 3. Pdfium is bundled in `target/release`, so no extra system packages are required unless you customize the build.
+
+### System Requirements
+
+#### ONNX Runtime (for embeddings)
+
+If using embeddings functionality, ONNX Runtime must be installed:
+
+```bash
+# macOS
+brew install onnxruntime
+
+# Ubuntu/Debian
+sudo apt install libonnxruntime libonnxruntime-dev
+
+# Windows (MSVC)
+scoop install onnxruntime
+# OR download from https://github.com/microsoft/onnxruntime/releases
+```
+
+Without ONNX Runtime, embeddings will raise `MissingDependencyError` with installation instructions.
+
+**Note:** Windows MinGW builds do not support embeddings (ONNX Runtime requires MSVC). Use Windows MSVC for embeddings support.
 
 ### Using Pre-built Binaries (Recommended)
 
@@ -221,7 +243,8 @@ func init() {
 | Version mismatch between Go package and FFI library | Ensure versions match: `pkg-config --modversion kreuzberg-ffi` |
 | `Missing dependency: tesseract` | Install the OCR backend and ensure it is on `PATH`. Errors bubble up as `*v4.MissingDependencyError`. |
 | `undefined: C.customValidator` during build | Export the callback with `//export` in a `*_cgo.go` file before using it in `Register*` helpers. |
-| Embeddings not available on Windows | Windows Go bindings use MinGW which cannot link ONNX Runtime (MSVC-only). Embeddings are unavailable on Windows for Go. |
+| `Missing dependency: onnxruntime` | Install ONNX Runtime: `brew install onnxruntime` (macOS), `apt install libonnxruntime` (Linux), `scoop install onnxruntime` (Windows). Required for embeddings functionality. |
+| Embeddings not available on Windows MinGW | Windows MinGW builds cannot link ONNX Runtime (MSVC-only). Use Windows MSVC build for embeddings support, or build without embeddings feature. |
 
 ## Testing / Tooling
 

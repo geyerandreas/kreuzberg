@@ -18,6 +18,14 @@
 > **🚀 Version 4.0.0 Release Candidate**
 > This is a pre-release version. We invite you to test the library and [report any issues](https://github.com/kreuzberg-dev/kreuzberg/issues) you encounter. Help us make the stable release better!
 
+> **⚠️ BREAKING CHANGE in RC.11**
+>
+> Embeddings now require separate ONNX Runtime installation. This reduces package sizes and enables Windows MSVC support.
+>
+> - **Action required**: Install ONNX Runtime if you use embeddings
+> - **No action needed**: If you don't use embeddings
+> - [Installation Guide](#embeddings-support-optional)
+
 ## Why use Kreuzberg
 
 - **Truly polyglot** – Native bindings for Rust, Python, TypeScript/Node.js, Ruby, Go, Java, C#
@@ -67,6 +75,19 @@ Each language binding provides comprehensive documentation with examples and bes
 - **[C#](packages/csharp/README.md)** – Installation, P/Invoke usage, NuGet package
 - **[Rust](crates/kreuzberg/README.md)** – Crate usage, features, async/sync APIs
 - **[CLI](https://kreuzberg.dev/cli/usage/)** – Command-line usage, batch processing, options
+
+### Embeddings Support (Optional)
+
+To use embeddings functionality:
+
+1. **Install ONNX Runtime**:
+   - Linux: `apt install libonnxruntime`
+   - macOS: `brew install onnxruntime`
+   - Windows: `scoop install onnxruntime` or `winget install onnxruntime`
+
+2. Use embeddings in your code - see [Embeddings Guide](https://kreuzberg.dev/guides/embeddings/)
+
+Note: All other Kreuzberg features work without ONNX Runtime.
 
 ## PDFium Linking Options (Rust Crate Only)
 

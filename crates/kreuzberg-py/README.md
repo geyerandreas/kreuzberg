@@ -180,6 +180,26 @@ fn to_python_slow(py: Python, result: &ExtractionResult) -> PyResult<Bound<PyDic
 
 **Performance**: Direct construction is ~30-40% faster than JSON round-trip.
 
+## System Requirements
+
+### ONNX Runtime (for embeddings)
+
+If using embeddings functionality, ONNX Runtime must be installed:
+
+```bash
+# macOS
+brew install onnxruntime
+
+# Ubuntu/Debian
+sudo apt install libonnxruntime libonnxruntime-dev
+
+# Windows (MSVC)
+scoop install onnxruntime
+# OR download from https://github.com/microsoft/onnxruntime/releases
+```
+
+Without ONNX Runtime, embeddings will raise `MissingDependencyError` with installation instructions.
+
 ## Building
 
 ### Development Build

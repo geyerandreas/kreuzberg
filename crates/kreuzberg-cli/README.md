@@ -47,6 +47,24 @@ cargo build --release -p kreuzberg-cli
 
 ### Platform-Specific Requirements
 
+#### ONNX Runtime (for embeddings)
+
+If using embeddings functionality, ONNX Runtime must be installed:
+
+```bash
+# macOS
+brew install onnxruntime
+
+# Ubuntu/Debian
+sudo apt install libonnxruntime libonnxruntime-dev
+
+# Windows (MSVC)
+scoop install onnxruntime
+# OR download from https://github.com/microsoft/onnxruntime/releases
+```
+
+Without ONNX Runtime, embeddings will raise `MissingDependencyError` with installation instructions.
+
 #### OCR Support (Optional)
 
 To enable optical character recognition for scanned documents:

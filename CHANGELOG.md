@@ -24,7 +24,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No unreleased changes yet._
+### Breaking Changes
+
+- **Embeddings now require ONNX Runtime installation**
+  - Switched from `ort-download-binaries` to `ort-load-dynamic` for runtime detection
+  - Users must install ONNX Runtime separately to use embeddings functionality
+  - Benefit: ~150-200MB package size reduction per platform
+  - Windows MSVC support enabled for embeddings (NEW)
+  - Installation: `brew install onnxruntime` (macOS), `apt install libonnxruntime libonnxruntime-dev` (Linux), `scoop install onnxruntime` (Windows)
+
+### Removed
+
+- `embeddings-dynamic` feature flag (embeddings now always uses dynamic loading)
+
+## [4.0.0-rc.10] - 2025-12-16
+
+### Breaking Changes
+
+- **PDFium feature names changed**: `pdf-static`→`static-pdfium`, `pdf-bundled`→`bundled-pdfium`, `pdf-system`→`system-pdfium`. Feature `full-bundled` removed (use `full` + `bundled-pdfium`).
+- **Default PDFium linking**: `pdf` feature now defaults to `bundled-pdfium` (auto-downloads and embeds PDFium).
+- **Go module path**: Moved from `github.com/kreuzberg-dev/kreuzberg/packages/go/kreuzberg` to `github.com/kreuzberg-dev/kreuzberg/packages/go/v4`. Update your imports and run `go mod tidy`.
+
+### Fixed
+
+- **Windows CLI**: Now includes bundled PDFium runtime
+- **WASM Node.js/Deno**: PDFium support for native targets (edge runtimes continue using lopdf)
+- **Go bindings**: Added `ExtractFileWithContext()` and batch variants for context cancellation support
+- **Node/TypeScript**: Replaced `any` types with proper definitions. Fixed data loss in page metadata.
+- **Ruby bindings**: Complete YARD documentation for all API methods
+- **C# bindings**: Complete XML documentation for all public methods
 
 ## [4.0.0-rc.9] - 2025-12-15
 

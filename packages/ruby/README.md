@@ -38,6 +38,11 @@ Extract text, tables, images, and metadata from 56 file formats including PDF, D
 
 ### Optional System Dependencies
 
+- **ONNX Runtime**: For embeddings functionality
+  - macOS: `brew install onnxruntime`
+  - Ubuntu: `sudo apt-get install libonnxruntime libonnxruntime-dev`
+  - Windows: `scoop install onnxruntime` or download from [GitHub](https://github.com/microsoft/onnxruntime/releases)
+
 - **Tesseract**: For OCR functionality
   - macOS: `brew install tesseract`
   - Ubuntu: `sudo apt-get install tesseract-ocr`

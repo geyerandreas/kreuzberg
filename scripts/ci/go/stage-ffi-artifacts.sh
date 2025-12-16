@@ -31,21 +31,7 @@ if [ ${#pdfium_libs[@]} -gt 0 ]; then
 	echo "✓ Staged PDFium library: ${pdfium_libs[*]}"
 fi
 
-# Copy ONNX Runtime if available (Linux/macOS with default features)
-if [ -n "${ORT_LIB_LOCATION:-}" ] && [ "${BUILD_FEATURES}" = "default" ]; then
-	ort_libs_so=("${ORT_LIB_LOCATION}"/libonnxruntime*.so)
-	ort_libs_dylib=("${ORT_LIB_LOCATION}"/libonnxruntime*.dylib)
-	ort_count=$((${#ort_libs_so[@]} + ${#ort_libs_dylib[@]}))
-	if [ $ort_count -gt 0 ]; then
-		if [ ${#ort_libs_so[@]} -gt 0 ]; then
-			cp -L "${ort_libs_so[@]}" "${STAGING_DIR}/lib/" 2>/dev/null || true
-		fi
-		if [ ${#ort_libs_dylib[@]} -gt 0 ]; then
-			cp -L "${ort_libs_dylib[@]}" "${STAGING_DIR}/lib/" 2>/dev/null || true
-		fi
-		echo "✓ Staged ONNX Runtime libraries"
-	fi
-fi
+# ONNX Runtime removed - users provide their own
 
 shopt -u nullglob
 

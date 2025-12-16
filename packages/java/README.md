@@ -34,6 +34,26 @@ High-performance document intelligence library for Java with native Rust binding
 If you need to override native discovery (e.g., custom builds), set `KREUZBERG_FFI_DIR` to a directory containing the
 native libraries (`libkreuzberg_ffi` and `libpdfium` for your platform).
 
+## System Requirements
+
+### ONNX Runtime (for embeddings)
+
+If using embeddings functionality, ONNX Runtime must be installed:
+
+```bash
+# macOS
+brew install onnxruntime
+
+# Ubuntu/Debian
+sudo apt install libonnxruntime libonnxruntime-dev
+
+# Windows (MSVC)
+scoop install onnxruntime
+# OR download from https://github.com/microsoft/onnxruntime/releases
+```
+
+Without ONNX Runtime, embeddings will raise `MissingDependencyError` with installation instructions.
+
 ## Installation
 
 ### Maven
