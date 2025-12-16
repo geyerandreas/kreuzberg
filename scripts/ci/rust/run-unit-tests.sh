@@ -49,6 +49,17 @@ for lang in eng osd; do
 	fi
 done
 
+# Configure library paths for PDFium and other shared libraries
+if [ -n "${KREUZBERG_PDFIUM_PREBUILT:-}" ]; then
+	export LD_LIBRARY_PATH="${KREUZBERG_PDFIUM_PREBUILT}/lib:${LD_LIBRARY_PATH:-}"
+	export DYLD_LIBRARY_PATH="${KREUZBERG_PDFIUM_PREBUILT}/lib:${DYLD_LIBRARY_PATH:-}"
+	export DYLD_FALLBACK_LIBRARY_PATH="${KREUZBERG_PDFIUM_PREBUILT}/lib:${DYLD_FALLBACK_LIBRARY_PATH:-}"
+	echo "Library path configuration:"
+	echo "  LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
+	echo "  DYLD_LIBRARY_PATH: $DYLD_LIBRARY_PATH"
+	echo "  DYLD_FALLBACK_LIBRARY_PATH: $DYLD_FALLBACK_LIBRARY_PATH"
+fi
+
 echo "=== Starting cargo test ==="
 
 # Run tests with detailed output and capture logs.

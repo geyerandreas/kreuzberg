@@ -2823,7 +2823,7 @@ pub fn clear_document_extractors() -> Result<()> {
 /// console.log(mimeType); // 'application/pdf'
 /// ```
 #[napi]
-pub fn detect_mime_type(bytes: Buffer) -> Result<String> {
+pub fn detect_mime_type_from_bytes(bytes: Buffer) -> Result<String> {
     kreuzberg::core::mime::detect_mime_type_from_bytes(bytes.as_ref()).map_err(convert_error)
 }
 

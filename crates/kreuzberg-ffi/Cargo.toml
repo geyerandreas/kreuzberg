@@ -17,6 +17,34 @@ categories = ["development-tools::ffi", "text-processing"]
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [dependencies]
+# On Windows MinGW, disable embeddings/ort since ONNX Runtime is not available
+# in MinGW-compatible form. Use all other features but exclude embeddings.
+[target.'cfg(all(windows, target_env = "gnu"))'.dependencies]
+kreuzberg = { path = "../kreuzberg", features = [
+    "pdf",
+    "excel",
+    "office",
+    "email",
+    "html",
+    "xml",
+    "archives",
+    "ocr",
+    "language-detection",
+    "chunking",
+    "quality",
+    "keywords",
+    "api",
+    "mcp",
+    "otel",
+    "bundled-pdfium",
+] }
+serde_json = { workspace = true }
+serde = { workspace = true }
+async-trait = { workspace = true }
+tokio = { workspace = true }
+html-to-markdown-rs = { version = "2.14.11", default-features = false }
+
+[target.'cfg(not(all(windows, target_env = "gnu")))'.dependencies]
 kreuzberg = { path = "../kreuzberg", features = ["full", "bundled-pdfium"] }
 serde_json = { workspace = true }
 serde = { workspace = true }
