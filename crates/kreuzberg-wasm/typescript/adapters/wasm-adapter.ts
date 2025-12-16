@@ -26,7 +26,7 @@
  * ```
  */
 
-import type { Chunk, ExtractedImage, ExtractionConfig, ExtractionResult, Table } from "../types.js";
+import type { Chunk, ExtractedImage, ExtractionConfig, ExtractionResult, Metadata, Table } from "../types.js";
 
 /**
  * Maximum file size for processing (512 MB)
@@ -345,7 +345,7 @@ export function jsToExtractionResult(jsValue: unknown): ExtractionResult {
 	return {
 		content: result.content,
 		mimeType,
-		metadata: result.metadata,
+		metadata: (result.metadata ?? {}) as Metadata,
 		tables,
 		detectedLanguages,
 		chunks,

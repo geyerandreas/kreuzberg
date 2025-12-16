@@ -61,6 +61,7 @@ import type {
 	OcrBackendProtocol,
 	OcrConfig,
 	PageConfig,
+	PageContent,
 	PdfConfig,
 	PostProcessorConfig,
 	PostProcessorProtocol,
@@ -400,6 +401,29 @@ function convertImage(rawImage: unknown): ExtractedImage {
 	};
 }
 
+function convertPageContent(rawPage: unknown): PageContent {
+	if (!rawPage || typeof rawPage !== "object") {
+		return {
+			pageNumber: 0,
+			content: "",
+			tables: [],
+			images: [],
+		};
+	}
+
+	const page = rawPage as Record<string, unknown>;
+	return {
+		// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
+		pageNumber: (page["pageNumber"] as number) ?? 0,
+		// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
+		content: (page["content"] as string) ?? "",
+		// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
+		tables: Array.isArray(page["tables"]) ? (page["tables"] as Table[]) : [],
+		// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
+		images: Array.isArray(page["images"]) ? (page["images"] as unknown[]).map((image) => convertImage(image)) : [],
+	};
+}
+
 function convertResult(rawResult: unknown): ExtractionResult {
 	if (!rawResult || typeof rawResult !== "object") {
 		return {
@@ -439,6 +463,11 @@ function convertResult(rawResult: unknown): ExtractionResult {
 			// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
 			const imagesData = result["images"];
 			return Array.isArray(imagesData) ? (imagesData as unknown[]).map((image) => convertImage(image)) : null;
+		})(),
+		pages: (() => {
+			// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
+			const pagesData = result["pages"];
+			return Array.isArray(pagesData) ? (pagesData as unknown[]).map((page) => convertPageContent(page)) : null;
 		})(),
 	};
 }

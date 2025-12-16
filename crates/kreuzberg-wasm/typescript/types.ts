@@ -115,8 +115,11 @@ export interface Metadata {
 	pageCount?: number;
 	/** Format-specific metadata */
 	formatMetadata?: unknown;
-	/** Custom additional fields */
-	additional?: Record<string, unknown>;
+	/**
+	 * Additional fields may be added at runtime by postprocessors.
+	 * Use bracket notation to safely access unexpected properties.
+	 */
+	[key: string]: unknown;
 }
 
 /**

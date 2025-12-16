@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Node/WASM TypeScript bindings: Complete strict typing and JSDoc coverage**
+  - Replaced all `any` types with proper type definitions (`unknown` with runtime guards)
+  - Fixed `Metadata` index signature to use `[key: string]: unknown` instead of `any`
+  - Added `NativeBinding` interface with explicit method signatures for Node bindings
+  - Implemented `convertPageContent()` function to properly convert page data (fixes data loss bug)
+  - All conversion functions now use bracket notation for `noPropertyAccessFromIndexSignature` compliance
+  - Added comprehensive `@throws` documentation to all extraction functions
+  - Documented all 70+ config interface fields with inline JSDoc comments
+  - WASM `Metadata` interface now aligned with Node binding for API parity
+  - 100% JSDoc coverage on all public APIs (functions, parameters, return types)
+  - Build success: zero TypeScript errors, zero linting warnings
+
 ## [4.0.0-rc.9] - 2025-12-15
 
 ### Added
