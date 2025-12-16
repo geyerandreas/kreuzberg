@@ -240,11 +240,6 @@ image = { workspace = true, default-features = false, features = ["png"] }
 name = "otel_overhead"
 harness = false
 
-[[bench]]
-name = "embeddings_loading"
-harness = false
-required-features = ["embeddings"]
-
 # Only build profiling tooling on non-Windows targets (pprof depends on Unix APIs)
 [target.'cfg(not(target_os = "windows"))'.dependencies]
 pprof = { version = "0.15.0", features = ["flamegraph"], optional = true }
