@@ -592,8 +592,14 @@ fn main() -> Result<()> {
         Commands::Mcp {
             config: config_path,
             transport,
+            #[cfg(feature = "mcp-http")]
             host,
+            #[cfg(feature = "mcp-http")]
             port,
+            #[cfg(not(feature = "mcp-http"))]
+                host: _,
+            #[cfg(not(feature = "mcp-http"))]
+                port: _,
         } => {
             let config = load_config(config_path)?;
 

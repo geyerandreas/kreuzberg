@@ -23,6 +23,7 @@ use kreuzberg::plugins::registry::get_ocr_backend_registry;
 use kreuzberg::plugins::{OcrBackend, Plugin, ProcessingStage};
 use kreuzberg::types::ExtractionResult;
 use kreuzberg::{KreuzbergError, Result};
+#[cfg(not(all(windows, target_env = "gnu")))]
 use serde::Serialize;
 
 thread_local! {

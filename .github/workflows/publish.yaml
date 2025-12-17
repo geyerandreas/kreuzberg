@@ -1563,43 +1563,6 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: scripts/publish/csharp/smoke-test-nuget.sh
 
-  cargo-packages:
-    name: Package Rust crates
-    needs: [prepare, check-cratesio]
-    if: ${{ needs.prepare.outputs.release_rust == 'true' && needs.check-cratesio.outputs.exists != 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.prepare.outputs.checkout_ref }}
-          fetch-depth: 0
-          submodules: recursive
-
-      - name: Ensure target commit
-        if: ${{ needs.prepare.outputs.target_sha != '' }}
-        run: git checkout --progress --force ${{ needs.prepare.outputs.target_sha }}
-
-      - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
-        with:
-          cache-key-prefix: publish-cargo-packages
-
-      - name: Package crates
-        env:
-          RELEASE_VERSION: ${{ needs.prepare.outputs.version }}
-        run: scripts/publish/cargo/package-crates.sh
-
-      - name: Upload crate packages
-        uses: actions/upload-artifact@v6
-        with:
-          name: cargo-crates
-          path: crate-artifacts/*.crate
-          retention-days: 14
-
   publish-docker:
     name: Publish Docker image (${{ matrix.variant }})
     needs:
