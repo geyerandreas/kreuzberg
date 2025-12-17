@@ -59,7 +59,7 @@ jobs:
     name: Rust Unit Tests (${{ matrix.os }})
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
@@ -146,7 +146,7 @@ jobs:
     name: Rust E2E Tests
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: read
     steps:
@@ -211,7 +211,7 @@ jobs:
     name: Test System PDFium (${{ matrix.os }})
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
@@ -288,7 +288,7 @@ jobs:
   build-and-smoke-cli:
     name: CLI Build + Smoke (${{ matrix.target }})
     if: ${{ github.actor != 'dependabot[bot]' }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:

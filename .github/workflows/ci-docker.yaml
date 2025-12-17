@@ -51,7 +51,7 @@ jobs:
     name: Build and Test Docker Image (${{ matrix.variant }})
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: read
 

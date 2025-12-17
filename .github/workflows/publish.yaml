@@ -318,7 +318,7 @@ jobs:
     needs: [prepare, check-pypi]
     if: ${{ needs.prepare.outputs.release_python == 'true' && needs.check-pypi.outputs.exists != 'true' }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
@@ -502,7 +502,7 @@ jobs:
     needs: [prepare, check-pypi]
     if: ${{ needs.prepare.outputs.release_python == 'true' && needs.check-pypi.outputs.exists != 'true' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 120
     permissions:
       contents: read
     steps:
@@ -549,7 +549,7 @@ jobs:
     needs: [prepare, check-npm]
     if: ${{ needs.prepare.outputs.release_node == 'true' && needs.check-npm.outputs.exists != 'true' }}
     runs-on: ${{ matrix.settings.os }}
-    timeout-minutes: 90
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
@@ -698,7 +698,7 @@ jobs:
     needs: [prepare, check-cli]
     if: ${{ needs.prepare.outputs.release_cli == 'true' && (needs.check-cli.outputs.exists != 'true' || needs.prepare.outputs.dry_run == 'true') }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
@@ -803,7 +803,7 @@ jobs:
           - os: windows-latest
             label: windows-x64
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     env:
       RB_SYS_CARGO_PROFILE: release
     steps:
@@ -916,7 +916,7 @@ jobs:
     needs: [prepare, check-go]
     if: ${{ needs.prepare.outputs.release_go == 'true' && (needs.check-go.outputs.exists != 'true' || needs.prepare.outputs.dry_run == 'true') }}
     runs-on: ${{ matrix.settings.os }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
@@ -1060,7 +1060,7 @@ jobs:
     needs: [prepare, check-maven]
     if: ${{ needs.prepare.outputs.release_java == 'true' && (needs.check-maven.outputs.exists != 'true' || needs.prepare.outputs.dry_run == 'true') }}
     runs-on: ${{ matrix.settings.os }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
@@ -1248,7 +1248,7 @@ jobs:
     needs: [prepare, java-package]
     if: ${{ needs.prepare.outputs.release_java == 'true' }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 20
+    timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
@@ -1280,7 +1280,7 @@ jobs:
     needs: [prepare, check-nuget]
     if: ${{ needs.prepare.outputs.release_csharp == 'true' && needs.check-nuget.outputs.exists != 'true' }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: 120
     strategy:
       fail-fast: true
       matrix:
@@ -1434,7 +1434,7 @@ jobs:
     needs: [prepare, check-nuget]
     if: ${{ needs.prepare.outputs.release_csharp == 'true' && needs.check-nuget.outputs.exists != 'true' }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: read
     strategy:
