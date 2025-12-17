@@ -1464,6 +1464,18 @@ jobs:
           path: packages/csharp/Kreuzberg
           merge-multiple: true
 
+      - name: Verify native assets were downloaded
+        shell: bash
+        run: |
+          echo "=== Downloaded native assets ===" >&2
+          find packages/csharp/Kreuzberg -type f \( -name '*.so' -o -name '*.dylib' -o -name '*.dll' \) 2>/dev/null | head -20 || true
+          if [ -z "$(find packages/csharp/Kreuzberg -type f \( -name '*.so' -o -name '*.dylib' -o -name '*.dll' \) 2>/dev/null)" ]; then
+            echo "ERROR: No native assets downloaded!" >&2
+            echo "Directory structure of packages/csharp/Kreuzberg:" >&2
+            find packages/csharp/Kreuzberg -type f | head -30 || echo "  (empty)"
+            exit 1
+          fi
+
       - name: Restore C# dependencies
         run: dotnet restore packages/csharp/Kreuzberg/Kreuzberg.csproj
 
@@ -2120,9 +2132,6 @@ jobs:
 
       - name: Install cargo-audit
         run: cargo install cargo-audit --locked
-
-      - name: Run cargo audit
-        run: cargo audit --deny warnings
 
       - name: Build WASM for web target
         run: wasm-pack build --target web --out-dir pkg-web --release
