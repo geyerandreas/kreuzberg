@@ -899,10 +899,65 @@ jobs:
         working-directory: packages/ruby
         run: bundle exec rake clean && bundle exec rake build
 
+      - name: Check disk space after build (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          echo "=== Disk space after gem build ===" >&2
+          df -h / >&2
+          du -sh packages/ruby/pkg/ >&2
+
       - name: Build gem (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/publish/ruby/build-gem-windows.ps1
+
+      - name: Check disk space after build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Host "=== Disk space after gem build ===" -ForegroundColor Yellow
+          Get-Volume | Select-Object DriveLetter, Size, SizeRemaining | Format-Table
+
+      - name: Verify gem integrity (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          cd packages/ruby/pkg
+          for gem in *.gem; do
+            if [ ! -f "$gem" ]; then
+              echo "No gem file found" >&2
+              exit 1
+            fi
+            echo "Validating $gem..."
+            if ! gem spec "$gem" >/dev/null 2>&1; then
+              echo "WARNING: gem spec check failed, attempting tar validation..."
+              if ! tar -tzf "$gem" >/dev/null 2>&1; then
+                echo "ERROR: Corrupted gem file: $gem" >&2
+                exit 1
+              fi
+            fi
+            ls -lh "$gem"
+          done
+
+      - name: Verify gem integrity (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          cd packages/ruby/pkg
+          Get-ChildItem *.gem | ForEach-Object {
+            $gemPath = $_.FullName
+            Write-Host "Validating $($_.Name)..."
+            $gemSpec = & gem spec $gemPath 2>&1
+            if ($LASTEXITCODE -ne 0) {
+              Write-Warning "gem spec check failed for $($_.Name), attempting tar validation..."
+              # Windows doesn't have tar by default, just check file size
+              if ($_.Length -le 100KB) {
+                Write-Error "Gem file appears to be corrupted or too small: $($_.Name)" -ErrorAction Stop
+              }
+            }
+            Write-Host "Size: $($_.Length) bytes"
+          }
 
       - name: Upload gem artifacts
         uses: actions/upload-artifact@v6
