@@ -26,6 +26,36 @@ if [ ${#gems[@]} -eq 0 ]; then
 	exit 1
 fi
 
+# Validate gem files before pushing
+echo "Validating gem files..."
+for gem in "${gems[@]}"; do
+	echo "Checking $gem..."
+
+	# Check if file is readable and non-empty
+	if [ ! -f "$gem" ] || [ ! -r "$gem" ] || [ ! -s "$gem" ]; then
+		echo "::error::Gem file is invalid (missing, unreadable, or empty): $gem" >&2
+		exit 1
+	fi
+
+	# Check if it's a valid gzip file (gems are gzipped tar archives)
+	if ! file "$gem" | grep -qE "gzip|data"; then
+		echo "::error::Gem file is not a valid gzip archive: $gem" >&2
+		exit 1
+	fi
+
+	# Try to list gem contents to verify integrity
+	if ! gem spec "$gem" >/dev/null 2>&1; then
+		echo "::warning::Gem file may be corrupted (spec check failed): $gem" >&2
+		echo "Attempting tar inspection..."
+		if ! tar -tzf "$gem" >/dev/null 2>&1; then
+			echo "::error::Gem file is corrupted (tar verification failed): $gem" >&2
+			exit 1
+		fi
+	fi
+done
+
+echo "All gem files validated successfully"
+
 failed_gems=()
 for gem in "${gems[@]}"; do
 	echo "Pushing ${gem} to RubyGems"
