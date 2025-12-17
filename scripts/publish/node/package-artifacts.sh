@@ -60,21 +60,34 @@ esac
 
 dest="crates/kreuzberg-node/npm/${platform_dir}/${node_file}"
 src=""
+
+echo "Looking for NAPI binary: ${node_file} (platform: ${platform_dir}, target: ${target})"
+
 for candidate in "crates/kreuzberg-node/artifacts/${node_file}" "crates/kreuzberg-node/${node_file}"; do
+	echo "Checking: $candidate"
 	if [ -f "$candidate" ]; then
 		src="$candidate"
+		echo "Found: $src"
 		break
 	fi
 done
 
 if [ -z "$src" ]; then
-	echo "Missing built NAPI binary: expected ${node_file} under crates/kreuzberg-node/artifacts or crate root" >&2
-	find crates/kreuzberg-node -maxdepth 2 -type f -name "*.node" -print || true
+	echo "::error::Missing built NAPI binary: expected ${node_file}" >&2
+	echo "Expected locations:" >&2
+	echo "  - crates/kreuzberg-node/artifacts/${node_file}" >&2
+	echo "  - crates/kreuzberg-node/${node_file}" >&2
+	echo "Available .node files:" >&2
+	find crates/kreuzberg-node -maxdepth 3 -type f -name "*.node" -print 2>/dev/null || echo "  (none found)"
+	echo "npm directory structure:" >&2
+	find crates/kreuzberg-node/npm -type d 2>/dev/null | head -20 || echo "  (npm directory not created)"
 	exit 1
 fi
 
 mkdir -p "$(dirname "$dest")"
+echo "Copying $src -> $dest"
 cp -f "$src" "$dest"
+echo "Result:"
 ls -la "$(dirname "$dest")"
 
 if [ "${INCLUDE_PDFIUM_RUNTIME:-0}" = "1" ]; then

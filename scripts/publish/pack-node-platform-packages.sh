@@ -16,9 +16,13 @@ for dir in */; do
 		node_bins=("${dir}"*.node)
 		if [ "${#node_bins[@]}" -eq 0 ]; then
 			echo "Error: missing .node binary in ${npm_dir}/${dir}" >&2
-			ls -la "${npm_dir}/${dir}" || true
+			echo "::error::Platform package missing .node binary: ${dir}" >&2
+			echo "Contents of ${npm_dir}/${dir}:" >&2
+			ls -lah "${npm_dir}/${dir}" || true
+			echo "Expected a file matching: ${dir}*.node" >&2
 			exit 1
 		fi
+		echo "Found .node binary for ${dir}: ${node_bins[0]}"
 		(cd "$dir" && npm pack && mv ./*.tgz ..)
 	fi
 done
