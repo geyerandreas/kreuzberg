@@ -12,12 +12,13 @@ echo "=== Building Rust FFI library ==="
 
 if [ "$crate_name" = "kreuzberg-rb" ]; then
 	CRATE_DIR="packages/ruby/ext/kreuzberg_rb/native"
+	# kreuzberg-rb is in its own workspace, use --manifest-path
+	CARGO_ARGS=("build" "--manifest-path" "$CRATE_DIR/Cargo.toml")
 else
 	CRATE_DIR="crates/${crate_name}"
+	CARGO_ARGS=("build" "--package" "$crate_name")
 fi
 export CRATE_DIR
-
-CARGO_ARGS=("build" "--package" "$crate_name")
 
 if [ "$build_profile" = "release" ]; then
 	CARGO_ARGS+=("--release")

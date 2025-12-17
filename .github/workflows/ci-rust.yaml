@@ -169,6 +169,11 @@ jobs:
         with:
           pdfium-version: ${{ env.PDFIUM_VERSION }}
 
+      - name: Stage PDFium runtime
+        uses: ./.github/actions/stage-pdfium-runtime
+        with:
+          destination: target/release
+
       - name: Setup ONNX Runtime
         uses: ./.github/actions/setup-onnx-runtime
         with:
@@ -180,6 +185,8 @@ jobs:
       - name: Run E2E tests
         env:
           TESSDATA_PREFIX: "/usr/share/tesseract-ocr/5/tessdata"
+          LD_LIBRARY_PATH: "${{ github.workspace }}/target/release:${{ env.LD_LIBRARY_PATH || '' }}"
+          DYLD_LIBRARY_PATH: "${{ github.workspace }}/target/release:${{ env.DYLD_LIBRARY_PATH || '' }}"
         run: task e2e:rust:test
         shell: bash
 

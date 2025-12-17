@@ -16,6 +16,10 @@ categories = ["development-tools::ffi", "text-processing"]
 [lib]
 crate-type = ["cdylib", "staticlib", "rlib"]
 
+[features]
+# Mirror embeddings feature availability from kreuzberg dependency
+embeddings = []
+
 [dependencies]
 # On Windows MinGW, disable embeddings/ort since ONNX Runtime is not available
 # in MinGW-compatible form. Use all other features but exclude embeddings.
