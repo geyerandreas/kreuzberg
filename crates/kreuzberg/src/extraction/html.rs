@@ -41,7 +41,16 @@ pub use html_to_markdown_rs::{
     PreprocessingPreset, WhitespaceMode,
 };
 
+// WASM has a much smaller stack, so we need a lower threshold
+// In practice, WASM can't spawn threads anyway, so this threshold doesn't help much
+// We set it very high to avoid the overhead of the "large stack" path which is a no-op in WASM
+#[cfg(target_arch = "wasm32")]
+const LARGE_HTML_STACK_THRESHOLD_BYTES: usize = usize::MAX;
+
+#[cfg(not(target_arch = "wasm32"))]
 const LARGE_HTML_STACK_THRESHOLD_BYTES: usize = 512 * 1024;
+
+#[cfg(not(target_arch = "wasm32"))]
 const HTML_CONVERSION_STACK_SIZE_BYTES: usize = 16 * 1024 * 1024;
 
 /// Result of HTML extraction with optional images and warnings.

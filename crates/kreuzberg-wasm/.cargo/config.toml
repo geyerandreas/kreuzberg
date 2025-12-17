@@ -45,4 +45,5 @@
 rustflags = [
     "--cfg",
     "getrandom_backend=\"wasm_js\"",
+    "-C", "link-arg=-zstack-size=16777216",  # 16MB stack for large HTML documents
 ]

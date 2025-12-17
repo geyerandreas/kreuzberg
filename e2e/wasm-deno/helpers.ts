@@ -112,7 +112,7 @@ function mapChunkingConfig(raw: PlainRecord): ChunkingConfig {
 	const config: PlainRecord = {};
 	assignNumberField(config, raw, "max_chars", "maxChars");
 	assignNumberField(config, raw, "max_overlap", "maxOverlap");
-	return config as ChunkingConfig;
+	return config as unknown as ChunkingConfig;
 }
 
 function mapImageExtractionConfig(raw: PlainRecord): ImageExtractionConfig {
@@ -189,7 +189,7 @@ export function buildConfig(raw: unknown): ExtractionConfig {
 	}
 
 	if (isPlainRecord(source.chunking)) {
-		result.chunking = mapChunkingConfig(source.chunking as PlainRecord);
+		(result.chunking as unknown) = mapChunkingConfig(source.chunking as PlainRecord);
 	}
 
 	if (isPlainRecord(source.images)) {

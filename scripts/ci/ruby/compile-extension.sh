@@ -24,7 +24,7 @@ export CARGO_BUILD_JOBS=1
 export RUST_BACKTRACE=1
 
 # Always vendor core to ensure fresh copy for native extension build
-"$REPO_ROOT/scripts/ci/ruby/vendor-kreuzberg-core.sh"
+python3 "$REPO_ROOT/scripts/ci/ruby/vendor-kreuzberg-core.py"
 
 bundle exec rake compile
 
