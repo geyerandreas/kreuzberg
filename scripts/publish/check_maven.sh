@@ -22,39 +22,33 @@ fi
 version="$1"
 group="dev.kreuzberg"
 artifact="kreuzberg"
-base_url="https://search.maven.org/solrsearch/select"
-query="g:\"${group}\" AND a:\"${artifact}\" AND v:\"${version}\""
+group_path="${group//.//}"
+repo_url="https://repo1.maven.org/maven2/${group_path}/${artifact}/${version}/${artifact}-${version}.jar"
 max_attempts=12
 attempt=1
-response=""
-count=0
+found=false
 
+# Check if JAR exists in Maven repository (direct check, not search API)
+# Search API has indexing lag; repository check is immediate
 while [ $attempt -le $max_attempts ]; do
-	echo "::debug::Checking Maven Central for ${group}:${artifact}:${version} (attempt ${attempt}/${max_attempts})" >&2
+	echo "::debug::Checking Maven Central repository for ${group}:${artifact}:${version} (attempt ${attempt}/${max_attempts})" >&2
 
-	response=$(curl \
+	if curl \
 		--silent \
 		--show-error \
-		--retry 3 \
-		--retry-delay 5 \
+		--retry 2 \
+		--retry-delay 3 \
 		--connect-timeout 30 \
-		--max-time 60 \
-		-G \
-		--data-urlencode "q=${query}" \
-		--data-urlencode "rows=1" \
-		--data-urlencode "wt=json" \
-		"$base_url" 2>/dev/null || echo "")
-
-	if [ -n "$response" ]; then
-		count=$(echo "$response" | jq -r '.response.numFound' 2>/dev/null || echo "0")
-		if [ "$count" != "0" ]; then
-			echo "::notice::Found ${group}:${artifact}:${version} on Maven Central after ${attempt} attempt(s)" >&2
-			break
-		fi
+		--max-time 30 \
+		-I \
+		"$repo_url" 2>/dev/null | grep -q "^HTTP.*200\|^HTTP.*301\|^HTTP.*302"; then
+		found=true
+		echo "::notice::Found ${group}:${artifact}:${version} in Maven Central repository after ${attempt} attempt(s)" >&2
+		break
 	fi
 
 	if [ $attempt -lt $max_attempts ]; then
-		sleep_time=$((attempt * 10))
+		sleep_time=$((attempt * 5))
 		echo "::warning::Package not found yet, retrying in ${sleep_time}s... (attempt ${attempt}/${max_attempts})" >&2
 		sleep "$sleep_time"
 	fi
@@ -62,7 +56,7 @@ while [ $attempt -le $max_attempts ]; do
 	attempt=$((attempt + 1))
 done
 
-if [ "$count" -gt 0 ]; then
+if [ "$found" = true ]; then
 	echo "exists=true"
 	echo "::notice::Java package ${group}:${artifact}:${version} already exists on Maven Central" >&2
 else
