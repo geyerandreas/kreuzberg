@@ -139,7 +139,7 @@ libc = { workspace = true }
 memchr = "2.7.6"
 num_cpus = { workspace = true }
 once_cell = { workspace = true }
-paste = "1.0"
+pastey = "0.2"
 rayon = "1.11.0"
 regex = "1.12.2"
 serde = { workspace = true }

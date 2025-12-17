@@ -9,6 +9,12 @@ if [ -z "$pkg" ]; then
 fi
 
 for rid in linux-x64 osx-arm64 win-x64; do
-	unzip -l "$pkg" | rg -n "^\\s+\\d+\\s+\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}\\s+runtimes/${rid}/native/.*kreuzberg_ffi\\.(dll|so|dylib)$" >/dev/null
-	unzip -l "$pkg" | rg -n "^\\s+\\d+\\s+\\d{4}-\\d{2}-\\d{2}\\s+\\d{2}:\\d{2}\\s+runtimes/${rid}/native/.*onnxruntime" >/dev/null
+	unzip -l "$pkg" | grep -E "runtimes/${rid}/native/.*kreuzberg_ffi\\.(dll|so|dylib)" >/dev/null || {
+		echo "Missing kreuzberg_ffi binary for $rid in $pkg" >&2
+		exit 1
+	}
+	unzip -l "$pkg" | grep -E "runtimes/${rid}/native/.*onnxruntime" >/dev/null || {
+		echo "Missing ONNX Runtime library for $rid in $pkg" >&2
+		exit 1
+	}
 done

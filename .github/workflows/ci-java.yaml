@@ -110,6 +110,7 @@ jobs:
         uses: ./.github/actions/setup-onnx-runtime
         with:
           ort-version: ${{ env.ORT_VERSION }}
+          dest-dir: target/release
 
       - name: Build Rust FFI library (C API)
         uses: ./.github/actions/build-rust-ffi

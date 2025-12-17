@@ -18,7 +18,7 @@ $env:PATH = "${ffiPath};$($env:PATH)"
 $pkgConfigPath = "$(Join-Path $repoRoot 'crates/kreuzberg-ffi');$env:PKG_CONFIG_PATH"
 $cgoEnabled = "1"
 $cgoCflags = "-I$(Join-Path $repoRoot 'crates/kreuzberg-ffi/include')"
-$cgoLdflags = "-L$ffiPath -lkreuzberg_ffi -static-libgcc -static-libstdc++"
+$cgoLdflags = "-L$ffiPath -lkreuzberg_ffi -static-libgcc -static-libstdc++ -lws2_32 -luserenv -lbcrypt"
 
 Add-Content -Path $env:GITHUB_ENV -Value "PATH=$env:PATH"
 Add-Content -Path $env:GITHUB_ENV -Value "PKG_CONFIG_PATH=$pkgConfigPath"

@@ -177,7 +177,7 @@ impl From<crate::pdf::error::PdfError> for KreuzbergError {
 
 macro_rules! error_constructor {
     ($name:ident, $variant:ident) => {
-        paste::paste! {
+        pastey::paste! {
             #[doc = "Create a " $variant " error"]
             pub fn $name<S: Into<String>>(message: S) -> Self {
                 Self::$variant {
