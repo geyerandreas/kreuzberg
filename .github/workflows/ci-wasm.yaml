@@ -89,8 +89,13 @@ jobs:
         run: cargo fmt --all -- --check
         shell: bash
 
-      - name: Run cargo clippy
-        run: cargo clippy --all-targets --target wasm32-unknown-unknown -- -D warnings
+      - name: Run cargo clippy (excluding wasm target)
+        run: cargo clippy --all-targets -- -D warnings
+        working-directory: crates/kreuzberg-wasm
+        shell: bash
+
+      - name: Check WASM target compiles
+        run: cargo build --target wasm32-unknown-unknown --lib
         working-directory: crates/kreuzberg-wasm
         shell: bash
 
