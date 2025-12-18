@@ -39,7 +39,7 @@ for dir in */; do
 
 	echo "✓ Found package.json"
 	echo "Files in $dir:"
-	ls -lah "$dir" | tail -20
+	find "$dir" -type f -print0 | xargs -0 ls -lah | tail -20
 
 	shopt -s nullglob
 	node_bins=("${dir}"*.node)
@@ -60,9 +60,7 @@ for dir in */; do
 	echo "  File size: $(stat -f%z "${dir}${node_bins[0]}" 2>/dev/null || stat -c%s "${dir}${node_bins[0]}")"
 
 	echo "Running npm pack..."
-	(cd "$dir" && npm pack && mv ./*.tgz ..)
-
-	if [ $? -eq 0 ]; then
+	if (cd "$dir" && npm pack && mv ./*.tgz ..); then
 		echo "✓ Successfully packed $dir"
 		success_count=$((success_count + 1))
 	else

@@ -57,7 +57,7 @@ fn run() -> Result<(), String> {
 
     // Copy PDFium library from kreuzberg build output to profile_dir (target/release or target/debug)
     // This is necessary for Java and other language bindings that need bundled-pdfium
-    copy_pdfium_to_profile_dir(&profile_dir)?;
+    copy_pdfium_to_profile_dir(profile_dir)?;
 
     // Development version (for monorepo use) - use actual monorepo paths
     // Normalize path separators for pkg-config compatibility across all platforms
@@ -118,12 +118,12 @@ fn copy_pdfium_to_profile_dir(profile_dir: &Path) -> Result<(), String> {
             if path.is_dir()
                 && path
                     .file_name()
-                    .map_or(false, |n| n.to_string_lossy().starts_with("kreuzberg-"))
+                    .is_some_and(|n| n.to_string_lossy().starts_with("kreuzberg-"))
             {
                 let out_dir = path.join("out");
                 if out_dir.exists() {
                     // Try to copy PDFium from this build directory
-                    if let Err(_) = copy_pdfium_from_dir(&out_dir, profile_dir) {
+                    if copy_pdfium_from_dir(&out_dir, profile_dir).is_err() {
                         continue; // Try next directory if this one fails
                     } else {
                         return Ok(()); // Success!
@@ -144,8 +144,7 @@ fn copy_pdfium_to_profile_dir(profile_dir: &Path) -> Result<(), String> {
 /// Copy PDFium library files from source directory to destination.
 fn copy_pdfium_from_dir(src_dir: &Path, dest_dir: &Path) -> Result<(), String> {
     // Read all files in the source directory
-    let entries =
-        fs::read_dir(src_dir).map_err(|e| format!("Failed to read {}: {}", src_dir.display(), e))?;
+    let entries = fs::read_dir(src_dir).map_err(|e| format!("Failed to read {}: {}", src_dir.display(), e))?;
 
     // Look for libpdfium.* files
     for entry in entries.flatten() {
@@ -154,7 +153,7 @@ fn copy_pdfium_from_dir(src_dir: &Path, dest_dir: &Path) -> Result<(), String> {
         let file_name_str = file_name.to_string_lossy();
 
         if file_name_str.starts_with("libpdfium") || file_name_str.starts_with("pdfium") {
-            let dest_file = dest_dir.join(&file_name);
+            let dest_file = dest_dir.join(file_name);
             match fs::copy(&path, &dest_file) {
                 Ok(bytes_copied) => {
                     eprintln!(
