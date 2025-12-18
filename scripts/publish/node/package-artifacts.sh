@@ -149,4 +149,13 @@ if [ "${INCLUDE_PDFIUM_RUNTIME:-0}" = "1" ]; then
 	fi
 fi
 
-tar -czf "node-bindings-${target}.tar.gz" -C crates/kreuzberg-node npm
+# Only include this platform's directory in the tarball to avoid
+# overwriting other platforms when merging tarballs
+platform_npm_dir="crates/kreuzberg-node/npm/${platform_dir}"
+if [ ! -d "$platform_npm_dir" ]; then
+	echo "ERROR: Platform npm directory missing: $platform_npm_dir" >&2
+	exit 1
+fi
+
+echo "Creating tarball with platform directory: $platform_dir"
+tar -czf "node-bindings-${target}.tar.gz" -C crates/kreuzberg-node/npm "${platform_dir}"

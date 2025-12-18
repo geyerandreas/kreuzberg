@@ -31,21 +31,44 @@ for pkg in "$artifacts_dir"/*.tar.gz; do
 	tmpdir=$(mktemp -d)
 	tar -xzf "$pkg" -C "$tmpdir"
 
-	if [ ! -d "$tmpdir/npm" ]; then
-		echo "::warning::npm directory missing inside $pkg"
-		rm -rf "$tmpdir"
-		continue
-	fi
+	# Tarballs now contain platform directories directly (darwin-arm64/, linux-x64-gnu/, etc)
+	# Find all platform directories and copy them
+	echo "Contents of $tmpdir:"
+	find "$tmpdir" -maxdepth 2 -type d
 
-	while IFS= read -r -d '' dir; do
-		name=$(basename "$dir")
-		dest="$dest_dir/npm/$name"
+	# Copy all platform directories found at top level
+	while IFS= read -r -d '' platform_dir; do
+		dir_name=$(basename "$platform_dir")
+		echo "Processing platform directory: $dir_name"
+
+		dest="$dest_dir/npm/$dir_name"
+		echo "  Destination: $dest"
+
+		# Verify directory contains files before copying
+		if [ -z "$(find "$platform_dir" -maxdepth 1 -type f -print -quit)" ]; then
+			echo "  ⚠ Warning: $dir_name appears to be empty, skipping"
+			continue
+		fi
+
+		# Remove existing to avoid conflicts, then copy
 		rm -rf "$dest"
-		cp -R "$dir" "$dest"
-	done < <(find "$tmpdir/npm" -mindepth 1 -maxdepth 1 -type d -print0)
+		cp -R "$platform_dir" "$dest"
+
+		# Verify copy succeeded
+		if [ -d "$dest" ]; then
+			file_count=$(find "$dest" -type f | wc -l)
+			echo "  ✓ Copied successfully ($file_count files)"
+		else
+			echo "  ✗ ERROR: Copy failed!"
+		fi
+	done < <(find "$tmpdir" -mindepth 1 -maxdepth 1 -type d -print0)
 
 	rm -rf "$tmpdir"
 done
+
+echo ""
+echo "=== Final npm directory structure ==="
+find "$dest_dir/npm" -type f | sort
 
 # Merge TypeScript definitions if available
 if [ -d "$typescript_defs_dir" ]; then
