@@ -2768,7 +2768,7 @@ dependencies = [
  "opentelemetry",
  "opentelemetry_sdk",
  "org",
- "paste",
+ "pastey 0.2.1",
  "pdfium-render",
  "pkg-config",
  "polars",

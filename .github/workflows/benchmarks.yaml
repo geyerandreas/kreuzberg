@@ -815,7 +815,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
-          cache-dependency-path: packages/go/go.sum
+          cache-dependency-path: packages/go/v4/go.sum
 
       - name: Setup ONNX Runtime
         uses: ./.github/actions/setup-onnx-runtime
@@ -823,7 +823,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Prime Go modules
-        working-directory: packages/go
+        working-directory: packages/go/v4
         run: go mod download
 
       - name: Build Go bindings
@@ -889,7 +889,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.25.x"
-          cache-dependency-path: packages/go/go.sum
+          cache-dependency-path: packages/go/v4/go.sum
 
       - name: Setup ONNX Runtime
         uses: ./.github/actions/setup-onnx-runtime
@@ -897,7 +897,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Prime Go modules
-        working-directory: packages/go
+        working-directory: packages/go/v4
         run: go mod download
 
       - name: Build Go bindings

@@ -1,3 +1,5 @@
+// Auto-generated tests for office fixtures.
+
 import { existsSync } from "node:fs";
 import { describe, it } from "vitest";
 import { assertions, buildConfig, resolveDocument, shouldSkipFixture } from "./helpers.js";
@@ -7,7 +9,7 @@ import type { ExtractionResult } from "@kreuzberg/node";
 const TEST_TIMEOUT_MS = 60_000;
 
 describe("office fixtures", () => {
-	it.skipIf(process.platform === "win32")(
+	it(
 		"office_doc_legacy",
 		() => {
 			const documentPath = resolveDocument("legacy_office/unit_test_lists.doc");
@@ -252,7 +254,7 @@ describe("office fixtures", () => {
 		TEST_TIMEOUT_MS,
 	);
 
-	it.skipIf(process.platform === "win32")(
+	it(
 		"office_ppt_legacy",
 		() => {
 			const documentPath = resolveDocument("legacy_office/simple.ppt");
@@ -374,7 +376,7 @@ describe("office fixtures", () => {
 		TEST_TIMEOUT_MS,
 	);
 
-	it.skipIf(process.platform === "win32")(
+	it(
 		"office_xls_legacy",
 		() => {
 			const documentPath = resolveDocument("spreadsheets/test_excel.xls");

@@ -1,5 +1,4 @@
-import { existsSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { expect } from "vitest";
 import type {
 	ChunkingConfig,
@@ -14,55 +13,8 @@ import type {
 	TokenReductionConfig,
 } from "@kreuzberg/node";
 
-/**
- * Resolve the workspace root robustly regardless of the current working directory.
- */
-function resolveWorkspaceRoot(): string {
-	const envRoot = process.env.KREUZBERG_WORKSPACE_ROOT ?? process.env.GITHUB_WORKSPACE;
-	if (envRoot && existsSync(envRoot)) {
-		return envRoot;
-	}
-
-	let current = process.cwd();
-	while (true) {
-		if (existsSync(join(current, "Cargo.toml"))) {
-			return current;
-		}
-		const parent = dirname(current);
-		if (parent === current) {
-			break;
-		}
-		current = parent;
-	}
-
-	const fallback = resolve(__dirname, "../../..");
-	if (existsSync(fallback)) {
-		return fallback;
-	}
-
-	let searchDir = __dirname;
-	while (true) {
-		if (existsSync(join(searchDir, "test_documents"))) {
-			return searchDir;
-		}
-		const parent = dirname(searchDir);
-		if (parent === searchDir) {
-			break;
-		}
-		searchDir = parent;
-	}
-
-	return fallback;
-}
-
-const WORKSPACE_ROOT = resolveWorkspaceRoot();
+const WORKSPACE_ROOT = resolve(__dirname, "../../../../..");
 const TEST_DOCUMENTS = join(WORKSPACE_ROOT, "test_documents");
-
-if (process.env.DEBUG_PATHS === "true") {
-	console.log("WORKSPACE_ROOT:", WORKSPACE_ROOT);
-	console.log("TEST_DOCUMENTS:", TEST_DOCUMENTS);
-	console.log("Exists:", existsSync(TEST_DOCUMENTS));
-}
 
 type PlainRecord = Record<string, unknown>;
 
@@ -332,7 +284,7 @@ export const assertions = {
 		}
 	},
 
-	assertMetadataExpectation(result: ExtractionResult, path: string, expectation: PlainRecord | string): void {
+	assertMetadataExpectation(result: ExtractionResult, path: string, expectation: PlainRecord): void {
 		if (!isPlainRecord(result.metadata)) {
 			throw new Error(`Metadata is not a record for path ${path}`);
 		}
@@ -340,15 +292,6 @@ export const assertions = {
 		const value = getMetadataPath(result.metadata as PlainRecord, path);
 		if (value === undefined || value === null) {
 			throw new Error(`Metadata path '${path}' missing in ${JSON.stringify(result.metadata)}`);
-		}
-
-		if (typeof expectation === "string") {
-			expect(valuesEqual(value, expectation)).toBe(true);
-			return;
-		}
-
-		if (!isPlainRecord(expectation)) {
-			throw new Error(`Expectation must be a string or object for path '${path}'`);
 		}
 
 		if ("eq" in expectation) {

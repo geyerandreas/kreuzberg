@@ -9,7 +9,8 @@ if [ -z "$pkg" ]; then
 fi
 
 echo "Verifying native assets in: $pkg"
-echo "Package size: $(ls -lh "$pkg" | awk '{print $5}')"
+pkg_size=$(find "$pkg" -maxdepth 0 -exec stat -f%z {} \; 2>/dev/null || find "$pkg" -maxdepth 0 -exec stat -c%s {} \;)
+echo "Package size: $((pkg_size / 1024))K"
 
 echo ""
 echo "=== All runtimes in package ==="
@@ -28,13 +29,8 @@ for rid in linux-x64 osx-arm64 win-x64; do
 		missing_files=$((missing_files + 1))
 	fi
 
-	# Check ONNX Runtime
-	if unzip -l "$pkg" | grep -E "runtimes/${rid}/native/.*onnxruntime"; then
-		echo "  ✓ Found ONNX Runtime for $rid"
-	else
-		echo "  ✗ Missing ONNX Runtime library for $rid" >&2
-		missing_files=$((missing_files + 1))
-	fi
+	# Note: ONNX Runtime is no longer bundled (switched to dynamic linking in commit 97e9318e)
+	# Users must install ONNX Runtime separately
 done
 
 if [ "$missing_files" -gt 0 ]; then
