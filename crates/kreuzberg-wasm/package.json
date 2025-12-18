@@ -19,7 +19,7 @@
 	"exports": {
 		".": {
 			"import": {
-				"types": "./dist/index.d.mts",
+				"types": "./dist/index.d.ts",
 				"default": "./dist/index.mjs"
 			},
 			"require": {
@@ -29,7 +29,7 @@
 		},
 		"./runtime": {
 			"import": {
-				"types": "./dist/runtime.d.mts",
+				"types": "./dist/runtime.d.ts",
 				"default": "./dist/runtime.mjs"
 			},
 			"require": {
@@ -39,7 +39,7 @@
 		},
 		"./adapters/wasm-adapter": {
 			"import": {
-				"types": "./dist/adapters/wasm-adapter.d.mts",
+				"types": "./dist/adapters/wasm-adapter.d.ts",
 				"default": "./dist/adapters/wasm-adapter.mjs"
 			},
 			"require": {
@@ -49,7 +49,7 @@
 		},
 		"./ocr/registry": {
 			"import": {
-				"types": "./dist/ocr/registry.d.mts",
+				"types": "./dist/ocr/registry.d.ts",
 				"default": "./dist/ocr/registry.mjs"
 			},
 			"require": {
@@ -59,7 +59,7 @@
 		},
 		"./ocr/tesseract-wasm-backend": {
 			"import": {
-				"types": "./dist/ocr/tesseract-wasm-backend.d.mts",
+				"types": "./dist/ocr/tesseract-wasm-backend.d.ts",
 				"default": "./dist/ocr/tesseract-wasm-backend.mjs"
 			},
 			"require": {
