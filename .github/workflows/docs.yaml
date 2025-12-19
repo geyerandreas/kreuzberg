@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'docs/**'
+      - 'pyproject.toml'
+      - 'scripts/ci/docs/**'
+      - '.github/workflows/docs.yaml'
   workflow_dispatch:
 
 permissions:
