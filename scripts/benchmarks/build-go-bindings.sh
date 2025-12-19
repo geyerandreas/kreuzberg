@@ -20,7 +20,7 @@ echo "  DYLD_LIBRARY_PATH: ${DYLD_LIBRARY_PATH:-<not set>}"
 echo "  CGO_ENABLED: ${CGO_ENABLED:-<not set>}"
 echo
 
-cd "$REPO_ROOT/packages/go"
+cd "$REPO_ROOT/packages/go/v4"
 echo "Building Go bindings in: $(pwd)"
 go build -v ./...
 
