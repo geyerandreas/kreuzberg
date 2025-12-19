@@ -1,0 +1,27 @@
+{
+  "name": "kreuzberg-wasm",
+  "collaborators": [
+    "Na'aman Hirschfeld <nhirschfeld@gmail.com>"
+  ],
+  "description": "Kreuzberg document intelligence - WebAssembly bindings",
+  "version": "4.0.0-rc.12",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kreuzberg-dev/kreuzberg"
+  },
+  "files": [
+    "kreuzberg_wasm_bg.wasm",
+    "kreuzberg_wasm.js",
+    "kreuzberg_wasm.d.ts"
+  ],
+  "main": "kreuzberg_wasm.js",
+  "types": "kreuzberg_wasm.d.ts",
+  "keywords": [
+    "wasm",
+    "webassembly",
+    "document",
+    "extraction",
+    "bindings"
+  ]
+}
