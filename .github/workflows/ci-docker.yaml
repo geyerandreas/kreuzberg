@@ -67,6 +67,8 @@ jobs:
           context: .
           file: docker/Dockerfile.${{ matrix.variant }}
           push: false
+          load: true
+          tags: kreuzberg:${{ matrix.variant }}
           cache-from: type=gha
           cache-to: type=gha,mode=max,scope=ci-docker-${{ matrix.variant }}
 
