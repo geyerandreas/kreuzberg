@@ -1657,8 +1657,6 @@ jobs:
       - prepare
       - validate-versions
       - check-docker
-      - publish-crates
-      - publish-pypi
     runs-on: ubuntu-latest
     timeout-minutes: 180
     permissions:
