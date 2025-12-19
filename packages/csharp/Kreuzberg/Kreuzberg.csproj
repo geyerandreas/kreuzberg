@@ -25,8 +25,26 @@
     <None Include="runtimes/**" Pack="true" PackagePath="runtimes/" />
   </ItemGroup>
 
-  <!-- Copy native libraries from kreuzberg-ffi build output to runtimes directory -->
+  <!-- Copy native libraries from kreuzberg-ffi build output to runtimes directory.
+       IMPORTANT: This target only copies libraries from local build output when developing.
+       In CI workflows, native assets are pre-downloaded as artifacts BEFORE this target runs.
+       To avoid overwriting CI artifacts, we skip this target if runtimes directory already has cross-platform files.
+       In CI: artifacts are downloaded to packages/csharp/Kreuzberg/runtimes before build (line 1483 in publish.yaml)
+       Locally: this target copies from target/release/build for single-platform development builds. -->
   <Target Name="CopyNativeLibraries" BeforeTargets="Build">
+    <PropertyGroup>
+      <RuntimesDir>$(MSBuildThisFileDirectory)runtimes</RuntimesDir>
+      <KreuzbergReleaseDir>$(MSBuildThisFileDirectory)../../../target/release</KreuzbergReleaseDir>
+      <!-- Skip copy if runtimes directory already has cross-platform files (populated by CI artifacts) -->
+      <RuntimesAlreadyPopulated Condition="Exists('$(RuntimesDir)/linux-x64/native') OR Exists('$(RuntimesDir)/win-x64/native')">true</RuntimesAlreadyPopulated>
+    </PropertyGroup>
+
+    <!-- Skip this entire target if runtimes were pre-populated by CI artifacts -->
+    <Message Text="Native libraries already exist in runtimes/ directory (CI artifacts). Skipping copy." Condition="'$(RuntimesAlreadyPopulated)' == 'true'" Importance="high" />
+  </Target>
+
+  <!-- Only run the actual copy if not already populated -->
+  <Target Name="PerformNativeLibraryCopy" BeforeTargets="Build" Condition="'$(RuntimesAlreadyPopulated)' != 'true'">
     <PropertyGroup>
       <RuntimesDir>$(MSBuildThisFileDirectory)runtimes</RuntimesDir>
       <KreuzbergReleaseDir>$(MSBuildThisFileDirectory)../../../target/release</KreuzbergReleaseDir>
