@@ -37,7 +37,7 @@
 //! functionality in the PDF extractor for rendering pages to images.
 #[cfg(feature = "pdf")]
 pub(crate) mod bindings;
-#[cfg(all(feature = "pdf", feature = "pdf-bundled"))]
+#[cfg(all(feature = "pdf", feature = "bundled-pdfium"))]
 pub mod bundled;
 #[cfg(feature = "pdf")]
 pub mod error;
@@ -52,7 +52,7 @@ pub mod table;
 #[cfg(feature = "pdf")]
 pub mod text;
 
-#[cfg(all(feature = "pdf", feature = "pdf-bundled"))]
+#[cfg(all(feature = "pdf", feature = "bundled-pdfium"))]
 pub use bundled::extract_bundled_pdfium;
 #[cfg(feature = "pdf")]
 pub use error::PdfError;

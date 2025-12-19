@@ -1,6 +1,6 @@
 //! Runtime extraction of bundled PDFium library.
 //!
-//! When the `pdf-bundled` feature is enabled, the PDFium library is embedded in the binary
+//! When the `bundled-pdfium` feature is enabled, the PDFium library is embedded in the binary
 //! using `include_bytes!` during compilation. This module handles runtime extraction to a
 //! temporary directory and provides the path for dynamic loading.
 //!
@@ -15,7 +15,7 @@
 //! # Example
 //!
 //! ```rust,ignore
-//! # #[cfg(feature = "pdf-bundled")]
+//! # #[cfg(feature = "bundled-pdfium")]
 //! # {
 //! use kreuzberg::pdf::bundled::extract_bundled_pdfium;
 //!
@@ -280,7 +280,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "pdf-bundled")]
+    #[cfg(feature = "bundled-pdfium")]
     fn test_extract_bundled_pdfium() {
         let result = extract_bundled_pdfium();
         assert!(result.is_ok());
@@ -299,7 +299,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "pdf-bundled")]
+    #[cfg(feature = "bundled-pdfium")]
     fn test_extract_bundled_pdfium_reuses_existing() {
         // First extraction
         let result1 = extract_bundled_pdfium();
@@ -326,7 +326,7 @@ mod tests {
 
     #[test]
     #[cfg(unix)]
-    #[cfg(feature = "pdf-bundled")]
+    #[cfg(feature = "bundled-pdfium")]
     fn test_extract_bundled_pdfium_permissions() {
         let result = extract_bundled_pdfium();
         assert!(result.is_ok());
