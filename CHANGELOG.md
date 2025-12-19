@@ -26,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **PDFium bundling**: Now correctly bundled in all language bindings (Node.js, Python, Java, Ruby, C#)
+- **PDFium bundling**: Now correctly bundled in all language bindings (Node.js, Python, Java, Ruby, Go, C#)
   - FFI library copies `libpdfium.dylib/.so/.dll` from Rust build output during packaging
   - C# Kreuzberg.csproj now includes build target to copy native libraries to runtimes directories for all platforms
   - Node.js package.json includes all native library extensions (`*.dylib`, `*.so`, `*.dll`)
@@ -43,14 +43,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Now automatically gzip-compresses uncompressed gems before publishing to RubyGems
 - **Go bindings**: Removed duplicate Windows CGO linker flags causing compilation failures
   - Fixed `packages/go/v4/ffi.go` and `packages/go/v4/plugins_test_helpers.go` to use environment-set flags
+  - Smoke test suite created in test_apps/go with 7 tests (PDF, DOCX, XLSX, JPG, PNG + OCR tests)
+  - All Go tests passing with bundled PDFium via CGO/pkg-config
 - **WASM (Deno)**: Fixed type definition references from `.d.mts` to `.d.ts`
   - Corrects Deno test helper type imports
 - **C# NuGet**: Fixed artifact download path to preserve native runtime directory structure
 - **Java FFI**: Added system library path fallback for ONNX Runtime when not bundled in JAR
   - Enables users with system-installed ONNX Runtime (e.g., `brew install onnxruntime`) to use the library
   - Gracefully handles missing ONNX Runtime for operations that don't require embeddings
-- **Smoke tests**: All 7 tests now passing across all four language bindings (Java, Python, Node.js, C#)
+- **Smoke tests**: All 7 tests now passing across all five language bindings (Java, Python, Node.js, C#, Go)
   - PDF, DOCX, XLSX, JPG, PNG extraction + OCR tests all working
+  - Verified test suite created for each binding in test_apps/{java,python,node,csharp,go}
 - **WASM**: Added PDF support to `wasm-target` feature for browser and Node.js WASM targets
   - Fixed build.rs to use bundled-pdfium for WASM instead of system-pdfium
   - Fixed PDF extractor to handle WASM synchronously (no tokio::spawn_blocking in WASM context)
