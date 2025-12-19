@@ -5,7 +5,7 @@ pub(crate) fn bind_pdfium(
     map_err: fn(String) -> PdfError,
     context: &'static str,
 ) -> Result<Box<dyn PdfiumLibraryBindings>, PdfError> {
-    #[cfg(all(feature = "pdf", feature = "pdf-bundled"))]
+    #[cfg(all(feature = "pdf", feature = "bundled-pdfium"))]
     {
         // WASM target: use dynamic binding to WASM module
         // SAFETY: pdfium-render handles WASM module lifecycle internally.
@@ -36,7 +36,7 @@ pub(crate) fn bind_pdfium(
         }
     }
 
-    #[cfg(all(feature = "pdf", not(feature = "pdf-bundled")))]
+    #[cfg(all(feature = "pdf", not(feature = "bundled-pdfium")))]
     {
         Pdfium::bind_to_system_library()
             .map_err(|e| map_err(format!("Failed to initialize Pdfium ({}): {}", context, e)))
