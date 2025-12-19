@@ -1,0 +1,24 @@
+{
+	"name": "@kreuzberg/test-app-wasm",
+	"version": "4.0.0-rc.13",
+	"private": true,
+	"type": "module",
+	"description": "Comprehensive WASM test suite for Kreuzberg",
+	"scripts": {
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:ui": "vitest --ui",
+		"test:coverage": "vitest run --coverage"
+	},
+	"keywords": [
+		"kreuzberg",
+		"wasm",
+		"testing",
+		"document-extraction"
+	],
+	"devDependencies": {
+		"@kreuzberg/wasm": "workspace:*",
+		"@types/node": "^20",
+		"vitest": "^4.0.16"
+	}
+}

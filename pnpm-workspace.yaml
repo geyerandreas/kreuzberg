@@ -7,3 +7,4 @@ packages:
   - "examples/**/*"
   - 'e2e/**/*'
   - "e2e/*"
+  - "test_apps/*"
