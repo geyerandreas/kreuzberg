@@ -58,6 +58,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-setup
+          use-sccache: true
 
       - name: Cache PDFium
         uses: ./.github/actions/cache-pdfium
@@ -127,6 +128,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-native
+          use-sccache: true
 
       - name: Setup ONNX Runtime
         uses: ./.github/actions/setup-onnx-runtime
@@ -194,6 +196,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-python-sync
+          use-sccache: true
 
       - name: Setup Python
         uses: ./.github/actions/setup-python-env
@@ -270,6 +273,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-python-async
+          use-sccache: true
 
       - name: Setup Python
         uses: ./.github/actions/setup-python-env
@@ -346,6 +350,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-python-batch
+          use-sccache: true
 
       - name: Setup Python
         uses: ./.github/actions/setup-python-env
@@ -422,6 +427,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-node-async
+          use-sccache: true
 
       - name: Setup Node
         uses: ./.github/actions/setup-node-workspace
@@ -500,6 +506,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-node-batch
+          use-sccache: true
 
       - name: Setup Node
         uses: ./.github/actions/setup-node-workspace
@@ -578,6 +585,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-wasm-async
+          use-sccache: true
 
       - name: Setup Node
         uses: ./.github/actions/setup-node-workspace
@@ -646,6 +654,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-wasm-batch
+          use-sccache: true
 
       - name: Setup Node
         uses: ./.github/actions/setup-node-workspace
@@ -714,6 +723,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-ruby-sync
+          use-sccache: true
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -794,6 +804,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-ruby-batch
+          use-sccache: true
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -874,6 +885,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-go-sync
+          use-sccache: true
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -955,6 +967,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-go-batch
+          use-sccache: true
 
       - name: Setup Go
         uses: actions/setup-go@v5
@@ -1036,6 +1049,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-java-sync
+          use-sccache: true
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -1112,6 +1126,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-csharp-sync
+          use-sccache: true
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
@@ -1181,6 +1196,7 @@ jobs:
         uses: ./.github/actions/setup-rust
         with:
           cache-key-prefix: profiling-aggregate
+          use-sccache: true
 
       - name: Build benchmark harness
         run: cargo build --release -p benchmark-harness
