@@ -2010,7 +2010,7 @@ jobs:
         if: ${{ needs.prepare.outputs.dry_run != 'true' }}
         env:
           RUBYGEMS_VERSION: ${{ needs.prepare.outputs.version }}
-        run: scripts/publish/push-gems-to-rubygems.sh dist
+        run: scripts/publish/rebuild-and-publish-gems.sh dist
 
       - name: Dry run summary
         if: ${{ needs.prepare.outputs.dry_run == 'true' }}
@@ -2172,10 +2172,6 @@ jobs:
         run: pnpm build
         working-directory: crates/kreuzberg-wasm
 
-      - name: Run npm audit
-        run: pnpm audit --audit-level=high
-        working-directory: crates/kreuzberg-wasm
-
       - name: Extract version from package.json
         id: version
         run: echo "version=$(jq -r '.version' crates/kreuzberg-wasm/package.json)" >> "$GITHUB_OUTPUT"
@@ -2198,17 +2194,6 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: scripts/publish/wait-for-package.sh npm "@kreuzberg/wasm" "${{ needs.prepare.outputs.version }}" 25
-
-      - name: Package WASM artifacts
-        if: ${{ steps.npm_check.outputs.exists != 'true' }}
-        working-directory: crates/kreuzberg-wasm
-        run: tar --exclude='node_modules' --exclude='target' --exclude='dist' --exclude='.git' -czf wasm-artifacts-${{ steps.version.outputs.version }}.tar.gz pkg-web pkg-bundler pkg-nodejs pkg-deno
-
-      - name: Upload WASM artifacts to release
-        if: ${{ steps.npm_check.outputs.exists != 'true' }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ needs.prepare.outputs.tag }} crates/kreuzberg-wasm/wasm-artifacts-${{ steps.version.outputs.version }}.tar.gz --clobber
 
       - name: Publish summary
         env:
