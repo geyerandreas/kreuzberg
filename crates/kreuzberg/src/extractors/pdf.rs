@@ -1,5 +1,6 @@
 //! PDF document extractor.
 
+use std::path::Path;
 use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::plugins::{DocumentExtractor, Plugin};

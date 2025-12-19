@@ -24,4 +24,53 @@
     <None Include="../README.md" Pack="true" PackagePath="/" />
     <None Include="runtimes/**" Pack="true" PackagePath="runtimes/" />
   </ItemGroup>
+
+  <!-- Copy native libraries from kreuzberg-ffi build output to runtimes directory -->
+  <Target Name="CopyNativeLibraries" BeforeTargets="Build">
+    <PropertyGroup>
+      <RuntimesDir>$(MSBuildThisFileDirectory)runtimes</RuntimesDir>
+      <KreuzbergReleaseDir>$(MSBuildThisFileDirectory)../../../target/release</KreuzbergReleaseDir>
+    </PropertyGroup>
+
+    <!-- macOS arm64 (M1/M2/M3) -->
+    <MakeDir Directories="$(RuntimesDir)/osx-arm64/native" />
+    <Copy SourceFiles="$(KreuzbergReleaseDir)/libkreuzberg_ffi.dylib" DestinationFolder="$(RuntimesDir)/osx-arm64/native" Condition="Exists('$(KreuzbergReleaseDir)/libkreuzberg_ffi.dylib')" />
+    <ItemGroup>
+      <NativePdfiumLib Include="$(KreuzbergReleaseDir)/build/kreuzberg-*/out/libpdfium.dylib" />
+    </ItemGroup>
+    <Copy SourceFiles="@(NativePdfiumLib)" DestinationFolder="$(RuntimesDir)/osx-arm64/native" Condition="'@(NativePdfiumLib)' != ''" />
+
+    <!-- macOS x64 (Intel) -->
+    <MakeDir Directories="$(RuntimesDir)/osx-x64/native" />
+    <Copy SourceFiles="$(KreuzbergReleaseDir)/libkreuzberg_ffi.dylib" DestinationFolder="$(RuntimesDir)/osx-x64/native" Condition="Exists('$(KreuzbergReleaseDir)/libkreuzberg_ffi.dylib')" />
+    <Copy SourceFiles="@(NativePdfiumLib)" DestinationFolder="$(RuntimesDir)/osx-x64/native" Condition="'@(NativePdfiumLib)' != ''" />
+
+    <!-- Linux x64 -->
+    <MakeDir Directories="$(RuntimesDir)/linux-x64/native" />
+    <Copy SourceFiles="$(KreuzbergReleaseDir)/libkreuzberg_ffi.so" DestinationFolder="$(RuntimesDir)/linux-x64/native" Condition="Exists('$(KreuzbergReleaseDir)/libkreuzberg_ffi.so')" />
+    <ItemGroup>
+      <NativePdfiumLinux Include="$(KreuzbergReleaseDir)/build/kreuzberg-*/out/libpdfium.so*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(NativePdfiumLinux)" DestinationFolder="$(RuntimesDir)/linux-x64/native" Condition="'@(NativePdfiumLinux)' != ''" />
+
+    <!-- Linux arm64 -->
+    <MakeDir Directories="$(RuntimesDir)/linux-arm64/native" />
+    <Copy SourceFiles="$(KreuzbergReleaseDir)/libkreuzberg_ffi.so" DestinationFolder="$(RuntimesDir)/linux-arm64/native" Condition="Exists('$(KreuzbergReleaseDir)/libkreuzberg_ffi.so')" />
+    <Copy SourceFiles="@(NativePdfiumLinux)" DestinationFolder="$(RuntimesDir)/linux-arm64/native" Condition="'@(NativePdfiumLinux)' != ''" />
+
+    <!-- Windows x64 -->
+    <MakeDir Directories="$(RuntimesDir)/win-x64/native" />
+    <Copy SourceFiles="$(KreuzbergReleaseDir)/kreuzberg_ffi.dll" DestinationFolder="$(RuntimesDir)/win-x64/native" Condition="Exists('$(KreuzbergReleaseDir)/kreuzberg_ffi.dll')" />
+    <ItemGroup>
+      <NativePdfiumDll Include="$(KreuzbergReleaseDir)/build/kreuzberg-*/out/pdfium.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(NativePdfiumDll)" DestinationFolder="$(RuntimesDir)/win-x64/native" Condition="'@(NativePdfiumDll)' != ''" />
+
+    <!-- Windows arm64 -->
+    <MakeDir Directories="$(RuntimesDir)/win-arm64/native" />
+    <Copy SourceFiles="$(KreuzbergReleaseDir)/kreuzberg_ffi.dll" DestinationFolder="$(RuntimesDir)/win-arm64/native" Condition="Exists('$(KreuzbergReleaseDir)/kreuzberg_ffi.dll')" />
+    <Copy SourceFiles="@(NativePdfiumDll)" DestinationFolder="$(RuntimesDir)/win-arm64/native" Condition="'@(NativePdfiumDll)' != ''" />
+
+    <Message Text="Native libraries copied to $(RuntimesDir)" Importance="high" />
+  </Target>
 </Project>
