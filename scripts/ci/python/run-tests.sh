@@ -8,7 +8,7 @@
 set -euo pipefail
 
 # Get repo root
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 
 # Source shared utilities
 source "$REPO_ROOT/scripts/lib/common.sh"
