@@ -161,9 +161,9 @@ def update_go_mod(file_path: Path, version: str) -> Tuple[bool, str, str]:
 
     # Look for kreuzberg module dependencies
     # Pattern: github.com/kreuzberg-dev/kreuzberg[/path] v0.0.0 => version
-    pattern = r'(github\.com/kreuzberg-dev/kreuzberg(?:/[^\s]+)?\s+)v[0-9]+\.[0-9]+\.[0-9]+'
+    pattern = r'(github\.com/kreuzberg-dev/kreuzberg(?:/[^\s]+)?\s+)v([0-9]+\.[0-9]+\.[0-9]+)'
     match = re.search(pattern, content)
-    old_version = match.group(2) if match and match.groups() else "NOT FOUND"
+    old_version = match.group(2) if match else "NOT FOUND"
 
     if old_version == version:
         return False, old_version, version

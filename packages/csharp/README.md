@@ -42,7 +42,7 @@ Published under the `kreuzberg.dev` organization.
 
 	```xml
 	<ItemGroup>
-		    <PackageReference Include="Kreuzberg" Version="4.0.0-rc.10" />
+		    <PackageReference Include="Kreuzberg" Version="4.0.0-rc.11" />
 	</ItemGroup>
 	```
 

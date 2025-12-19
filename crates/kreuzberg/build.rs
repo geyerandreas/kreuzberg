@@ -99,9 +99,7 @@ fn determine_link_strategy(target: &str) -> PdfiumLinkStrategy {
         }
         // For WASM without explicit PDFIUM_WASM_LIB, use bundled strategy
         // This downloads pdfium-lib which provides WASM-compatible builds
-        println!(
-            "cargo:warning=WASM build using bundled PDFium (set PDFIUM_WASM_LIB to link custom WASM PDFium)"
-        );
+        println!("cargo:warning=WASM build using bundled PDFium (set PDFIUM_WASM_LIB to link custom WASM PDFium)");
         return PdfiumLinkStrategy::Bundled;
     }
 

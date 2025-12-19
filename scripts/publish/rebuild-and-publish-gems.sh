@@ -5,7 +5,7 @@
 # This script:
 # 1. Ensures latest RubyGems is installed
 # 2. Unpacks each gem and extracts its gemspec
-# 3. Rebuilds the gem to fix tar structure
+# 3. Rebuilds the gem to ensure consistent structure
 # 4. Publishes using 'gem push'
 #
 # Environment Variables:
@@ -36,9 +36,9 @@ if [ ${#gems[@]} -eq 0 ]; then
 	exit 1
 fi
 
-# Rebuild each gem to ensure proper tar structure
+# Rebuild each gem to ensure consistent structure
 for gem in "${gems[@]}"; do
-	echo "Rebuilding ${gem} to fix tar structure"
+	echo "Rebuilding ${gem} to ensure consistent structure"
 
 	# Unpack the gem
 	gem unpack "${gem}"
@@ -47,7 +47,7 @@ for gem in "${gems[@]}"; do
 	# Extract gemspec from gem metadata
 	gem specification "${gem}" --ruby >"${gem_name}/${gem_name}.gemspec"
 
-	# Rebuild the gem (this creates proper tar structure)
+	# Rebuild the gem from extracted source
 	(cd "${gem_name}" && gem build "${gem_name}.gemspec")
 
 	# Replace original gem with rebuilt one

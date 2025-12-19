@@ -1,11 +1,11 @@
 //! PDF document extractor.
 
-use std::path::Path;
 use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::plugins::{DocumentExtractor, Plugin};
 use crate::types::{ExtractionResult, Metadata, PageContent};
 use async_trait::async_trait;
+use std::path::Path;
 
 #[cfg(feature = "pdf")]
 use crate::pdf::error::PdfError;
@@ -333,20 +333,22 @@ impl DocumentExtractor for PdfExtractor {
                 // SAFETY: For WASM targets, this code path should only be reached if the
                 // WASM environment has properly initialized PDFium. The error message
                 // will direct users to the documentation for setup requirements.
-                let bindings = crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")
-                    .map_err(|pdf_err| {
-                        // Provide context-specific error for WASM PDF failures
-                        if pdf_err.to_string().contains("WASM") || pdf_err.to_string().contains("Module") {
-                            crate::error::KreuzbergError::Parsing {
-                                message: "PDF extraction requires proper WASM module initialization. \
+                let bindings =
+                    crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")
+                        .map_err(|pdf_err| {
+                            // Provide context-specific error for WASM PDF failures
+                            if pdf_err.to_string().contains("WASM") || pdf_err.to_string().contains("Module") {
+                                crate::error::KreuzbergError::Parsing {
+                                    message: "PDF extraction requires proper WASM module initialization. \
                                          Ensure your WASM environment is set up with PDFium support. \
-                                         See: https://docs.kreuzberg.dev/wasm/pdf".to_string(),
-                                source: None,
+                                         See: https://docs.kreuzberg.dev/wasm/pdf"
+                                        .to_string(),
+                                    source: None,
+                                }
+                            } else {
+                                pdf_err.into()
                             }
-                        } else {
-                            pdf_err.into()
-                        }
-                    })?;
+                        })?;
                 let pdfium = Pdfium::new(bindings);
 
                 let document = pdfium.load_pdf_from_byte_slice(content, None).map_err(|e| {
@@ -403,7 +405,8 @@ impl DocumentExtractor for PdfExtractor {
                             && page_contents.is_none()
                         {
                             return Err(PdfError::ExtractionFailed(
-                                "Page extraction was configured but no page data was extracted in batch mode".to_string(),
+                                "Page extraction was configured but no page data was extracted in batch mode"
+                                    .to_string(),
                             )
                             .into());
                         }
@@ -413,7 +416,8 @@ impl DocumentExtractor for PdfExtractor {
                     .await
                     .map_err(|e| crate::error::KreuzbergError::Other(format!("PDF extraction task failed: {}", e)))??
                 } else {
-                    let bindings = crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")?;
+                    let bindings =
+                        crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")?;
 
                     let pdfium = Pdfium::new(bindings);
 
@@ -429,7 +433,8 @@ impl DocumentExtractor for PdfExtractor {
                     let (native_text, boundaries, page_contents) =
                         crate::pdf::text::extract_text_from_pdf_document(&document, config.pages.as_ref())?;
 
-                    let pdf_metadata = crate::pdf::metadata::extract_metadata_from_document(&document, boundaries.as_deref())?;
+                    let pdf_metadata =
+                        crate::pdf::metadata::extract_metadata_from_document(&document, boundaries.as_deref())?;
 
                     let tables = extract_tables_from_document(&document, &pdf_metadata)?;
 

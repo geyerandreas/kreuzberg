@@ -115,7 +115,6 @@ pub fn init() {
     console_error_panic_hook::set_once();
 }
 
-
 /// Get information about the WASM module
 #[wasm_bindgen]
 pub struct ModuleInfo {

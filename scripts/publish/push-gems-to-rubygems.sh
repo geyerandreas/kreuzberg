@@ -26,7 +26,10 @@ if [ ${#gems[@]} -eq 0 ]; then
 	exit 1
 fi
 
-# Validate and fix gem files before pushing
+# Validate gem files before pushing
+# NOTE: Gems are POSIX tar archives (uncompressed) containing gzipped internal
+# files (metadata.gz, data.tar.gz, checksums.yaml.gz). This is the standard format.
+# Do not attempt to gzip the outer archive - it will break gem validation.
 echo "Validating gem files..."
 for gem in "${gems[@]}"; do
 	echo "Checking $gem..."
@@ -37,24 +40,14 @@ for gem in "${gems[@]}"; do
 		exit 1
 	fi
 
-	# Check file type to detect uncompressed tar
+	# Check file type (gems should be uncompressed tar archives)
 	file_output=$(file "$gem" 2>/dev/null || echo "")
 	echo "File type: $file_output"
-
-	# If gem file is uncompressed tar, gzip it
-	if echo "$file_output" | grep -q "tar archive"; then
-		echo "::warning::Gem is uncompressed tar archive, compressing..." >&2
-		# Backup original, gzip it, and replace
-		temp_gz="${gem}.tmp.gz"
-		gzip -c "$gem" > "$temp_gz"
-		mv "$temp_gz" "$gem"
-		echo "✓ Gem compressed successfully"
-	fi
 
 	# Verify gem is valid using gem spec
 	echo "Validating gem with gem spec..."
 	if ! gem spec "$gem" >/dev/null 2>&1; then
-		echo "::error::Gem file validation failed after compression: $gem" >&2
+		echo "::error::Gem file validation failed: $gem" >&2
 		echo "File type: $(file "$gem")" >&2
 		exit 1
 	fi

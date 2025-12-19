@@ -21,7 +21,7 @@ kreuzberg = { path = "crates/kreuzberg" }
 kreuzberg-tesseract = { path = "crates/kreuzberg-tesseract" }
 
 [workspace.package]
-version = "4.0.0-rc.10"
+version = "4.0.0-rc.11"
 edition = "2024"
 rust-version = "1.91"
 authors = ["Na'aman Hirschfeld <nhirschfeld@gmail.com>"]
@@ -71,7 +71,7 @@ image = { version = "0.25.9", default-features = false }
 clap = { version = "4.5", features = ["derive", "color", "suggestions"] }
 
 # Config/parsing
-toml = "0.9.8"
+toml = "0.9.10"
 
 # Testing (dev)
 tempfile = "3.23.0"

@@ -39,8 +39,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Rust core**: Fixed missing Path import in pdf.rs causing compilation errors
   - Added `use std::path::Path;` to support async file extraction in PDF extractor
 - **Node.js (NAPI-RS)**: PDFium always included in npm packages (no longer conditional)
-- **Ruby gems**: Fixed packaging issue where gems were created as uncompressed tar archives
-  - Now automatically gzip-compresses uncompressed gems before publishing to RubyGems
+- **Ruby gems**: Fixed gem publishing validation error caused by incorrect compression handling
+  - Root cause: Gems are POSIX tar archives with gzipped internal files (metadata.gz, data.tar.gz, checksums.yaml.gz) - this is the standard RubyGems format
+  - Removed broken manual gzip step in publish script that was double-compressing valid gems
+  - `gem spec` validation now passes directly on gems produced by `bundle exec rake build`
 - **Go bindings**: Removed duplicate Windows CGO linker flags causing compilation failures
   - Fixed `packages/go/v4/ffi.go` and `packages/go/v4/plugins_test_helpers.go` to use environment-set flags
   - Smoke test suite created in test_apps/go with 7 tests (PDF, DOCX, XLSX, JPG, PNG + OCR tests)
