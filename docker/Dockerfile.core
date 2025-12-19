@@ -91,6 +91,8 @@ RUN apt-get update && \
         tesseract-ocr-ara \
         tesseract-ocr-rus \
         tesseract-ocr-hin \
+        libonnxruntime \
+        libonnxruntime-dev \
         && \
     # Clean up
     apt-get clean && \
