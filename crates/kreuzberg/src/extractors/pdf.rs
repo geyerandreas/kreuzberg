@@ -371,7 +371,7 @@ impl DocumentExtractor for PdfExtractor {
 
                 (pdf_metadata, native_text, tables, page_contents)
             }
-            #[cfg(not(target_arch = "wasm32"))]
+            #[cfg(all(not(target_arch = "wasm32"), feature = "tokio-runtime"))]
             {
                 if crate::core::batch_mode::is_batch_mode() {
                     let content_owned = content.to_vec();
@@ -441,6 +441,32 @@ impl DocumentExtractor for PdfExtractor {
 
                     (pdf_metadata, native_text, tables, page_contents)
                 }
+            }
+            #[cfg(all(not(target_arch = "wasm32"), not(feature = "tokio-runtime")))]
+            {
+                let bindings =
+                    crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")?;
+
+                let pdfium = Pdfium::new(bindings);
+
+                let document = pdfium.load_pdf_from_byte_slice(content, None).map_err(|e| {
+                    let err_msg = e.to_string();
+                    if err_msg.contains("password") || err_msg.contains("Password") {
+                        PdfError::PasswordRequired
+                    } else {
+                        PdfError::InvalidPdf(err_msg)
+                    }
+                })?;
+
+                let (native_text, boundaries, page_contents) =
+                    crate::pdf::text::extract_text_from_pdf_document(&document, config.pages.as_ref())?;
+
+                let pdf_metadata =
+                    crate::pdf::metadata::extract_metadata_from_document(&document, boundaries.as_deref())?;
+
+                let tables = extract_tables_from_document(&document, &pdf_metadata)?;
+
+                (pdf_metadata, native_text, tables, page_contents)
             }
         };
 
