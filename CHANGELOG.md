@@ -5,6 +5,35 @@ All notable changes to Kreuzberg will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0-rc.13] - 2025-12-19
+
+### Fixed
+
+- **PDF extractor feature flag mismatch**: Corrected feature flag in conditional compilation for bundled PDFium
+  - Code was checking for legacy `pdf-bundled` feature in `#[cfg()]` but feature was renamed to `bundled-pdfium`
+  - Feature aliases don't apply to Rust conditional compilation - only to dependency resolution
+  - This caused bundled PDFium module to never compile when `bundled-pdfium` was enabled
+  - Affected: Python wheels, Ruby gem, WASM bindings, Java bindings
+  - Fixed all `#[cfg(feature = "pdf-bundled")]` to `#[cfg(feature = "bundled-pdfium")]`
+- **Python CLI binary discovery timeout**: Restored binary discovery timeout to 2 seconds (regression fix)
+  - Fixes benchmark tests that were timing out during CI runs
+- **Go Windows library linking**: Fixed missing system libraries in cgo linking and corrected build directory paths
+  - Ensures Windows binaries link correctly with platform-specific libraries
+  - Resolved benchmark path issues for Go bindings
+- **Ruby vendor workspace dependencies**: Added missing toml dependency to Ruby vendor workspace generation
+  - Enables proper workspace management during Ruby gem packaging
+- **Docker caching**: Improved Docker caching with GitHub Actions Cache (GHA) backend
+  - Reduces build times and improves CI efficiency
+- **Repository cleanup**: Removed smoke tests and unused scripts from publish pipeline
+  - Streamlined CI workflows for faster feedback
+  - Smoke test functionality moved to dedicated test_apps directories
+- **Ruby gem publish pipeline**: Enhanced Ruby gem publish pipeline to rebuild and validate before pushing
+  - Ensures gem integrity before package distribution
+  - Added pre-publish validation steps
+- **WASM binary publishing**: Added WASM binary files to git for NPM publishing
+  - Ensures compiled binaries are available during package distribution
+  - Supports both browser and Node.js WASM targets
+
 ## [4.0.0-rc.10] - 2025-12-16
 
 ### Breaking Changes
