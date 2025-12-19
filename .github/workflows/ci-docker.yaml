@@ -79,8 +79,6 @@ jobs:
           context: .
           file: docker/Dockerfile.${{ matrix.variant }}
           push: false
-          build-args: |
-            PDFIUM_VERSION=${{ env.PDFIUM_VERSION }}
           cache-from: type=gha
           cache-to: type=gha,mode=max,scope=ci-docker-${{ matrix.variant }}
 
