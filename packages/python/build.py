@@ -21,6 +21,29 @@ except ImportError as exc:  # pragma: no cover - build-time dependency check
     ) from exc
 
 
+def ensure_stub_file() -> None:
+    """Ensure _internal_bindings.pyi is present in the package for IDE type-checking.
+
+    The .pyi stub file provides type hints for the compiled _internal_bindings module.
+    This is critical for IDE type completion and mypy type checking to work properly.
+    """
+    package_dir = Path(__file__).resolve().parent / "kreuzberg"
+    pyi_file = package_dir / "_internal_bindings.pyi"
+
+    # The stub file should already exist in the source tree
+    # This just ensures it's present and valid
+    if not pyi_file.exists():
+        # If for some reason it's missing, create a minimal stub
+        # that at least provides basic type information
+        pyi_file.write_text(
+            "from typing import Any, Awaitable, Literal, Protocol, TypedDict\n"
+            "from collections.abc import Callable\n\n"
+            "class ExtractionResult(TypedDict): ...\n"
+            "class ExtractionConfig: ...\n"
+            "class OcrConfig: ...\n"
+        )
+
+
 def build_cli_binary() -> None:
     """Build the kreuzberg-cli binary with all features and copy it to the package."""
     workspace_root = Path(__file__).resolve().parents[2]
@@ -54,7 +77,8 @@ def build_wheel(
     config_settings: dict[str, Any] | None = None,
     metadata_directory: str | None = None,
 ) -> str:
-    """Build a wheel, ensuring CLI is built first."""
+    """Build a wheel, ensuring CLI is built and stub files are present."""
+    ensure_stub_file()
     build_cli_binary()
 
     return maturin.build_wheel(wheel_directory, config_settings, metadata_directory)  # type: ignore
@@ -64,7 +88,8 @@ def build_sdist(
     sdist_directory: str,
     config_settings: dict[str, Any] | None = None,
 ) -> str:
-    """Build an sdist."""
+    """Build an sdist, ensuring stub files are present."""
+    ensure_stub_file()
     build_cli_binary()
 
     return maturin.build_sdist(sdist_directory, config_settings)  # type: ignore
@@ -75,7 +100,8 @@ def build_editable(
     config_settings: dict[str, Any] | None = None,
     metadata_directory: str | None = None,
 ) -> str:
-    """Build an editable wheel."""
+    """Build an editable wheel, ensuring stub files are present."""
+    ensure_stub_file()
     build_cli_binary()
 
     return maturin.build_editable(wheel_directory, config_settings, metadata_directory)  # type: ignore
