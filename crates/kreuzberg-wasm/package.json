@@ -13,58 +13,58 @@
   "bugs": {
     "url": "https://github.com/kreuzberg-dev/kreuzberg/issues"
   },
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "import": {
         "types": "./dist/index.d.ts",
-        "default": "./dist/index.mjs"
+        "default": "./dist/index.js"
       },
       "require": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
       }
     },
     "./runtime": {
       "import": {
         "types": "./dist/runtime.d.ts",
-        "default": "./dist/runtime.mjs"
+        "default": "./dist/runtime.js"
       },
       "require": {
-        "types": "./dist/runtime.d.ts",
-        "default": "./dist/runtime.js"
+        "types": "./dist/runtime.d.cts",
+        "default": "./dist/runtime.cjs"
       }
     },
     "./adapters/wasm-adapter": {
       "import": {
         "types": "./dist/adapters/wasm-adapter.d.ts",
-        "default": "./dist/adapters/wasm-adapter.mjs"
+        "default": "./dist/adapters/wasm-adapter.js"
       },
       "require": {
-        "types": "./dist/adapters/wasm-adapter.d.ts",
-        "default": "./dist/adapters/wasm-adapter.js"
+        "types": "./dist/adapters/wasm-adapter.d.cts",
+        "default": "./dist/adapters/wasm-adapter.cjs"
       }
     },
     "./ocr/registry": {
       "import": {
         "types": "./dist/ocr/registry.d.ts",
-        "default": "./dist/ocr/registry.mjs"
+        "default": "./dist/ocr/registry.js"
       },
       "require": {
-        "types": "./dist/ocr/registry.d.ts",
-        "default": "./dist/ocr/registry.js"
+        "types": "./dist/ocr/registry.d.cts",
+        "default": "./dist/ocr/registry.cjs"
       }
     },
     "./ocr/tesseract-wasm-backend": {
       "import": {
         "types": "./dist/ocr/tesseract-wasm-backend.d.ts",
-        "default": "./dist/ocr/tesseract-wasm-backend.mjs"
+        "default": "./dist/ocr/tesseract-wasm-backend.js"
       },
       "require": {
-        "types": "./dist/ocr/tesseract-wasm-backend.d.ts",
-        "default": "./dist/ocr/tesseract-wasm-backend.js"
+        "types": "./dist/ocr/tesseract-wasm-backend.d.cts",
+        "default": "./dist/ocr/tesseract-wasm-backend.cjs"
       }
     }
   },
