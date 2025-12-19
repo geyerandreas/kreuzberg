@@ -26,10 +26,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **PDFium bundling**: Now correctly bundled in all language bindings (Node.js, Python, Java, Ruby)
+- **PDFium bundling**: Now correctly bundled in all language bindings (Node.js, Python, Java, Ruby, C#)
   - FFI library copies `libpdfium.dylib/.so/.dll` from Rust build output during packaging
+  - C# Kreuzberg.csproj now includes build target to copy native libraries to runtimes directories for all platforms
   - Node.js package.json includes all native library extensions (`*.dylib`, `*.so`, `*.dll`)
   - Fixes PDF extraction failures with "libpdfium not found" error
+- **C# bindings**: Added native library bundling with PDFium support for all platforms
+  - Build target in Kreuzberg.csproj copies libkreuzberg_ffi and libpdfium to runtimes/{platform}/native directories
+  - Supports macOS (arm64/x64), Linux (x64/arm64), Windows (x64/arm64)
+  - Smoke test suite created in test_apps/csharp with 7 tests (PDF, DOCX, XLSX, JPG, PNG + OCR tests)
+  - All C# tests passing with bundled PDFium
+- **Rust core**: Fixed missing Path import in pdf.rs causing compilation errors
+  - Added `use std::path::Path;` to support async file extraction in PDF extractor
 - **Node.js (NAPI-RS)**: PDFium always included in npm packages (no longer conditional)
 - **Ruby gems**: Fixed packaging issue where gems were created as uncompressed tar archives
   - Now automatically gzip-compresses uncompressed gems before publishing to RubyGems
@@ -41,7 +49,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Java FFI**: Added system library path fallback for ONNX Runtime when not bundled in JAR
   - Enables users with system-installed ONNX Runtime (e.g., `brew install onnxruntime`) to use the library
   - Gracefully handles missing ONNX Runtime for operations that don't require embeddings
-- **Smoke tests**: All 7 tests now passing across all three language bindings (Java, Python, Node.js)
+- **Smoke tests**: All 7 tests now passing across all four language bindings (Java, Python, Node.js, C#)
   - PDF, DOCX, XLSX, JPG, PNG extraction + OCR tests all working
 - **WASM**: Added PDF support to `wasm-target` feature for browser and Node.js WASM targets
   - Fixed build.rs to use bundled-pdfium for WASM instead of system-pdfium
