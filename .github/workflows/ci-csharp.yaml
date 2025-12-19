@@ -20,25 +20,6 @@ on:
       - 'scripts/ci/csharp/**'
       - '.github/workflows/ci-csharp.yaml'
       - '.cargo/config.toml'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/actions/**'
-      - 'crates/kreuzberg/**'
-      - 'crates/kreuzberg-ffi/**'
-      - 'crates/kreuzberg-tesseract/**'
-      - 'packages/csharp/**'
-      - 'e2e/csharp/**'
-      - 'test_documents/**'
-      - 'fixtures/**'
-      - 'tools/e2e-generator/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'packages/csharp/**/*.csproj'
-      - 'e2e/csharp/**/*.csproj'
-      - 'scripts/ci/csharp/**'
-      - '.github/workflows/ci-csharp.yaml'
-      - '.cargo/config.toml'
 
 concurrency:
   group: ci-csharp-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

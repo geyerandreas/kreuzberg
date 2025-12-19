@@ -20,24 +20,6 @@ on:
       - 'scripts/ci/python/**'
       - '.github/workflows/ci-python.yaml'
       - '.cargo/config.toml'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/actions/**'
-      - 'crates/kreuzberg/**'
-      - 'crates/kreuzberg-py/**'
-      - 'crates/kreuzberg-tesseract/**'
-      - 'packages/python/**'
-      - 'e2e/python/**'
-      - 'test_documents/**'
-      - 'fixtures/**'
-      - 'tools/e2e-generator/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'uv.lock'
-      - 'pyproject.toml'
-      - 'scripts/ci/python/**'
-      - '.github/workflows/ci-python.yaml'
       - '.cargo/config.toml'
 
 concurrency:

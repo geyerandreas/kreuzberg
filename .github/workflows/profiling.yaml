@@ -1,8 +1,8 @@
 name: Profiling (Flamegraphs)
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
     paths:
       - 'crates/**'
       - 'packages/**'

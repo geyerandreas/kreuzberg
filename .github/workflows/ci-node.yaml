@@ -20,25 +20,6 @@ on:
       - 'scripts/ci/node/**'
       - '.github/workflows/ci-node.yaml'
       - '.cargo/config.toml'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/actions/**'
-      - 'crates/kreuzberg/**'
-      - 'crates/kreuzberg-node/**'
-      - 'crates/kreuzberg-tesseract/**'
-      - 'packages/typescript/**'
-      - 'e2e/typescript/**'
-      - 'test_documents/**'
-      - 'fixtures/**'
-      - 'tools/e2e-generator/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'pnpm-lock.yaml'
-      - 'package.json'
-      - 'scripts/ci/node/**'
-      - '.github/workflows/ci-node.yaml'
-      - '.cargo/config.toml'
 
 concurrency:
   group: ci-node-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

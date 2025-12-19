@@ -21,26 +21,6 @@ name: CI Ruby
       - 'scripts/ci/ruby/**'
       - '.github/workflows/ci-ruby.yaml'
       - '.cargo/config.toml'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/actions/**'
-      - 'crates/kreuzberg/**'
-      - 'crates/kreuzberg-ffi/**'
-      - 'crates/kreuzberg-tesseract/**'
-      - 'packages/ruby/**'
-      - 'e2e/ruby/**'
-      - 'test_documents/**'
-      - 'fixtures/**'
-      - 'tools/e2e-generator/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'Gemfile'
-      - 'Gemfile.lock'
-      - 'packages/ruby/Rakefile'
-      - 'scripts/ci/ruby/**'
-      - '.github/workflows/ci-ruby.yaml'
-      - '.cargo/config.toml'
 
 concurrency:
   group: ci-ruby-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

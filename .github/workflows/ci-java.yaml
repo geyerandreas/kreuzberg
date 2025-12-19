@@ -19,24 +19,6 @@ on:
       - 'scripts/ci/java/**'
       - '.github/workflows/ci-java.yaml'
       - '.cargo/config.toml'
-  pull_request:
-    branches: [main]
-    paths:
-      - '.github/actions/**'
-      - 'crates/kreuzberg/**'
-      - 'crates/kreuzberg-ffi/**'
-      - 'crates/kreuzberg-tesseract/**'
-      - 'packages/java/**'
-      - 'e2e/java/**'
-      - 'test_documents/**'
-      - 'fixtures/**'
-      - 'tools/e2e-generator/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'packages/java/pom.xml'
-      - 'scripts/ci/java/**'
-      - '.github/workflows/ci-java.yaml'
-      - '.cargo/config.toml'
 
 concurrency:
   group: ci-java-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
