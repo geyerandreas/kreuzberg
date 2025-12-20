@@ -111,10 +111,11 @@ pub fn extract_bytes_sync(
 ) -> PyResult<ExtractionResult> {
     let rust_config = config.into();
 
-    // Release GIL during sync extraction - OSError/RuntimeError must bubble up ~keep
+    // Release GIL during extraction and result conversion - OSError/RuntimeError must bubble up ~keep
     let result =
         Python::detach(py, || kreuzberg::extract_bytes_sync(&data, &mime_type, &rust_config)).map_err(to_py_err)?;
 
+    // Convert result within GIL context (already reacquired by detach)
     ExtractionResult::from_rust(result, py)
 }
 
