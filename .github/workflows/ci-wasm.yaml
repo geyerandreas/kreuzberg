@@ -115,7 +115,7 @@ jobs:
     name: Unit Tests (${{ matrix.os }})
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     permissions:
       contents: read
     strategy:
@@ -167,7 +167,7 @@ jobs:
     name: Build WASM (${{ matrix.os }})
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     permissions:
       contents: read
     strategy:
@@ -348,7 +348,7 @@ jobs:
     if: ${{ github.actor != 'dependabot[bot]' }}
     needs: [build-wasm-targets]
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     permissions:
       contents: read
     strategy:
@@ -389,7 +389,7 @@ jobs:
     name: Deno Tests (${{ matrix.os }}, Deno ${{ matrix.deno-version }})
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     permissions:
       contents: read
     strategy:
@@ -470,7 +470,7 @@ jobs:
     name: Cloudflare Workers Tests
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     permissions:
       contents: read
     steps:

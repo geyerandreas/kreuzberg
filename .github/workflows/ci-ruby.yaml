@@ -63,7 +63,7 @@ jobs:
   build-ruby-gem:
     name: Ruby Gem (${{ matrix.os }}, Ruby ${{ matrix.ruby-version }})
     if: ${{ github.actor != 'dependabot[bot]' }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: true
       matrix:
@@ -205,7 +205,7 @@ jobs:
     name: Ruby Tests (${{ matrix.os }}, Ruby ${{ matrix.ruby-version }})
     if: ${{ github.actor != 'dependabot[bot]' }}
     needs: build-ruby-gem
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: true
       matrix:

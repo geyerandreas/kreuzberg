@@ -57,7 +57,7 @@ jobs:
   build-java:
     name: Java Bindings (${{ matrix.os }})
     if: ${{ github.actor != 'dependabot[bot]' }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: true
       matrix:
@@ -138,7 +138,7 @@ jobs:
     name: Java Tests (${{ matrix.os }})
     if: ${{ github.actor != 'dependabot[bot]' }}
     needs: build-java
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: true
       matrix:

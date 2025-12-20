@@ -59,7 +59,7 @@ jobs:
   build-and-smoke-node:
     name: Node Build + Smoke (${{ matrix.target }})
     if: ${{ github.actor != 'dependabot[bot]' }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: true
       matrix:
@@ -159,7 +159,7 @@ jobs:
     name: TypeScript Tests (Node ${{ matrix.node-version }}, ${{ matrix.os }})
     if: ${{ github.actor != 'dependabot[bot]' }}
     needs: build-and-smoke-node
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: true
       matrix:

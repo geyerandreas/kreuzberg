@@ -59,7 +59,7 @@ jobs:
   build-and-smoke-python:
     name: Python Build + Smoke (${{ matrix.target }})
     if: ${{ github.actor != 'dependabot[bot]' }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: true
       matrix:
@@ -160,7 +160,7 @@ jobs:
   build-python-sdist:
     name: Python Sdist
     if: ${{ github.actor != 'dependabot[bot]' }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -190,7 +190,7 @@ jobs:
     name: Python Tests (${{ matrix.python-version }}, ${{ matrix.os }})
     if: ${{ github.actor != 'dependabot[bot]' }}
     needs: build-and-smoke-python
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: true
       matrix:

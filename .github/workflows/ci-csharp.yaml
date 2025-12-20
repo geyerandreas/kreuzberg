@@ -60,7 +60,7 @@ jobs:
   build-csharp:
     name: C# Build + Smoke (${{ matrix.os }})
     if: ${{ github.actor != 'dependabot[bot]' }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: true
       matrix:
@@ -148,7 +148,7 @@ jobs:
     name: C# Tests (${{ matrix.os }})
     if: ${{ github.actor != 'dependabot[bot]' }}
     needs: build-csharp
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: true
       matrix:

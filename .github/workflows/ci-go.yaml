@@ -55,7 +55,7 @@ jobs:
   build-go:
     name: Go Bindings (${{ matrix.os }})
     if: ${{ github.actor != 'dependabot[bot]' }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: true
       matrix:
@@ -174,7 +174,7 @@ jobs:
     name: Go Tests (${{ matrix.os }})
     if: ${{ github.actor != 'dependabot[bot]' }}
     needs: build-go
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       fail-fast: true
       matrix:

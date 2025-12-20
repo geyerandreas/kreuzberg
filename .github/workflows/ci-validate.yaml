@@ -78,7 +78,7 @@ jobs:
     name: Validate (Lint & Format)
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
 
