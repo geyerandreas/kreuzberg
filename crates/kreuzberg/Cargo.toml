@@ -52,7 +52,7 @@ office = [
 email = ["dep:mail-parser", "dep:msg_parser"]
 html = ["dep:html-to-markdown-rs"]
 xml = ["dep:quick-xml", "dep:roxmltree"]
-archives = ["dep:zip", "dep:tar", "dep:sevenz-rust"]
+archives = ["dep:zip", "dep:tar", "dep:sevenz-rust2"]
 
 # Processing features
 ocr = [
@@ -163,13 +163,13 @@ lopdf = { version = "0.38.0", optional = true }
 calamine = { version = "0.32.0", features = ["dates"], optional = true }
 polars = { version = "0.52.0", default-features = false, features = ["ipc"], optional = true }
 roxmltree = { version = "0.21.1", optional = true }
-zip = { version = "6.0.0", optional = true }
+zip = { version = "7.0.0", optional = true }
 mail-parser = { version = "0.11.1", optional = true }
 msg_parser = { version = "0.1.1", optional = true }
 html-to-markdown-rs = { workspace = true, features = ["inline-images"], optional = true }
 quick-xml = { version = "0.38.4", features = ["serialize"], optional = true }
 tar = { version = "0.4.44", optional = true }
-sevenz-rust = { version = "0.6.1", optional = true }
+sevenz-rust2 = { version = "0.20.0", optional = true }
 docx-lite = { version = "0.2.0", optional = true }
 
 pulldown-cmark = { version = "0.13", optional = true }
@@ -228,7 +228,7 @@ infer = "0.19.0"
 tempfile = { workspace = true }
 filetime = "0.2"
 tar = "0.4.44"
-zip = "6.0.0"
+zip = "7.0.0"
 serial_test = "3.2.0"
 anyhow = { workspace = true }
 tokio-test = "0.4"

@@ -5,7 +5,7 @@ All notable changes to Kreuzberg will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.0.0-rc.14] - Unreleased
+## [4.0.0-rc.14] - 2025-12-20
 
 ### Added
 
@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **NuGet publish workflow reliability**: Replaced NuGet/login OIDC-based authentication with direct API key approach
+  - Issue: NuGet/login action could fail with 401 errors due to OIDC token context limitations (see https://github.com/NuGet/login/issues/6)
+  - Solution: Removed NuGet/login step and pass API key directly via `NUGET_AUTH_TOKEN` environment variable and `--api-key` parameter
+  - Impact: More reliable C# package publishing without dependency on OIDC token exchange
+  - Requires: `NUGET_API_KEY` secret to be configured in GitHub repository settings
 - **LibreOffice installation in Docker full image**: Updated LibreOffice from 25.8.2 to 25.8.4
   - Version 25.8.2 download URLs were no longer available on DocumentFoundation servers
   - Updated to latest stable release 25.8.4 (released Dec 18, 2025)
@@ -32,6 +37,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Ruby gem native extension compilation**: Fixed vendoring of Rust crates during build
   - Added automatic vendoring task to `packages/ruby/Rakefile` that runs before compilation
   - Ensures `vendor/kreuzberg`, `vendor/kreuzberg-ffi`, and `vendor/kreuzberg-tesseract` are properly copied and version-updated before building native extension
+- **Python `ExtractionResult.pages` type hints**: Fixed missing type definition in PyO3 stub file
+  - Root cause: `_internal_bindings.pyi` was missing `pages` field declaration in `ExtractionResult` class
+  - Added `pages: list[PageContent] | None` attribute and `PageContent` TypedDict definition
+  - Impact: IDEs now properly show autocomplete for `result.pages`, type checkers recognize the attribute
+  - Fixes `TypeError: 'NoneType' object is not iterable` confusion when users iterate without checking for None
 
 ## [4.0.0-rc.13] - 2025-12-19
 

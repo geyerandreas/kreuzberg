@@ -19,6 +19,7 @@ __all__ = [
     "OcrConfig",
     "OcrResult",
     "PageConfig",
+    "PageContent",
     "PdfConfig",
     "PostProcessorConfig",
     "PostProcessorProtocol",
@@ -1199,6 +1200,13 @@ class ExtractionResult:
     detected_languages: list[str] | None
     chunks: list[Chunk] | None
     images: list[ExtractedImage] | None
+    pages: list[PageContent] | None
+
+class PageContent(TypedDict):
+    page_number: int
+    content: str
+    tables: list[ExtractedTable]
+    images: list[ExtractedImage]
 
 class ExtractedTable:
     cells: list[list[str]]

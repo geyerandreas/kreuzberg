@@ -14,3 +14,12 @@ def docx_document() -> Path:
     if not path.exists():
         pytest.skip(f"Test file not found: {path}")
     return path
+
+
+@pytest.fixture
+def test_documents() -> Path:
+    """Path to test_documents directory containing PDF and other test files."""
+    path = Path(__file__).parent.parent.parent.parent / "test_documents"
+    if not path.exists():
+        pytest.skip(f"Test documents directory not found: {path}")
+    return path

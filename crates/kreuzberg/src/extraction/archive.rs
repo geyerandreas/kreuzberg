@@ -3,7 +3,7 @@
 //! This module provides functions for extracting file lists and contents from archives.
 
 use crate::error::{KreuzbergError, Result};
-use sevenz_rust::SevenZReader;
+use sevenz_rust2::{ArchiveReader, Password};
 use std::collections::HashMap;
 use std::io::{Cursor, Read};
 use tar::Archive as TarArchive;
@@ -179,7 +179,7 @@ pub fn extract_tar_text_content(bytes: &[u8]) -> Result<HashMap<String, String>>
 /// Extract metadata from a 7z archive.
 pub fn extract_7z_metadata(bytes: &[u8]) -> Result<ArchiveMetadata> {
     let cursor = Cursor::new(bytes);
-    let archive = SevenZReader::new(cursor, bytes.len() as u64, "".into())
+    let archive = ArchiveReader::new(cursor, Password::empty())
         .map_err(|e| KreuzbergError::parsing(format!("Failed to read 7z archive: {}", e)))?;
 
     let mut file_list = Vec::new();
@@ -212,7 +212,7 @@ pub fn extract_7z_metadata(bytes: &[u8]) -> Result<ArchiveMetadata> {
 /// Only extracts files with common text extensions: .txt, .md, .json, .xml, .html, .csv, .log
 pub fn extract_7z_text_content(bytes: &[u8]) -> Result<HashMap<String, String>> {
     let cursor = Cursor::new(bytes);
-    let mut archive = SevenZReader::new(cursor, bytes.len() as u64, "".into())
+    let mut archive = ArchiveReader::new(cursor, Password::empty())
         .map_err(|e| KreuzbergError::parsing(format!("Failed to read 7z archive: {}", e)))?;
 
     let mut contents = HashMap::new();
@@ -459,26 +459,26 @@ mod tests {
 
     #[test]
     fn test_extract_7z_metadata_with_files() {
-        use sevenz_rust::SevenZWriter;
+        use sevenz_rust2::{ArchiveEntry, ArchiveWriter};
 
-        let mut cursor = Cursor::new(Vec::new());
-        {
-            let mut sz = SevenZWriter::new(&mut cursor).unwrap();
+        let cursor = {
+            let cursor = Cursor::new(Vec::new());
+            let mut sz = ArchiveWriter::new(cursor).unwrap();
 
             sz.push_archive_entry(
-                sevenz_rust::SevenZArchiveEntry::from_path("test.txt", "test.txt".to_string()),
+                ArchiveEntry::new_file("test.txt"),
                 Some(Cursor::new(b"Hello 7z!".to_vec())),
             )
             .unwrap();
 
             sz.push_archive_entry(
-                sevenz_rust::SevenZArchiveEntry::from_path("data.json", "data.json".to_string()),
+                ArchiveEntry::new_file("data.json"),
                 Some(Cursor::new(b"{\"key\":\"value\"}".to_vec())),
             )
             .unwrap();
 
-            sz.finish().unwrap();
-        }
+            sz.finish().unwrap()
+        };
 
         let bytes = cursor.into_inner();
         let metadata = extract_7z_metadata(&bytes).unwrap();
@@ -834,26 +834,26 @@ mod tests {
 
     #[test]
     fn test_extract_7z_text_content() {
-        use sevenz_rust::SevenZWriter;
+        use sevenz_rust2::{ArchiveEntry, ArchiveWriter};
 
-        let mut cursor = Cursor::new(Vec::new());
-        {
-            let mut sz = SevenZWriter::new(&mut cursor).unwrap();
+        let cursor = {
+            let cursor = Cursor::new(Vec::new());
+            let mut sz = ArchiveWriter::new(cursor).unwrap();
 
             sz.push_archive_entry(
-                sevenz_rust::SevenZArchiveEntry::from_path("test.txt", "test.txt".to_string()),
+                ArchiveEntry::new_file("test.txt"),
                 Some(Cursor::new(b"Hello 7z text!".to_vec())),
             )
             .unwrap();
 
             sz.push_archive_entry(
-                sevenz_rust::SevenZArchiveEntry::from_path("readme.md", "readme.md".to_string()),
+                ArchiveEntry::new_file("readme.md"),
                 Some(Cursor::new(b"# 7z README".to_vec())),
             )
             .unwrap();
 
-            sz.finish().unwrap();
-        }
+            sz.finish().unwrap()
+        };
 
         let bytes = cursor.into_inner();
         let contents = extract_7z_text_content(&bytes).unwrap();
@@ -865,13 +865,13 @@ mod tests {
 
     #[test]
     fn test_extract_7z_empty_archive() {
-        use sevenz_rust::SevenZWriter;
+        use sevenz_rust2::ArchiveWriter;
 
-        let mut cursor = Cursor::new(Vec::new());
-        {
-            let sz = SevenZWriter::new(&mut cursor).unwrap();
-            sz.finish().unwrap();
-        }
+        let cursor = {
+            let cursor = Cursor::new(Vec::new());
+            let sz = ArchiveWriter::new(cursor).unwrap();
+            sz.finish().unwrap()
+        };
 
         let bytes = cursor.into_inner();
         let metadata = extract_7z_metadata(&bytes).unwrap();
