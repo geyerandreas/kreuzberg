@@ -89,6 +89,8 @@ mcp-http = ["mcp", "api"]                                          # NEW - enabl
 otel = ["dep:opentelemetry", "dep:opentelemetry_sdk", "dep:tracing-opentelemetry"]
 
 # WASM-compatible feature bundle
+# Note: Office support is NOT included because office extractors require tokio-runtime,
+# which is incompatible with WASM targets. Use basic image format support instead.
 wasm-target = ["pdf", "html", "xml", "email", "language-detection", "chunking", "quality"]
 wasm-threads = ["dep:wasm-bindgen-rayon"]
 
