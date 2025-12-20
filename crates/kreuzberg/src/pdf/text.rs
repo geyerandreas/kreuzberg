@@ -274,8 +274,8 @@ fn extract_text_lazy_with_tracking(document: &PdfDocument<'_>, config: &PageConf
             .text()
             .map_err(|e| PdfError::TextExtractionFailed(format!("Page text extraction failed: {}", e)))?;
 
-        let page_text = text.all().to_owned();
-        let page_size = page_text.len();
+        let page_text_ref = text.all();
+        let page_size = page_text_ref.len();
 
         // Sample first 5 pages for capacity estimation
         if page_idx < 5 {
@@ -295,7 +295,7 @@ fn extract_text_lazy_with_tracking(document: &PdfDocument<'_>, config: &PageConf
 
         // Track byte positions for boundary
         let byte_start = content.len();
-        content.push_str(&page_text);
+        content.push_str(&page_text_ref);
         let byte_end = content.len();
 
         boundaries.push(PageBoundary {
@@ -308,7 +308,7 @@ fn extract_text_lazy_with_tracking(document: &PdfDocument<'_>, config: &PageConf
         if let Some(ref mut pages) = page_contents {
             pages.push(PageContent {
                 page_number,
-                content: page_text,
+                content: page_text_ref.to_owned(),
                 tables: Vec::new(),
                 images: Vec::new(),
             });
