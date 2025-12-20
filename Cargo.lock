@@ -2908,6 +2908,7 @@ dependencies = [
  "html-to-markdown-rs",
  "kreuzberg",
  "kreuzberg-ffi",
+ "lazy_static",
  "mimalloc-rust",
  "napi",
  "napi-build",

@@ -18,6 +18,7 @@ use kreuzberg::{
     PostProcessorConfig as RustPostProcessorConfig, TesseractConfig as RustTesseractConfig,
     TokenReductionConfig as RustTokenReductionConfig,
 };
+use lazy_static::lazy_static;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use once_cell::sync::Lazy;
@@ -111,6 +112,14 @@ unsafe extern "C" {
     ///
     /// Maps to kreuzberg_free_string() in the FFI library.
     pub fn kreuzberg_free_string(ptr: *mut c_char);
+}
+
+lazy_static! {
+    static ref WORKER_POOL: tokio::runtime::Runtime = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(4)
+        .enable_all()
+        .build()
+        .expect("Failed to create Tokio worker thread pool");
 }
 
 /// Helper function to retrieve panic context from FFI.
@@ -1626,10 +1635,13 @@ pub async fn extract_file(
 ) -> Result<JsExtractionResult> {
     let rust_config = resolve_config(config)?;
 
-    kreuzberg::extract_file(&file_path, mime_type.as_deref(), &rust_config)
+    let result = WORKER_POOL
+        .spawn_blocking(move || kreuzberg::extract_file_sync(&file_path, mime_type.as_deref(), &rust_config))
         .await
-        .map_err(convert_error)
-        .and_then(JsExtractionResult::try_from)
+        .map_err(|e| Error::from_reason(format!("Worker thread error: {}", e)))?
+        .map_err(convert_error)?;
+
+    JsExtractionResult::try_from(result)
 }
 
 /// Extract content from bytes (synchronous).
@@ -1707,12 +1719,15 @@ pub async fn extract_bytes(
     config: Option<JsExtractionConfig>,
 ) -> Result<JsExtractionResult> {
     let rust_config = resolve_config(config)?;
-    let bytes = data.as_ref();
+    let data_vec = data.to_vec();
 
-    kreuzberg::extract_bytes(bytes, &mime_type, &rust_config)
+    let result = WORKER_POOL
+        .spawn_blocking(move || kreuzberg::extract_bytes_sync(&data_vec, &mime_type, &rust_config))
         .await
-        .map_err(convert_error)
-        .and_then(JsExtractionResult::try_from)
+        .map_err(|e| Error::from_reason(format!("Worker thread error: {}", e)))?
+        .map_err(convert_error)?;
+
+    JsExtractionResult::try_from(result)
 }
 
 /// Batch extract from multiple files (synchronous).
@@ -1782,10 +1797,13 @@ pub async fn batch_extract_files(
 ) -> Result<Vec<JsExtractionResult>> {
     let rust_config = resolve_config(config)?;
 
-    kreuzberg::batch_extract_file(paths, &rust_config)
+    let results = WORKER_POOL
+        .spawn_blocking(move || kreuzberg::batch_extract_file_sync(paths, &rust_config))
         .await
-        .map_err(convert_error)
-        .and_then(|results| results.into_iter().map(JsExtractionResult::try_from).collect())
+        .map_err(|e| Error::from_reason(format!("Worker thread error: {}", e)))?
+        .map_err(convert_error)?;
+
+    results.into_iter().map(JsExtractionResult::try_from).collect()
 }
 
 /// Batch extract from multiple byte arrays (synchronous).
@@ -1898,16 +1916,25 @@ pub async fn batch_extract_bytes(
 
     let rust_config = resolve_config(config)?;
 
-    let contents: Vec<(&[u8], &str)> = data_list
+    let contents: Vec<(Vec<u8>, String)> = data_list
         .iter()
         .zip(mime_types.iter())
-        .map(|(data, mime)| (data.as_ref(), mime.as_str()))
+        .map(|(data, mime)| (data.to_vec(), mime.clone()))
         .collect();
 
-    kreuzberg::batch_extract_bytes(contents, &rust_config)
+    let results = WORKER_POOL
+        .spawn_blocking(move || {
+            let contents_refs: Vec<(&[u8], &str)> = contents
+                .iter()
+                .map(|(data, mime)| (data.as_slice(), mime.as_str()))
+                .collect();
+            kreuzberg::batch_extract_bytes_sync(contents_refs, &rust_config)
+        })
         .await
-        .map_err(convert_error)
-        .and_then(|results| results.into_iter().map(JsExtractionResult::try_from).collect())
+        .map_err(|e| Error::from_reason(format!("Worker thread error: {}", e)))?
+        .map_err(convert_error)?;
+
+    results.into_iter().map(JsExtractionResult::try_from).collect()
 }
 
 use async_trait::async_trait;
