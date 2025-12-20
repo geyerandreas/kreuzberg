@@ -1668,9 +1668,9 @@ pub fn extract_bytes_sync(
 ) -> Result<JsExtractionResult> {
     let rust_config = resolve_config(config)?;
 
-    let owned_data = data.to_vec();
+    let bytes = data.as_ref();
 
-    kreuzberg::extract_bytes_sync(&owned_data, &mime_type, &rust_config)
+    kreuzberg::extract_bytes_sync(bytes, &mime_type, &rust_config)
         .map_err(convert_error)
         .and_then(JsExtractionResult::try_from)
 }
@@ -1706,9 +1706,9 @@ pub async fn extract_bytes(
     config: Option<JsExtractionConfig>,
 ) -> Result<JsExtractionResult> {
     let rust_config = resolve_config(config)?;
-    let owned_data = data.to_vec();
+    let bytes = data.as_ref();
 
-    kreuzberg::extract_bytes(&owned_data, &mime_type, &rust_config)
+    kreuzberg::extract_bytes(bytes, &mime_type, &rust_config)
         .await
         .map_err(convert_error)
         .and_then(JsExtractionResult::try_from)
@@ -1834,12 +1834,10 @@ pub fn batch_extract_bytes_sync(
 
     let rust_config = resolve_config(config)?;
 
-    let owned_data: Vec<Vec<u8>> = data_list.iter().map(|b| b.to_vec()).collect();
-
-    let contents: Vec<(&[u8], &str)> = owned_data
+    let contents: Vec<(&[u8], &str)> = data_list
         .iter()
         .zip(mime_types.iter())
-        .map(|(data, mime)| (data.as_slice(), mime.as_str()))
+        .map(|(data, mime)| (data.as_ref(), mime.as_str()))
         .collect();
 
     kreuzberg::batch_extract_bytes_sync(contents, &rust_config)
@@ -1899,12 +1897,10 @@ pub async fn batch_extract_bytes(
 
     let rust_config = resolve_config(config)?;
 
-    let owned_data: Vec<Vec<u8>> = data_list.iter().map(|b| b.to_vec()).collect();
-
-    let contents: Vec<(&[u8], &str)> = owned_data
+    let contents: Vec<(&[u8], &str)> = data_list
         .iter()
         .zip(mime_types.iter())
-        .map(|(data, mime)| (data.as_slice(), mime.as_str()))
+        .map(|(data, mime)| (data.as_ref(), mime.as_str()))
         .collect();
 
     kreuzberg::batch_extract_bytes(contents, &rust_config)

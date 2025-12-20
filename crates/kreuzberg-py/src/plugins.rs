@@ -1119,11 +1119,45 @@ fn extraction_result_to_dict(py: Python<'_>, result: &ExtractionResult) -> PyRes
 
     dict.set_item("mime_type", &result.mime_type)?;
 
-    let metadata_json = serde_json::to_value(&result.metadata).map_err(|e| {
-        pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to serialize metadata to JSON: {}", e))
-    })?;
-    let metadata_py = json_value_to_py(py, &metadata_json)?;
-    dict.set_item("metadata", metadata_py)?;
+    let metadata_dict = PyDict::new(py);
+
+    if let Some(title) = &result.metadata.title {
+        metadata_dict.set_item("title", title)?;
+    }
+    if let Some(subject) = &result.metadata.subject {
+        metadata_dict.set_item("subject", subject)?;
+    }
+    if let Some(authors) = &result.metadata.authors {
+        metadata_dict.set_item("authors", authors)?;
+    }
+    if let Some(keywords) = &result.metadata.keywords {
+        metadata_dict.set_item("keywords", keywords)?;
+    }
+    if let Some(language) = &result.metadata.language {
+        metadata_dict.set_item("language", language)?;
+    }
+    if let Some(created_at) = &result.metadata.created_at {
+        metadata_dict.set_item("created_at", created_at)?;
+    }
+    if let Some(modified_at) = &result.metadata.modified_at {
+        metadata_dict.set_item("modified_at", modified_at)?;
+    }
+    if let Some(created_by) = &result.metadata.created_by {
+        metadata_dict.set_item("created_by", created_by)?;
+    }
+    if let Some(modified_by) = &result.metadata.modified_by {
+        metadata_dict.set_item("modified_by", modified_by)?;
+    }
+    if let Some(date) = &result.metadata.date {
+        metadata_dict.set_item("date", date)?;
+    }
+
+    for (key, value) in &result.metadata.additional {
+        let py_value = json_value_to_py(py, value)?;
+        metadata_dict.set_item(key, py_value)?;
+    }
+
+    dict.set_item("metadata", metadata_dict)?;
 
     dict.set_item("tables", PyList::empty(py))?;
 
