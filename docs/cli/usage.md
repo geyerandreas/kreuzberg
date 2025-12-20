@@ -20,6 +20,22 @@ The Kreuzberg CLI provides command-line access to all extraction features. This 
 
     --8<-- "snippets/cli/install_go_sdk.md"
 
+!!! info "Feature Availability"
+    **Homebrew Installation:**
+
+    - ✅ Text extraction (PDF, Office, images, 50+ formats)
+    - ✅ OCR with Tesseract
+    - ✅ HTTP API server (`serve` command)
+    - ✅ MCP protocol server (`mcp` command)
+    - ✅ Chunking, quality scoring, language detection
+    - ❌ **Embeddings** - Not available via CLI flags. Use config file or Docker image.
+
+    **Docker Images:**
+
+    - All features enabled including embeddings (ONNX Runtime included)
+    - Use `kreuzberg/kreuzberg:full` for LibreOffice support
+    - Use `kreuzberg/kreuzberg:core` for smaller image without LibreOffice
+
 ## Basic Usage
 
 ### Extract from Single File
