@@ -59,7 +59,7 @@ function fixTypeExports(filePath) {
 			importModuleRef = moduleRef.replace(/\.js$/, ".d.ts");
 		}
 		const correctedImport = `import { E as ExtractionConfig, a as ExtractionResult } from '${importModuleRef}';`;
-		const correctedExport = `export { C as Chunk, b as ChunkMetadata, c as ChunkingConfig, d as ExtractedImage, I as ImageExtractionConfig, L as LanguageDetectionConfig, M as Metadata, O as OcrBackendProtocol, e as OcrConfig, P as PageContent, f as PageExtractionConfig, g as PdfConfig, h as PostProcessorConfig, T as Table, i as TesseractConfig, j as TokenReductionConfig, E as ExtractionConfig, a as ExtractionResult } from '${importModuleRef}';`;
+		const correctedExport = `export { C as Chunk, b as ChunkingConfig, c as ChunkMetadata, d as ExtractedImage, I as ImageExtractionConfig, L as LanguageDetectionConfig, M as Metadata, O as OcrBackendProtocol, e as OcrConfig, P as PageContent, f as PageExtractionConfig, g as PdfConfig, h as PostProcessorConfig, T as Table, i as TesseractConfig, j as TokenReductionConfig, E as ExtractionConfig, a as ExtractionResult } from '${importModuleRef}';`;
 
 		// Find and replace both import and export statements
 		const lines = content.split("\n");
