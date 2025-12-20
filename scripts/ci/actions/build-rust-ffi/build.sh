@@ -39,7 +39,7 @@ else
 fi
 
 if [ "$verbose" = "true" ]; then
-	CARGO_ARGS+=("--verbose")
+	CARGO_ARGS+=("-vv")
 fi
 
 if [ -n "$additional_flags" ]; then
@@ -48,6 +48,20 @@ if [ -n "$additional_flags" ]; then
 fi
 
 echo "Build command: cargo ${CARGO_ARGS[*]}"
+echo ""
+
+echo "=== Build Environment ==="
+echo "Rust version: $(rustc --version)"
+echo "Cargo version: $(cargo --version)"
+echo "Working directory: $(pwd)"
+echo "CARGO_TARGET_DIR: ${CARGO_TARGET_DIR:-<not set>}"
+echo "RUST_BACKTRACE: ${RUST_BACKTRACE:-<not set>}"
+echo "RUST_LOG: ${RUST_LOG:-<not set>}"
+echo "CARGO_LOG: ${CARGO_LOG:-<not set>}"
+if [ -n "$target" ]; then
+	echo "Target: $target"
+	echo "Target installed: $(rustup target list --installed | grep -q "$target" && echo "yes" || echo "no")"
+fi
 echo ""
 
 export RUSTC_WRAPPER=""
