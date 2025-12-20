@@ -228,7 +228,10 @@ fn ensure_windows_import_library(pdfium_dir: &Path) {
 /// Fetch the latest release version from a GitHub repository
 ///
 /// Uses curl to query the GitHub API and extract the tag_name from the
-/// latest release JSON response. Falls back to "7529" if API call fails.
+/// latest release JSON response. Uses improved JSON parsing with fallback logic.
+///
+/// For WASM (paulocoutinhox/pdfium-lib), falls back to known stable versions.
+/// For non-WASM (bblanchon/pdfium-binaries), uses a different fallback strategy.
 fn get_latest_version(repo: &str) -> String {
     let api_url = format!("https://api.github.com/repos/{}/releases/latest", repo);
 
@@ -238,19 +241,60 @@ fn get_latest_version(repo: &str) -> String {
         && output.status.success()
     {
         let json = String::from_utf8_lossy(&output.stdout);
-        if let Some(start) = json.find("\"tag_name\":") {
-            let after_colon = &json[start + "\"tag_name\":".len()..];
-            if let Some(opening_quote) = after_colon.find('"')
-                && let Some(closing_quote) = after_colon[opening_quote + 1..].find('"')
-            {
-                let tag_start = opening_quote + 1;
-                let tag = &after_colon[tag_start..tag_start + closing_quote];
-                return tag.split('/').next_back().unwrap_or(tag).to_string();
+
+        // Try to extract tag_name from JSON
+        if let Some(tag) = extract_tag_from_json(&json) {
+            return tag;
+        }
+    }
+
+    // Fallback versions based on repository
+    // These are stable versions known to have all required assets
+    if repo.contains("paulocoutinhox") {
+        eprintln!(
+            "cargo:warning=Failed to fetch latest PDFium WASM version from GitHub API, using fallback version 7442b"
+        );
+        "7442b".to_string()
+    } else if repo.contains("bblanchon") {
+        eprintln!(
+            "cargo:warning=Failed to fetch latest PDFium binaries version from GitHub API, using fallback version 7568"
+        );
+        "7568".to_string()
+    } else {
+        eprintln!(
+            "cargo:warning=Failed to fetch latest PDFium version from GitHub API (unknown repository: {})",
+            repo
+        );
+        String::new()
+    }
+}
+
+/// Extract tag_name from GitHub API JSON response
+///
+/// Parses JSON by finding the tag_name field and extracting the value between quotes.
+/// Handles various JSON formatting variations.
+fn extract_tag_from_json(json: &str) -> Option<String> {
+    // Look for "tag_name": "..." pattern
+    if let Some(start) = json.find("\"tag_name\"") {
+        let after_colon = &json[start + "\"tag_name\"".len()..];
+
+        // Skip whitespace and colon
+        let after_colon = after_colon.trim_start();
+        let after_colon = after_colon.strip_prefix(':')?;
+        let after_colon = after_colon.trim_start();
+
+        // Extract value between quotes
+        if let Some(opening_quote) = after_colon.find('"') {
+            let value_start = opening_quote + 1;
+            if let Some(closing_quote) = after_colon[value_start..].find('"') {
+                let tag = &after_colon[value_start..value_start + closing_quote];
+                // Handle releases with '/' in tag (e.g., "chromium/1234")
+                return Some(tag.split('/').next_back().unwrap_or(tag).to_string());
             }
         }
     }
 
-    "7529".to_string()
+    None
 }
 
 /// Get the download URL and library name for the target platform
