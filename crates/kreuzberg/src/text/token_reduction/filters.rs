@@ -1,6 +1,7 @@
 use crate::error::{KreuzbergError, Result};
 use crate::stopwords::STOPWORDS;
 use crate::text::token_reduction::config::TokenReductionConfig;
+use crate::text::utf8_validation;
 use ahash::{AHashMap, AHashSet};
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -161,7 +162,7 @@ impl FilterPipeline {
                     .filter(|&b| b.is_ascii_alphabetic())
                     .map(|b| b.to_ascii_lowercase())
                     .collect();
-                String::from_utf8(clean_bytes).unwrap_or_else(|_| {
+                utf8_validation::string_from_utf8(clean_bytes).unwrap_or_else(|_| {
                     word.chars()
                         .filter(|c| c.is_alphabetic())
                         .collect::<String>()

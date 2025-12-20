@@ -2830,6 +2830,7 @@ dependencies = [
  "serde_yaml_ng",
  "serial_test",
  "sevenz-rust2",
+ "simdutf8",
  "tar",
  "tempfile",
  "text-splitter",

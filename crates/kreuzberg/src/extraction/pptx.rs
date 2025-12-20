@@ -38,6 +38,7 @@
 //! # }
 //! ```
 use crate::error::{KreuzbergError, Result};
+use crate::text::utf8_validation;
 use crate::types::{ExtractedImage, PptxExtractionResult, PptxMetadata};
 use std::collections::HashMap;
 use std::fs::File;
@@ -591,8 +592,8 @@ enum ParsedContent {
 }
 
 fn parse_slide_xml(xml_data: &[u8]) -> Result<Vec<SlideElement>> {
-    let xml_str =
-        std::str::from_utf8(xml_data).map_err(|_| KreuzbergError::parsing("Invalid UTF-8 in slide XML".to_string()))?;
+    let xml_str = utf8_validation::from_utf8(xml_data)
+        .map_err(|_| KreuzbergError::parsing("Invalid UTF-8 in slide XML".to_string()))?;
 
     let doc =
         Document::parse(xml_str).map_err(|e| KreuzbergError::parsing(format!("Failed to parse slide XML: {}", e)))?;
@@ -898,7 +899,7 @@ fn extract_position(node: &Node) -> ElementPosition {
 }
 
 fn parse_slide_rels(rels_data: &[u8]) -> Result<Vec<ImageReference>> {
-    let xml_str = std::str::from_utf8(rels_data)
+    let xml_str = utf8_validation::from_utf8(rels_data)
         .map_err(|e| KreuzbergError::parsing(format!("Invalid UTF-8 in rels XML: {}", e)))?;
 
     let doc =
@@ -923,7 +924,7 @@ fn parse_slide_rels(rels_data: &[u8]) -> Result<Vec<ImageReference>> {
 }
 
 fn parse_presentation_rels(rels_data: &[u8]) -> Result<Vec<String>> {
-    let xml_str = std::str::from_utf8(rels_data)
+    let xml_str = utf8_validation::from_utf8(rels_data)
         .map_err(|e| KreuzbergError::parsing(format!("Invalid UTF-8 in presentation rels: {}", e)))?;
 
     let doc = Document::parse(xml_str)
@@ -1059,7 +1060,7 @@ fn extract_all_notes(container: &mut PptxContainer) -> Result<HashMap<u32, Strin
 }
 
 fn extract_notes_text(notes_xml: &[u8]) -> Result<String> {
-    let xml_str = std::str::from_utf8(notes_xml)
+    let xml_str = utf8_validation::from_utf8(notes_xml)
         .map_err(|e| KreuzbergError::parsing(format!("Invalid UTF-8 in notes XML: {}", e)))?;
 
     let doc =

@@ -30,6 +30,8 @@
 
 #[cfg(feature = "tokio-runtime")]
 pub(crate) mod batch_mode;
+#[cfg(feature = "tokio-runtime")]
+pub mod batch_optimizations;
 pub mod config;
 pub mod extractor;
 pub mod formats;
@@ -42,6 +44,8 @@ pub use config::{
 };
 pub use formats::{KNOWN_FORMATS, is_valid_format_field};
 
+#[cfg(feature = "tokio-runtime")]
+pub use batch_optimizations::{BatchProcessor, BatchProcessorConfig};
 #[cfg(feature = "pdf")]
 pub use config::PdfConfig;
 #[cfg(feature = "tokio-runtime")]

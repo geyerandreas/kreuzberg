@@ -26,6 +26,7 @@ use once_cell::sync::Lazy;
 use regex::Regex;
 
 use crate::error::Result;
+use crate::text::utf8_validation;
 use crate::types::TextExtractionResult;
 
 static MARKDOWN_HEADER: Lazy<Regex> =
@@ -38,7 +39,10 @@ static CODE_BLOCK_DELIMITER: Lazy<Regex> = Lazy::new(|| {
 });
 
 pub fn parse_text(text_bytes: &[u8], is_markdown: bool) -> Result<TextExtractionResult> {
-    let text = String::from_utf8_lossy(text_bytes).into_owned();
+    let text = match utf8_validation::from_utf8(text_bytes) {
+        Ok(s) => s.to_string(),
+        Err(_) => String::from_utf8_lossy(text_bytes).into_owned(),
+    };
 
     let mut line_count = 0;
     let mut word_count = 0;

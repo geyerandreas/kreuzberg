@@ -43,8 +43,6 @@ pub mod panic_context;
 pub mod plugins;
 pub mod text;
 pub mod types;
-
-#[cfg(feature = "quality")]
 pub mod utils;
 
 #[cfg(feature = "api")]
