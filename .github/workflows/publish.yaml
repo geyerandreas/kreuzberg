@@ -1017,6 +1017,7 @@ jobs:
           name: rubygems-${{ matrix.label }}
           path: packages/ruby/pkg/*.gem
           retention-days: 14
+          compression-level: 0
 
   go-ffi-libraries:
     name: Build Go FFI libraries (${{ matrix.settings.label }})

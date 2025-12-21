@@ -43,6 +43,34 @@ echo "Rebuilding gems to fix potential corruption from artifact transfer..."
 for gem in "${gems[@]}"; do
 	echo "Rebuilding ${gem} to ensure consistent structure"
 
+	# Validate gzip integrity before attempting unpack
+	echo "Checking gzip integrity of ${gem}..."
+	if ! gunzip -t "${gem}" 2>/dev/null; then
+		echo "::warning::Gem ${gem} has corrupted gzip structure, attempting repair..." >&2
+
+		# Check if file has gzip magic number (1f 8b)
+		if ! xxd -p -l 2 "${gem}" | grep -q "^1f8b"; then
+			echo "::error::Gem ${gem} is not a valid gzip file (missing magic number)" >&2
+			exit 1
+		fi
+
+		# Attempt to repair by decompressing and recompressing
+		echo "Attempting gzip repair for ${gem}..."
+		temp_dir=$(mktemp -d)
+		if gunzip -c "${gem}" >"${temp_dir}/uncompressed" 2>/dev/null; then
+			gzip -9 -c "${temp_dir}/uncompressed" >"${gem}.repaired"
+			mv "${gem}.repaired" "${gem}"
+			echo "Successfully repaired ${gem}"
+		else
+			echo "::error::Cannot repair ${gem} - gzip structure is too damaged" >&2
+			rm -rf "${temp_dir}"
+			exit 1
+		fi
+		rm -rf "${temp_dir}"
+	else
+		echo "✓ Gzip integrity check passed for ${gem}"
+	fi
+
 	# Unpack the gem
 	gem unpack "${gem}"
 	gem_name=$(basename "${gem}" .gem)
