@@ -27,13 +27,13 @@ Install ONNX Runtime for your platform:
 
 #### macOS
 
-```bash
+```bash title="Terminal"
 brew install onnxruntime
 ```
 
 #### Ubuntu/Debian
 
-```bash
+```bash title="Terminal"
 sudo apt install libonnxruntime libonnxruntime-dev
 ```
 
@@ -41,7 +41,7 @@ sudo apt install libonnxruntime libonnxruntime-dev
 
 **Option 1: Scoop (recommended)**
 
-```bash
+```bash title="Terminal"
 scoop install onnxruntime
 ```
 
@@ -56,7 +56,7 @@ scoop install onnxruntime
 
 Verify ONNX Runtime is installed correctly:
 
-```bash
+```bash title="Terminal"
 # Linux
 ldconfig -p | grep onnxruntime
 
@@ -72,7 +72,7 @@ where.exe onnxruntime.dll
 
 If ONNX Runtime is installed in a non-standard location, set the `ORT_DYLIB_PATH` environment variable:
 
-```bash
+```bash title="Terminal"
 # Linux/macOS
 export ORT_DYLIB_PATH=/custom/path/to/libonnxruntime.so
 
@@ -105,7 +105,7 @@ Add ONNX Runtime to your Dockerfile:
 
 **Debian/Ubuntu base:**
 
-```dockerfile
+```dockerfile title="Dockerfile"
 FROM debian:bookworm-slim
 
 # Install ONNX Runtime
@@ -131,6 +131,7 @@ ONNX Runtime is not available in Alpine repositories. Use Debian/Ubuntu base or 
 **Cause:** ONNX Runtime is not installed or not in the library search path.
 
 **Solution:**
+
 1. Install ONNX Runtime using platform-specific instructions above
 2. Verify installation with verification commands
 3. If installed in custom location, set `ORT_DYLIB_PATH`
@@ -140,6 +141,7 @@ ONNX Runtime is not available in Alpine repositories. Use Debian/Ubuntu base or 
 **Cause:** ONNX Runtime DLL is not in PATH or `ORT_DYLIB_PATH`.
 
 **Solution:**
+
 1. Add ONNX Runtime `lib` directory to PATH
 2. Or set `ORT_DYLIB_PATH` to the full path to `onnxruntime.dll`
 3. Restart your terminal/IDE after changing PATH
@@ -149,9 +151,10 @@ ONNX Runtime is not available in Alpine repositories. Use Debian/Ubuntu base or 
 **Cause:** Library not found by dynamic linker.
 
 **Solution:**
+
 1. Run `sudo ldconfig` after installing ONNX Runtime
 2. Or add library path to `LD_LIBRARY_PATH`:
-   ```bash
+   ```bash title="Terminal"
    export LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:$LD_LIBRARY_PATH
    ```
 
@@ -160,9 +163,10 @@ ONNX Runtime is not available in Alpine repositories. Use Debian/Ubuntu base or 
 **Cause:** ONNX Runtime library not in dynamic linker search path.
 
 **Solution:**
+
 1. Install via Homebrew (recommended): `brew install onnxruntime`
 2. Or set `DYLD_FALLBACK_LIBRARY_PATH`:
-   ```bash
+   ```bash title="Terminal"
    export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib:/usr/local/lib
    ```
 
@@ -171,6 +175,7 @@ ONNX Runtime is not available in Alpine repositories. Use Debian/Ubuntu base or 
 **Cause:** ONNX Runtime installed locally but missing in production environment.
 
 **Solution:**
+
 1. Add ONNX Runtime to production dependencies (Docker, system packages)
 2. Document ONNX Runtime requirement in deployment guides
 3. Add verification step to CI/CD pipeline
@@ -179,7 +184,7 @@ ONNX Runtime is not available in Alpine repositories. Use Debian/Ubuntu base or 
 
 If you encounter issues with RC.11, you can roll back to RC.10:
 
-```bash
+```bash title="Terminal"
 # Python
 pip install kreuzberg==4.0.0-rc.10
 
@@ -771,7 +776,7 @@ The most significant change is the shift from character indices to UTF-8 byte po
 
 `ChunkMetadata` now includes explicit page range tracking:
 
-```python
+```python title="Python"
 # v4 ChunkMetadata structure
 class ChunkMetadata:
     byte_start: int      # Byte offset where chunk starts (UTF-8 valid boundary)
@@ -788,7 +793,7 @@ class ChunkMetadata:
 
 v4 introduces structured page representation:
 
-```python
+```python title="Python"
 # PageStructure - Overall page metadata
 class PageStructure:
     total_count: int           # Total pages/slides/sheets
@@ -829,7 +834,7 @@ enum PageUnitType:
 
 Enable page tracking through the extraction configuration:
 
-```python
+```python title="Python"
 # v4 PageConfig structure
 class PageConfig:
     extract_pages: bool = False          # Extract pages as separate ExtractionResult.pages array
@@ -842,13 +847,13 @@ class PageConfig:
 ##### Rust
 
 **Before (v3):**
-```rust
+```rust title="Rust"
 // v3 - Character indices (no longer available)
 // Not directly comparable as v3 had different architecture
 ```
 
 **After (v4):**
-```rust
+```rust title="Rust"
 use kreuzberg::{extract_file_sync, ExtractionConfig, PageConfig};
 
 let config = ExtractionConfig {
@@ -882,7 +887,7 @@ for page in &result.pages {
 ##### Python
 
 **Before (v3):**
-```python
+```python title="Python"
 # v3 - Used char_start/char_end (now removed)
 result = extract_file("document.pdf")
 for chunk in result.chunks:
@@ -891,7 +896,7 @@ for chunk in result.chunks:
 ```
 
 **After (v4):**
-```python
+```python title="Python"
 from kreuzberg import extract_file, ExtractionConfig, PageConfig
 
 config = ExtractionConfig(
@@ -928,14 +933,14 @@ for page in result.pages:
 ##### TypeScript
 
 **Before (v3):**
-```typescript
+```typescript title="TypeScript"
 // v3 - Character indices
 const result = await extractFile("document.pdf");
 // char_start and char_end no longer available
 ```
 
 **After (v4):**
-```typescript
+```typescript title="TypeScript"
 import {
     extractFile,
     ExtractionConfig,
@@ -975,13 +980,13 @@ for (const page of result.pages) {
 ##### Java
 
 **Before (v3):**
-```java
+```java title="Java"
 // v3 - Character-based tracking
 // Not directly comparable as v3 used different architecture
 ```
 
 **After (v4):**
-```java
+```java title="Java"
 import com.kreuzberg.*;
 
 ExtractionConfig config = new ExtractionConfig.Builder()
@@ -1019,13 +1024,13 @@ for (PageContent page : result.getPages()) {
 ##### Go
 
 **Before (v3):**
-```go
+```go title="Go"
 // v3 - Character indices
 // Not directly comparable
 ```
 
 **After (v4):**
-```go
+```go title="Go"
 package main
 
 import (
@@ -1074,7 +1079,7 @@ func main() {
 ##### Ruby
 
 **After (v4):**
-```ruby
+```ruby title="Ruby"
 require 'kreuzberg'
 
 config = Kreuzberg::ExtractionConfig.new(
@@ -1110,7 +1115,7 @@ end
 ##### C#
 
 **After (v4):**
-```csharp
+```csharp title="C#"
 using Kreuzberg;
 
 var config = new ExtractionConfig
