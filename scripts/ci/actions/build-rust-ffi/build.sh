@@ -41,6 +41,17 @@ fi
 if [ "$crate_name" = "kreuzberg-rb" ]; then
 	FFI_MANIFEST="packages/ruby/vendor/Cargo.toml"
 	if [ -f "$FFI_MANIFEST" ]; then
+		# Clean vendored workspace to avoid fingerprint conflicts
+		echo "Cleaning vendored FFI workspace..."
+		CLEAN_ARGS=("clean" "--manifest-path" "$FFI_MANIFEST" "-p" "kreuzberg-ffi")
+		if [ "$build_profile" = "release" ]; then
+			CLEAN_ARGS+=("--release")
+		fi
+		if [ -n "$target" ]; then
+			CLEAN_ARGS+=("--target" "$target")
+		fi
+		cargo "${CLEAN_ARGS[@]}" || echo "Clean command completed"
+
 		FFI_ARGS=("build" "--manifest-path" "$FFI_MANIFEST" "-p" "kreuzberg-ffi")
 	else
 		FFI_ARGS=("build" "--package" "kreuzberg-ffi")
