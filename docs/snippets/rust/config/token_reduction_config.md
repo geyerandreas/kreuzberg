@@ -1,0 +1,19 @@
+```rust title="Rust"
+use kreuzberg::{extract_file, ExtractionConfig, TokenReductionConfig};
+
+#[tokio::main]
+async fn main() -> kreuzberg::Result<()> {
+    let config = ExtractionConfig {
+        token_reduction: Some(TokenReductionConfig {
+            mode: "moderate".to_string(),
+            preserve_important_words: true,
+        }),
+        ..Default::default()
+    };
+
+    let result = extract_file("document.pdf", None::<&str>, &config).await?;
+    println!("Original tokens: {}", result.token_count);
+    println!("Reduced content: {}", result.content);
+    Ok(())
+}
+```
