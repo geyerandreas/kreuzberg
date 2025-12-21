@@ -32,35 +32,35 @@ Kreuzberg supports four ways to configure extraction:
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/config_discover.md"
+    --8<-- "snippets/csharp/config_discover.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/config/config_discover.md"
+    --8<-- "snippets/go/config/config_discover.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/config/config_discover.md"
+    --8<-- "snippets/java/config/config_discover.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/config/config_discover.md"
+    --8<-- "snippets/python/config/config_discover.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/config/config_discover.md"
+    --8<-- "snippets/ruby/config/config_discover.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/config/config_discover.md"
+    --8<-- "snippets/rust/config/config_discover.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/config/config_discover.md"
+    --8<-- "snippets/typescript/config/config_discover.md"
 
 === "WASM"
 
-    --8<-- "docs/snippets/wasm/config/config_discover.md"
+    --8<-- "snippets/wasm/config/config_discover.md"
 
 === "TOML File"
 
@@ -142,35 +142,35 @@ Kreuzberg automatically discovers configuration files in the following locations
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/config_discover.md"
+    --8<-- "snippets/csharp/config_discover.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/config/config_discover.md"
+    --8<-- "snippets/go/config/config_discover.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/config/config_discover.md"
+    --8<-- "snippets/java/config/config_discover.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/config/config_discover.md"
+    --8<-- "snippets/python/config/config_discover.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/config/config_discover.md"
+    --8<-- "snippets/ruby/config/config_discover.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/config/config_discover.md"
+    --8<-- "snippets/rust/config/config_discover.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/config/config_discover.md"
+    --8<-- "snippets/typescript/config/config_discover.md"
 
 === "WASM"
 
-    --8<-- "docs/snippets/wasm/config/config_discover.md"
+    --8<-- "snippets/wasm/config/config_discover.md"
 
 ## ExtractionConfig
 
@@ -194,35 +194,35 @@ The main configuration object controlling extraction behavior.
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/config_basic.md"
+    --8<-- "snippets/csharp/config_basic.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/config/config_basic.md"
+    --8<-- "snippets/go/config/config_basic.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/config/config_basic.md"
+    --8<-- "snippets/java/config/config_basic.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/config/config_basic.md"
+    --8<-- "snippets/python/config/config_basic.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/config/config_basic.md"
+    --8<-- "snippets/ruby/config/config_basic.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/config/config_basic.md"
+    --8<-- "snippets/rust/config/config_basic.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/config/config_basic.md"
+    --8<-- "snippets/typescript/config/config_basic.md"
 
 === "WASM"
 
-    --8<-- "docs/snippets/wasm/config/config_basic.md"
+    --8<-- "snippets/wasm/config/config_basic.md"
 
 ## OcrConfig
 
@@ -238,31 +238,31 @@ Configuration for OCR processing. Set to enable OCR on images and scanned PDFs.
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/config_ocr.md"
+    --8<-- "snippets/csharp/config_ocr.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/config/config_ocr.md"
+    --8<-- "snippets/go/config/config_ocr.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/config/config_ocr.md"
+    --8<-- "snippets/java/config/config_ocr.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/config/config_ocr.md"
+    --8<-- "snippets/python/config/config_ocr.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/config/config_ocr.md"
+    --8<-- "snippets/ruby/config/config_ocr.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/ocr/config_ocr.md"
+    --8<-- "snippets/rust/ocr/config_ocr.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/config/config_ocr.md"
+    --8<-- "snippets/typescript/config/config_ocr.md"
 
 ## TesseractConfig
 
@@ -320,31 +320,31 @@ Tesseract OCR engine configuration.
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/tesseract_config.md"
+    --8<-- "snippets/csharp/tesseract_config.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/config/tesseract_config.md"
+    --8<-- "snippets/go/config/tesseract_config.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/config/tesseract_config.md"
+    --8<-- "snippets/java/config/tesseract_config.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/config/tesseract_config.md"
+    --8<-- "snippets/python/config/tesseract_config.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/config/tesseract_config.md"
+    --8<-- "snippets/ruby/config/tesseract_config.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/ocr/tesseract_config.md"
+    --8<-- "snippets/rust/ocr/tesseract_config.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/config/tesseract_config.md"
+    --8<-- "snippets/typescript/config/tesseract_config.md"
 
 ## ImagePreprocessingConfig
 
@@ -364,31 +364,31 @@ Image preprocessing configuration for OCR.
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/image_preprocessing.md"
+    --8<-- "snippets/csharp/image_preprocessing.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/ocr/image_preprocessing.md"
+    --8<-- "snippets/go/ocr/image_preprocessing.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/ocr/image_preprocessing.md"
+    --8<-- "snippets/java/ocr/image_preprocessing.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/utils/image_preprocessing.md"
+    --8<-- "snippets/python/utils/image_preprocessing.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/ocr/image_preprocessing.md"
+    --8<-- "snippets/ruby/ocr/image_preprocessing.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/metadata/image_preprocessing.md"
+    --8<-- "snippets/rust/metadata/image_preprocessing.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/api/image_preprocessing.md"
+    --8<-- "snippets/typescript/api/image_preprocessing.md"
 
 ## PdfConfig
 
@@ -404,31 +404,31 @@ PDF-specific extraction configuration.
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/pdf_config.md"
+    --8<-- "snippets/csharp/pdf_config.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/config/pdf_config.md"
+    --8<-- "snippets/go/config/pdf_config.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/config/pdf_config.md"
+    --8<-- "snippets/java/config/pdf_config.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/config/pdf_config.md"
+    --8<-- "snippets/python/config/pdf_config.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/config/pdf_config.md"
+    --8<-- "snippets/ruby/config/pdf_config.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/ocr/pdf_config.md"
+    --8<-- "snippets/rust/ocr/pdf_config.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/config/pdf_config.md"
+    --8<-- "snippets/typescript/config/pdf_config.md"
 
 ## Page Configuration
 
@@ -589,31 +589,31 @@ Configuration for extracting images from documents.
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/image_extraction.md"
+    --8<-- "snippets/csharp/image_extraction.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/ocr/image_extraction.md"
+    --8<-- "snippets/go/ocr/image_extraction.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/ocr/image_extraction.md"
+    --8<-- "snippets/java/ocr/image_extraction.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/utils/image_extraction.md"
+    --8<-- "snippets/python/utils/image_extraction.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/ocr/image_extraction.md"
+    --8<-- "snippets/ruby/ocr/image_extraction.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/metadata/image_extraction.md"
+    --8<-- "snippets/rust/metadata/image_extraction.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/api/image_extraction.md"
+    --8<-- "snippets/typescript/api/image_extraction.md"
 
 ## ChunkingConfig
 
@@ -630,35 +630,35 @@ Text chunking configuration for splitting extracted text into chunks.
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/embedding_with_chunking.md"
+    --8<-- "snippets/csharp/advanced/embedding_with_chunking.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/utils/chunking.md"
+    --8<-- "snippets/go/utils/chunking.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/utils/chunking.md"
+    --8<-- "snippets/java/utils/chunking.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/utils/chunking.md"
+    --8<-- "snippets/python/utils/chunking.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/utils/chunking.md"
+    --8<-- "snippets/ruby/utils/chunking.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/chunking.md"
+    --8<-- "snippets/rust/advanced/chunking.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/utils/chunking.md"
+    --8<-- "snippets/typescript/utils/chunking.md"
 
 === "WASM"
 
-    --8<-- "docs/snippets/wasm/config/chunking_config.md"
+    --8<-- "snippets/wasm/config/chunking_config.md"
 
 ## EmbeddingConfig
 
@@ -691,31 +691,31 @@ Create embedding models using these factory methods:
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/embedding_config.md"
+    --8<-- "snippets/csharp/advanced/embedding_config.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/config/embedding_config.md"
+    --8<-- "snippets/go/config/embedding_config.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/config/embedding_config.md"
+    --8<-- "snippets/java/config/embedding_config.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/config/embedding_config.md"
+    --8<-- "snippets/python/config/embedding_config.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/config/embedding_config.md"
+    --8<-- "snippets/ruby/config/embedding_config.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/embedding_config.md"
+    --8<-- "snippets/rust/advanced/embedding_config.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/config/embedding_config.md"
+    --8<-- "snippets/typescript/config/embedding_config.md"
 
 ## TokenReductionConfig
 
@@ -730,31 +730,31 @@ Configuration for reducing token count in extracted text.
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/token_reduction.md"
+    --8<-- "snippets/csharp/token_reduction.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/utils/token_reduction.md"
+    --8<-- "snippets/go/utils/token_reduction.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/utils/token_reduction.md"
+    --8<-- "snippets/java/utils/token_reduction.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/utils/token_reduction.md"
+    --8<-- "snippets/python/utils/token_reduction.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/utils/token_reduction.md"
+    --8<-- "snippets/ruby/utils/token_reduction.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/token_reduction.md"
+    --8<-- "snippets/rust/advanced/token_reduction.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/utils/token_reduction.md"
+    --8<-- "snippets/typescript/utils/token_reduction.md"
 
 ## LanguageDetectionConfig
 
@@ -770,31 +770,31 @@ Configuration for automatic language detection.
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/language_detection.md"
+    --8<-- "snippets/csharp/language_detection.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/metadata/language_detection.md"
+    --8<-- "snippets/go/metadata/language_detection.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/metadata/language_detection.md"
+    --8<-- "snippets/java/metadata/language_detection.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/utils/language_detection.md"
+    --8<-- "snippets/python/utils/language_detection.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/metadata/language_detection.md"
+    --8<-- "snippets/ruby/metadata/language_detection.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/language_detection.md"
+    --8<-- "snippets/rust/advanced/language_detection.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/metadata/language_detection.md"
+    --8<-- "snippets/typescript/metadata/language_detection.md"
 
 ## PostProcessorConfig
 
@@ -810,31 +810,31 @@ Configuration for post-processing pipeline.
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/postprocessor_config.md"
+    --8<-- "snippets/csharp/postprocessor_config.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/config/postprocessor_config.md"
+    --8<-- "snippets/go/config/postprocessor_config.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/config/postprocessor_config.md"
+    --8<-- "snippets/java/config/postprocessor_config.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/config/postprocessor_config.md"
+    --8<-- "snippets/python/config/postprocessor_config.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/config/postprocessor_config.md"
+    --8<-- "snippets/ruby/config/postprocessor_config.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/postprocessor_config.md"
+    --8<-- "snippets/rust/advanced/postprocessor_config.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/config/postprocessor_config.md"
+    --8<-- "snippets/typescript/config/postprocessor_config.md"
 
 ## Complete Example
 
@@ -842,27 +842,27 @@ Here's a complete example showing all configuration options together:
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/complete_example.md"
+    --8<-- "snippets/csharp/complete_example.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/api/complete_example.md"
+    --8<-- "snippets/go/api/complete_example.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/api/complete_example.md"
+    --8<-- "snippets/java/api/complete_example.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/advanced/complete_example.md"
+    --8<-- "snippets/python/advanced/complete_example.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/api/complete_example.md"
+    --8<-- "snippets/ruby/api/complete_example.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/api/complete_example.md"
+    --8<-- "snippets/rust/api/complete_example.md"
 
 === "TOML"
 
@@ -918,4 +918,4 @@ Here's a complete example showing all configuration options together:
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/getting-started/complete_example.md"
+    --8<-- "snippets/typescript/getting-started/complete_example.md"

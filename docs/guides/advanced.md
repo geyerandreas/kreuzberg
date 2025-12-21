@@ -54,35 +54,35 @@ Kreuzberg uses the `text-splitter` library with two chunking strategies:
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/chunking_config.cs"
+    --8<-- "snippets/csharp/advanced/chunking_config.cs"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/config/chunking_config.md"
+    --8<-- "snippets/go/config/chunking_config.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/config/chunking_config.md"
+    --8<-- "snippets/java/config/chunking_config.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/config/chunking_config.md"
+    --8<-- "snippets/python/config/chunking_config.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/config/chunking_config.md"
+    --8<-- "snippets/ruby/config/chunking_config.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/chunking_config.md"
+    --8<-- "snippets/rust/advanced/chunking_config.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/config/chunking_config.md"
+    --8<-- "snippets/typescript/config/chunking_config.md"
 
 === "WASM"
 
-    --8<-- "docs/snippets/wasm/config/chunking_config.md"
+    --8<-- "snippets/wasm/config/chunking_config.md"
 
 ### Chunk Output
 
@@ -101,31 +101,31 @@ Each chunk includes:
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/chunking_rag.cs"
+    --8<-- "snippets/csharp/advanced/chunking_rag.cs"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/advanced/chunking_rag.md"
+    --8<-- "snippets/go/advanced/chunking_rag.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/advanced/chunking_rag.md"
+    --8<-- "snippets/java/advanced/chunking_rag.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/utils/chunking_rag.md"
+    --8<-- "snippets/python/utils/chunking_rag.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/advanced/chunking_rag.md"
+    --8<-- "snippets/ruby/advanced/chunking_rag.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/chunking_rag.md"
+    --8<-- "snippets/rust/advanced/chunking_rag.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/utils/chunking_rag.md"
+    --8<-- "snippets/typescript/utils/chunking_rag.md"
 
 === "WASM"
 
@@ -197,31 +197,31 @@ Detect languages in extracted text using the fast `whatlang` library. Supports 6
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/language_detection_config.cs"
+    --8<-- "snippets/csharp/advanced/language_detection_config.cs"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/config/language_detection_config.md"
+    --8<-- "snippets/go/config/language_detection_config.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/config/language_detection_config.md"
+    --8<-- "snippets/java/config/language_detection_config.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/config/language_detection_config.md"
+    --8<-- "snippets/python/config/language_detection_config.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/config/language_detection_config.md"
+    --8<-- "snippets/ruby/config/language_detection_config.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/language_detection_config.md"
+    --8<-- "snippets/rust/advanced/language_detection_config.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/config/language_detection_config.md"
+    --8<-- "snippets/typescript/config/language_detection_config.md"
 
 === "WASM"
 
@@ -269,31 +269,31 @@ ISO 639-3 codes including:
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/language_detection_multilingual.cs"
+    --8<-- "snippets/csharp/advanced/language_detection_multilingual.cs"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/advanced/language_detection_multilingual.md"
+    --8<-- "snippets/go/advanced/language_detection_multilingual.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/advanced/language_detection_multilingual.md"
+    --8<-- "snippets/java/advanced/language_detection_multilingual.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/utils/language_detection_multilingual.md"
+    --8<-- "snippets/python/utils/language_detection_multilingual.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/advanced/language_detection_multilingual.md"
+    --8<-- "snippets/ruby/advanced/language_detection_multilingual.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/language_detection_multilingual.md"
+    --8<-- "snippets/rust/advanced/language_detection_multilingual.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/metadata/language_detection_multilingual.md"
+    --8<-- "snippets/typescript/metadata/language_detection_multilingual.md"
 
 ## Embedding Generation
 
@@ -315,61 +315,61 @@ Generate embeddings for vector databases, semantic search, and RAG systems using
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/embedding_with_chunking.md"
+    --8<-- "snippets/csharp/advanced/embedding_with_chunking.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/advanced/embedding_with_chunking.md"
+    --8<-- "snippets/go/advanced/embedding_with_chunking.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/advanced/embedding_with_chunking.md"
+    --8<-- "snippets/java/advanced/embedding_with_chunking.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/utils/embedding_with_chunking.md"
+    --8<-- "snippets/python/utils/embedding_with_chunking.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/advanced/embedding_with_chunking.md"
+    --8<-- "snippets/ruby/advanced/embedding_with_chunking.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/embedding_with_chunking.md"
+    --8<-- "snippets/rust/advanced/embedding_with_chunking.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/utils/embedding_with_chunking.md"
+    --8<-- "snippets/typescript/utils/embedding_with_chunking.md"
 
 ### Example: Vector Database Integration
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/vector_database_integration.md"
+    --8<-- "snippets/csharp/advanced/vector_database_integration.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/advanced/vector_database_integration.md"
+    --8<-- "snippets/go/advanced/vector_database_integration.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/advanced/vector_database_integration.md"
+    --8<-- "snippets/java/advanced/vector_database_integration.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/utils/vector_database_integration.md"
+    --8<-- "snippets/python/utils/vector_database_integration.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/advanced/vector_database_integration.md"
+    --8<-- "snippets/ruby/advanced/vector_database_integration.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/vector_database_integration.md"
+    --8<-- "snippets/rust/advanced/vector_database_integration.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/utils/vector_database_integration.md"
+    --8<-- "snippets/typescript/utils/vector_database_integration.md"
 
 ## Token Reduction
 
@@ -387,61 +387,61 @@ Intelligently reduce token count while preserving meaning. Removes stopwords, re
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/token_reduction_config.md"
+    --8<-- "snippets/csharp/advanced/token_reduction_config.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/config/token_reduction_config.md"
+    --8<-- "snippets/go/config/token_reduction_config.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/config/token_reduction_config.md"
+    --8<-- "snippets/java/config/token_reduction_config.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/config/token_reduction_config.md"
+    --8<-- "snippets/python/config/token_reduction_config.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/config/token_reduction_config.md"
+    --8<-- "snippets/ruby/config/token_reduction_config.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/token_reduction_config.md"
+    --8<-- "snippets/rust/advanced/token_reduction_config.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/config/token_reduction_config.md"
+    --8<-- "snippets/typescript/config/token_reduction_config.md"
 
 ### Example
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/token_reduction_example.md"
+    --8<-- "snippets/csharp/advanced/token_reduction_example.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/advanced/token_reduction_example.md"
+    --8<-- "snippets/go/advanced/token_reduction_example.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/advanced/token_reduction_example.md"
+    --8<-- "snippets/java/advanced/token_reduction_example.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/utils/token_reduction_example.md"
+    --8<-- "snippets/python/utils/token_reduction_example.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/advanced/token_reduction_example.md"
+    --8<-- "snippets/ruby/advanced/token_reduction_example.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/token_reduction_example.md"
+    --8<-- "snippets/rust/advanced/token_reduction_example.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/utils/token_reduction_example.md"
+    --8<-- "snippets/typescript/utils/token_reduction_example.md"
 
 ## Keyword Extraction
 
@@ -466,61 +466,61 @@ Extract important keywords and phrases using YAKE or RAKE algorithms.
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/keyword_extraction_config.md"
+    --8<-- "snippets/csharp/advanced/keyword_extraction_config.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/config/keyword_extraction_config.md"
+    --8<-- "snippets/go/config/keyword_extraction_config.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/config/keyword_extraction_config.md"
+    --8<-- "snippets/java/config/keyword_extraction_config.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/config/keyword_extraction_config.md"
+    --8<-- "snippets/python/config/keyword_extraction_config.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/config/keyword_extraction_config.md"
+    --8<-- "snippets/ruby/config/keyword_extraction_config.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/keyword_extraction_config.md"
+    --8<-- "snippets/rust/advanced/keyword_extraction_config.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/config/keyword_extraction_config.md"
+    --8<-- "snippets/typescript/config/keyword_extraction_config.md"
 
 ### Example
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/keyword_extraction_example.md"
+    --8<-- "snippets/csharp/advanced/keyword_extraction_example.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/advanced/keyword_extraction_example.md"
+    --8<-- "snippets/go/advanced/keyword_extraction_example.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/advanced/keyword_extraction_example.md"
+    --8<-- "snippets/java/advanced/keyword_extraction_example.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/utils/keyword_extraction_example.md"
+    --8<-- "snippets/python/utils/keyword_extraction_example.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/advanced/keyword_extraction_example.md"
+    --8<-- "snippets/ruby/advanced/keyword_extraction_example.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/keyword_extraction_example.md"
+    --8<-- "snippets/rust/advanced/keyword_extraction_example.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/utils/keyword_extraction_example.md"
+    --8<-- "snippets/typescript/utils/keyword_extraction_example.md"
 
 ## Quality Processing
 
@@ -542,31 +542,31 @@ Quality processing is enabled by default:
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/quality_processing_config.md"
+    --8<-- "snippets/csharp/advanced/quality_processing_config.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/config/quality_processing_config.md"
+    --8<-- "snippets/go/config/quality_processing_config.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/config/quality_processing_config.md"
+    --8<-- "snippets/java/config/quality_processing_config.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/config/quality_processing_config.md"
+    --8<-- "snippets/python/config/quality_processing_config.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/config/quality_processing_config.md"
+    --8<-- "snippets/ruby/config/quality_processing_config.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/quality_processing_config.md"
+    --8<-- "snippets/rust/advanced/quality_processing_config.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/config/quality_processing_config.md"
+    --8<-- "snippets/typescript/config/quality_processing_config.md"
 
 ### Quality Score
 
@@ -581,31 +581,31 @@ The quality score ranges from 0.0 (lowest quality) to 1.0 (highest quality):
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/quality_processing_example.md"
+    --8<-- "snippets/csharp/advanced/quality_processing_example.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/advanced/quality_processing_example.md"
+    --8<-- "snippets/go/advanced/quality_processing_example.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/advanced/quality_processing_example.md"
+    --8<-- "snippets/java/advanced/quality_processing_example.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/utils/quality_processing_example.md"
+    --8<-- "snippets/python/utils/quality_processing_example.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/advanced/quality_processing_example.md"
+    --8<-- "snippets/ruby/advanced/quality_processing_example.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/advanced/quality_processing_example.md"
+    --8<-- "snippets/rust/advanced/quality_processing_example.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/utils/quality_processing_example.md"
+    --8<-- "snippets/typescript/utils/quality_processing_example.md"
 
 ## Combining Features
 
@@ -613,31 +613,31 @@ Advanced features work together:
 
 === "C#"
 
-    --8<-- "docs/snippets/csharp/advanced/combining_all_features.md"
+    --8<-- "snippets/csharp/advanced/combining_all_features.md"
 
 === "Go"
 
-    --8<-- "docs/snippets/go/api/combining_all_features.md"
+    --8<-- "snippets/go/api/combining_all_features.md"
 
 === "Java"
 
-    --8<-- "docs/snippets/java/api/combining_all_features.md"
+    --8<-- "snippets/java/api/combining_all_features.md"
 
 === "Python"
 
-    --8<-- "docs/snippets/python/advanced/combining_all_features.md"
+    --8<-- "snippets/python/advanced/combining_all_features.md"
 
 === "Ruby"
 
-    --8<-- "docs/snippets/ruby/api/combining_all_features.md"
+    --8<-- "snippets/ruby/api/combining_all_features.md"
 
 === "Rust"
 
-    --8<-- "docs/snippets/rust/api/combining_all_features.md"
+    --8<-- "snippets/rust/api/combining_all_features.md"
 
 === "TypeScript"
 
-    --8<-- "docs/snippets/typescript/getting-started/combining_all_features.md"
+    --8<-- "snippets/typescript/getting-started/combining_all_features.md"
 
 ## Page Tracking Patterns
 

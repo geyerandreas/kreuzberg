@@ -1,5 +1,5 @@
 # Kreuzberg Documentation
-Kreuzberg is a document intelligence platform with a high‑performance Rust core and native bindings for Python, TypeScript/Node.js, Ruby, Go, and Rust itself. Use it as an SDK, CLI, Docker image, REST API server, or MCP tool to extract text, tables, and metadata from 56 file formats (PDF, Office, images, HTML, XML, archives, email, and more) with optional OCR and post-processing pipelines.
+Kreuzberg is a document intelligence platform with a high‑performance Rust core and native bindings for Python, TypeScript/Node.js, C#, Ruby, Go, and Rust itself. Use it as an SDK, CLI, Docker image, REST API server, or MCP tool to extract text, tables, and metadata from 56 file formats (PDF, Office, images, HTML, XML, archives, email, and more) with optional OCR and post-processing pipelines.
 
 ## What You Can Do
 
@@ -28,6 +28,7 @@ Kreuzberg is a document intelligence platform with a high‑performance Rust cor
 | Python             | `pip install kreuzberg` | Server-side, data processing | [Python API Reference](reference/api-python.md) |
 | **TypeScript/Node.js (Native)** | `npm install @kreuzberg/node` | **Node.js servers, command-line tools, native performance** | **[TypeScript API Reference](reference/api-typescript.md)** |
 | **WebAssembly (WASM)** | `npm install @kreuzberg/wasm` | **Browsers, Cloudflare Workers, Deno, Bun, serverless** | **[WASM API Reference](reference/api-wasm.md)** |
+| C#                 | `dotnet add package Kreuzberg` | .NET applications, Windows servers | [C# API Reference](reference/api-csharp.md) |
 | Ruby               | `gem install kreuzberg` | Server-side, Rails applications | [Ruby API Reference](reference/api-ruby.md) |
 | Go                 | `go get github.com/kreuzberg-dev/kreuzberg/packages/go/v4@latest` | Server-side, systems tools | [Go API Reference](reference/api-go.md) |
 | Rust               | `cargo add kreuzberg` | System libraries, performance-critical | [Rust API Reference](reference/api-rust.md) |
