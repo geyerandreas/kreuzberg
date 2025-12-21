@@ -114,7 +114,7 @@ public final class Kreuzberg {
         }
 
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment dataSegment = arena.allocateArray(ValueLayout.JAVA_BYTE, data);
+            MemorySegment dataSegment = arena.allocateFrom(ValueLayout.JAVA_BYTE, data);
             MemorySegment mimeSegment = KreuzbergFFI.allocateCString(arena, mimeType);
             MemorySegment configSegment = config == null ? MemorySegment.NULL : encodeConfig(arena, config);
 
@@ -150,7 +150,10 @@ public final class Kreuzberg {
             for (int i = 0; i < paths.size(); i++) {
                 cStrings[i] = KreuzbergFFI.allocateCString(arena, paths.get(i));
             }
-            MemorySegment arraySegment = arena.allocateArray(ValueLayout.ADDRESS, cStrings.length);
+            MemorySegment arraySegment = arena.allocate(
+                ValueLayout.ADDRESS.byteSize() * paths.size(),
+                ValueLayout.ADDRESS.byteAlignment()
+            );
             for (int i = 0; i < cStrings.length; i++) {
                 arraySegment.setAtIndex(ValueLayout.ADDRESS, i, cStrings[i]);
             }
@@ -187,7 +190,7 @@ public final class Kreuzberg {
             for (int i = 0; i < items.size(); i++) {
                 BytesWithMime item = items.get(i);
                 MemorySegment element = bytesWithMimeArray.asSlice((long) i * structSize, structSize);
-                MemorySegment dataSeg = arena.allocateArray(ValueLayout.JAVA_BYTE, item.data());
+                MemorySegment dataSeg = arena.allocateFrom(ValueLayout.JAVA_BYTE, item.data());
                 MemorySegment mimeSeg = KreuzbergFFI.allocateCString(arena, item.mimeType());
                 element.set(ValueLayout.ADDRESS, KreuzbergFFI.BYTES_DATA_OFFSET, dataSeg);
                 element.set(ValueLayout.JAVA_LONG, KreuzbergFFI.BYTES_LEN_OFFSET, item.data().length);
@@ -871,7 +874,7 @@ public final class Kreuzberg {
         }
 
         try (Arena arena = Arena.ofConfined()) {
-            MemorySegment dataSegment = arena.allocateArray(ValueLayout.JAVA_BYTE, data);
+            MemorySegment dataSegment = arena.allocateFrom(ValueLayout.JAVA_BYTE, data);
             MemorySegment mimePtr = (MemorySegment) KreuzbergFFI.KREUZBERG_DETECT_MIME_TYPE_FROM_BYTES.invoke(
                 dataSegment,
                 (long) data.length

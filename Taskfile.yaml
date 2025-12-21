@@ -362,11 +362,16 @@ tasks:
       - mvn checkstyle:check
       - mvn pmd:check pmd:cpd-check
   java:update:
-    desc: Update Java dependencies
+    desc: Update Java dependencies and plugins (including linters)
     dir: packages/java
     cmds:
-      - echo "Checking for dependency updates..."
+      - echo "Updating Java dependencies and plugins..."
+      - mvn versions:use-latest-releases -DprocessDependencies=true -DprocessParent=false
+      - echo "Updating plugin versions in properties..."
+      - mvn versions:update-properties
+      - echo "Displaying final dependency updates..."
       - mvn versions:display-dependency-updates
+      - echo "Displaying final plugin updates..."
       - mvn versions:display-plugin-updates
   shell:lint:
     desc: Lint shell scripts with auto-fix (shfmt + shellcheck)

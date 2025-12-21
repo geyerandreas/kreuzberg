@@ -798,7 +798,7 @@ final class KreuzbergFFI {
         if (address == null || address.address() == 0) {
             return null;
         }
-        return address.reinterpret(C_STRING_MAX_SIZE).getUtf8String(0);
+        return address.reinterpret(C_STRING_MAX_SIZE).getString(0);
     }
 
     /**
@@ -809,7 +809,7 @@ final class KreuzbergFFI {
      * @return a MemorySegment containing the C string
      */
     static MemorySegment allocateCString(Arena arena, String str) {
-        return arena.allocateUtf8String(str);
+        return arena.allocateFrom(str);
     }
 
     /**
