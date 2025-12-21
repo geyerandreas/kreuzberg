@@ -356,24 +356,24 @@ Access format-specific metadata from extracted documents:
     Extract and parse metadata using JSON output:
 
     ```bash
-    # Extract with metadata
-    kreuzberg extract document.pdf --metadata --format json --pretty
+    # Extract with metadata (JSON format includes metadata automatically)
+    kreuzberg extract document.pdf --format json
 
     # Save to file and parse metadata
-    kreuzberg extract document.pdf --metadata --format json > result.json
+    kreuzberg extract document.pdf --format json > result.json
 
     # Extract PDF metadata
     cat result.json | jq '.metadata.pdf'
 
     # Extract HTML metadata
-    kreuzberg extract page.html --metadata --format json | jq '.metadata.html'
+    kreuzberg extract page.html --format json | jq '.metadata.html'
 
     # Get specific fields
-    kreuzberg extract document.pdf --metadata --format json | \
+    kreuzberg extract document.pdf --format json | \
       jq '.metadata | {page_count, author, title}'
 
     # Process multiple files
-    kreuzberg batch documents/*.pdf --metadata --format json > all_metadata.json
+    kreuzberg batch documents/*.pdf --format json > all_metadata.json
     ```
 
     **JSON Output Structure:**
@@ -446,22 +446,22 @@ Extract and process tables from documents:
     Extract and process tables from documents:
 
     ```bash
-    # Extract tables
-    kreuzberg extract document.pdf --tables --format json --pretty
+    # Extract with JSON format (includes tables when detected)
+    kreuzberg extract document.pdf --format json
 
     # Save tables to JSON
-    kreuzberg extract spreadsheet.xlsx --tables --format json > tables.json
+    kreuzberg extract spreadsheet.xlsx --format json > tables.json
 
     # Extract and parse table markdown
-    kreuzberg extract document.pdf --tables --format json | \
-      jq '.tables[] | .markdown'
+    kreuzberg extract document.pdf --format json | \
+      jq '.tables[]? | .markdown'
 
     # Get table cells
-    kreuzberg extract document.pdf --tables --format json | \
-      jq '.tables[] | .cells'
+    kreuzberg extract document.pdf --format json | \
+      jq '.tables[]? | .cells'
 
     # Batch extract tables from multiple files
-    kreuzberg batch documents/**/*.pdf --tables --format json > all_tables.json
+    kreuzberg batch documents/**/*.pdf --format json > all_tables.json
     ```
 
     **JSON Table Structure:**

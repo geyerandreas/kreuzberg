@@ -44,40 +44,36 @@ The Kreuzberg CLI provides command-line access to all extraction features. This 
 # Extract text content to stdout
 kreuzberg extract document.pdf
 
-# Extract and save to output file
-kreuzberg extract document.pdf -o output.txt
-
-# Extract with document metadata included
-kreuzberg extract document.pdf --metadata
+# Specify MIME type (auto-detected if not provided)
+kreuzberg extract document.pdf --mime-type application/pdf
 ```
 
-### Extract from Multiple Files
+### Batch Extract Multiple Files
+
+Use the `batch` command to extract from multiple files:
 
 ```bash title="Terminal"
-# Extract from multiple files at once
-kreuzberg extract doc1.pdf doc2.docx doc3.pptx
+# Extract from multiple files
+kreuzberg batch doc1.pdf doc2.docx doc3.txt
 
-# Extract using glob patterns
-kreuzberg extract documents/**/*.pdf
+# Batch extract all PDFs in directory
+kreuzberg batch documents/*.pdf
 
-# Extract all files in a directory
-kreuzberg extract documents/
+# Batch extract recursively
+kreuzberg batch documents/**/*.pdf
 ```
 
 ### Output Formats
 
 ```bash title="Terminal"
-# Output as plain text (default format)
-kreuzberg extract document.pdf
+# Output as plain text (default for extract)
+kreuzberg extract document.pdf --format text
 
-# Output as JSON
+# Output as JSON (default for batch)
+kreuzberg batch documents/*.pdf --format json
+
+# Extract single file as JSON
 kreuzberg extract document.pdf --format json
-
-# Output as JSON including document metadata
-kreuzberg extract document.pdf --format json --metadata
-
-# Output as formatted JSON with indentation
-kreuzberg extract document.pdf --format json --pretty
 ```
 
 ## OCR Extraction
@@ -85,14 +81,11 @@ kreuzberg extract document.pdf --format json --pretty
 ### Enable OCR
 
 ```bash title="Terminal"
-# Enable OCR using Tesseract backend
-kreuzberg extract scanned.pdf --ocr
+# Enable OCR (overrides config file setting)
+kreuzberg extract scanned.pdf --ocr true
 
-# Extract with specific OCR language
-kreuzberg extract scanned.pdf --ocr --language eng
-
-# Extract with multiple OCR languages
-kreuzberg extract scanned.pdf --ocr --language eng+deu+fra
+# Disable OCR
+kreuzberg extract document.pdf --ocr false
 ```
 
 ### Force OCR
@@ -100,37 +93,32 @@ kreuzberg extract scanned.pdf --ocr --language eng+deu+fra
 Force OCR even for PDFs with text layer:
 
 ```bash title="Terminal"
-kreuzberg extract document.pdf --ocr --force-ocr
+# Force OCR to run regardless of existing text
+kreuzberg extract document.pdf --force-ocr true
 ```
 
 ### OCR Configuration
 
-```bash title="Terminal"
-# Extract with custom Tesseract page segmentation mode
-kreuzberg extract scanned.pdf --ocr --tesseract-config "--psm 6"
+OCR options are configured via config file. CLI flags override config settings:
 
-# Page segmentation modes (--psm):
-# 0  = Orientation and script detection only
-# 1  = Automatic page segmentation with OSD
-# 3  = Fully automatic page segmentation (default)
-# 6  = Single uniform block of text
-# 11 = Sparse text detection
+```bash title="Terminal"
+# Extract with OCR enabled via config file
+kreuzberg extract scanned.pdf --config kreuzberg.toml --ocr true
 ```
+
+Configure OCR backend, language, and Tesseract options in your config file (see Configuration Files section).
 
 ## Configuration Files
 
 ### Using Config Files
 
-Kreuzberg automatically discovers configuration files:
+Kreuzberg automatically discovers configuration files in this order:
+
+1. Current directory: `./kreuzberg.{toml,yaml,yml,json}`
+2. User config: `~/.config/kreuzberg/config.{toml,yaml,yml,json}`
+3. System config: `/etc/kreuzberg/config.{toml,yaml,yml,json}`
 
 ```bash title="Terminal"
-# Configuration file search order:
-# 1. ./kreuzberg.toml
-# 2. ./kreuzberg.yaml
-# 3. ./kreuzberg.json
-# 4. ./.kreuzberg/config.toml
-# 5. ~/.config/kreuzberg/config.toml
-
 # Extract using discovered configuration
 kreuzberg extract document.pdf
 ```
@@ -146,116 +134,94 @@ kreuzberg extract document.pdf --config my-config.toml
 **kreuzberg.toml:**
 
 ```toml title="OCR configuration"
+use_cache = true
+enable_quality_processing = true
+
 [ocr]
 backend = "tesseract"
 language = "eng"
-tesseract_config = "--psm 3"
 
-# Enable quality processing for better output
-enable_quality_processing = true
+[ocr.tesseract_config]
+psm = 3
 
-# Enable result caching
-use_cache = true
-
-# Text chunking configuration
 [chunking]
 max_chunk_size = 1000
 overlap = 100
-
-# Token reduction for LLM processing
-[token_reduction]
-enabled = true
-target_reduction = 0.3
-
-# Automatic language detection
-[language_detection]
-enabled = true
-detect_multiple = true
 ```
 
 **kreuzberg.yaml:**
 
 ```yaml title="kreuzberg.yaml"
+use_cache: true
+enable_quality_processing: true
+
 ocr:
   backend: tesseract
   language: eng
-  tesseract_config: "--psm 3"
-
-enable_quality_processing: true
-use_cache: true
+  tesseract_config:
+    psm: 3
 
 chunking:
   max_chunk_size: 1000
   overlap: 100
-
-token_reduction:
-  enabled: true
-  target_reduction: 0.3
-
-language_detection:
-  enabled: true
-  detect_multiple: true
 ```
 
 **kreuzberg.json:**
 
 ```json title="kreuzberg.json"
 {
+  "use_cache": true,
+  "enable_quality_processing": true,
   "ocr": {
     "backend": "tesseract",
     "language": "eng",
-    "tesseract_config": "--psm 3"
+    "tesseract_config": {
+      "psm": 3
+    }
   },
-  "enable_quality_processing": true,
-  "use_cache": true,
   "chunking": {
     "max_chunk_size": 1000,
     "overlap": 100
-  },
-  "token_reduction": {
-    "enabled": true,
-    "target_reduction": 0.3
-  },
-  "language_detection": {
-    "enabled": true,
-    "detect_multiple": true
   }
 }
 ```
 
 ## Batch Processing
 
-### Process Multiple Files
+Use the `batch` command to process multiple files:
 
 ```bash title="Terminal"
 # Extract all PDFs in directory
-kreuzberg extract documents/*.pdf -o output/
+kreuzberg batch documents/*.pdf
 
 # Extract PDFs recursively from subdirectories
-kreuzberg extract documents/**/*.pdf -o output/
+kreuzberg batch documents/**/*.pdf
 
 # Extract multiple file types
-kreuzberg extract documents/**/*.{pdf,docx,txt}
+kreuzberg batch documents/**/*.{pdf,docx,txt}
 ```
 
-### Batch with JSON Output
+### Batch with Output Formats
 
 ```bash title="Terminal"
-# Output all results as single JSON array
-kreuzberg extract documents/*.pdf --format json --output results.json
+# Output as JSON (default for batch command)
+kreuzberg batch documents/*.pdf --format json
 
-# Output separate JSON file per input document
-kreuzberg extract documents/*.pdf --format json --output-dir results/
+# Output as plain text
+kreuzberg batch documents/*.pdf --format text
 ```
 
-### Parallel Processing
+### Batch with OCR
 
 ```bash title="Terminal"
-# Enable parallel processing with automatic worker count
-kreuzberg extract documents/*.pdf --parallel
+# Batch extract with OCR enabled
+kreuzberg batch scanned/*.pdf --ocr true
 
-# Process with specific number of worker threads
-kreuzberg extract documents/*.pdf --parallel --workers 4
+# Batch extract with force OCR
+kreuzberg batch documents/*.pdf --force-ocr true
+
+# Batch extract with quality processing
+kreuzberg batch documents/*.pdf --quality true
 ```
 
 ## Advanced Features
@@ -264,55 +230,57 @@ kreuzberg extract documents/*.pdf --parallel --workers 4
 
 ```bash title="Terminal"
 # Extract with automatic language detection
-kreuzberg extract document.pdf --detect-language
+kreuzberg extract document.pdf --detect-language true
 
-# Output detected languages in JSON format
-kreuzberg extract document.pdf --detect-language --format json
+# Disable language detection
+kreuzberg extract document.pdf --detect-language false
 ```
 
 ### Content Chunking
 
 ```bash title="Terminal"
 # Split content into chunks for LLM processing
-kreuzberg extract document.pdf --chunk --chunk-size 1000
+kreuzberg extract document.pdf --chunk true
 
-# Split content with overlapping chunks
-kreuzberg extract document.pdf --chunk --chunk-size 1000 --chunk-overlap 100
+# Specify chunk size and overlap
+kreuzberg extract document.pdf --chunk true --chunk-size 1000 --chunk-overlap 100
 
 # Output chunked content as JSON
-kreuzberg extract document.pdf --chunk --format json
-```
-
-### Token Reduction
-
-```bash title="Terminal"
-# Reduce token count by 30% while preserving meaning
-kreuzberg extract document.pdf --reduce-tokens --reduction-target 0.3
+kreuzberg extract document.pdf --chunk true --format json
 ```
 
 ### Quality Processing
 
 ```bash title="Terminal"
-# Apply quality processing for improved formatting and cleanup
-kreuzberg extract document.pdf --quality-processing
+# Apply quality processing for improved formatting
+kreuzberg extract document.pdf --quality true
+
+# Disable quality processing
+kreuzberg extract document.pdf --quality false
+
+# Batch extraction with quality processing
+kreuzberg batch documents/*.pdf --quality true
 ```
 
 ### Caching
 
 ```bash title="Terminal"
 # Extract with result caching enabled (default)
-kreuzberg extract scanned.pdf --ocr --cache
+kreuzberg extract document.pdf
 
 # Extract without caching results
-kreuzberg extract scanned.pdf --ocr --no-cache
+kreuzberg extract document.pdf --no-cache true
 
 # Clear all cached results
 kreuzberg cache clear
+
+# View cache statistics
+kreuzberg cache stats
 ```
 
 ## Output Options
 
-### Standard Output
+### Standard Output (Text Format)
 
 ```bash title="Terminal"
 # Extract and print content to stdout
@@ -320,196 +288,96 @@ kreuzberg extract document.pdf
 
 # Extract and redirect output to file
 kreuzberg extract document.pdf > output.txt
-```
 
-### File Output
-
-```bash title="Terminal"
-# Extract and save to single output file
-kreuzberg extract document.pdf -o output.txt
-
-# Extract multiple files preserving directory structure
-kreuzberg extract documents/*.pdf -o output_dir/
+# Batch extract as text
+kreuzberg batch documents/*.pdf --format text
 ```
 
 ### JSON Output
 
 ```bash title="Terminal"
-# Output as compact JSON
+# Output as JSON
 kreuzberg extract document.pdf --format json
 
-# Output as formatted JSON with indentation
-kreuzberg extract document.pdf --format json --pretty
-
-# Output as JSON including document metadata
-kreuzberg extract document.pdf --format json --metadata
+# Batch extract as JSON (default format)
+kreuzberg batch documents/*.pdf --format json
 ```
 
 **JSON Output Structure:**
+
+The JSON output includes extracted content and related metadata:
 
 ```json title="JSON Response"
 {
   "content": "Extracted text content...",
   "metadata": {
-    "mime_type": "application/pdf",
-    "page_count": 10,
-    "author": "John Doe"
-  },
-  "tables": [
-    {
-      "cells": [["Name", "Age"], ["Alice", "30"]],
-      "markdown": "| Name | Age |\n|------|-----|\n| Alice | 30 |"
-    }
-  ],
-  "chunks": [],
-  "detected_languages": ["eng"],
-  "keywords": []
+    "mime_type": "application/pdf"
+  }
 }
-```
-
-### Table Extraction
-
-```bash title="Terminal"
-# Extract tables from document
-kreuzberg extract document.pdf --tables
-
-# Extract tables and output as JSON
-kreuzberg extract document.pdf --tables --format json
-
-# Extract tables formatted as markdown
-kreuzberg extract document.pdf --tables --table-format markdown
 ```
 
 ## Error Handling
 
-### Verbose Output
+The CLI returns appropriate exit codes on error. Basic error handling can be done with standard shell commands:
 
 ```bash title="Terminal"
-# Extract with detailed error messages
-kreuzberg extract document.pdf --verbose
+# Check for extraction errors
+kreuzberg extract document.pdf || echo "Extraction failed"
 
-# Extract with debug-level logging
-kreuzberg extract document.pdf --debug
-```
-
-### Continue on Errors
-
-```bash title="Terminal"
-# Process all files even if some fail
-kreuzberg extract documents/*.pdf --continue-on-error
-
-# Process all files and display error summary
-kreuzberg extract documents/*.pdf --continue-on-error --show-errors
-```
-
-### Timeout
-
-```bash title="Terminal"
-# Set maximum extraction time per document (seconds)
-kreuzberg extract document.pdf --timeout 30
-
-# Process problematic files with timeout and error tolerance
-kreuzberg extract problematic/*.pdf --timeout 10 --continue-on-error
+# Continue processing even if one file fails (bash)
+for file in documents/*.pdf; do
+  kreuzberg batch "$file" || continue
+done
 ```
 
 ## Examples
 
-### Extract All PDFs in Directory
+### Extract Single PDF
 
-```bash title="Extract all PDFs from directory"
-kreuzberg extract documents/*.pdf -o output/
+```bash title="Extract text from PDF"
+kreuzberg extract document.pdf
 ```
 
-### OCR All Scanned Documents
+### Batch Extract All PDFs in Directory
+
+```bash title="Extract all PDFs from directory as JSON"
+kreuzberg batch documents/*.pdf --format json
+```
+
+### OCR Scanned Documents
 
 ```bash title="OCR extraction from scanned documents"
-kreuzberg extract scans/*.pdf --ocr --language eng -o ocr_output/
+kreuzberg batch scans/*.pdf --ocr true --format json
 ```
 
-### Extract with Full Metadata
+### Extract with Quality Processing
 
-```bash title="Extract with complete metadata as pretty JSON"
-kreuzberg extract document.pdf --format json --metadata --pretty
+```bash title="Extract with quality processing enabled"
+kreuzberg extract document.pdf --quality true --format json
 ```
 
-### Process Documents for LLM
+### Extract with Chunking
 
-```bash title="Prepare documents for LLM with chunking and token reduction"
-kreuzberg extract documents/*.pdf \
-  --chunk --chunk-size 1000 --chunk-overlap 100 \
-  --reduce-tokens --reduction-target 0.3 \
-  --format json -o llm_ready/
+```bash title="Extract with chunking for LLM processing"
+kreuzberg extract document.pdf --config kreuzberg.toml --chunk true --chunk-size 1000 --chunk-overlap 100 --format json
 ```
 
-### Extract Tables from Spreadsheets
+### Batch Extract Multiple File Types
 
-```bash title="Extract table data from spreadsheets"
-kreuzberg extract data/*.xlsx --tables --format json --pretty
+```bash title="Extract multiple file types in batch"
+kreuzberg batch documents/**/*.{pdf,docx,txt} --format json
 ```
 
-### Multilingual OCR
+### Extract with Config File
 
-```bash title="OCR with multiple languages and detection"
-kreuzberg extract international/*.pdf \
-  --ocr --language eng+deu+fra+spa \
-  --detect-language \
-  --format json -o results/
+```bash title="Extract using configuration file"
+kreuzberg extract document.pdf --config /path/to/kreuzberg.toml
 ```
 
-### Batch Processing with Progress
+### Detect MIME Type
 
-```bash title="Parallel batch processing with error handling"
-kreuzberg extract large_dataset/**/*.pdf \
-  --parallel --workers 8 \
-  --continue-on-error \
-  --verbose \
-  -o processed/
-```
-
-## Environment Variables
-
-Set default configuration via environment variables:
-
-```bash title="Terminal"
-# Configure default OCR settings
-export KREUZBERG_OCR_BACKEND=tesseract
-export KREUZBERG_OCR_LANGUAGE=eng
-
-# Configure cache location and behavior
-export KREUZBERG_CACHE_DIR=~/.cache/kreuzberg
-export KREUZBERG_CACHE_ENABLED=true
-
-# Configure parallel processing
-export KREUZBERG_WORKERS=4
-
-# Extract using configured environment variables
-kreuzberg extract document.pdf --ocr
-```
-
-## Shell Integration
-
-### Bash Completion
-
-```bash title="Terminal"
-# Generate and save bash completion script
-kreuzberg completion bash > ~/.local/share/bash-completion/completions/kreuzberg
-
-# Enable completion in current session
-eval "$(kreuzberg completion bash)"
-```
-
-### Zsh Completion
-
-```bash title="Terminal"
-# Enable zsh completion (add to .zshrc)
-eval "$(kreuzberg completion zsh)"
-```
-
-### Fish Completion
-
-```bash title="Terminal"
-# Generate and save fish completion script
-kreuzberg completion fish > ~/.config/fish/completions/kreuzberg.fish
+```bash title="Detect file MIME type"
+kreuzberg detect document.pdf
 ```
 
 ## Docker Usage
@@ -521,9 +389,9 @@ kreuzberg completion fish > ~/.config/fish/completions/kreuzberg.fish
 docker run -v $(pwd):/data goldziher/kreuzberg:latest \
   extract /data/document.pdf
 
-# Extract and save output to host directory
+# Extract and save output to host directory using shell redirection
 docker run -v $(pwd):/data goldziher/kreuzberg:latest \
-  extract /data/document.pdf -o /data/output.txt
+  extract /data/document.pdf > output.txt
 ```
 
 ### Docker with OCR
@@ -531,7 +399,7 @@ docker run -v $(pwd):/data goldziher/kreuzberg:latest \
 ```bash title="Terminal"
 # Extract with OCR using Docker
 docker run -v $(pwd):/data goldziher/kreuzberg:latest \
-  extract /data/scanned.pdf --ocr --language eng
+  extract /data/scanned.pdf --ocr true
 ```
 
 ### Docker Compose
@@ -546,8 +414,7 @@ services:
     image: goldziher/kreuzberg:latest
     volumes:
       - ./documents:/input
-      - ./output:/output
-    command: extract /input --ocr -o /output
+    command: extract /input/document.pdf --ocr true
 ```
 
 Run:
@@ -558,37 +425,24 @@ docker-compose up
 
 ## Performance Tips
 
-### Optimize for Large Files
+### Optimize Extraction Speed
 
 ```bash title="Terminal"
 # Extract without quality processing for faster speed
-kreuzberg extract large.pdf --no-quality-processing
+kreuzberg extract large.pdf --quality false
 
-# Extract with extended timeout for large files
-kreuzberg extract large.pdf --timeout 300
-
-# Extract using parallel processing for multiple large files
-kreuzberg extract large_files/*.pdf --parallel --workers 8
+# Use batch for processing multiple files
+kreuzberg batch large_files/*.pdf --format json
 ```
 
-### Optimize for Small Files
+### Manage Memory Usage
 
 ```bash title="Terminal"
-# Extract small files without parallel overhead
-kreuzberg extract small_files/*.txt --no-parallel
+# Disable caching to reduce memory footprint
+kreuzberg extract large_file.pdf --no-cache true
 
-# Extract without caching for quick one-off processing
-kreuzberg extract small_files/*.txt --no-cache
-```
-
-### Memory Management
-
-```bash title="Terminal"
-# Extract large files sequentially to minimize memory usage
-kreuzberg extract huge_files/*.pdf --workers 1
-
-# Extract and compress output to save disk space
-kreuzberg extract huge_file.pdf | gzip > output.txt.gz
+# Compress output to save disk space
+kreuzberg extract document.pdf | gzip > output.txt.gz
 ```
 
 ## Troubleshooting
@@ -599,13 +453,15 @@ kreuzberg extract huge_file.pdf | gzip > output.txt.gz
 # Display installed version
 kreuzberg --version
 
-# Verify system dependencies
-kreuzberg doctor
+# Display help for commands
+kreuzberg --help
 ```
 
 ### Common Issues
 
 **Issue: "Tesseract not found"**
+
+When using OCR, Tesseract must be installed:
 
 ```bash title="Terminal"
 # Install Tesseract OCR engine on macOS
@@ -615,19 +471,16 @@ brew install tesseract
 sudo apt-get install tesseract-ocr
 ```
 
+**Issue: "File not found"**
 
-**Issue: "Out of memory"**
-
-```bash title="Terminal"
-# Reduce memory usage by processing sequentially
-kreuzberg extract large_files/*.pdf --workers 1 --no-parallel
-```
-
-**Issue: "Extraction timeout"**
+Ensure the file path is correct and accessible:
 
 ```bash title="Terminal"
-# Extend timeout for slow documents
-kreuzberg extract slow_file.pdf --timeout 300
+# Check if file exists and is readable
+ls -la document.pdf
+
+# Extract with absolute path
+kreuzberg extract /absolute/path/to/document.pdf
 ```
 
 ## Server Commands
@@ -636,46 +489,27 @@ kreuzberg extract slow_file.pdf --timeout 300
 
 The `serve` command starts a RESTful HTTP API server:
 
-=== "Rust CLI"
+```bash title="Terminal"
+# Start server on default host (127.0.0.1) and port (8000)
+kreuzberg serve
 
-    --8<-- "snippets/cli/serve_rust.md"
+# Start server on specific host and port
+kreuzberg serve --host 0.0.0.0 --port 8000
 
-=== "Python"
+# Start server with custom configuration file
+kreuzberg serve --config kreuzberg.toml --host 0.0.0.0 --port 8000
+```
 
-    --8<-- "snippets/cli/serve_python.md"
+### Server Endpoints
 
-=== "TypeScript"
-
-    --8<-- "snippets/cli/serve_typescript.md"
-
-=== "Go"
-
-    --8<-- "snippets/cli/serve_go.md"
-
-=== "Java"
-
-    --8<-- "snippets/cli/serve_java.md"
-
-=== "Ruby"
-
-    ```ruby title="Ruby"
-    require 'kreuzberg'
-
-    # Start API server on port 8000
-    Kreuzberg::APIProxy.run(port: 8000, host: '0.0.0.0') do |server|
-      puts "API server running on http://localhost:8000"
-      # Server runs while block executes
-      # Make HTTP requests to endpoint
-      sleep
-    end
-    ```
-
-The server provides endpoints for:
-- `/extract` - Extract text from uploaded files
-- `/health` - Health check
-- `/info` - Server information
-- `/cache/stats` - Cache statistics
-- `/cache/clear` - Clear cache
+The server provides the following endpoints:
+- `POST /extract` - Extract text from uploaded files
+- `POST /batch` - Batch extract from multiple files
+- `GET /detect` - Detect MIME type of file
+- `GET /health` - Health check
+- `GET /info` - Server information
+- `GET /cache/stats` - Cache statistics
+- `POST /cache/clear` - Clear cache
 
 See [API Server Guide](../guides/api-server.md) for full API details.
 
@@ -683,36 +517,19 @@ See [API Server Guide](../guides/api-server.md) for full API details.
 
 The `mcp` command starts a Model Context Protocol server for AI integration:
 
-=== "Rust CLI"
+```bash title="Terminal"
+# Start MCP server with stdio transport (default for Claude Desktop)
+kreuzberg mcp
 
-    --8<-- "snippets/cli/mcp_rust.md"
+# Start MCP server with HTTP transport
+kreuzberg mcp --transport http
 
-=== "Python"
+# Start MCP server on specific HTTP host and port
+kreuzberg mcp --transport http --host 0.0.0.0 --port 8001
 
-    --8<-- "snippets/cli/mcp_python.md"
-
-=== "TypeScript"
-
-    --8<-- "snippets/cli/mcp_typescript.md"
-
-=== "Go"
-
-    --8<-- "snippets/cli/mcp_go.md"
-
-=== "Java"
-
-    --8<-- "snippets/cli/mcp_java.md"
-
-=== "Ruby"
-
-    ```ruby title="Ruby"
-    require 'kreuzberg'
-
-    # Start MCP server for Claude Desktop
-    server = Kreuzberg::MCPProxy::Server.new(transport: 'stdio')
-    server.start
-    # Server communicates via stdio for Claude integration
-    ```
+# Start MCP server with custom configuration file
+kreuzberg mcp --config kreuzberg.toml --transport stdio
+```
 
 The MCP server provides tools for AI agents:
 - `extract_file` - Extract text from a file path
@@ -759,12 +576,11 @@ kreuzberg --help
 
 # Display command-specific help
 kreuzberg extract --help
+kreuzberg batch --help
+kreuzberg detect --help
 kreuzberg serve --help
 kreuzberg mcp --help
 kreuzberg cache --help
-
-# Display all available options
-kreuzberg extract --help-all
 ```
 
 ### Version Information
@@ -772,9 +588,6 @@ kreuzberg extract --help-all
 ```bash title="Terminal"
 # Display version number
 kreuzberg --version
-
-# Display detailed version information as JSON
-kreuzberg version --format json
 ```
 
 ## Next Steps

@@ -515,20 +515,26 @@ These are applied automatically and require no configuration.
 Extract with OCR using the command-line interface:
 
 ```bash title="Terminal"
-# Basic OCR extraction
-kreuzberg extract scanned.pdf --ocr
+# Basic OCR extraction (uses config file for language/settings)
+kreuzberg extract scanned.pdf --ocr true
 
-# Specify language
-kreuzberg extract scanned.pdf --ocr --language deu
+# Force OCR on all pages (even if text layer exists)
+kreuzberg extract document.pdf --force-ocr true
 
-# Multiple languages
-kreuzberg extract scanned.pdf --ocr --language "eng+deu"
+# Use config file to specify language and other OCR settings
+kreuzberg extract scanned.pdf --config kreuzberg.toml --ocr true
+```
 
-# Force OCR on all pages
-kreuzberg extract document.pdf --ocr --force-ocr
+**Example config file (kreuzberg.toml) for OCR settings:**
 
-# Custom DPI
-kreuzberg extract scanned.pdf --ocr --dpi 600
+```toml
+[ocr]
+backend = "tesseract"
+language = "eng"           # Single language
+# language = "eng+deu"     # Multiple languages
+
+[ocr.tesseract_config]
+psm = 3                    # Page segmentation mode
 ```
 
 ## Next Steps

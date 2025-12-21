@@ -2,9 +2,9 @@
 # Extract to stdout
 kreuzberg extract document.pdf
 
-# Save to file
-kreuzberg extract document.pdf -o output.txt
+# Save to file using shell redirection
+kreuzberg extract document.pdf > output.txt
 
-# Extract with metadata
-kreuzberg extract document.pdf --metadata
+# Extract with JSON format (includes metadata)
+kreuzberg extract document.pdf --format json
 ```
