@@ -98,7 +98,7 @@ pub struct ResultPool {
     results: Mutex<Vec<ExtractionResult>>,
 
     /// Initial capacity (for growth tracking)
-    initial_capacity: usize,
+    _initial_capacity: usize,
 
     /// Statistics tracking
     total_allocations: AtomicUsize,
@@ -112,7 +112,7 @@ impl ResultPool {
     fn new(capacity: usize) -> Self {
         Self {
             results: Mutex::new(Vec::with_capacity(capacity)),
-            initial_capacity: capacity,
+            _initial_capacity: capacity,
             total_allocations: AtomicUsize::new(0),
             growth_events: AtomicUsize::new(0),
         }

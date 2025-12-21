@@ -42,8 +42,12 @@ use kreuzberg::types::ExtractionResult;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int, c_void};
 use std::path::Path;
+
+#[cfg(feature = "rayon")]
 use std::ptr;
+#[cfg(feature = "rayon")]
 use std::sync::Arc;
+#[cfg(feature = "rayon")]
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Callback function invoked for each successfully extracted result.
@@ -284,6 +288,7 @@ pub unsafe extern "C" fn kreuzberg_extract_batch_streaming(
 /// }
 /// ```
 #[unsafe(no_mangle)]
+#[cfg_attr(not(feature = "rayon"), allow(unused_variables))]
 pub unsafe extern "C" fn kreuzberg_extract_batch_parallel(
     files: *const *const c_char,
     count: usize,
