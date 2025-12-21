@@ -44,6 +44,20 @@ char *kreuzberg_get_valid_binarization_methods(void);
 char *kreuzberg_get_valid_language_codes(void);
 char *kreuzberg_get_valid_ocr_backends(void);
 char *kreuzberg_get_valid_token_reduction_levels(void);
+
+// Phase 1 Configuration FFI functions
+ExtractionConfig *kreuzberg_config_from_json(const char *json_config);
+void kreuzberg_config_free(ExtractionConfig *config);
+int32_t kreuzberg_config_is_valid(const char *json_config);
+char *kreuzberg_config_to_json(const ExtractionConfig *config);
+char *kreuzberg_config_get_field(const ExtractionConfig *config, const char *field_name);
+int32_t kreuzberg_config_merge(ExtractionConfig *base, const ExtractionConfig *override_config);
+
+// Phase 1 Result Accessor FFI functions
+int32_t kreuzberg_result_get_page_count(const CExtractionResult *result);
+int32_t kreuzberg_result_get_chunk_count(const CExtractionResult *result);
+char *kreuzberg_result_get_detected_language(const CExtractionResult *result);
+CMetadataField kreuzberg_result_get_metadata_field(const CExtractionResult *result, const char *field_name);
 */
 import "C"
 

@@ -3,7 +3,7 @@
 //! Provides Python-friendly wrappers around extraction result types.
 
 use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList};
+use pyo3::types::{PyAny, PyDict, PyList};
 
 use crate::plugins::json_value_to_py;
 
@@ -95,6 +95,109 @@ impl ExtractionResult {
 
     fn __str__(&self) -> String {
         format!("ExtractionResult: {} characters", self.content.len())
+    }
+
+    /// Get the total number of pages in the document.
+    ///
+    /// Returns the page count from the document's page extraction results,
+    /// or 0 if pages were not extracted.
+    ///
+    /// Returns:
+    ///     int: Total page count
+    ///
+    /// Example:
+    ///     >>> result = extract_file_sync("document.pdf", None, ExtractionConfig())
+    ///     >>> page_count = result.get_page_count()
+    ///     >>> print(f"Document has {page_count} pages")
+    #[pyo3(name = "get_page_count")]
+    fn get_page_count(&self) -> usize {
+        Python::attach(|py| self.pages.as_ref().map(|pages_py| pages_py.bind(py).len()).unwrap_or(0))
+    }
+
+    /// Get the total number of chunks in the document.
+    ///
+    /// Returns the chunk count from the document's chunking results,
+    /// or 0 if chunking was not performed.
+    ///
+    /// Returns:
+    ///     int: Total chunk count
+    ///
+    /// Example:
+    ///     >>> from kreuzberg import ChunkingConfig, ExtractionConfig
+    ///     >>> config = ExtractionConfig(chunking=ChunkingConfig(max_chars=500))
+    ///     >>> result = extract_file_sync("document.pdf", None, config)
+    ///     >>> chunk_count = result.get_chunk_count()
+    ///     >>> print(f"Document has {chunk_count} chunks")
+    #[pyo3(name = "get_chunk_count")]
+    fn get_chunk_count(&self) -> usize {
+        Python::attach(|py| {
+            self.chunks
+                .as_ref()
+                .map(|chunks_py| chunks_py.bind(py).len())
+                .unwrap_or(0)
+        })
+    }
+
+    /// Get the primary detected language.
+    ///
+    /// Returns the first detected language from the language detection results,
+    /// or None if language detection was not performed or no languages were detected.
+    ///
+    /// Returns:
+    ///     str | None: ISO 639-1 language code (e.g., "en", "de", "fr"), or None
+    ///
+    /// Example:
+    ///     >>> from kreuzberg import LanguageDetectionConfig, ExtractionConfig
+    ///     >>> config = ExtractionConfig(
+    ///     ...     language_detection=LanguageDetectionConfig(enabled=True)
+    ///     ... )
+    ///     >>> result = extract_file_sync("document.pdf", None, config)
+    ///     >>> lang = result.get_detected_language()
+    ///     >>> if lang:
+    ///     ...     print(f"Document language: {lang}")
+    #[pyo3(name = "get_detected_language")]
+    fn get_detected_language(&self) -> Option<String> {
+        Python::attach(|py| {
+            self.detected_languages.as_ref().and_then(|langs_py| {
+                let langs = langs_py.bind(py);
+                if langs.len() > 0 {
+                    langs.get_item(0).ok().and_then(|item| item.extract::<String>().ok())
+                } else {
+                    None
+                }
+            })
+        })
+    }
+
+    /// Get a specific metadata field value.
+    ///
+    /// Retrieves a metadata field by name and parses it from the metadata dictionary.
+    /// Returns None if the field doesn't exist.
+    ///
+    /// Args:
+    ///     field_name (str): Name of the metadata field (e.g., "title", "authors", "language")
+    ///
+    /// Returns:
+    ///     Any | None: Field value (type depends on field), or None if not found
+    ///
+    /// Example:
+    ///     >>> result = extract_file_sync("document.pdf", None, ExtractionConfig())
+    ///     >>> title = result.get_metadata_field("title")
+    ///     >>> if title:
+    ///     ...     print(f"Title: {title}")
+    ///     >>> authors = result.get_metadata_field("authors")
+    ///     >>> if authors:
+    ///     ...     print(f"Authors: {authors}")
+    #[pyo3(name = "get_metadata_field")]
+    fn get_metadata_field(&self, field_name: &str) -> PyResult<Option<Py<PyAny>>> {
+        Python::attach(|py| {
+            let metadata = self.metadata.bind(py);
+            match metadata.get_item(field_name) {
+                Ok(Some(item)) => Ok(Some(item.unbind())),
+                Ok(None) => Ok(None),
+                Err(e) => Err(e),
+            }
+        })
     }
 }
 

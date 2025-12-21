@@ -221,6 +221,26 @@ typedef char *(*DocumentExtractorCallback)(const uint8_t *content,
 typedef char *(*ValidatorCallback)(const char *result_json);
 
 /**
+ * Metadata field accessor structure
+ *
+ * Returned by `kreuzberg_result_get_metadata_field()`. Contains the field value
+ * as JSON and information about whether the field exists.
+ *
+ * # Fields
+ *
+ * * `name` - The field name requested (does not need to be freed)
+ * * `json_value` - JSON representation of the field value, or NULL if field doesn't exist
+ * * `is_null` - 1 if the field doesn't exist, 0 if it does
+ *
+ * The `json_value` pointer (if non-NULL) must be freed with `kreuzberg_free_string()`.
+ */
+typedef struct CMetadataField {
+  const char *name;
+  char *json_value;
+  int32_t is_null;
+} CMetadataField;
+
+/**
  * Extract text and metadata from a file (synchronous).
  *
  * # Safety
@@ -1258,6 +1278,141 @@ void kreuzberg_config_free(ExtractionConfig *config);
 int32_t kreuzberg_config_is_valid(const char *json_config);
 
 /**
+ * Serialize an ExtractionConfig to JSON string.
+ *
+ * Converts an ExtractionConfig structure to its JSON representation, allowing
+ * bindings to serialize configs without reimplementing serialization logic.
+ *
+ * # Arguments
+ *
+ * * `config` - Pointer to an ExtractionConfig structure
+ *
+ * # Returns
+ *
+ * A pointer to a C string containing JSON that MUST be freed with `kreuzberg_free_string`.
+ * Returns NULL on error (check `kreuzberg_last_error`).
+ *
+ * # Safety
+ *
+ * - `config` must be a valid pointer to an ExtractionConfig
+ * - `config` cannot be NULL
+ * - The returned pointer must be freed with `kreuzberg_free_string`
+ *
+ * # Example (C)
+ *
+ * ```c
+ * ExtractionConfig* config = kreuzberg_config_from_json("{\"use_cache\": true}");
+ * if (config != NULL) {
+ *     char* json = kreuzberg_config_to_json(config);
+ *     if (json != NULL) {
+ *         printf("Serialized: %s\n", json);
+ *         kreuzberg_free_string(json);
+ *     }
+ *     kreuzberg_config_free(config);
+ * }
+ * ```
+ */
+char *kreuzberg_config_to_json(const ExtractionConfig *config);
+
+/**
+ * Get a specific field from config as JSON string.
+ *
+ * Retrieves a nested field from the configuration by path and returns its JSON
+ * representation. Supports dot notation for nested fields (e.g., "ocr.backend").
+ *
+ * # Arguments
+ *
+ * * `config` - Pointer to an ExtractionConfig structure
+ * * `field_name` - Null-terminated C string with field path (e.g., "use_cache", "ocr.backend")
+ *
+ * # Returns
+ *
+ * A pointer to a C string containing the field value as JSON, or NULL if:
+ * - The field doesn't exist
+ * - An error occurs during serialization
+ *
+ * The returned pointer (if non-NULL) must be freed with `kreuzberg_free_string`.
+ *
+ * # Safety
+ *
+ * - `config` must be a valid pointer to an ExtractionConfig
+ * - `field_name` must be a valid null-terminated C string
+ * - Neither parameter can be NULL
+ *
+ * # Example (C)
+ *
+ * ```c
+ * ExtractionConfig* config = kreuzberg_config_from_json(
+ *     "{\"use_cache\": true, \"ocr\": {\"backend\": \"tesseract\"}}"
+ * );
+ * if (config != NULL) {
+ *     char* use_cache = kreuzberg_config_get_field(config, "use_cache");
+ *     char* backend = kreuzberg_config_get_field(config, "ocr.backend");
+ *
+ *     if (use_cache != NULL) {
+ *         printf("use_cache: %s\n", use_cache);
+ *         kreuzberg_free_string(use_cache);
+ *     }
+ *
+ *     if (backend != NULL) {
+ *         printf("backend: %s\n", backend);
+ *         kreuzberg_free_string(backend);
+ *     }
+ *
+ *     kreuzberg_config_free(config);
+ * }
+ * ```
+ */
+char *kreuzberg_config_get_field(const ExtractionConfig *config, const char *field_name);
+
+/**
+ * Merge two configs (override takes precedence over base).
+ *
+ * Performs a shallow merge of two ExtractionConfig structures, where fields
+ * from `override_config` take precedence over fields in `base`. The `base`
+ * config is modified in-place.
+ *
+ * # Arguments
+ *
+ * * `base` - Pointer to the base ExtractionConfig (will be modified)
+ * * `override_config` - Pointer to the override ExtractionConfig (read-only)
+ *
+ * # Returns
+ *
+ * - 1 on success
+ * - 0 on error (check `kreuzberg_last_error`)
+ *
+ * # Safety
+ *
+ * - `base` must be a valid mutable pointer to an ExtractionConfig
+ * - `override_config` must be a valid pointer to an ExtractionConfig
+ * - Neither parameter can be NULL
+ * - `base` is modified in-place
+ *
+ * # Example (C)
+ *
+ * ```c
+ * ExtractionConfig* base = kreuzberg_config_from_json(
+ *     "{\"use_cache\": true, \"force_ocr\": false}"
+ * );
+ * ExtractionConfig* override = kreuzberg_config_from_json(
+ *     "{\"force_ocr\": true}"
+ * );
+ *
+ * if (kreuzberg_config_merge(base, override) == 1) {
+ *     // base now has: use_cache=true, force_ocr=true
+ *     char* json = kreuzberg_config_to_json(base);
+ *     printf("Merged config: %s\n", json);
+ *     kreuzberg_free_string(json);
+ * }
+ *
+ * kreuzberg_config_free(base);
+ * kreuzberg_config_free(override);
+ * ```
+ */
+int32_t kreuzberg_config_merge(ExtractionConfig *base, const ExtractionConfig *override_config);
+
+/**
  * Returns the validation error code (0).
  *
  * # C Signature
@@ -1408,6 +1563,162 @@ const char *kreuzberg_error_code_name(uint32_t code);
  * ```
  */
 const char *kreuzberg_error_code_description(uint32_t code);
+
+/**
+ * Get page count from extraction result.
+ *
+ * Returns the total number of pages/slides/sheets detected in the document.
+ *
+ * # Arguments
+ *
+ * * `result` - Pointer to an ExtractionResult structure
+ *
+ * # Returns
+ *
+ * The page count (>= 0) if successful, or -1 on error (check `kreuzberg_last_error`).
+ *
+ * # Safety
+ *
+ * - `result` must be a valid pointer to an ExtractionResult
+ * - `result` cannot be NULL
+ *
+ * # Example (C)
+ *
+ * ```c
+ * ExtractionResult* result = kreuzberg_extract_file("document.pdf", NULL);
+ * if (result != NULL) {
+ *     int page_count = kreuzberg_result_get_page_count(result);
+ *     if (page_count >= 0) {
+ *         printf("Document has %d pages\n", page_count);
+ *     }
+ *     kreuzberg_result_free(result);
+ * }
+ * ```
+ */
+int32_t kreuzberg_result_get_page_count(const CExtractionResult *result);
+
+/**
+ * Get chunk count from extraction result.
+ *
+ * Returns the number of text chunks when chunking is enabled, or 0 if chunking
+ * was not performed.
+ *
+ * # Arguments
+ *
+ * * `result` - Pointer to an ExtractionResult structure
+ *
+ * # Returns
+ *
+ * The chunk count (>= 0) if successful, or -1 on error (check `kreuzberg_last_error`).
+ *
+ * # Safety
+ *
+ * - `result` must be a valid pointer to an ExtractionResult
+ * - `result` cannot be NULL
+ *
+ * # Example (C)
+ *
+ * ```c
+ * ExtractionResult* result = kreuzberg_extract_file("document.pdf", config);
+ * if (result != NULL) {
+ *     int chunk_count = kreuzberg_result_get_chunk_count(result);
+ *     if (chunk_count >= 0) {
+ *         printf("Document has %d chunks\n", chunk_count);
+ *     }
+ *     kreuzberg_result_free(result);
+ * }
+ * ```
+ */
+int32_t kreuzberg_result_get_chunk_count(const CExtractionResult *result);
+
+/**
+ * Get detected language from extraction result.
+ *
+ * Returns the primary detected language as an ISO 639 language code.
+ * If multiple languages were detected, returns the primary one.
+ *
+ * # Arguments
+ *
+ * * `result` - Pointer to an ExtractionResult structure
+ *
+ * # Returns
+ *
+ * A pointer to a C string containing the language code (e.g., "en", "de"),
+ * or NULL if no language was detected or on error (check `kreuzberg_last_error`).
+ *
+ * The returned pointer must be freed with `kreuzberg_free_string()`.
+ *
+ * # Safety
+ *
+ * - `result` must be a valid pointer to an ExtractionResult
+ * - `result` cannot be NULL
+ * - The returned pointer (if non-NULL) must be freed with `kreuzberg_free_string`
+ *
+ * # Example (C)
+ *
+ * ```c
+ * ExtractionResult* result = kreuzberg_extract_file("document.pdf", NULL);
+ * if (result != NULL) {
+ *     char* language = kreuzberg_result_get_detected_language(result);
+ *     if (language != NULL) {
+ *         printf("Detected language: %s\n", language);
+ *         kreuzberg_free_string(language);
+ *     }
+ *     kreuzberg_result_free(result);
+ * }
+ * ```
+ */
+char *kreuzberg_result_get_detected_language(const CExtractionResult *result);
+
+/**
+ * Get a metadata field by name.
+ *
+ * Retrieves a metadata field from the extraction result and returns its value
+ * as a JSON string. Supports nested fields with dot notation (e.g., "format.pages").
+ *
+ * # Arguments
+ *
+ * * `result` - Pointer to an ExtractionResult structure
+ * * `field_name` - Null-terminated C string with the field name
+ *
+ * # Returns
+ *
+ * A CMetadataField structure containing:
+ * - `name`: The field name (caller should not free)
+ * - `json_value`: Pointer to field value as JSON string (must free with `kreuzberg_free_string`),
+ *   or NULL if field doesn't exist
+ * - `is_null`: 1 if field doesn't exist, 0 if it does
+ *
+ * # Safety
+ *
+ * - `result` must be a valid pointer to an ExtractionResult
+ * - `field_name` must be a valid null-terminated C string
+ * - Neither parameter can be NULL
+ * - The returned `json_value` (if non-NULL) must be freed with `kreuzberg_free_string`
+ *
+ * # Example (C)
+ *
+ * ```c
+ * ExtractionResult* result = kreuzberg_extract_file("document.pdf", NULL);
+ * if (result != NULL) {
+ *     CMetadataField title_field = kreuzberg_result_get_metadata_field(result, "title");
+ *     if (!title_field.is_null) {
+ *         printf("Title: %s\n", title_field.json_value);
+ *         kreuzberg_free_string(title_field.json_value);
+ *     }
+ *
+ *     CMetadataField author_field = kreuzberg_result_get_metadata_field(result, "authors");
+ *     if (!author_field.is_null) {
+ *         printf("Authors: %s\n", author_field.json_value);
+ *         kreuzberg_free_string(author_field.json_value);
+ *     }
+ *
+ *     kreuzberg_result_free(result);
+ * }
+ * ```
+ */
+struct CMetadataField kreuzberg_result_get_metadata_field(const CExtractionResult *result,
+                                                          const char *field_name);
 
 /**
  * Validates a binarization method string.

@@ -110,6 +110,110 @@ public final class ExtractionResult {
         return subject;
     }
 
+    /**
+     * Get the total page count from the result.
+     *
+     * <p>This calls the Rust FFI backend for efficient access to metadata.</p>
+     *
+     * @return the page count, or -1 on error
+     * @since 4.0.0
+     */
+    public int getPageCount() {
+        // Return directly from metadata if available
+        if (this.metadata != null && this.metadata.pages != null) {
+            return this.metadata.pages.totalCount;
+        }
+        return 0;
+    }
+
+    /**
+     * Get the total chunk count from the result.
+     *
+     * <p>Returns the number of text chunks when chunking is enabled.</p>
+     *
+     * @return the chunk count, or 0 if no chunks available
+     * @since 4.0.0
+     */
+    public int getChunkCount() {
+        if (this.chunks != null) {
+            return this.chunks.size();
+        }
+        return 0;
+    }
+
+    /**
+     * Get the detected primary language code.
+     *
+     * <p>Returns the primary detected language as an ISO 639 code.</p>
+     *
+     * @return the detected language code (e.g., "en", "de"), or empty if not detected
+     * @since 4.0.0
+     */
+    public Optional<String> getDetectedLanguage() {
+        // Check metadata.language first
+        if (this.metadata != null && this.metadata.language != null && !this.metadata.language.isEmpty()) {
+            return Optional.of(this.metadata.language);
+        }
+
+        // Fall back to first detected language
+        if (this.detectedLanguages != null && !this.detectedLanguages.isEmpty()) {
+            return Optional.of(this.detectedLanguages.get(0));
+        }
+
+        return Optional.empty();
+    }
+
+    /**
+     * Get a metadata field by name.
+     *
+     * <p>Supports nested field access with dot notation (e.g., "format.pages").</p>
+     *
+     * @param fieldName the field name to retrieve
+     * @return the field value as an Object, or empty if not found
+     * @throws KreuzbergException if retrieval fails
+     * @since 4.0.0
+     */
+    public Optional<Object> getMetadataField(String fieldName) throws KreuzbergException {
+        if (fieldName == null || fieldName.isEmpty()) {
+            throw new IllegalArgumentException("fieldName cannot be null or empty");
+        }
+
+        // Direct field access without FFI for top-level metadata fields
+        if ("title".equals(fieldName)) {
+            return Optional.ofNullable(this.metadata.title);
+        }
+        if ("author".equals(fieldName)) {
+            return Optional.ofNullable(this.metadata.author);
+        }
+        if ("subject".equals(fieldName)) {
+            return Optional.ofNullable(this.metadata.subject);
+        }
+        if ("keywords".equals(fieldName)) {
+            return Optional.ofNullable(this.metadata.keywords);
+        }
+        if ("language".equals(fieldName)) {
+            return Optional.ofNullable(this.metadata.language);
+        }
+        if ("created".equals(fieldName)) {
+            return Optional.ofNullable(this.metadata.created);
+        }
+        if ("modified".equals(fieldName)) {
+            return Optional.ofNullable(this.metadata.modified);
+        }
+        if ("creators".equals(fieldName)) {
+            return Optional.ofNullable(this.metadata.creators);
+        }
+        if ("format".equals(fieldName)) {
+            return Optional.ofNullable(this.metadata.format);
+        }
+        if ("pages".equals(fieldName)) {
+            return Optional.ofNullable(this.metadata.pages);
+        }
+
+        // For unknown fields, return empty
+        return Optional.empty();
+    }
+
     @Override
     public String toString() {
         return "ExtractionResult{"

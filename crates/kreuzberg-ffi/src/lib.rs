@@ -6,6 +6,7 @@
 mod config;
 mod error;
 mod panic_shield;
+mod result;
 mod validation;
 
 pub use error::ErrorCode as KreuzbergErrorCode;
@@ -18,6 +19,10 @@ pub use error::{
 pub use panic_shield::{
     ErrorCode, StructuredError, clear_structured_error, get_last_error_code, get_last_error_message,
     get_last_panic_context, set_structured_error,
+};
+pub use result::{
+    CMetadataField, kreuzberg_result_get_chunk_count, kreuzberg_result_get_detected_language,
+    kreuzberg_result_get_metadata_field, kreuzberg_result_get_page_count,
 };
 
 use std::cell::RefCell;

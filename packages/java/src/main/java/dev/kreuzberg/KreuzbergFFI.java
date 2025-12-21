@@ -92,6 +92,15 @@ final class KreuzbergFFI {
     static final MethodHandle KREUZBERG_GET_VALID_LANGUAGE_CODES;
     static final MethodHandle KREUZBERG_GET_VALID_OCR_BACKENDS;
     static final MethodHandle KREUZBERG_GET_VALID_TOKEN_REDUCTION_LEVELS;
+    static final MethodHandle KREUZBERG_CONFIG_FROM_JSON;
+    static final MethodHandle KREUZBERG_CONFIG_FREE;
+    static final MethodHandle KREUZBERG_CONFIG_TO_JSON;
+    static final MethodHandle KREUZBERG_CONFIG_GET_FIELD;
+    static final MethodHandle KREUZBERG_CONFIG_MERGE;
+    static final MethodHandle KREUZBERG_RESULT_GET_PAGE_COUNT;
+    static final MethodHandle KREUZBERG_RESULT_GET_CHUNK_COUNT;
+    static final MethodHandle KREUZBERG_RESULT_GET_DETECTED_LANGUAGE;
+    static final MethodHandle KREUZBERG_RESULT_GET_METADATA_FIELD;
 
     static final StructLayout C_EXTRACTION_RESULT_LAYOUT = MemoryLayout.structLayout(
         ValueLayout.ADDRESS.withName("content"),
@@ -471,6 +480,51 @@ final class KreuzbergFFI {
             KREUZBERG_GET_VALID_TOKEN_REDUCTION_LEVELS = linkFunction(
                 "kreuzberg_get_valid_token_reduction_levels",
                 FunctionDescriptor.of(ValueLayout.ADDRESS)
+            );
+
+            KREUZBERG_CONFIG_FROM_JSON = linkFunction(
+                "kreuzberg_config_from_json",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS)
+            );
+
+            KREUZBERG_CONFIG_FREE = linkFunction(
+                "kreuzberg_config_free",
+                FunctionDescriptor.ofVoid(ValueLayout.ADDRESS)
+            );
+
+            KREUZBERG_CONFIG_TO_JSON = linkFunction(
+                "kreuzberg_config_to_json",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS)
+            );
+
+            KREUZBERG_CONFIG_GET_FIELD = linkFunction(
+                "kreuzberg_config_get_field",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS)
+            );
+
+            KREUZBERG_CONFIG_MERGE = linkFunction(
+                "kreuzberg_config_merge",
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.ADDRESS)
+            );
+
+            KREUZBERG_RESULT_GET_PAGE_COUNT = linkFunction(
+                "kreuzberg_result_get_page_count",
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS)
+            );
+
+            KREUZBERG_RESULT_GET_CHUNK_COUNT = linkFunction(
+                "kreuzberg_result_get_chunk_count",
+                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS)
+            );
+
+            KREUZBERG_RESULT_GET_DETECTED_LANGUAGE = linkFunction(
+                "kreuzberg_result_get_detected_language",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS)
+            );
+
+            KREUZBERG_RESULT_GET_METADATA_FIELD = linkFunction(
+                "kreuzberg_result_get_metadata_field",
+                FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS, ValueLayout.ADDRESS)
             );
         } catch (Exception e) {
             throw new ExceptionInInitializerError(e);

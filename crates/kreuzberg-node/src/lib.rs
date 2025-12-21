@@ -33,6 +33,15 @@ static KNOWN_FORMAT_FIELDS: Lazy<HashSet<&'static str>> = Lazy::new(|| KNOWN_FOR
 #[allow(unused_extern_crates)]
 extern crate kreuzberg_ffi;
 
+/// Metadata field structure returned from FFI
+/// Mirrors CMetadataField from kreuzberg-ffi/src/result.rs
+#[repr(C)]
+struct CMetadataField {
+    name: *const c_char,
+    json_value: *mut c_char,
+    is_null: i32,
+}
+
 unsafe extern "C" {
     /// Get the last error code from FFI.
     ///
@@ -69,6 +78,22 @@ unsafe extern "C" {
     pub fn kreuzberg_get_valid_language_codes() -> *mut c_char;
     pub fn kreuzberg_get_valid_ocr_backends() -> *mut c_char;
     pub fn kreuzberg_get_valid_token_reduction_levels() -> *mut c_char;
+
+    // Phase 1 Config FFI functions
+    pub fn kreuzberg_config_from_json(json_config: *const c_char) -> *mut ExtractionConfig;
+    pub fn kreuzberg_config_free(config: *mut ExtractionConfig);
+    pub fn kreuzberg_config_to_json(config: *const ExtractionConfig) -> *mut c_char;
+    pub fn kreuzberg_config_get_field(config: *const ExtractionConfig, field_name: *const c_char) -> *mut c_char;
+    pub fn kreuzberg_config_merge(base: *mut ExtractionConfig, override_config: *const ExtractionConfig) -> i32;
+
+    // Phase 1 Result FFI functions
+    pub fn kreuzberg_result_get_page_count(result: *const RustExtractionResult) -> i32;
+    pub fn kreuzberg_result_get_chunk_count(result: *const RustExtractionResult) -> i32;
+    pub fn kreuzberg_result_get_detected_language(result: *const RustExtractionResult) -> *mut c_char;
+    pub fn kreuzberg_result_get_metadata_field(
+        result: *const RustExtractionResult,
+        field_name: *const c_char,
+    ) -> CMetadataField;
 }
 
 lazy_static! {
@@ -3579,6 +3604,225 @@ pub fn get_valid_token_reduction_levels() -> Result<Vec<String>> {
 
     Ok(parsed)
 }
+
+// ============================================================================
+// Phase 1 Config FFI Wrappers
+// ============================================================================
+
+/// Validate and normalize an ExtractionConfig JSON string via FFI.
+///
+/// This validates the JSON and returns a normalized version, using the shared
+/// FFI layer to ensure consistent validation across all language bindings.
+///
+/// # Arguments
+///
+/// * `json_str` - A JSON string containing the configuration
+///
+/// # Returns
+///
+/// The normalized JSON string representation of the config, or error
+#[napi(js_name = "configValidateAndNormalize")]
+pub fn config_validate_and_normalize(json_str: String) -> Result<String> {
+    let c_str = std::ffi::CString::new(json_str.clone()).map_err(|_| {
+        napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("Invalid UTF-8 in config JSON: {}", json_str),
+        )
+    })?;
+
+    let config_ptr = unsafe { kreuzberg_config_from_json(c_str.as_ptr()) };
+
+    if config_ptr.is_null() {
+        return Err(napi::Error::new(
+            napi::Status::GenericFailure,
+            "Failed to parse config from JSON",
+        ));
+    }
+
+    let json_ptr = unsafe { kreuzberg_config_to_json(config_ptr) };
+    unsafe {
+        kreuzberg_config_free(config_ptr);
+    }
+
+    if json_ptr.is_null() {
+        return Err(napi::Error::new(
+            napi::Status::GenericFailure,
+            "Failed to serialize parsed config to JSON",
+        ));
+    }
+
+    let result = unsafe {
+        let c_str = CStr::from_ptr(json_ptr);
+        let json_str = c_str
+            .to_str()
+            .map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Invalid UTF-8 in JSON"))?
+            .to_string();
+
+        kreuzberg_free_string(json_ptr as *mut c_char);
+        json_str
+    };
+
+    Ok(result)
+}
+
+/// Get a specific field from config (represented as JSON string) by name via FFI.
+///
+/// Retrieves a configuration field by path, supporting nested access with
+/// dot notation (e.g., "ocr.backend"). Returns the field value as a JSON string.
+///
+/// # Arguments
+///
+/// * `json_str` - A JSON string representation of the configuration
+/// * `field_name` - The field path to retrieve (e.g., "useCache", "ocr.backend")
+///
+/// # Returns
+///
+/// The field value as a JSON string, or null if not found
+#[napi(js_name = "configGetFieldInternal")]
+pub fn config_get_field_internal(json_str: String, field_name: String) -> Result<Option<String>> {
+    let c_str = std::ffi::CString::new(json_str.clone()).map_err(|_| {
+        napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("Invalid UTF-8 in config JSON: {}", json_str),
+        )
+    })?;
+
+    let config_ptr = unsafe { kreuzberg_config_from_json(c_str.as_ptr()) };
+
+    if config_ptr.is_null() {
+        return Err(napi::Error::new(
+            napi::Status::GenericFailure,
+            "Failed to parse config from JSON",
+        ));
+    }
+
+    let c_field_name = std::ffi::CString::new(field_name.clone()).map_err(|_| {
+        napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("Invalid UTF-8 in field name: {}", field_name),
+        )
+    })?;
+
+    let field_ptr = unsafe { kreuzberg_config_get_field(config_ptr, c_field_name.as_ptr()) };
+    unsafe {
+        kreuzberg_config_free(config_ptr);
+    }
+
+    if field_ptr.is_null() {
+        return Ok(None);
+    }
+
+    let result = unsafe {
+        let c_str = CStr::from_ptr(field_ptr);
+        let field_str = c_str
+            .to_str()
+            .map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Invalid UTF-8 in field value"))?
+            .to_string();
+
+        kreuzberg_free_string(field_ptr as *mut c_char);
+        field_str
+    };
+
+    Ok(Some(result))
+}
+
+/// Merge two configs (override takes precedence over base) via FFI.
+///
+/// Performs a shallow merge where fields from the override config take
+/// precedence over fields in the base config.
+///
+/// # Arguments
+///
+/// * `base_json` - A JSON string representation of the base ExtractionConfig
+/// * `override_json` - A JSON string representation of the override ExtractionConfig
+///
+/// # Returns
+///
+/// The merged configuration as a JSON string, or error
+#[napi(js_name = "configMergeInternal")]
+pub fn config_merge_internal(base_json: String, override_json: String) -> Result<String> {
+    let base_c_str = std::ffi::CString::new(base_json.clone()).map_err(|_| {
+        napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("Invalid UTF-8 in base config JSON: {}", base_json),
+        )
+    })?;
+
+    let override_c_str = std::ffi::CString::new(override_json.clone()).map_err(|_| {
+        napi::Error::new(
+            napi::Status::InvalidArg,
+            format!("Invalid UTF-8 in override config JSON: {}", override_json),
+        )
+    })?;
+
+    let base_ptr = unsafe { kreuzberg_config_from_json(base_c_str.as_ptr()) };
+
+    if base_ptr.is_null() {
+        return Err(napi::Error::new(
+            napi::Status::GenericFailure,
+            "Failed to parse base config from JSON",
+        ));
+    }
+
+    let override_ptr = unsafe { kreuzberg_config_from_json(override_c_str.as_ptr()) };
+
+    if override_ptr.is_null() {
+        unsafe {
+            kreuzberg_config_free(base_ptr);
+        }
+        return Err(napi::Error::new(
+            napi::Status::GenericFailure,
+            "Failed to parse override config from JSON",
+        ));
+    }
+
+    let merge_result = unsafe { kreuzberg_config_merge(base_ptr, override_ptr) };
+
+    if merge_result == 0 {
+        unsafe {
+            kreuzberg_config_free(base_ptr);
+            kreuzberg_config_free(override_ptr);
+        }
+        return Err(napi::Error::new(
+            napi::Status::GenericFailure,
+            "Failed to merge configs",
+        ));
+    }
+
+    let json_ptr = unsafe { kreuzberg_config_to_json(base_ptr) };
+
+    unsafe {
+        kreuzberg_config_free(base_ptr);
+        kreuzberg_config_free(override_ptr);
+    }
+
+    if json_ptr.is_null() {
+        return Err(napi::Error::new(
+            napi::Status::GenericFailure,
+            "Failed to serialize merged config to JSON",
+        ));
+    }
+
+    let result = unsafe {
+        let c_str = CStr::from_ptr(json_ptr);
+        let json_str = c_str
+            .to_str()
+            .map_err(|_| napi::Error::new(napi::Status::GenericFailure, "Invalid UTF-8 in JSON"))?
+            .to_string();
+
+        kreuzberg_free_string(json_ptr as *mut c_char);
+        json_str
+    };
+
+    Ok(result)
+}
+
+// ============================================================================
+// Phase 1 Result FFI Wrappers (Implemented via TypeScript wrappers)
+// ============================================================================
+// Result methods (getPageCount, getChunkCount, etc.) are implemented as
+// methods on the ExtractionResult type in the TypeScript SDK.
+// The Rust FFI functions are called from within those TypeScript method implementations.
 
 // #[cfg(all(
 // #[global_allocator]

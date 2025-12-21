@@ -1336,4 +1336,135 @@ char *kreuzberg_get_valid_ocr_backends(void);
  */
 char *kreuzberg_get_valid_token_reduction_levels(void);
 
+/**
+ * Phase 1 Configuration and Result Accessor Functions
+ * These functions provide efficient field access without JSON round-trips
+ */
+
+/**
+ * Parse an ExtractionConfig from a JSON string.
+ *
+ * This is the primary FFI entry point for language bindings to parse
+ * configuration from JSON instead of implementing their own JSON parsing.
+ *
+ * # Safety
+ *
+ * - `json_config` must be a valid null-terminated C string
+ * - The returned pointer must be freed with `kreuzberg_config_free`
+ * - Returns NULL on error (check `kreuzberg_last_error`)
+ */
+ExtractionConfig *kreuzberg_config_from_json(const char *json_config);
+
+/**
+ * Free an ExtractionConfig allocated by kreuzberg_config_from_json or similar.
+ *
+ * # Safety
+ *
+ * - `config` must be a pointer previously returned by a config creation function
+ * - `config` can be NULL (no-op)
+ * - `config` must not be used after this call
+ */
+void kreuzberg_config_free(ExtractionConfig *config);
+
+/**
+ * Validate a JSON config string without parsing it.
+ *
+ * # Returns
+ *
+ * - `1` if valid (would parse successfully)
+ * - `0` if invalid (check `kreuzberg_last_error` for details)
+ */
+int32_t kreuzberg_config_is_valid(const char *json_config);
+
+/**
+ * Serialize an ExtractionConfig to a JSON string.
+ *
+ * # Returns
+ *
+ * A pointer to a C string containing the JSON representation of the config,
+ * or NULL on error (check `kreuzberg_last_error`). The returned string must
+ * be freed with `kreuzberg_free_string`.
+ */
+char *kreuzberg_config_to_json(const ExtractionConfig *config);
+
+/**
+ * Get a field value from an ExtractionConfig by field path.
+ *
+ * Field paths use dot notation for nested fields (e.g., "ocr.backend").
+ *
+ * # Returns
+ *
+ * A pointer to a C string containing the field value as JSON, or NULL if
+ * the field doesn't exist or on error. The returned string must be freed
+ * with `kreuzberg_free_string`.
+ */
+char *kreuzberg_config_get_field(const ExtractionConfig *config, const char *field_name);
+
+/**
+ * Merge an override config into a base config (shallow merge).
+ *
+ * Non-NULL/default fields from override are copied into base.
+ *
+ * # Returns
+ *
+ * - `1` on success
+ * - `0` on error (check `kreuzberg_last_error`)
+ */
+int32_t kreuzberg_config_merge(ExtractionConfig *base, const ExtractionConfig *override_config);
+
+/**
+ * Metadata field accessor structure
+ *
+ * Returned by `kreuzberg_result_get_metadata_field()`. Contains the field value
+ * as JSON and information about whether the field exists.
+ */
+typedef struct {
+    const char *name;
+    char *json_value;
+    int32_t is_null;
+} CMetadataField;
+
+/**
+ * Get page count from extraction result.
+ *
+ * # Returns
+ *
+ * The page count (>= 0) if successful, or -1 on error (check `kreuzberg_last_error`).
+ */
+int32_t kreuzberg_result_get_page_count(const struct CExtractionResult *result);
+
+/**
+ * Get chunk count from extraction result.
+ *
+ * # Returns
+ *
+ * The chunk count (>= 0) if successful, or -1 on error (check `kreuzberg_last_error`).
+ */
+int32_t kreuzberg_result_get_chunk_count(const struct CExtractionResult *result);
+
+/**
+ * Get detected language from extraction result.
+ *
+ * Returns the primary detected language as an ISO 639 language code.
+ *
+ * # Returns
+ *
+ * A pointer to a C string containing the language code, or NULL if no language
+ * was detected or on error. The returned pointer must be freed with `kreuzberg_free_string`.
+ */
+char *kreuzberg_result_get_detected_language(const struct CExtractionResult *result);
+
+/**
+ * Get a metadata field value from extraction result.
+ *
+ * Supports nested field paths using dot notation (e.g., "metadata.language").
+ *
+ * # Returns
+ *
+ * A CMetadataField structure containing the field information. If the field
+ * doesn't exist, is_null will be 1 and json_value will be NULL.
+ * If json_value is non-NULL, it must be freed with `kreuzberg_free_string`.
+ */
+CMetadataField kreuzberg_result_get_metadata_field(const struct CExtractionResult *result, const char *field_name);
+
 #endif  /* KREUZBERG_FFI_H */

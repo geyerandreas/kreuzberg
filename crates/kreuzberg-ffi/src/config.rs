@@ -161,6 +161,282 @@ pub unsafe extern "C" fn kreuzberg_config_is_valid(json_config: *const c_char) -
     }
 }
 
+/// Serialize an ExtractionConfig to JSON string.
+///
+/// Converts an ExtractionConfig structure to its JSON representation, allowing
+/// bindings to serialize configs without reimplementing serialization logic.
+///
+/// # Arguments
+///
+/// * `config` - Pointer to an ExtractionConfig structure
+///
+/// # Returns
+///
+/// A pointer to a C string containing JSON that MUST be freed with `kreuzberg_free_string`.
+/// Returns NULL on error (check `kreuzberg_last_error`).
+///
+/// # Safety
+///
+/// - `config` must be a valid pointer to an ExtractionConfig
+/// - `config` cannot be NULL
+/// - The returned pointer must be freed with `kreuzberg_free_string`
+///
+/// # Example (C)
+///
+/// ```c
+/// ExtractionConfig* config = kreuzberg_config_from_json("{\"use_cache\": true}");
+/// if (config != NULL) {
+///     char* json = kreuzberg_config_to_json(config);
+///     if (json != NULL) {
+///         printf("Serialized: %s\n", json);
+///         kreuzberg_free_string(json);
+///     }
+///     kreuzberg_config_free(config);
+/// }
+/// ```
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn kreuzberg_config_to_json(config: *const ExtractionConfig) -> *mut c_char {
+    if config.is_null() {
+        set_last_error("Config cannot be NULL".to_string());
+        return ptr::null_mut();
+    }
+
+    clear_last_error();
+
+    // SAFETY: We've verified config is not null and it must be a valid ExtractionConfig
+    // pointer from kreuzberg_config_from_json or similar.
+    match serde_json::to_string(unsafe { &*config }) {
+        Ok(json) => match std::ffi::CString::new(json) {
+            Ok(c_string) => c_string.into_raw(),
+            Err(e) => {
+                set_last_error(format!("Failed to convert JSON to C string: {}", e));
+                ptr::null_mut()
+            }
+        },
+        Err(e) => {
+            set_last_error(format!("Failed to serialize config to JSON: {}", e));
+            ptr::null_mut()
+        }
+    }
+}
+
+/// Get a specific field from config as JSON string.
+///
+/// Retrieves a nested field from the configuration by path and returns its JSON
+/// representation. Supports dot notation for nested fields (e.g., "ocr.backend").
+///
+/// # Arguments
+///
+/// * `config` - Pointer to an ExtractionConfig structure
+/// * `field_name` - Null-terminated C string with field path (e.g., "use_cache", "ocr.backend")
+///
+/// # Returns
+///
+/// A pointer to a C string containing the field value as JSON, or NULL if:
+/// - The field doesn't exist
+/// - An error occurs during serialization
+///
+/// The returned pointer (if non-NULL) must be freed with `kreuzberg_free_string`.
+///
+/// # Safety
+///
+/// - `config` must be a valid pointer to an ExtractionConfig
+/// - `field_name` must be a valid null-terminated C string
+/// - Neither parameter can be NULL
+///
+/// # Example (C)
+///
+/// ```c
+/// ExtractionConfig* config = kreuzberg_config_from_json(
+///     "{\"use_cache\": true, \"ocr\": {\"backend\": \"tesseract\"}}"
+/// );
+/// if (config != NULL) {
+///     char* use_cache = kreuzberg_config_get_field(config, "use_cache");
+///     char* backend = kreuzberg_config_get_field(config, "ocr.backend");
+///
+///     if (use_cache != NULL) {
+///         printf("use_cache: %s\n", use_cache);
+///         kreuzberg_free_string(use_cache);
+///     }
+///
+///     if (backend != NULL) {
+///         printf("backend: %s\n", backend);
+///         kreuzberg_free_string(backend);
+///     }
+///
+///     kreuzberg_config_free(config);
+/// }
+/// ```
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn kreuzberg_config_get_field(
+    config: *const ExtractionConfig,
+    field_name: *const c_char,
+) -> *mut c_char {
+    if config.is_null() {
+        set_last_error("Config cannot be NULL".to_string());
+        return ptr::null_mut();
+    }
+
+    if field_name.is_null() {
+        set_last_error("Field name cannot be NULL".to_string());
+        return ptr::null_mut();
+    }
+
+    clear_last_error();
+
+    let field_str = match unsafe { CStr::from_ptr(field_name) }.to_str() {
+        Ok(s) => s,
+        Err(e) => {
+            set_last_error(format!("Invalid UTF-8 in field name: {}", e));
+            return ptr::null_mut();
+        }
+    };
+
+    // Serialize config to JSON value for field extraction
+    let json_value = match serde_json::to_value(unsafe { &*config }) {
+        Ok(val) => val,
+        Err(e) => {
+            set_last_error(format!("Failed to serialize config: {}", e));
+            return ptr::null_mut();
+        }
+    };
+
+    // Navigate the JSON path using dot notation
+    let mut current = &json_value;
+    for part in field_str.split('.') {
+        if let Some(obj) = current.as_object() {
+            match obj.get(part) {
+                Some(val) => current = val,
+                None => {
+                    set_last_error(format!("Field '{}' not found in config", field_str));
+                    return ptr::null_mut();
+                }
+            }
+        } else {
+            set_last_error(format!("Cannot access nested field '{}' in non-object", part));
+            return ptr::null_mut();
+        }
+    }
+
+    // Serialize the field value to JSON string
+    match serde_json::to_string(current) {
+        Ok(json) => match std::ffi::CString::new(json) {
+            Ok(c_string) => c_string.into_raw(),
+            Err(e) => {
+                set_last_error(format!("Failed to convert field value to C string: {}", e));
+                ptr::null_mut()
+            }
+        },
+        Err(e) => {
+            set_last_error(format!("Failed to serialize field value: {}", e));
+            ptr::null_mut()
+        }
+    }
+}
+
+/// Merge two configs (override takes precedence over base).
+///
+/// Performs a shallow merge of two ExtractionConfig structures, where fields
+/// from `override_config` take precedence over fields in `base`. The `base`
+/// config is modified in-place.
+///
+/// # Arguments
+///
+/// * `base` - Pointer to the base ExtractionConfig (will be modified)
+/// * `override_config` - Pointer to the override ExtractionConfig (read-only)
+///
+/// # Returns
+///
+/// - 1 on success
+/// - 0 on error (check `kreuzberg_last_error`)
+///
+/// # Safety
+///
+/// - `base` must be a valid mutable pointer to an ExtractionConfig
+/// - `override_config` must be a valid pointer to an ExtractionConfig
+/// - Neither parameter can be NULL
+/// - `base` is modified in-place
+///
+/// # Example (C)
+///
+/// ```c
+/// ExtractionConfig* base = kreuzberg_config_from_json(
+///     "{\"use_cache\": true, \"force_ocr\": false}"
+/// );
+/// ExtractionConfig* override = kreuzberg_config_from_json(
+///     "{\"force_ocr\": true}"
+/// );
+///
+/// if (kreuzberg_config_merge(base, override) == 1) {
+///     // base now has: use_cache=true, force_ocr=true
+///     char* json = kreuzberg_config_to_json(base);
+///     printf("Merged config: %s\n", json);
+///     kreuzberg_free_string(json);
+/// }
+///
+/// kreuzberg_config_free(base);
+/// kreuzberg_config_free(override);
+/// ```
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn kreuzberg_config_merge(
+    base: *mut ExtractionConfig,
+    override_config: *const ExtractionConfig,
+) -> i32 {
+    if base.is_null() {
+        set_last_error("Base config cannot be NULL".to_string());
+        return 0;
+    }
+
+    if override_config.is_null() {
+        set_last_error("Override config cannot be NULL".to_string());
+        return 0;
+    }
+
+    clear_last_error();
+
+    // SAFETY: We've verified both pointers are non-null.
+    // base must be valid mutable ExtractionConfig, override_config must be valid immutable ExtractionConfig.
+    let base_ref = unsafe { &mut *base };
+    let override_ref = unsafe { &*override_config };
+
+    // Simple shallow merge: copy non-default override fields into base
+    // This merges top-level fields directly
+    if override_ref.use_cache != ExtractionConfig::default().use_cache {
+        base_ref.use_cache = override_ref.use_cache;
+    }
+
+    if override_ref.enable_quality_processing != ExtractionConfig::default().enable_quality_processing {
+        base_ref.enable_quality_processing = override_ref.enable_quality_processing;
+    }
+
+    if override_ref.force_ocr != ExtractionConfig::default().force_ocr {
+        base_ref.force_ocr = override_ref.force_ocr;
+    }
+
+    if override_ref.max_concurrent_extractions != ExtractionConfig::default().max_concurrent_extractions {
+        base_ref.max_concurrent_extractions = override_ref.max_concurrent_extractions;
+    }
+
+    // Merge nested optional fields
+    if override_ref.ocr.is_some() {
+        base_ref.ocr = override_ref.ocr.clone();
+    }
+
+    if override_ref.chunking.is_some() {
+        base_ref.chunking = override_ref.chunking.clone();
+    }
+
+    if override_ref.images.is_some() {
+        base_ref.images = override_ref.images.clone();
+    }
+
+    if override_ref.html_options.is_some() {
+        base_ref.html_options = override_ref.html_options.clone();
+    }
+
+    1
+}
+
 /// Parse ExtractionConfig from JSON string.
 ///
 /// This is the core parsing logic shared by all FFI functions that deal with
@@ -499,6 +775,7 @@ fn parse_extraction_config_from_json(json_str: &str) -> FfiResult<ExtractionConf
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::ffi::CStr;
 
     #[test]
     fn test_parse_minimal_config() {
@@ -553,5 +830,147 @@ mod tests {
         }"#;
         let result = parse_extraction_config_from_json(json);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_config_to_json() {
+        let json_str = r#"{"use_cache": true}"#;
+        let config_ptr = unsafe { kreuzberg_config_from_json(std::ffi::CString::new(json_str).unwrap().as_ptr()) };
+        assert!(!config_ptr.is_null());
+
+        let json_out = unsafe { kreuzberg_config_to_json(config_ptr) };
+        assert!(!json_out.is_null());
+
+        let out_str = unsafe { CStr::from_ptr(json_out).to_str().unwrap() };
+        assert!(out_str.contains("use_cache"));
+        assert!(out_str.contains("true"));
+
+        unsafe {
+            crate::kreuzberg_free_string(json_out);
+            kreuzberg_config_free(config_ptr);
+        }
+    }
+
+    #[test]
+    fn test_config_to_json_null_pointer() {
+        let result = unsafe { kreuzberg_config_to_json(ptr::null()) };
+        assert!(result.is_null());
+    }
+
+    #[test]
+    fn test_config_get_field_simple() {
+        let json_str = r#"{"use_cache": true}"#;
+        let config_ptr = unsafe { kreuzberg_config_from_json(std::ffi::CString::new(json_str).unwrap().as_ptr()) };
+        assert!(!config_ptr.is_null());
+
+        let field_name = std::ffi::CString::new("use_cache").unwrap();
+        let field_value = unsafe { kreuzberg_config_get_field(config_ptr, field_name.as_ptr()) };
+        assert!(!field_value.is_null());
+
+        let value_str = unsafe { CStr::from_ptr(field_value).to_str().unwrap() };
+        assert_eq!(value_str, "true");
+
+        unsafe {
+            crate::kreuzberg_free_string(field_value);
+            kreuzberg_config_free(config_ptr);
+        }
+    }
+
+    #[test]
+    fn test_config_get_field_nested() {
+        let json_str = r#"{"ocr": {"backend": "tesseract"}}"#;
+        let config_ptr = unsafe { kreuzberg_config_from_json(std::ffi::CString::new(json_str).unwrap().as_ptr()) };
+        assert!(!config_ptr.is_null());
+
+        let field_name = std::ffi::CString::new("ocr.backend").unwrap();
+        let field_value = unsafe { kreuzberg_config_get_field(config_ptr, field_name.as_ptr()) };
+        assert!(!field_value.is_null());
+
+        let value_str = unsafe { CStr::from_ptr(field_value).to_str().unwrap() };
+        assert_eq!(value_str, r#""tesseract""#);
+
+        unsafe {
+            crate::kreuzberg_free_string(field_value);
+            kreuzberg_config_free(config_ptr);
+        }
+    }
+
+    #[test]
+    fn test_config_get_field_missing() {
+        let json_str = r#"{"use_cache": true}"#;
+        let config_ptr = unsafe { kreuzberg_config_from_json(std::ffi::CString::new(json_str).unwrap().as_ptr()) };
+        assert!(!config_ptr.is_null());
+
+        let field_name = std::ffi::CString::new("nonexistent").unwrap();
+        let field_value = unsafe { kreuzberg_config_get_field(config_ptr, field_name.as_ptr()) };
+        assert!(field_value.is_null());
+
+        unsafe {
+            kreuzberg_config_free(config_ptr);
+        }
+    }
+
+    #[test]
+    fn test_config_get_field_null_pointer() {
+        let field_name = std::ffi::CString::new("use_cache").unwrap();
+        let result = unsafe { kreuzberg_config_get_field(ptr::null(), field_name.as_ptr()) };
+        assert!(result.is_null());
+    }
+
+    #[test]
+    fn test_config_merge() {
+        let base_json = r#"{"use_cache": true, "force_ocr": false}"#;
+        let override_json = r#"{"force_ocr": true}"#;
+
+        let base_ptr = unsafe { kreuzberg_config_from_json(std::ffi::CString::new(base_json).unwrap().as_ptr()) };
+        let override_ptr =
+            unsafe { kreuzberg_config_from_json(std::ffi::CString::new(override_json).unwrap().as_ptr()) };
+
+        assert!(!base_ptr.is_null());
+        assert!(!override_ptr.is_null());
+
+        let result = unsafe { kreuzberg_config_merge(base_ptr, override_ptr) };
+        assert_eq!(result, 1);
+
+        // Verify the merge: use_cache should still be true, force_ocr should be true
+        let merged_json = unsafe { kreuzberg_config_to_json(base_ptr) };
+        assert!(!merged_json.is_null());
+
+        let merged_str = unsafe { CStr::from_ptr(merged_json).to_str().unwrap() };
+        assert!(merged_str.contains("use_cache"));
+        assert!(merged_str.contains("force_ocr"));
+
+        unsafe {
+            crate::kreuzberg_free_string(merged_json);
+            kreuzberg_config_free(base_ptr);
+            kreuzberg_config_free(override_ptr);
+        }
+    }
+
+    #[test]
+    fn test_config_merge_null_base() {
+        let override_json = r#"{"force_ocr": true}"#;
+        let override_ptr =
+            unsafe { kreuzberg_config_from_json(std::ffi::CString::new(override_json).unwrap().as_ptr()) };
+
+        let result = unsafe { kreuzberg_config_merge(ptr::null_mut(), override_ptr) };
+        assert_eq!(result, 0);
+
+        unsafe {
+            kreuzberg_config_free(override_ptr);
+        }
+    }
+
+    #[test]
+    fn test_config_merge_null_override() {
+        let base_json = r#"{"use_cache": true}"#;
+        let base_ptr = unsafe { kreuzberg_config_from_json(std::ffi::CString::new(base_json).unwrap().as_ptr()) };
+
+        let result = unsafe { kreuzberg_config_merge(base_ptr, ptr::null()) };
+        assert_eq!(result, 0);
+
+        unsafe {
+            kreuzberg_config_free(base_ptr);
+        }
     }
 }
