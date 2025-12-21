@@ -25,6 +25,8 @@ pub struct ImageMetadata {
 /// Extract metadata from image bytes.
 ///
 /// Extracts dimensions, format, and EXIF data from the image.
+/// Uses header-only parsing for dimensions (into_dimensions) for performance,
+/// only falling back to full decode if header parsing fails.
 pub fn extract_image_metadata(bytes: &[u8]) -> Result<ImageMetadata> {
     let reader = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
@@ -34,14 +36,20 @@ pub fn extract_image_metadata(bytes: &[u8]) -> Result<ImageMetadata> {
         .format()
         .ok_or_else(|| KreuzbergError::parsing("Could not determine image format".to_string()))?;
 
-    let image = reader
-        .decode()
-        .map_err(|e| KreuzbergError::parsing(format!("Failed to decode image: {}", e)))?;
+    // SAFETY: into_dimensions() parses only the image header without decoding full image data.
+    // This avoids expensive full decode operations when only dimensions are needed.
+    // Falls back to full decode only if header parsing fails, which is rare.
+    let (width, height) = reader.into_dimensions().or_else(|_| {
+        // Fallback: if header parsing fails, decode the full image
+        ImageReader::new(Cursor::new(bytes))
+            .with_guessed_format()
+            .map_err(|e| KreuzbergError::parsing(format!("Failed to read image format: {}", e)))?
+            .decode()
+            .map(|image| (image.width(), image.height()))
+            .map_err(|e| KreuzbergError::parsing(format!("Failed to decode image: {}", e)))
+    })?;
 
-    let width = image.width();
-    let height = image.height();
     let format_str = format!("{:?}", format).to_uppercase();
-
     let exif_data = extract_exif_data(bytes);
 
     Ok(ImageMetadata {
