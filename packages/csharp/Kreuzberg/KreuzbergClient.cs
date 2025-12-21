@@ -114,7 +114,7 @@ public static class KreuzbergClient
             throw new KreuzbergValidationException("mimeType cannot be empty");
         }
 
-        var mimePtr = InteropUtilities.AllocUtf8(mimeType);
+        var mimePtr = InteropUtilities.AllocUtf8Cached(mimeType, useCache: true);
         try
         {
             var resultPtr = NativeMethods.GetExtensionsForMime(mimePtr);
@@ -244,7 +244,7 @@ public static class KreuzbergClient
             throw new KreuzbergValidationException("mimeType is required");
         }
 
-        var mimePtr = InteropUtilities.AllocUtf8(mimeType);
+        var mimePtr = InteropUtilities.AllocUtf8Cached(mimeType, useCache: true);
         var configPtr = SerializeConfig(config);
 
         unsafe
