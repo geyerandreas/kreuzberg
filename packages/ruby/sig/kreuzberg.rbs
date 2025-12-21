@@ -430,6 +430,10 @@ module Kreuzberg
   # Error introspection (native methods)
   def self._last_error_code_native: () -> Integer
   def self._last_panic_context_json_native: () -> String?
+  def self._get_error_details_native: () -> Hash[Symbol, untyped]
+  def self._classify_error_native: (String message) -> Integer
+  def self._error_code_name_native: (Integer code) -> String
+  def self._error_code_description_native: (Integer code) -> String
 
   # Plugin registration
   def self.register_post_processor: (String name, _PostProcessor processor, ?stage: Symbol?) -> void
@@ -457,6 +461,10 @@ module Kreuzberg
     def self.last_error_code: () -> Integer
     def self.last_panic_context: () -> Errors::PanicContext?
     def self.last_panic_context_json: () -> String?
+    def self.error_details: () -> Hash[Symbol, untyped]
+    def self.classify_error: (String message) -> Integer
+    def self.error_code_name: (Integer code) -> String
+    def self.error_code_description: (Integer code) -> String
   end
 
   module Errors
