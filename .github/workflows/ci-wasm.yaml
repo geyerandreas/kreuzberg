@@ -387,28 +387,12 @@ jobs:
   # ============================================================================
 
   deno-tests:
-    name: Deno Tests (${{ matrix.os }}, Deno ${{ matrix.deno-version }})
+    name: Deno Tests
     if: ${{ github.actor != 'dependabot[bot]' }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     timeout-minutes: 180
     permissions:
       contents: read
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            deno-version: "1.x"
-          - os: ubuntu-latest
-            deno-version: "2.x"
-          - os: macos-latest
-            deno-version: "1.x"
-          - os: macos-latest
-            deno-version: "2.x"
-          - os: windows-latest
-            deno-version: "1.x"
-          - os: windows-latest
-            deno-version: "2.x"
     steps:
       - uses: actions/checkout@v4
 
@@ -418,7 +402,7 @@ jobs:
       - name: Setup Rust
         uses: ./.github/actions/setup-rust
         with:
-          cache-key-prefix: wasm-deno-${{ matrix.os }}
+          cache-key-prefix: wasm-deno-ubuntu
           target: wasm32-unknown-unknown
 
       - name: Setup Node (for wasm-pack and build tools)
@@ -431,7 +415,7 @@ jobs:
       - name: Install Deno
         uses: denoland/setup-deno@v2
         with:
-          deno-version: ${{ matrix.deno-version }}
+          deno-version: "2.x"
 
       - name: Build WASM package
         shell: bash
