@@ -437,5 +437,20 @@ pub fn should_include_for_wasm(fixture: &Fixture, target: WasmTarget) -> bool {
         }
     }
 
+    // Skip large HTML files for Deno (stack overflow with deeply nested HTML)
+    if target == WasmTarget::Deno
+        && fixture.category() == "html"
+        && let Some(doc) = &fixture.document
+    {
+        // Check file size if possible
+        let doc_path = std::path::PathBuf::from("test_documents").join(&doc.path);
+        if let Ok(metadata) = std::fs::metadata(&doc_path)
+            && metadata.len() > 2_000_000
+        // 2MB limit for HTML in Deno WASM
+        {
+            return false;
+        }
+    }
+
     true
 }

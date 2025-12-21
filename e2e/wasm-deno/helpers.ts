@@ -235,16 +235,15 @@ export function shouldSkipFixture(
 	const unsupportedFormat = lower.includes("unsupported mime type") || lower.includes("unsupported format");
 	const pdfiumError = lower.includes("pdfium") || lower.includes("pdf extraction requires proper wasm");
 	const stackOverflow = lower.includes("maximum call stack") || lower.includes("stack overflow");
-	const wasmSizeLimit = lower.includes("wasm limit") || lower.includes("exceeds wasm limit");
 
-	if (missingDependency || unsupportedFormat || pdfiumError || stackOverflow || wasmSizeLimit || requirementHit) {
+	if (missingDependency || unsupportedFormat || pdfiumError || stackOverflow || requirementHit) {
 		const reason = missingDependency
 			? "missing dependency"
 			: unsupportedFormat
 				? "unsupported format"
 				: pdfiumError
 					? "PDFium not available (non-browser environment)"
-					: stackOverflow || wasmSizeLimit
+					: stackOverflow
 						? "stack overflow (document too large for WASM)"
 						: requirements.join(", ");
 		console.warn(`Skipping ${fixtureId}: ${reason}. ${message}`);

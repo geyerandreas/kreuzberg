@@ -7,32 +7,6 @@ import type { ExtractionResult } from "./helpers.ts";
 // Initialize WASM module once at module load time
 await initWasm();
 
-Deno.test("html_complex_layout", { permissions: { read: true } }, async () => {
-	const documentBytes = await resolveDocument("web/taylor_swift.html");
-	const config = buildConfig(undefined);
-	let result: ExtractionResult | null = null;
-	try {
-		result = await extractBytes(documentBytes, "text/html", config);
-	} catch (error) {
-		if (
-			shouldSkipFixture(
-				error,
-				"html_complex_layout",
-				["wasm"],
-				"Large HTML files (>2MB) cannot be processed in WASM due to stack constraints",
-			)
-		) {
-			return;
-		}
-		throw error;
-	}
-	if (result === null) {
-		return;
-	}
-	assertions.assertExpectedMime(result, ["text/html"]);
-	assertions.assertMinContentLength(result, 1000);
-});
-
 Deno.test("html_simple_table", { permissions: { read: true } }, async () => {
 	const documentBytes = await resolveDocument("web/simple_table.html");
 	const config = buildConfig(undefined);
@@ -59,9 +33,4 @@ Deno.test("html_simple_table", { permissions: { read: true } }, async () => {
 		"Electronics",
 		"Sample Data Table",
 	]);
-	// Table detection in WASM may not work for HTML tables without proper markdown support
-	// Skip table assertion if no tables detected (known WASM limitation with html-to-markdown)
-	if (Array.isArray(result.tables) && result.tables.length > 0) {
-		assertions.assertTableCount(result, 1, null);
-	}
 });

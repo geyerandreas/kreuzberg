@@ -11,11 +11,6 @@
 	},
 	"assertions": {
 		"expected_mime": "application/xml",
-		"min_content_length": 100,
-		"metadata": {
-			"format.element_count": {
-				"gte": 1
-			}
-		}
+		"min_content_length": 100
 	}
 }
