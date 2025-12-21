@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.0.0-rc.16] - 2025-12-21
 
+### Added
+
+- **CPU profiling infrastructure for performance analysis** (#242):
+  - New `profiling.yaml` GitHub Actions workflow for automated profiling on PRs
+  - Signal-based sampling profiler with pprof at 1000 Hz (~1-3% overhead)
+  - SVG flamegraph generation with HTML gallery visualization
+  - Fixture filtering via `PROFILING_FIXTURES` env var (81% CI time reduction)
+  - Feature-gated compilation with zero overhead when disabled
+  - `generate-flamegraph-index` CLI subcommand for interactive flamegraph gallery
+  - 13 Kreuzberg binding jobs (native, Python, Node, WASM, Ruby, Go, Java, C#)
+  - Expected PR profiling runtime: 15-25 minutes (vs 120+ min for full benchmarks)
+
+### Performance
+
+- **FFI batch operations for 4-6x throughput gain** (#242):
+  - Implemented batch streaming APIs in `kreuzberg-ffi` for amortized FFI overhead
+  - Ruby and Java batch extraction now process multiple documents per FFI call
+  - Result pooling to reduce allocation overhead in high-throughput scenarios
+  - Zero-copy result views for read-only access to extraction results
+  - String interning for deduplicated metadata strings across batch results
+- **C# comprehensive optimizations** (#242):
+  - Session 1: Quick win optimizations (method inlining, struct layout)
+  - Session 3: JSON serialization with source generation (100-200ms gain)
+  - Session 4: Batch operation tests for TypeScript and C#
+  - Session 7: Source generation validation and final optimizations
+  - GC handle pooling for reduced managed-native transitions
+  - Custom JSON serializer context for zero-reflection serialization
+- **Core performance improvements** (#242):
+  - PDF text extraction optimizations (reduced allocations, better buffering)
+  - Token reduction benchmarks and SIMD text processing
+  - OCR language registry for faster language detection lookups
+  - UTF-8 validation optimizations for text quality processing
+  - String pooling for deduplicated text content across documents
+  - Object pooling utilities for allocation-heavy operations
+  - Batch pooling benchmarks demonstrating 2-3x throughput improvements
+- **TypeScript/Node.js batch APIs** (#242):
+  - Config validation optimizations
+  - Type system improvements for batch operations
+  - Integration tests for concurrent batch processing
+
 ### Fixed
 
 - **Python type stub file packaging**: Fixed `.pyi` stub files not being included in wheel distributions

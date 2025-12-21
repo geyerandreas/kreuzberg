@@ -121,7 +121,7 @@ module Kreuzberg
       def classify_error(message)
         Kreuzberg._classify_error_native(message)
       rescue StandardError
-        7  # Internal error
+        7 # Internal error
       end
 
       # Get the human-readable name of an error code.

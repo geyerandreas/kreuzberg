@@ -72,7 +72,7 @@ RSpec.describe Kreuzberg do
 
       expect(results).to be_a(Array)
       expect(results.length).to eq(2)
-      results.each { |result| expect(result).to be_a(Kreuzberg::Result) }
+      expect(results).to all(be_a(Kreuzberg::Result))
     ensure
       paths.each { |p| File.unlink(p) if File.exist?(p) }
     end
@@ -139,7 +139,7 @@ RSpec.describe Kreuzberg do
 
       expect(results).to be_a(Array)
       expect(results.length).to eq(3)
-      results.each { |result| expect(result).to be_a(Kreuzberg::Result) }
+      expect(results).to all(be_a(Kreuzberg::Result))
     ensure
       paths.each { |p| File.unlink(p) if File.exist?(p) }
     end
@@ -183,7 +183,7 @@ RSpec.describe Kreuzberg do
 
       expect(results).to be_a(Array)
       expect(results.length).to eq(3)
-      results.each { |result| expect(result).to be_a(Kreuzberg::Result) }
+      expect(results).to all(be_a(Kreuzberg::Result))
     end
 
     it 'maintains order for batch byte operations' do
@@ -228,7 +228,7 @@ RSpec.describe Kreuzberg do
 
       expect(results).to be_a(Array)
       expect(results.length).to eq(2)
-      results.each { |result| expect(result).to be_a(Kreuzberg::Result) }
+      expect(results).to all(be_a(Kreuzberg::Result))
     end
 
     it 'handles async byte batch with configuration' do
@@ -312,9 +312,9 @@ RSpec.describe Kreuzberg do
       ]
 
       # Batch operation should not raise, but may return errors in results
-      expect {
+      expect do
         Kreuzberg.batch_extract_files_sync(paths)
-      }.not_to raise_error
+      end.not_to raise_error
     end
 
     it 'handles mixed valid and invalid paths' do
@@ -341,9 +341,9 @@ RSpec.describe Kreuzberg do
       mime_types = ['invalid/mime/type']
 
       # Should handle invalid MIME types gracefully
-      expect {
+      expect do
         Kreuzberg.batch_extract_bytes_sync(data, mime_types)
-      }.not_to raise_error
+      end.not_to raise_error
     end
   end
 
