@@ -157,8 +157,11 @@ public final class ExtractionResult {
      */
     public Optional<String> getDetectedLanguage() {
         // Check metadata.language first
-        if (this.metadata != null && this.metadata.language != null && !this.metadata.language.isEmpty()) {
-            return Optional.of(this.metadata.language);
+        if (this.metadata != null) {
+            Object langObj = this.metadata.get("language");
+            if (langObj instanceof String lang && !lang.isEmpty()) {
+                return Optional.of(lang);
+            }
         }
 
         // Fall back to first detected language

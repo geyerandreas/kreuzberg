@@ -19,6 +19,7 @@ import java.util.Optional;
  *
  * @since 4.0.0
  */
+@SuppressWarnings("PMD.AvoidCatchingThrowable")
 public final class ExtractionConfig {
   private static final ObjectMapper CONFIG_MAPPER = new ObjectMapper()
       .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -201,11 +202,14 @@ public final class ExtractionConfig {
         KreuzbergFFI.KREUZBERG_FREE_STRING.invoke(jsonSeg);
         return result;
       } finally {
-        KreuzbergFFI.KREUZBERG_CONFIG_FREE.invoke(configPtr);
+        try {
+          KreuzbergFFI.KREUZBERG_CONFIG_FREE.invoke(configPtr);
+        } catch (Throwable ignored) {
+        }
       }
     } catch (KreuzbergException e) {
       throw e;
-    } catch (Exception e) {
+    } catch (Throwable e) {
       throw new KreuzbergException("Failed to serialize config to JSON", e);
     }
   }
@@ -244,14 +248,20 @@ public final class ExtractionConfig {
         }
 
         String result = KreuzbergFFI.readCString(valueSeg);
-        KreuzbergFFI.KREUZBERG_FREE_STRING.invoke(valueSeg);
+        try {
+          KreuzbergFFI.KREUZBERG_FREE_STRING.invoke(valueSeg);
+        } catch (Throwable ignored) {
+        }
         return Optional.ofNullable(result);
       } finally {
-        KreuzbergFFI.KREUZBERG_CONFIG_FREE.invoke(configPtr);
+        try {
+          KreuzbergFFI.KREUZBERG_CONFIG_FREE.invoke(configPtr);
+        } catch (Throwable ignored) {
+        }
       }
     } catch (KreuzbergException e) {
       throw e;
-    } catch (Exception e) {
+    } catch (Throwable e) {
       throw new KreuzbergException("Failed to retrieve field: " + fieldName, e);
     }
   }
@@ -297,16 +307,25 @@ public final class ExtractionConfig {
         }
 
         String mergedJson = KreuzbergFFI.readCString(mergedJsonSeg);
-        KreuzbergFFI.KREUZBERG_FREE_STRING.invoke(mergedJsonSeg);
+        try {
+          KreuzbergFFI.KREUZBERG_FREE_STRING.invoke(mergedJsonSeg);
+        } catch (Throwable ignored) {
+        }
 
         return fromJson(mergedJson);
       } finally {
-        KreuzbergFFI.KREUZBERG_CONFIG_FREE.invoke(thisPtr);
-        KreuzbergFFI.KREUZBERG_CONFIG_FREE.invoke(otherPtr);
+        try {
+          KreuzbergFFI.KREUZBERG_CONFIG_FREE.invoke(thisPtr);
+        } catch (Throwable ignored) {
+        }
+        try {
+          KreuzbergFFI.KREUZBERG_CONFIG_FREE.invoke(otherPtr);
+        } catch (Throwable ignored) {
+        }
       }
     } catch (KreuzbergException e) {
       throw e;
-    } catch (Exception e) {
+    } catch (Throwable e) {
       throw new KreuzbergException("Failed to merge configs", e);
     }
   }
