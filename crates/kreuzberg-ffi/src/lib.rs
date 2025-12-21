@@ -3,13 +3,19 @@
 //! Provides a C-compatible API that can be consumed by Java (Panama FFI),
 //! Go (cgo), C# (P/Invoke), Zig, and other languages with C FFI support.
 
+mod batch_streaming;
 mod config;
 mod error;
 mod panic_shield;
 mod result;
+mod result_pool;
 mod result_view;
+mod string_intern;
 mod validation;
 
+pub use batch_streaming::{
+    ErrorCallback, ResultCallback, kreuzberg_extract_batch_parallel, kreuzberg_extract_batch_streaming,
+};
 pub use error::ErrorCode as KreuzbergErrorCode;
 pub use error::{
     CErrorDetails, kreuzberg_classify_error, kreuzberg_error_code_count, kreuzberg_error_code_description,
@@ -25,8 +31,16 @@ pub use result::{
     CMetadataField, kreuzberg_result_get_chunk_count, kreuzberg_result_get_detected_language,
     kreuzberg_result_get_metadata_field, kreuzberg_result_get_page_count,
 };
+pub use result_pool::{
+    CResultPoolStats, ResultPool, kreuzberg_extract_file_into_pool, kreuzberg_extract_file_into_pool_view,
+    kreuzberg_result_pool_free, kreuzberg_result_pool_new, kreuzberg_result_pool_reset, kreuzberg_result_pool_stats,
+};
 pub use result_view::{
     CExtractionResultView, kreuzberg_get_result_view, kreuzberg_view_get_content, kreuzberg_view_get_mime_type,
+};
+pub use string_intern::{
+    CStringInternStats, kreuzberg_free_interned_string, kreuzberg_intern_string, kreuzberg_string_intern_reset,
+    kreuzberg_string_intern_stats,
 };
 
 use std::cell::RefCell;

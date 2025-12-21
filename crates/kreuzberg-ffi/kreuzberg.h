@@ -18,6 +18,29 @@
 typedef struct ExtractionConfig ExtractionConfig;
 
 
+typedef struct Option_ErrorCallback Option_ErrorCallback;
+
+/**
+ * Memory pool for ExtractionResult objects.
+ *
+ * Pre-allocates storage and reuses memory across multiple extractions.
+ * Thread-safe with internal synchronization.
+ *
+ * # Memory Model
+ *
+ * - Results are owned by the pool until reset or freed
+ * - Pool grows automatically if capacity is exceeded
+ * - Reset clears all results but retains capacity
+ * - Free releases all memory and destroys pool
+ *
+ * # Thread Safety
+ *
+ * Pool uses internal Mutex for synchronization. Safe for concurrent access
+ * but may serialize extractions. For parallel processing, consider using
+ * separate pools per thread.
+ */
+typedef struct ResultPool ResultPool;
+
 /**
  * C-compatible extraction result structure
  *
@@ -221,68 +244,6 @@ typedef char *(*DocumentExtractorCallback)(const uint8_t *content,
 typedef char *(*ValidatorCallback)(const char *result_json);
 
 /**
- * C-compatible structured error details returned by `kreuzberg_get_error_details()`.
- *
- * All string fields (message, error_type, source_file, source_function, context_info)
- * are dynamically allocated C strings that MUST be freed using `kreuzberg_free_string()`.
- * Set fields are non-NULL; unset fields are NULL.
- */
-typedef struct CErrorDetails {
-  /**
-   * The error message (must be freed with kreuzberg_free_string)
-   */
-  char *message;
-  /**
-   * Numeric error code (0-7 for Kreuzberg errors, 1-7 for panic_shield codes)
-   */
-  uint32_t error_code;
-  /**
-   * Human-readable error type name (must be freed with kreuzberg_free_string)
-   */
-  char *error_type;
-  /**
-   * Source file where error occurred (may be NULL)
-   */
-  char *source_file;
-  /**
-   * Source function where error occurred (may be NULL)
-   */
-  char *source_function;
-  /**
-   * Line number in source file (0 if unknown)
-   */
-  uint32_t source_line;
-  /**
-   * Additional context information (may be NULL)
-   */
-  char *context_info;
-  /**
-   * 1 if this error originated from a panic, 0 otherwise
-   */
-  int32_t is_panic;
-} CErrorDetails;
-
-/**
- * Metadata field accessor structure
- *
- * Returned by `kreuzberg_result_get_metadata_field()`. Contains the field value
- * as JSON and information about whether the field exists.
- *
- * # Fields
- *
- * * `name` - The field name requested (does not need to be freed)
- * * `json_value` - JSON representation of the field value, or NULL if field doesn't exist
- * * `is_null` - 1 if the field doesn't exist, 0 if it does
- *
- * The `json_value` pointer (if non-NULL) must be freed with `kreuzberg_free_string()`.
- */
-typedef struct CMetadataField {
-  const char *name;
-  char *json_value;
-  int32_t is_null;
-} CMetadataField;
-
-/**
  * Zero-copy view into an ExtractionResult.
  *
  * Provides direct pointers to string data without allocation or copying.
@@ -373,6 +334,151 @@ typedef struct CExtractionResultView {
    */
   uintptr_t page_count;
 } CExtractionResultView;
+
+/**
+ * Callback function invoked for each successfully extracted result.
+ *
+ * # Arguments
+ *
+ * * `result` - Borrowed pointer to extraction result (valid only during callback)
+ * * `file_index` - Zero-based index of the file in the batch
+ * * `user_data` - User-provided context pointer
+ *
+ * # Returns
+ *
+ * - `0` to continue processing remaining files
+ * - Non-zero to cancel batch processing (no further callbacks)
+ *
+ * # Safety
+ *
+ * - `result` pointer is valid only during the callback execution
+ * - `result` is automatically freed after callback returns
+ * - Caller must copy/serialize data if needed beyond callback scope
+ * - `user_data` is passed through opaquely (caller manages lifetime)
+ */
+typedef int (*ResultCallback)(const struct CExtractionResultView *result,
+                              uintptr_t file_index,
+                              void *user_data);
+
+/**
+ * C-compatible structured error details returned by `kreuzberg_get_error_details()`.
+ *
+ * All string fields (message, error_type, source_file, source_function, context_info)
+ * are dynamically allocated C strings that MUST be freed using `kreuzberg_free_string()`.
+ * Set fields are non-NULL; unset fields are NULL.
+ */
+typedef struct CErrorDetails {
+  /**
+   * The error message (must be freed with kreuzberg_free_string)
+   */
+  char *message;
+  /**
+   * Numeric error code (0-7 for Kreuzberg errors, 1-7 for panic_shield codes)
+   */
+  uint32_t error_code;
+  /**
+   * Human-readable error type name (must be freed with kreuzberg_free_string)
+   */
+  char *error_type;
+  /**
+   * Source file where error occurred (may be NULL)
+   */
+  char *source_file;
+  /**
+   * Source function where error occurred (may be NULL)
+   */
+  char *source_function;
+  /**
+   * Line number in source file (0 if unknown)
+   */
+  uint32_t source_line;
+  /**
+   * Additional context information (may be NULL)
+   */
+  char *context_info;
+  /**
+   * 1 if this error originated from a panic, 0 otherwise
+   */
+  int32_t is_panic;
+} CErrorDetails;
+
+/**
+ * Metadata field accessor structure
+ *
+ * Returned by `kreuzberg_result_get_metadata_field()`. Contains the field value
+ * as JSON and information about whether the field exists.
+ *
+ * # Fields
+ *
+ * * `name` - The field name requested (does not need to be freed)
+ * * `json_value` - JSON representation of the field value, or NULL if field doesn't exist
+ * * `is_null` - 1 if the field doesn't exist, 0 if it does
+ *
+ * The `json_value` pointer (if non-NULL) must be freed with `kreuzberg_free_string()`.
+ */
+typedef struct CMetadataField {
+  const char *name;
+  char *json_value;
+  int32_t is_null;
+} CMetadataField;
+
+/**
+ * Statistics for result pool allocation tracking.
+ *
+ * Provides insight into pool efficiency and memory usage patterns.
+ */
+typedef struct CResultPoolStats {
+  /**
+   * Current number of results stored in pool
+   */
+  uintptr_t current_count;
+  /**
+   * Maximum capacity of pool (before automatic growth)
+   */
+  uintptr_t capacity;
+  /**
+   * Total number of allocations (successful extractions)
+   */
+  uintptr_t total_allocations;
+  /**
+   * Number of times pool capacity was exceeded (triggered growth)
+   */
+  uintptr_t growth_events;
+  /**
+   * Estimated memory used by results in bytes
+   */
+  uintptr_t estimated_memory_bytes;
+} CResultPoolStats;
+
+/**
+ * Statistics for string interning efficiency tracking.
+ */
+typedef struct CStringInternStats {
+  /**
+   * Number of unique strings currently interned
+   */
+  uintptr_t unique_count;
+  /**
+   * Total number of intern requests
+   */
+  uintptr_t total_requests;
+  /**
+   * Number of cache hits (string already interned)
+   */
+  uintptr_t cache_hits;
+  /**
+   * Number of cache misses (new string added)
+   */
+  uintptr_t cache_misses;
+  /**
+   * Estimated memory saved by deduplication (bytes)
+   */
+  uintptr_t estimated_memory_saved;
+  /**
+   * Total memory used by interned strings (bytes)
+   */
+  uintptr_t total_memory_bytes;
+} CStringInternStats;
 
 /**
  * Extract text and metadata from a file (synchronous).
@@ -1316,6 +1422,127 @@ int32_t kreuzberg_is_language_supported(const char *backend, const char *languag
 char *kreuzberg_list_ocr_backends_with_languages(void);
 
 /**
+ * Extract multiple files in streaming mode with callback-based result delivery.
+ *
+ * Processes files one at a time without accumulating results in memory.
+ * Each result is passed to the callback and then freed automatically.
+ *
+ * # Arguments
+ *
+ * * `files` - Array of null-terminated file path strings
+ * * `count` - Number of files in the array
+ * * `config_json` - Optional JSON configuration string (NULL for defaults)
+ * * `result_callback` - Callback invoked for each successful extraction
+ * * `user_data` - Optional user context passed to callbacks
+ * * `error_callback` - Optional callback invoked for extraction failures
+ *
+ * # Returns
+ *
+ * - `0` on success (all files processed or cancelled by callback)
+ * - `-1` on error (invalid arguments, configuration parsing failure)
+ *
+ * # Error Handling
+ *
+ * - Individual file failures invoke `error_callback` but don't stop processing
+ * - Callback can return non-zero to cancel remaining files
+ * - Invalid arguments or config parsing errors return `-1` immediately
+ *
+ * # Safety
+ *
+ * - `files` must point to valid array of `count` C string pointers
+ * - All file path strings must be valid null-terminated UTF-8
+ * - `config_json` must be valid null-terminated UTF-8 if not NULL
+ * - `result_callback` must be a valid function pointer
+ * - `error_callback` must be a valid function pointer if not NULL
+ * - Result pointers passed to callbacks are valid only during callback
+ * - Callbacks must not store result pointers for later use
+ *
+ * # Example (C)
+ *
+ * ```c
+ * int process_result(const CExtractionResultView* result, size_t index, void* data) {
+ *     // Copy data needed beyond callback scope
+ *     char content[1024];
+ *     size_t copy_len = result->content_len < 1024 ? result->content_len : 1023;
+ *     memcpy(content, result->content_ptr, copy_len);
+ *     content[copy_len] = '\0';
+ *     return 0; // Continue
+ * }
+ *
+ * void handle_error(size_t index, const char* msg, void* data) {
+ *     fprintf(stderr, "File %zu failed: %s\n", index, msg);
+ * }
+ *
+ * const char* files[] = {"a.pdf", "b.txt", "c.docx"};
+ * kreuzberg_extract_batch_streaming(files, 3, NULL, process_result, NULL, handle_error);
+ * ```
+ */
+int kreuzberg_extract_batch_streaming(const char *const *files,
+                                      uintptr_t count,
+                                      const char *config_json,
+                                      ResultCallback result_callback,
+                                      void *user_data,
+                                      struct Option_ErrorCallback error_callback);
+
+/**
+ * Extract multiple files in parallel streaming mode.
+ *
+ * Similar to `kreuzberg_extract_batch_streaming` but processes files in parallel
+ * using a thread pool. Results are delivered via callback as they complete.
+ *
+ * # Arguments
+ *
+ * * `files` - Array of null-terminated file path strings
+ * * `count` - Number of files in the array
+ * * `config_json` - Optional JSON configuration string (NULL for defaults)
+ * * `result_callback` - Thread-safe callback invoked for each successful extraction
+ * * `user_data` - Optional user context passed to callbacks (must be thread-safe)
+ * * `error_callback` - Optional thread-safe callback invoked for failures
+ * * `max_parallel` - Maximum number of parallel extractions (0 = number of CPUs)
+ *
+ * # Returns
+ *
+ * - `0` on success (all files processed or cancelled)
+ * - `-1` on error (invalid arguments, configuration parsing failure)
+ *
+ * # Thread Safety
+ *
+ * - Both callbacks may be invoked concurrently from multiple threads
+ * - `user_data` must be thread-safe (e.g., synchronized with mutex)
+ * - Callback can set atomic flag to signal cancellation
+ *
+ * # Safety
+ *
+ * Same requirements as `kreuzberg_extract_batch_streaming`, plus:
+ * - Callbacks must be thread-safe
+ * - `user_data` must support concurrent access
+ *
+ * # Example (C)
+ *
+ * ```c
+ * typedef struct {
+ *     pthread_mutex_t lock;
+ *     atomic_int cancel_flag;
+ * } BatchContext;
+ *
+ * int process_result(const CExtractionResultView* result, size_t index, void* data) {
+ *     BatchContext* ctx = (BatchContext*)data;
+ *     pthread_mutex_lock(&ctx->lock);
+ *     // Process result with thread safety
+ *     pthread_mutex_unlock(&ctx->lock);
+ *     return atomic_load(&ctx->cancel_flag);
+ * }
+ * ```
+ */
+int kreuzberg_extract_batch_parallel(const char *const *files,
+                                     uintptr_t count,
+                                     const char *config_json,
+                                     ResultCallback result_callback,
+                                     void *user_data,
+                                     struct Option_ErrorCallback error_callback,
+                                     uintptr_t max_parallel);
+
+/**
  * Parse an ExtractionConfig from a JSON string.
  *
  * This is the primary FFI entry point for all language bindings to parse
@@ -1962,6 +2189,216 @@ struct CMetadataField kreuzberg_result_get_metadata_field(const ExtractionResult
                                                           const char *field_name);
 
 /**
+ * Create a new result pool with specified initial capacity.
+ *
+ * Pre-allocates storage for `capacity` results to reduce allocation overhead.
+ * Pool automatically grows if capacity is exceeded.
+ *
+ * # Arguments
+ *
+ * * `capacity` - Initial capacity (number of results to pre-allocate storage for)
+ *
+ * # Returns
+ *
+ * Pointer to allocated pool, or NULL on allocation failure (check `kreuzberg_last_error`).
+ *
+ * # Memory Management
+ *
+ * Caller must free the returned pool with `kreuzberg_result_pool_free()`.
+ *
+ * # Example (C)
+ *
+ * ```c
+ * CResultPool* pool = kreuzberg_result_pool_new(100);
+ * if (pool == NULL) {
+ *     fprintf(stderr, "Failed to create pool: %s\n", kreuzberg_last_error());
+ *     return;
+ * }
+ * // Use pool...
+ * kreuzberg_result_pool_free(pool);
+ * ```
+ */
+struct ResultPool *kreuzberg_result_pool_new(uintptr_t capacity);
+
+/**
+ * Reset pool by clearing all results.
+ *
+ * Removes all results from the pool but retains allocated capacity.
+ * After reset, pool can be reused for new extractions.
+ *
+ * # Arguments
+ *
+ * * `pool` - Pointer to result pool
+ *
+ * # Safety
+ *
+ * - `pool` must be a valid pointer returned by `kreuzberg_result_pool_new()`
+ * - `pool` cannot be NULL
+ * - All result pointers obtained from this pool become invalid after reset
+ * - Must not be called concurrently with extractions using same pool
+ *
+ * # Example (C)
+ *
+ * ```c
+ * CResultPool* pool = kreuzberg_result_pool_new(100);
+ *
+ * // Process batch 1
+ * for (int i = 0; i < 50; i++) {
+ *     kreuzberg_extract_file_into_pool(files[i], NULL, pool);
+ * }
+ *
+ * // Reset and reuse
+ * kreuzberg_result_pool_reset(pool);
+ *
+ * // Process batch 2
+ * for (int i = 0; i < 50; i++) {
+ *     kreuzberg_extract_file_into_pool(other_files[i], NULL, pool);
+ * }
+ *
+ * kreuzberg_result_pool_free(pool);
+ * ```
+ */
+void kreuzberg_result_pool_reset(struct ResultPool *pool);
+
+/**
+ * Free result pool and all contained results.
+ *
+ * Releases all memory associated with the pool. All result pointers
+ * obtained from this pool become invalid.
+ *
+ * # Arguments
+ *
+ * * `pool` - Pointer to result pool
+ *
+ * # Safety
+ *
+ * - `pool` must be a valid pointer returned by `kreuzberg_result_pool_new()`
+ * - `pool` can be NULL (no-op)
+ * - All result pointers from this pool become invalid after free
+ * - Must not be called twice on same pool (double-free)
+ * - Must not be called concurrently with other pool operations
+ *
+ * # Example (C)
+ *
+ * ```c
+ * CResultPool* pool = kreuzberg_result_pool_new(100);
+ * // Use pool...
+ * kreuzberg_result_pool_free(pool);
+ * pool = NULL; // Prevent double-free
+ * ```
+ */
+void kreuzberg_result_pool_free(struct ResultPool *pool);
+
+/**
+ * Get statistics about pool usage and efficiency.
+ *
+ * Returns metrics about current pool state, allocation counts, and memory usage.
+ *
+ * # Arguments
+ *
+ * * `pool` - Pointer to result pool
+ *
+ * # Returns
+ *
+ * Statistics structure with current metrics, or zeroed structure on error.
+ *
+ * # Safety
+ *
+ * - `pool` must be a valid pointer returned by `kreuzberg_result_pool_new()`
+ * - `pool` cannot be NULL
+ *
+ * # Example (C)
+ *
+ * ```c
+ * CResultPoolStats stats = kreuzberg_result_pool_stats(pool);
+ * printf("Pool: %zu/%zu results, %zu allocations, %zu bytes\n",
+ *        stats.current_count, stats.capacity,
+ *        stats.total_allocations, stats.estimated_memory_bytes);
+ *
+ * if (stats.growth_events > 0) {
+ *     printf("Warning: Pool grew %zu times (consider larger initial capacity)\n",
+ *            stats.growth_events);
+ * }
+ * ```
+ */
+struct CResultPoolStats kreuzberg_result_pool_stats(const struct ResultPool *pool);
+
+/**
+ * Extract file and store result in pool.
+ *
+ * Extracts document content and adds result to pool. Returns borrowed reference
+ * to result that remains valid until pool is reset or freed.
+ *
+ * # Arguments
+ *
+ * * `file_path` - Null-terminated UTF-8 file path
+ * * `config_json` - Optional JSON configuration string (NULL for defaults)
+ * * `pool` - Pointer to result pool
+ *
+ * # Returns
+ *
+ * Borrowed pointer to extraction result view, or NULL on error (check `kreuzberg_last_error`).
+ * Result remains valid until pool is reset or freed.
+ *
+ * # Safety
+ *
+ * - `file_path` must be valid null-terminated UTF-8 string
+ * - `config_json` must be valid null-terminated UTF-8 if not NULL
+ * - `pool` must be valid pointer returned by `kreuzberg_result_pool_new()`
+ * - None can be NULL (except config_json which is optional)
+ * - Returned pointer is borrowed from pool (do not free separately)
+ * - Returned pointer becomes invalid when pool is reset or freed
+ *
+ * # Example (C)
+ *
+ * ```c
+ * CResultPool* pool = kreuzberg_result_pool_new(100);
+ *
+ * const CExtractionResultView* result = kreuzberg_extract_file_into_pool(
+ *     "document.pdf", NULL, pool
+ * );
+ *
+ * if (result != NULL) {
+ *     // Access result fields
+ *     printf("Content length: %zu\n", result->content_len);
+ *     printf("MIME type: %.*s\n",
+ *            (int)result->mime_type_len,
+ *            result->mime_type_ptr);
+ * }
+ *
+ * // Result remains valid until pool is reset/freed
+ * kreuzberg_result_pool_free(pool);
+ * ```
+ */
+const struct CExtractionResultView *kreuzberg_extract_file_into_pool(const char *file_path,
+                                                                     const char *config_json,
+                                                                     struct ResultPool *pool);
+
+/**
+ * Extract file into pool and get zero-copy view.
+ *
+ * Convenience function that combines extraction and view creation.
+ * Equivalent to `kreuzberg_extract_file_into_pool()` followed by
+ * `kreuzberg_get_result_view()`.
+ *
+ * # Arguments
+ *
+ * Same as `kreuzberg_extract_file_into_pool()`
+ *
+ * # Returns
+ *
+ * Zero-copy view of result, or zeroed view on error.
+ *
+ * # Safety
+ *
+ * Same requirements as `kreuzberg_extract_file_into_pool()`.
+ * View is valid until pool is reset or freed.
+ */
+struct CExtractionResultView kreuzberg_extract_file_into_pool_view(const char *file_path,
+                                                                   const char *config_json,
+                                                                   struct ResultPool *pool);
+
+/**
  * Get a zero-copy view of an extraction result.
  *
  * Creates a view structure with direct pointers to result data without allocation.
@@ -2082,6 +2519,120 @@ int32_t kreuzberg_view_get_content(const struct CExtractionResultView *view,
 int32_t kreuzberg_view_get_mime_type(const struct CExtractionResultView *view,
                                      const uint8_t **out_ptr,
                                      uintptr_t *out_len);
+
+/**
+ * Intern a string and return pointer to shared C string.
+ *
+ * If the string has already been interned, returns pointer to existing allocation.
+ * Otherwise, creates new allocation. Pointer remains valid until all references
+ * are freed with `kreuzberg_free_interned_string()`.
+ *
+ * # Arguments
+ *
+ * * `s` - Null-terminated UTF-8 string to intern
+ *
+ * # Returns
+ *
+ * Pointer to interned C string, or NULL on error (invalid UTF-8, allocation failure).
+ * Caller must eventually free with `kreuzberg_free_interned_string()`.
+ *
+ * # Reference Counting
+ *
+ * Multiple calls with the same string return the same pointer but increment
+ * an internal reference count. The string is freed only when all references
+ * are released.
+ *
+ * # Thread Safety
+ *
+ * Thread-safe. Multiple threads can call concurrently.
+ *
+ * # Safety
+ *
+ * - `s` must be valid null-terminated UTF-8 string
+ * - `s` cannot be NULL
+ * - Returned pointer must not be modified
+ * - Caller must call `kreuzberg_free_interned_string()` for each `kreuzberg_intern_string()` call
+ *
+ * # Example (C)
+ *
+ * ```c
+ * const char* mime1 = kreuzberg_intern_string("application/pdf");
+ * const char* mime2 = kreuzberg_intern_string("application/pdf");
+ *
+ * // Same string = same pointer (memory shared)
+ * assert(mime1 == mime2);
+ *
+ * // Free each reference
+ * kreuzberg_free_interned_string(mime1);
+ * kreuzberg_free_interned_string(mime2);
+ * ```
+ */
+const char *kreuzberg_intern_string(const char *s);
+
+/**
+ * Free an interned string reference.
+ *
+ * Decrements reference count for the interned string. If reference count
+ * reaches zero, the string is freed from the intern table.
+ *
+ * # Arguments
+ *
+ * * `s` - Pointer returned by `kreuzberg_intern_string()`
+ *
+ * # Safety
+ *
+ * - `s` must be a pointer returned by `kreuzberg_intern_string()`
+ * - `s` can be NULL (no-op)
+ * - Must not be called twice on same pointer (double-free)
+ * - Pointer becomes invalid after last reference is freed
+ *
+ * # Example (C)
+ *
+ * ```c
+ * const char* mime = kreuzberg_intern_string("application/pdf");
+ * // Use mime...
+ * kreuzberg_free_interned_string(mime);
+ * // Don't use mime after this point
+ * ```
+ */
+void kreuzberg_free_interned_string(const char *s);
+
+/**
+ * Get statistics about string interning efficiency.
+ *
+ * Returns metrics about unique strings, cache hits/misses, and memory savings.
+ *
+ * # Returns
+ *
+ * Statistics structure with current metrics.
+ *
+ * # Example (C)
+ *
+ * ```c
+ * CStringInternStats stats = kreuzberg_string_intern_stats();
+ * printf("Interned: %zu unique strings\n", stats.unique_count);
+ * printf("Requests: %zu total (%zu hits, %zu misses)\n",
+ *        stats.total_requests, stats.cache_hits, stats.cache_misses);
+ * printf("Memory saved: %zu bytes\n", stats.estimated_memory_saved);
+ * printf("Hit rate: %.1f%%\n",
+ *        100.0 * stats.cache_hits / stats.total_requests);
+ * ```
+ */
+struct CStringInternStats kreuzberg_string_intern_stats(void);
+
+/**
+ * Reset the intern table, freeing all interned strings.
+ *
+ * **WARNING**: This invalidates all pointers returned by `kreuzberg_intern_string()`.
+ * Only use during shutdown or testing.
+ *
+ * # Safety
+ *
+ * - Must not be called while any interned string pointers are in use
+ * - All existing interned pointers become invalid
+ * - Thread-safe but can race with concurrent intern operations
+ */
+void kreuzberg_string_intern_reset(void);
 
 /**
  * Validates a binarization method string.

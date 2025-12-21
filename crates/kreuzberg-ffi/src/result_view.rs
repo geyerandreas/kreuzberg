@@ -224,6 +224,81 @@ pub unsafe extern "C" fn kreuzberg_get_result_view(
     0
 }
 
+/// Internal helper: create a zero-copy view by value (for internal use).
+///
+/// This is a convenience function for internal FFI modules that need to
+/// create views without having to allocate and populate an output structure.
+///
+/// # Safety
+///
+/// - `result` must be a valid reference to ExtractionResult
+/// - Returned view is only valid while `result` is alive
+pub(crate) fn create_result_view(result: &ExtractionResult) -> CExtractionResultView {
+    let mut view = CExtractionResultView {
+        content_ptr: ptr::null(),
+        content_len: 0,
+        mime_type_ptr: ptr::null(),
+        mime_type_len: 0,
+        language_ptr: ptr::null(),
+        language_len: 0,
+        date_ptr: ptr::null(),
+        date_len: 0,
+        subject_ptr: ptr::null(),
+        subject_len: 0,
+        title_ptr: ptr::null(),
+        title_len: 0,
+        table_count: 0,
+        chunk_count: 0,
+        detected_language_count: 0,
+        image_count: 0,
+        page_count: 0,
+    };
+
+    // Populate content
+    let content_bytes = result.content.as_bytes();
+    view.content_ptr = content_bytes.as_ptr();
+    view.content_len = content_bytes.len();
+
+    // Populate MIME type
+    let mime_bytes = result.mime_type.as_bytes();
+    view.mime_type_ptr = mime_bytes.as_ptr();
+    view.mime_type_len = mime_bytes.len();
+
+    // Optional metadata fields
+    if let Some(ref language) = result.metadata.language {
+        let lang_bytes = language.as_bytes();
+        view.language_ptr = lang_bytes.as_ptr();
+        view.language_len = lang_bytes.len();
+    }
+
+    if let Some(ref date) = result.metadata.date {
+        let date_bytes = date.as_bytes();
+        view.date_ptr = date_bytes.as_ptr();
+        view.date_len = date_bytes.len();
+    }
+
+    if let Some(ref subject) = result.metadata.subject {
+        let subject_bytes = subject.as_bytes();
+        view.subject_ptr = subject_bytes.as_ptr();
+        view.subject_len = subject_bytes.len();
+    }
+
+    if let Some(ref title) = result.metadata.title {
+        let title_bytes = title.as_bytes();
+        view.title_ptr = title_bytes.as_ptr();
+        view.title_len = title_bytes.len();
+    }
+
+    // Counts
+    view.table_count = result.tables.len();
+    view.chunk_count = result.chunks.as_ref().map_or(0, |c| c.len());
+    view.detected_language_count = result.detected_languages.as_ref().map_or(0, |l| l.len());
+    view.image_count = result.images.as_ref().map_or(0, |i| i.len());
+    view.page_count = result.metadata.pages.as_ref().map_or(0, |p| p.total_count);
+
+    view
+}
+
 /// Get direct access to content from a result view.
 ///
 /// Helper function to retrieve content as a slice without copying.
