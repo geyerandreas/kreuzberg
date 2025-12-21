@@ -766,7 +766,7 @@ module Kreuzberg
           postprocessor token_reduction keywords html_options pages
           max_concurrent_extractions
         ]
-        filtered_hash = merged_hash.transform_keys(&:to_sym).select { |k, _| known_keys.include?(k) }
+        filtered_hash = merged_hash.transform_keys(&:to_sym).slice(*known_keys)
         Extraction.new(**filtered_hash)
       end
 

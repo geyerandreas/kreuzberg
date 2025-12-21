@@ -17,6 +17,13 @@
  */
 typedef struct ExtractionConfig ExtractionConfig;
 
+/**
+ * Opaque type for extraction result.
+ * This is an opaque pointer type - callers should not access its internals.
+ * Use the kreuzberg_result_* accessor functions to extract data.
+ */
+typedef struct ExtractionResult ExtractionResult;
+
 
 typedef struct Option_ErrorCallback Option_ErrorCallback;
 
