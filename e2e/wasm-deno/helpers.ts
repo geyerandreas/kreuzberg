@@ -47,7 +47,16 @@ export async function ensureWasmInitialized(): Promise<void> {
 	}
 }
 
-const WORKSPACE_ROOT = new URL("../..", import.meta.url).pathname;
+// Normalize path to handle Windows (remove leading slash on drive paths like /D:/)
+function normalizeUrlPath(pathname: string): string {
+	// On Windows, URL().pathname returns /D:/path/to/file, we need D:/path/to/file
+	if (pathname.match(/^\/[A-Za-z]:\//)) {
+		return pathname.slice(1);
+	}
+	return pathname;
+}
+
+const WORKSPACE_ROOT = normalizeUrlPath(new URL("../..", import.meta.url).pathname);
 const TEST_DOCUMENTS = `${WORKSPACE_ROOT}/test_documents`;
 
 type PlainRecord = Record<string, unknown>;
