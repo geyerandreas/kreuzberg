@@ -61,6 +61,20 @@
 //!
 //! If you see this error, it means `initialize_pdfium_render()` was not called before
 //! attempting PDF extraction. Make sure to follow the initialization sequence above.
+//!
+//! ## WASM Limitations
+//!
+//! ### HTML File Size Limit
+//!
+//! **HTML files are limited to 2MB** in WASM builds due to limited stack space.
+//! Files exceeding this limit will be rejected with a validation error to prevent
+//! stack overflow. For larger HTML files, use the native Kreuzberg library.
+//!
+//! ### PDF Support
+//!
+//! PDF extraction via PDFium is **only available in browser environments**.
+//! Non-browser WASM runtimes (Deno, Cloudflare Workers) cannot use PDF extraction.
+//! For server-side PDF processing, use the native library bindings.
 
 use wasm_bindgen::prelude::*;
 

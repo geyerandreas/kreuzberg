@@ -41,11 +41,10 @@ pub use html_to_markdown_rs::{
     PreprocessingPreset, WhitespaceMode,
 };
 
-// WASM has a much smaller stack, so we need a lower threshold
-// In practice, WASM can't spawn threads anyway, so this threshold doesn't help much
-// We set it very high to avoid the overhead of the "large stack" path which is a no-op in WASM
+// WASM has a much smaller stack and cannot spawn threads for large documents
+// Set a conservative limit to prevent stack overflow in WASM builds
 #[cfg(target_arch = "wasm32")]
-const LARGE_HTML_STACK_THRESHOLD_BYTES: usize = usize::MAX;
+const MAX_HTML_SIZE_BYTES: usize = 2 * 1024 * 1024; // 2MB limit for WASM
 
 #[cfg(not(target_arch = "wasm32"))]
 const LARGE_HTML_STACK_THRESHOLD_BYTES: usize = 512 * 1024;
@@ -221,22 +220,56 @@ fn convert_inline_images_with_large_stack(
 /// - `extract_metadata = true` (parse YAML frontmatter)
 /// - `hocr_spatial_tables = false` (disable hOCR table detection)
 /// - `preprocessing.enabled = false` (disable HTML preprocessing)
+///
+/// # WASM Limitations
+///
+/// In WASM builds, HTML files larger than 2MB will be rejected with an error
+/// to prevent stack overflow. For larger files, use the native library.
 pub fn convert_html_to_markdown(html: &str, options: Option<ConversionOptions>) -> Result<String> {
-    let options = resolve_conversion_options(options);
-    if html_requires_large_stack(html.len()) {
-        convert_html_with_options_large_stack(html.to_string(), options)
-    } else {
-        convert_html_with_options(html, options)
+    // WASM builds have strict size limits due to limited stack space
+    #[cfg(target_arch = "wasm32")]
+    if html.len() > MAX_HTML_SIZE_BYTES {
+        return Err(KreuzbergError::validation(format!(
+            "HTML file size ({} bytes) exceeds WASM limit of {} bytes (2MB). \
+             Large HTML files cannot be processed in WASM due to stack constraints. \
+             Consider using the native library for files of this size.",
+            html.len(),
+            MAX_HTML_SIZE_BYTES
+        )));
     }
+
+    let options = resolve_conversion_options(options);
+
+    #[cfg(not(target_arch = "wasm32"))]
+    if html_requires_large_stack(html.len()) {
+        return convert_html_with_options_large_stack(html.to_string(), options);
+    }
+
+    convert_html_with_options(html, options)
 }
 
 /// Process HTML with optional image extraction.
+///
+/// # WASM Limitations
+///
+/// In WASM builds, HTML files larger than 2MB will be rejected to prevent stack overflow.
 pub fn process_html(
     html: &str,
     options: Option<ConversionOptions>,
     extract_images: bool,
     max_image_size: u64,
 ) -> Result<HtmlExtractionResult> {
+    // WASM builds have strict size limits due to limited stack space
+    #[cfg(target_arch = "wasm32")]
+    if html.len() > MAX_HTML_SIZE_BYTES {
+        return Err(KreuzbergError::validation(format!(
+            "HTML file size ({} bytes) exceeds WASM limit of {} bytes (2MB). \
+             Large HTML files cannot be processed in WASM due to stack constraints.",
+            html.len(),
+            MAX_HTML_SIZE_BYTES
+        )));
+    }
+
     if extract_images {
         let options = resolve_conversion_options(options.clone());
         let mut img_config = LibInlineImageConfig::new(max_image_size);

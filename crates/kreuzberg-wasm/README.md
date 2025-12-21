@@ -946,6 +946,34 @@ Tesseract training data (`.traineddata` files) are loaded from jsDelivr CDN on f
 
 Cloudflare Workers has a 10MB bundle size limit (compressed). The WASM binary is ~2MB compressed, leaving room for your application code.
 
+### HTML File Size Limits
+
+**WASM builds have a 2MB limit for HTML files** due to limited stack space. HTML files larger than 2MB will be rejected with a validation error to prevent stack overflow.
+
+```typescript
+// Files > 2MB will throw an error in WASM builds
+const largeHtml = new Uint8Array(3 * 1024 * 1024); // 3MB
+await extractBytes(largeHtml, 'text/html');
+// ❌ Throws: "HTML file size exceeds WASM limit of 2MB"
+```
+
+For large HTML files, use the native [@kreuzberg/node](https://www.npmjs.com/package/@kreuzberg/node) binding which has no size limits.
+
+### PDF Extraction in Non-Browser Environments
+
+PDF extraction requires PDFium, which is only available in browser environments. In Deno, Node.js, and Cloudflare Workers, PDF extraction will fail with an error.
+
+```typescript
+// ❌ Won't work in Deno/Node.js/Workers
+await extractBytes(pdfBytes, 'application/pdf');
+// Throws: "PDF extraction requires proper WASM module initialization"
+```
+
+**Solutions:**
+- **Browser**: PDF extraction works out of the box
+- **Deno/Node.js**: Use [@kreuzberg/node](https://www.npmjs.com/package/@kreuzberg/node) with native PDFium bindings
+- **Cloudflare Workers**: PDF extraction is not currently supported
+
 ## Troubleshooting
 
 ### "WASM module failed to initialize"
