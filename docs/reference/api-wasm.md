@@ -1982,8 +1982,8 @@ const result = await extractBytes(pdfBytes, 'application/pdf');
 
 ## See Also
 
-- [Configuration Reference](/docs/reference/configuration.md)
-- [Type Reference](/docs/reference/types.md)
-- [Error Handling](/docs/reference/errors.md)
-- [Getting Started Guide](/docs/getting-started/wasm.md)
-- [WASM Examples](/docs/guides/examples.md#wasm)
+- [Configuration Reference](configuration.md)
+- [Type Reference](types.md)
+- [Error Handling](errors.md)
+- [Getting Started Guide](../getting-started/installation.md)
+- [Quick Start Examples](../getting-started/quickstart.md)

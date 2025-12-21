@@ -42,7 +42,7 @@
 
 ## Running Locally
 
-```bash
+```bash title="Terminal"
 # Build benchmark harness
 cargo build --release -p benchmark-harness
 

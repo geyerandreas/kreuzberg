@@ -15,12 +15,13 @@ The charts below are generated from the most recent benchmark workflow run.
 
 <div class="full-width" markdown="1">
 
-<!-- Embed the generated HTML -->
+<!-- Embed the generated HTML (available only on deployed docs) -->
 <iframe src="charts/index.html"
         width="100%"
         height="2000px"
         frameborder="0"
-        style="border: 1px solid #ccc; border-radius: 4px;">
+        style="border: 1px solid #ccc; border-radius: 4px;"
+        title="Benchmark Charts">
 </iframe>
 
 </div>
@@ -38,10 +39,7 @@ To download the complete benchmark results and raw data:
    - Individual framework result files for detailed analysis
 
 !!! tip "Raw Data Files"
-    If you only need the JSON data files for programmatic access:
-
-    - [results.json](charts/results.json) - All benchmark results
-    - [by-extension.json](charts/by-extension.json) - Results grouped by file extension
+    Raw JSON data files are included in the benchmark-visualization-html artifact downloadable from GitHub Actions.
 
 ## Run Your Own
 

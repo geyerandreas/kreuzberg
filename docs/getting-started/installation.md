@@ -202,7 +202,7 @@ WASM bindings work in:
 - Cloudflare Workers
 - Other JavaScript runtimes with WebAssembly support
 
-Next steps: [WASM Quick Start](quickstart.md#wasm) • [WASM API Reference](../reference/api-wasm.md)
+Next steps: [WASM Quick Start](quickstart.md#basic-extraction-wasm) • [WASM API Reference](../reference/api-wasm.md)
 
 ## Ruby
 
