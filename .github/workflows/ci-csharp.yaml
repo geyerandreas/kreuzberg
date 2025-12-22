@@ -216,11 +216,27 @@ jobs:
           name: csharp-ffi-lib-${{ matrix.os }}
           path: target/release/
 
+      - name: Prepare crash dumps
+        shell: bash
+        run: mkdir -p packages/csharp/target/crash-dumps
+
       - name: Run C# tests
         shell: bash
         env:
           KREUZBERG_FFI_DIR: ${{ github.workspace }}/target/release
-        run: scripts/ci/csharp/run-tests.sh
+          COMPlus_DbgEnableMiniDump: "1"
+          COMPlus_DbgMiniDumpType: "4"
+          COMPlus_DbgMiniDumpName: ${{ github.workspace }}/packages/csharp/target/crash-dumps/kreuzberg.%p.dmp
+          DOTNET_DbgEnableMiniDump: "1"
+          DOTNET_DbgMiniDumpType: "4"
+          DOTNET_DbgMiniDumpName: ${{ github.workspace }}/packages/csharp/target/crash-dumps/kreuzberg.%p.dmp
+          DOTNET_EnableDiagnostics: "1"
+          RUST_BACKTRACE: full
+        run: |
+          if [ "${RUNNER_OS}" != "Windows" ]; then
+            ulimit -c unlimited || true
+          fi
+          scripts/ci/csharp/run-tests.sh
 
       - name: Install Task
         uses: ./.github/actions/install-task
@@ -232,3 +248,13 @@ jobs:
           LD_LIBRARY_PATH: ${{ github.workspace }}/target/release:${{ env.LD_LIBRARY_PATH }}
           DYLD_LIBRARY_PATH: ${{ github.workspace }}/target/release:${{ env.DYLD_LIBRARY_PATH }}
         run: scripts/ci/csharp/run-e2e.sh
+
+      - name: Upload C# crash dumps
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: csharp-crash-dumps-${{ matrix.os }}
+          path: |
+            packages/csharp/target/crash-dumps
+          if-no-files-found: ignore
+          retention-days: 7

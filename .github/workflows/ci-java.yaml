@@ -203,11 +203,25 @@ jobs:
           name: java-jar-${{ matrix.os }}
           path: packages/java/target/
 
+      - name: Prepare JVM crash logs
+        shell: bash
+        run: mkdir -p packages/java/target/jvm-crash
+
       - name: Build native FFI library
         shell: bash
         run: cargo build -p kreuzberg-ffi --release
 
       - name: Run Java tests
+        env:
+          JAVA_TOOL_OPTIONS: >-
+            -XX:ErrorFile=${{ github.workspace }}/packages/java/target/jvm-crash/hs_err_pid%p.log
+            -XX:+UnlockDiagnosticVMOptions
+            -XX:+LogVMOutput
+            -XX:LogFile=${{ github.workspace }}/packages/java/target/jvm-crash/jvm.log
+            -XX:+HeapDumpOnOutOfMemoryError
+            -XX:HeapDumpPath=${{ github.workspace }}/packages/java/target/jvm-crash/heapdump.hprof
+            -Xlog:os+signal=info
+          RUST_BACKTRACE: full
         run: scripts/ci/java/run-tests.sh
 
       - name: Install Task
@@ -230,6 +244,16 @@ jobs:
           name: java-unit-reports-${{ matrix.os }}
           path: |
             packages/java/target/surefire-reports
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Upload JVM crash logs
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: java-crash-logs-${{ matrix.os }}
+          path: |
+            packages/java/target/jvm-crash
           if-no-files-found: ignore
           retention-days: 7
 

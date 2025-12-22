@@ -485,50 +485,48 @@ func ConfigMerge(base, override *ExtractionConfig) error {
 		return newValidationError("override config cannot be nil", nil)
 	}
 
-	// Serialize both configs to JSON
-	baseData, err := json.Marshal(base)
-	if err != nil {
-		return newSerializationError("failed to encode base config", err)
+	// Merge in Go to preserve pointer semantics (nil = "not set").
+	if override.UseCache != nil {
+		base.UseCache = override.UseCache
 	}
-
-	overrideData, err := json.Marshal(override)
-	if err != nil {
-		return newSerializationError("failed to encode override config", err)
+	if override.EnableQualityProcessing != nil {
+		base.EnableQualityProcessing = override.EnableQualityProcessing
 	}
-
-	cBaseJSON := C.CString(string(baseData))
-	defer C.free(unsafe.Pointer(cBaseJSON))
-
-	cOverrideJSON := C.CString(string(overrideData))
-	defer C.free(unsafe.Pointer(cOverrideJSON))
-
-	basePtr := C.kreuzberg_config_from_json(cBaseJSON)
-	if basePtr == nil {
-		return lastError()
+	if override.OCR != nil {
+		base.OCR = override.OCR
 	}
-	defer C.kreuzberg_config_free(basePtr)
-
-	overridePtr := C.kreuzberg_config_from_json(cOverrideJSON)
-	if overridePtr == nil {
-		return lastError()
+	if override.ForceOCR != nil {
+		base.ForceOCR = override.ForceOCR
 	}
-	defer C.kreuzberg_config_free(overridePtr)
-
-	result := int32(C.kreuzberg_config_merge(basePtr, overridePtr))
-	if result != 1 {
-		return lastError()
+	if override.Chunking != nil {
+		base.Chunking = override.Chunking
 	}
-
-	// Get the merged config back as JSON and update base
-	cMerged := C.kreuzberg_config_to_json(basePtr)
-	if cMerged == nil {
-		return lastError()
+	if override.Images != nil {
+		base.Images = override.Images
 	}
-	defer C.kreuzberg_free_string(cMerged)
-
-	mergedStr := C.GoString(cMerged)
-	if err := json.Unmarshal([]byte(mergedStr), base); err != nil {
-		return newSerializationError("failed to decode merged config", err)
+	if override.PdfOptions != nil {
+		base.PdfOptions = override.PdfOptions
+	}
+	if override.TokenReduction != nil {
+		base.TokenReduction = override.TokenReduction
+	}
+	if override.LanguageDetection != nil {
+		base.LanguageDetection = override.LanguageDetection
+	}
+	if override.Keywords != nil {
+		base.Keywords = override.Keywords
+	}
+	if override.Postprocessor != nil {
+		base.Postprocessor = override.Postprocessor
+	}
+	if override.HTMLOptions != nil {
+		base.HTMLOptions = override.HTMLOptions
+	}
+	if override.Pages != nil {
+		base.Pages = override.Pages
+	}
+	if override.MaxConcurrentExtractions != nil {
+		base.MaxConcurrentExtractions = override.MaxConcurrentExtractions
 	}
 
 	return nil
