@@ -9,6 +9,11 @@ fn main() {
         other => other,
     };
 
+    if target.contains("apple-darwin") {
+        // Ensure Python symbols resolve at runtime on macOS without hard-linking libpython.
+        println!("cargo:rustc-cdylib-link-arg=-Wl,-undefined,dynamic_lookup");
+    }
+
     // Try to locate kreuzberg-ffi library built alongside this crate
     let cargo_manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
     let manifest_path = PathBuf::from(&cargo_manifest_dir);
