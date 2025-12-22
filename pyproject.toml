@@ -1,22 +1,3 @@
-[build-system]
-build-backend = "maturin"
-requires = [ "maturin>=1.10.2" ]
-
-[project]
-name = "kreuzberg-workspace"
-version = "4.0.0-rc.16"
-description = "Kreuzberg - Rust document intelligence library with polyglot bindings"
-requires-python = ">=3.10"
-
-classifiers = [
-  "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
-  "Programming Language :: Python :: 3.14",
-]
-
 [dependency-groups]
 dev = [
   "covdefaults>=2.3.0",
@@ -54,9 +35,6 @@ doc = [
   "mkdocstrings[python]>=1.0.0",
 ]
 benchmark = [ "docling>=2.64.1", "markitdown>=0.1.4", "unstructured>=0.18.21" ]
-
-[tool.setuptools]
-packages = [  ]
 
 [tool.uv]
 cache-keys = [
