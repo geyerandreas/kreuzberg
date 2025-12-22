@@ -20,6 +20,21 @@ const WORD_SPACING_THRESHOLD: f32 = 3.0;
 #[cfg(feature = "ocr")]
 const MIN_WORD_LENGTH: usize = 1;
 
+/// Default capacity estimate for words per page.
+///
+/// Used for pre-allocating the words vector in group_chars_into_words().
+/// Typical pages contain 100-500 words; 256 provides good balance between
+/// avoiding reallocations and not over-allocating.
+#[cfg(feature = "ocr")]
+const ESTIMATED_WORDS_PER_PAGE: usize = 256;
+
+/// Default capacity estimate for characters per word.
+///
+/// Used for pre-allocating the current_word_chars vector.
+/// Typical words contain 3-20 characters; 16 is a reasonable estimate.
+#[cfg(feature = "ocr")]
+const ESTIMATED_CHARS_PER_WORD: usize = 16;
+
 /// Extract words with positions from PDF page for table detection.
 ///
 /// Groups adjacent characters into words based on spacing heuristics,
@@ -111,8 +126,9 @@ fn group_chars_into_words(
     page_height: i32,
     min_confidence: f64,
 ) -> Result<Vec<HocrWord>> {
-    let mut words: Vec<HocrWord> = Vec::new();
-    let mut current_word_chars: Vec<CharInfo> = Vec::new();
+    // Pre-allocate with capacity estimates to minimize reallocation overhead
+    let mut words: Vec<HocrWord> = Vec::with_capacity(ESTIMATED_WORDS_PER_PAGE);
+    let mut current_word_chars: Vec<CharInfo> = Vec::with_capacity(ESTIMATED_CHARS_PER_WORD);
 
     for pdf_char in chars.iter() {
         let bounds = pdf_char

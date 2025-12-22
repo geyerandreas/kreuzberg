@@ -234,7 +234,8 @@ fn build_page_structure(document: &PdfDocument<'_>, boundaries: &[PageBoundary])
         )));
     }
 
-    let mut pages = Vec::new();
+    // Pre-allocate pages vector with exact capacity to avoid reallocation
+    let mut pages = Vec::with_capacity(total_count);
     for (index, boundary) in boundaries.iter().enumerate() {
         let page_number = boundary.page_number;
 
@@ -337,7 +338,8 @@ pub struct CommonPdfMetadata {
 
 fn parse_authors(author_str: &str) -> Vec<String> {
     let author_str = author_str.replace(" and ", ", ");
-    let mut authors = Vec::new();
+    // Pre-allocate with conservative estimate: typically 1-10 authors per document
+    let mut authors = Vec::with_capacity(author_str.matches(',').count() + 1);
 
     for segment in author_str.split(';') {
         for author in segment.split(',') {
@@ -352,18 +354,18 @@ fn parse_authors(author_str: &str) -> Vec<String> {
 }
 
 fn parse_keywords(keywords_str: &str) -> Vec<String> {
-    keywords_str
-        .replace(';', ",")
-        .split(',')
-        .filter_map(|k| {
-            let trimmed = k.trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed.to_string())
-            }
-        })
-        .collect()
+    let normalized = keywords_str.replace(';', ",");
+    // Pre-allocate with capacity estimate: typically 5-50 keywords per document
+    let estimate = normalized.matches(',').count() + 1;
+    let mut keywords = Vec::with_capacity(estimate);
+
+    for k in normalized.split(',') {
+        let trimmed = k.trim();
+        if !trimmed.is_empty() {
+            keywords.push(trimmed.to_string());
+        }
+    }
+    keywords
 }
 
 fn parse_pdf_date(date_str: &str) -> String {

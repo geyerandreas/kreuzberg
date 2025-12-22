@@ -40,8 +40,10 @@ impl PdfImageExtractor {
     }
 
     pub fn extract_images(&self) -> Result<Vec<PdfImage>> {
-        let mut all_images = Vec::new();
         let pages = self.document.get_pages();
+        // Pre-allocate images vector with conservative estimate
+        // Typical PDFs have 5-50 images total across all pages
+        let mut all_images = Vec::with_capacity(pages.len() * 2);
 
         for (page_num, page_id) in pages.iter() {
             let images = self
@@ -79,7 +81,8 @@ impl PdfImageExtractor {
             .get_page_images(*page_id)
             .map_err(|e| PdfError::MetadataExtractionFailed(format!("Failed to get page images: {}", e)))?;
 
-        let mut page_images = Vec::new();
+        // Pre-allocate page_images vector with exact capacity of images on this page
+        let mut page_images = Vec::with_capacity(images.len());
         for (img_index, img) in images.iter().enumerate() {
             let filters = img.filters.clone().unwrap_or_default();
 
