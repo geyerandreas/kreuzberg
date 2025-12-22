@@ -46,6 +46,7 @@
  */
 
 import { createRequire } from "node:module";
+import { readFileSync } from "node:fs";
 import type { PanicContext } from "./errors.js";
 import type {
 	Chunk,
@@ -123,7 +124,7 @@ interface NativeBinding {
 	listDocumentExtractors(): string[];
 	detectMimeType(filePath: string): string;
 	detectMimeTypeFromBytes(data: Buffer): string;
-	detectMimeTypeFromPath(filePath: string): string;
+	detectMimeTypeFromPath(filePath: string, checkExists?: boolean): string;
 	validateMimeType(mimeType: string): string;
 	getExtensionsForMime(mimeType: string): string[];
 	listEmbeddingPresets(): string[];
@@ -436,9 +437,9 @@ function convertResult(rawResult: unknown): ExtractionResult {
 			metadata: {},
 			tables: [],
 			detectedLanguages: null,
-			chunks: null,
-			images: null,
-			pages: null,
+			chunks: undefined as unknown as Chunk[] | null,
+			images: undefined as unknown as ExtractedImage[] | null,
+			pages: undefined as unknown as PageContent[] | null,
 		};
 	}
 
@@ -448,7 +449,7 @@ function convertResult(rawResult: unknown): ExtractionResult {
 	const metadataValue =
 		typeof metadata === "string" ? parseMetadata(metadata) : ((metadata as Record<string, unknown>) ?? {});
 
-	return {
+	const returnObj: ExtractionResult = {
 		// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
 		content: (result["content"] as string) ?? "",
 		// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
@@ -458,22 +459,31 @@ function convertResult(rawResult: unknown): ExtractionResult {
 		tables: Array.isArray(result["tables"]) ? (result["tables"] as Table[]) : [],
 		// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
 		detectedLanguages: Array.isArray(result["detectedLanguages"]) ? (result["detectedLanguages"] as string[]) : null,
-		chunks: (() => {
-			// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
-			const chunksData = result["chunks"];
-			return Array.isArray(chunksData) ? (chunksData as unknown[]).map((chunk) => convertChunk(chunk)) : null;
-		})(),
-		images: (() => {
-			// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
-			const imagesData = result["images"];
-			return Array.isArray(imagesData) ? (imagesData as unknown[]).map((image) => convertImage(image)) : null;
-		})(),
-		pages: (() => {
-			// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
-			const pagesData = result["pages"];
-			return Array.isArray(pagesData) ? (pagesData as unknown[]).map((page) => convertPageContent(page)) : null;
-		})(),
+		chunks: undefined as unknown as Chunk[] | null,
+		images: undefined as unknown as ExtractedImage[] | null,
+		pages: undefined as unknown as PageContent[] | null,
 	};
+
+	// Only add these properties if they have values
+	// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
+	const chunksData = result["chunks"];
+	if (Array.isArray(chunksData)) {
+		returnObj.chunks = (chunksData as unknown[]).map((chunk) => convertChunk(chunk));
+	}
+
+	// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
+	const imagesData = result["images"];
+	if (Array.isArray(imagesData)) {
+		returnObj.images = (imagesData as unknown[]).map((image) => convertImage(image));
+	}
+
+	// biome-ignore lint/complexity/useLiteralKeys: required for strict TypeScript noPropertyAccessFromIndexSignature
+	const pagesData = result["pages"];
+	if (Array.isArray(pagesData)) {
+		returnObj.pages = (pagesData as unknown[]).map((page) => convertPageContent(page));
+	}
+
+	return returnObj;
 }
 
 type NativeExtractionConfig = Record<string, unknown>;
@@ -760,9 +770,26 @@ function normalizeExtractionConfig(config: ExtractionConfigType | null): NativeE
  */
 export function extractFileSync(
 	filePath: string,
-	mimeType: string | null = null,
-	config: ExtractionConfigType | null = null,
+	mimeTypeOrConfig?: string | null | ExtractionConfigType,
+	maybeConfig?: ExtractionConfigType | null,
 ): ExtractionResult {
+	// Smart parameter handling: if second param is an object, treat it as config
+	let mimeType: string | null = null;
+	let config: ExtractionConfigType | null = null;
+
+	if (typeof mimeTypeOrConfig === "string") {
+		mimeType = mimeTypeOrConfig;
+		config = maybeConfig ?? null;
+	} else if (mimeTypeOrConfig !== null && typeof mimeTypeOrConfig === "object") {
+		// Second param is config object
+		config = mimeTypeOrConfig;
+		mimeType = null;
+	} else {
+		// Second param is null or undefined
+		config = maybeConfig ?? null;
+		mimeType = null;
+	}
+
 	const normalizedConfig = normalizeExtractionConfig(config);
 	const rawResult = getBinding().extractFileSync(filePath, mimeType, normalizedConfig);
 	return convertResult(rawResult);
@@ -805,9 +832,26 @@ export function extractFileSync(
  */
 export async function extractFile(
 	filePath: string,
-	mimeType: string | null = null,
-	config: ExtractionConfigType | null = null,
+	mimeTypeOrConfig?: string | null | ExtractionConfigType,
+	maybeConfig?: ExtractionConfigType | null,
 ): Promise<ExtractionResult> {
+	// Smart parameter handling: if second param is an object, treat it as config
+	let mimeType: string | null = null;
+	let config: ExtractionConfigType | null = null;
+
+	if (typeof mimeTypeOrConfig === "string") {
+		mimeType = mimeTypeOrConfig;
+		config = maybeConfig ?? null;
+	} else if (mimeTypeOrConfig !== null && typeof mimeTypeOrConfig === "object") {
+		// Second param is config object
+		config = mimeTypeOrConfig;
+		mimeType = null;
+	} else {
+		// Second param is null or undefined
+		config = maybeConfig ?? null;
+		mimeType = null;
+	}
+
 	const normalizedConfig = normalizeExtractionConfig(config);
 	const rawResult = await getBinding().extractFile(filePath, mimeType, normalizedConfig);
 	return convertResult(rawResult);
@@ -841,10 +885,20 @@ export async function extractFile(
  * ```
  */
 export function extractBytesSync(
-	data: Uint8Array,
+	dataOrPath: Uint8Array | string,
 	mimeType: string,
 	config: ExtractionConfigType | null = null,
 ): ExtractionResult {
+	// Handle case where a file path is passed instead of bytes
+	let data: Uint8Array;
+	if (typeof dataOrPath === "string") {
+		// File path was passed, read it
+		data = readFileSync(dataOrPath);
+	} else {
+		// Bytes were passed
+		data = dataOrPath;
+	}
+
 	const validated = assertUint8Array(data, "data");
 	const normalizedConfig = normalizeExtractionConfig(config);
 	const rawResult = getBinding().extractBytesSync(Buffer.from(validated), mimeType, normalizedConfig);
@@ -879,10 +933,20 @@ export function extractBytesSync(
  * ```
  */
 export async function extractBytes(
-	data: Uint8Array,
+	dataOrPath: Uint8Array | string,
 	mimeType: string,
 	config: ExtractionConfigType | null = null,
 ): Promise<ExtractionResult> {
+	// Handle case where a file path is passed instead of bytes
+	let data: Uint8Array;
+	if (typeof dataOrPath === "string") {
+		// File path was passed, read it
+		data = readFileSync(dataOrPath);
+	} else {
+		// Bytes were passed
+		data = dataOrPath;
+	}
+
 	const validated = assertUint8Array(data, "data");
 	// biome-ignore lint/complexity/useLiteralKeys: required for environment variable access
 	if (process.env["KREUZBERG_DEBUG_GUTEN"] === "1") {
@@ -1473,7 +1537,9 @@ export function registerOcrBackend(backend: OcrBackendProtocol): void {
 	const wrappedBackend = {
 		name: typeof backend.name === "function" ? backend.name() : backend.name,
 		supportedLanguages:
-			typeof backend.supportedLanguages === "function" ? backend.supportedLanguages() : backend.supportedLanguages,
+			typeof backend.supportedLanguages === "function"
+				? backend.supportedLanguages()
+				: (backend.supportedLanguages ?? ["en"]),
 		async processImage(
 			...processArgs: [OcrProcessPayload | OcrProcessTuple | NestedOcrProcessTuple, string?]
 		): Promise<string> {
@@ -1649,23 +1715,151 @@ export function clearDocumentExtractors(): void {
 }
 
 /**
- * ExtractionConfig namespace with static methods for loading configuration from files.
+ * Builder class for creating ExtractionConfig objects with a fluent API.
  *
- * Provides a factory method to load extraction configuration from TOML, YAML, or JSON files.
- * The file format is automatically detected based on the file extension.
+ * Provides a convenient way to build extraction configurations using method chaining.
+ *
+ * @example
+ * ```typescript
+ * import { ExtractionConfig, extractFile } from '@kreuzberg/node';
+ *
+ * // Create with builder pattern
+ * const config = ExtractionConfig.default()
+ *   .withChunking({ maxChars: 2048 })
+ *   .withOcr({ backend: 'tesseract', language: 'eng' })
+ *   .build();
+ *
+ * const result = await extractFile('document.pdf', null, config);
+ * ```
+ */
+class ExtractionConfigBuilder {
+	private config: Record<string, unknown> = {};
+
+	/**
+	 * Create a new builder with default configuration.
+	 */
+	static default(): ExtractionConfigBuilder {
+		return new ExtractionConfigBuilder();
+	}
+
+	/**
+	 * Set OCR configuration.
+	 */
+	withOcr(ocr: OcrConfig): ExtractionConfigBuilder {
+		this.config["ocr"] = ocr;
+		return this;
+	}
+
+	/**
+	 * Set chunking configuration.
+	 */
+	withChunking(chunking: ChunkingConfig): ExtractionConfigBuilder {
+		this.config["chunking"] = chunking;
+		return this;
+	}
+
+	/**
+	 * Set image extraction configuration.
+	 */
+	withImageExtraction(images: ImageExtractionConfig): ExtractionConfigBuilder {
+		this.config["imageExtraction"] = images;
+		return this;
+	}
+
+	/**
+	 * Set PDF configuration.
+	 */
+	withPdf(pdf: PdfConfig): ExtractionConfigBuilder {
+		this.config["pdf"] = pdf;
+		return this;
+	}
+
+	/**
+	 * Set keyword extraction configuration.
+	 */
+	withKeywords(keywords: KeywordConfig): ExtractionConfigBuilder {
+		this.config["keywords"] = keywords;
+		return this;
+	}
+
+	/**
+	 * Set language detection configuration.
+	 */
+	withLanguageDetection(languageDetection: LanguageDetectionConfig): ExtractionConfigBuilder {
+		this.config["languageDetection"] = languageDetection;
+		return this;
+	}
+
+	/**
+	 * Set whether to enable metadata extraction.
+	 */
+	withMetadataExtraction(enabled: boolean): ExtractionConfigBuilder {
+		this.config["metadataExtraction"] = enabled;
+		return this;
+	}
+
+	/**
+	 * Set whether to enable quality mode.
+	 */
+	withQualityMode(enabled: boolean): ExtractionConfigBuilder {
+		this.config["qualityMode"] = enabled;
+		return this;
+	}
+
+	/**
+	 * Build and return the final ExtractionConfig object.
+	 */
+	build(): ExtractionConfigType {
+		return this.config as ExtractionConfigType;
+	}
+}
+
+/**
+ * ExtractionConfig namespace with static methods for loading configuration from files
+ * and creating new configurations with the builder pattern.
+ *
+ * Provides factory methods to load extraction configuration from TOML, YAML, or JSON files,
+ * or to create configurations using a fluent builder API.
  *
  * @example
  * ```typescript
  * import { ExtractionConfig, extractFile } from '@kreuzberg/node';
  *
  * // Load configuration from file
- * const config = ExtractionConfig.fromFile('config.toml');
+ * const config1 = ExtractionConfig.fromFile('config.toml');
+ *
+ * // Create with builder pattern
+ * const config2 = ExtractionConfig.default()
+ *   .withChunking({ maxChars: 2048 })
+ *   .build();
  *
  * // Use with extraction
- * const result = await extractFile('document.pdf', null, config);
+ * const result = await extractFile('document.pdf', null, config2);
  * ```
  */
 export const ExtractionConfig = {
+	/**
+	 * Create a default extraction configuration using the builder pattern.
+	 *
+	 * Returns a builder object that allows you to configure extraction settings
+	 * using method chaining.
+	 *
+	 * @returns ExtractionConfigBuilder for chaining configuration calls
+	 *
+	 * @example
+	 * ```typescript
+	 * import { ExtractionConfig } from '@kreuzberg/node';
+	 *
+	 * const config = ExtractionConfig.default()
+	 *   .withChunking({ maxChars: 2048 })
+	 *   .withOcr({ backend: 'tesseract', language: 'eng' })
+	 *   .build();
+	 * ```
+	 */
+	default(): ExtractionConfigBuilder {
+		return ExtractionConfigBuilder.default();
+	},
+
 	/**
 	 * Load extraction configuration from a file.
 	 *
@@ -1762,30 +1956,32 @@ export function detectMimeType(bytes: Buffer): string {
 /**
  * Detect MIME type from a file path.
  *
- * Uses file extension to determine MIME type. Falls back to `mime_guess` crate
- * if extension-based detection fails.
+ * Determines the MIME type based on the file extension in the provided path.
+ * By default, checks if the file exists; can be disabled with checkExists parameter.
  *
- * @param path - Path to the file (string)
- * @returns The detected MIME type string
+ * @param filePath - The file path to detect MIME type from (e.g., 'document.pdf')
+ * @param checkExists - Whether to verify the file exists (default: true)
+ * @returns The detected MIME type as a string (e.g., 'application/pdf')
  *
- * @throws {Error} If MIME type cannot be determined from path/extension
- * @throws {Error} If extension is unknown
+ * @throws {Error} If MIME type cannot be determined from the file extension,
+ * or if checkExists is true and the file does not exist
  *
  * @example
  * ```typescript
  * import { detectMimeTypeFromPath } from '@kreuzberg/node';
  *
- * // Detect from existing file
- * const mimeType = detectMimeTypeFromPath('document.pdf');
+ * // Detect MIME type from existing file
+ * const mimeType = detectMimeTypeFromPath('/path/to/document.pdf');
  * console.log(mimeType); // 'application/pdf'
  *
- * const mimeType2 = detectMimeTypeFromPath('document.docx');
+ * // Detect without checking file existence
+ * const mimeType2 = detectMimeTypeFromPath('document.docx', false);
  * console.log(mimeType2); // 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
  * ```
  */
-export function detectMimeTypeFromPath(path: string): string {
+export function detectMimeTypeFromPath(filePath: string, checkExists?: boolean): string {
 	const binding = getBinding();
-	return binding.detectMimeTypeFromPath(path);
+	return binding.detectMimeTypeFromPath(filePath, checkExists);
 }
 
 /**
