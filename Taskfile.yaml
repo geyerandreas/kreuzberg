@@ -366,13 +366,13 @@ tasks:
     dir: packages/java
     cmds:
       - echo "Updating Java dependencies and plugins..."
-      - mvn versions:use-latest-releases -DprocessDependencies=true -DprocessParent=false
+      - mvn -DallowSnapshots=false versions:use-latest-releases -DprocessDependencies=true -DprocessParent=false
       - echo "Updating plugin versions in properties..."
-      - mvn versions:update-properties
+      - mvn -DallowSnapshots=false versions:update-properties
       - echo "Displaying final dependency updates..."
-      - mvn versions:display-dependency-updates
+      - mvn -DallowSnapshots=false versions:display-dependency-updates
       - echo "Displaying final plugin updates..."
-      - mvn versions:display-plugin-updates
+      - mvn -DallowSnapshots=false versions:display-plugin-updates
   shell:lint:
     desc: Lint shell scripts with auto-fix (shfmt + shellcheck)
     cmds:

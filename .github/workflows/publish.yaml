@@ -1301,7 +1301,7 @@ jobs:
           java-version: '25'
           cache: 'maven'
 
-      - name: Setup Maven 4
+      - name: Setup Maven 3.9.12
         uses: ./.github/actions/setup-maven-4
 
       - name: Cache PDFium
@@ -2202,7 +2202,7 @@ jobs:
           gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
           gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
-      - name: Setup Maven 4
+      - name: Setup Maven 3.9.12
         if: ${{ needs.prepare.outputs.dry_run != 'true' && steps.maven_check.outputs.exists != 'true' }}
         uses: ./.github/actions/setup-maven-4
 

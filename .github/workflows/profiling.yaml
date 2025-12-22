@@ -1082,7 +1082,7 @@ jobs:
           distribution: temurin
           java-version: "25"
 
-      - name: Setup Maven 4
+      - name: Setup Maven 3.9.12
         uses: ./.github/actions/setup-maven-4
 
       - name: Setup ONNX Runtime
