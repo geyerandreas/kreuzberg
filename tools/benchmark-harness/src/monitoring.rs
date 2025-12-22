@@ -152,16 +152,26 @@ impl ResourceMonitor {
             let refresh_kind = ProcessRefreshKind::nothing().with_memory().with_cpu();
 
             while running.load(Ordering::SeqCst) {
+                // CRITICAL: refresh_cpu_usage() must be called before refresh_processes_specifics()
+                // to ensure CPU metrics are populated. sysinfo requires this ordering.
+                system.refresh_cpu_usage();
+
                 system.refresh_processes_specifics(ProcessesToUpdate::Some(&[pid]), false, refresh_kind);
 
                 if let Some(process) = system.process(pid) {
                     let elapsed = start.elapsed();
 
+                    // Normalize CPU usage by CPU count (sysinfo returns unbounded percentage)
+                    // sysinfo: 0-100% per core * number of cores = 0-(100 * num_cpus)
+                    // Normalized: 0-100% (single core equivalent)
+                    let cpu_count = num_cpus::get() as f64;
+                    let normalized_cpu_percent = (process.cpu_usage() as f64) / cpu_count;
+
                     let sample = ResourceSample {
                         memory_bytes: process.memory(),
                         vm_size_bytes: process.virtual_memory(),
                         page_faults: 0,
-                        cpu_percent: process.cpu_usage() as f64,
+                        cpu_percent: normalized_cpu_percent,
                         timestamp_ms: elapsed.as_millis() as u64,
                     };
 
