@@ -31,7 +31,7 @@ serde_json = { workspace = true }
 serde = { workspace = true }
 async-trait = { workspace = true }
 tokio = { workspace = true }
-html-to-markdown-rs = { version = "2.15.0", default-features = false }
+html-to-markdown-rs = { version = "2.16.1", default-features = false }
 rayon = { version = "1.11", optional = true }
 
 # On Windows MinGW, disable embeddings/ort since ONNX Runtime is not available

@@ -2201,15 +2201,16 @@ dependencies = [
 
 [[package]]
 name = "html-to-markdown-rs"
-version = "2.15.0"
+version = "2.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7741e7928e84f3f3497c84b8dd27e9fcc3368bd133e44ca800715eb34a1d58c8"
+checksum = "eda029e154a976514850a89a56a1f07f03fb0611e0e8fc2357fd4ec739d63acc"
 dependencies = [
  "astral-tl",
  "base64 0.22.1",
  "html-escape",
  "html5ever",
  "image",
+ "lru",
  "markup5ever_rcdom",
  "once_cell",
  "regex",
@@ -3164,6 +3165,15 @@ dependencies = [
  "time",
  "ttf-parser",
  "weezl",
+]
+
+[[package]]
+name = "lru"
+version = "0.16.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96051b46fc183dc9cd4a223960ef37b9af631b55191852a8274bfef064cda20f"
+dependencies = [
+ "hashbrown 0.16.1",
 ]
 
 [[package]]
@@ -5781,9 +5791,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.145"
+version = "1.0.146"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "402a6f66d8c709116cf22f558eab210f5a50187f702eb4d7e5ef38d9a7f1c79c"
+checksum = "217ca874ae0207aac254aa02c957ded05585a90892cc8d87f9e5fa49669dadd8"
 dependencies = [
  "itoa",
  "memchr",
