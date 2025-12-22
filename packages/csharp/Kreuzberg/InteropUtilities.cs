@@ -12,6 +12,7 @@ internal static class InteropUtilities
     /// Expected gain: 100-200ms per operation through reduced allocations and encoding.
     /// </summary>
     private static readonly ConcurrentDictionary<string, IntPtr> Utf8StringCache = new(StringComparer.Ordinal);
+    private static readonly ConcurrentDictionary<IntPtr, byte> CachedUtf8Pointers = new();
 
     /// <summary>
     /// Common MIME types that are frequently used and should be cached.
@@ -83,6 +84,7 @@ internal static class InteropUtilities
 
         var newPtr = AllocUtf8(value);
         Utf8StringCache.TryAdd(value, newPtr);
+        CachedUtf8Pointers.TryAdd(newPtr, 0);
         return newPtr;
     }
 
@@ -95,6 +97,10 @@ internal static class InteropUtilities
     {
         if (ptr != IntPtr.Zero)
         {
+            if (CachedUtf8Pointers.ContainsKey(ptr))
+            {
+                return;
+            }
             NativeMemory.Free((void*)ptr);
         }
     }
