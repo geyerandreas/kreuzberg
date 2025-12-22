@@ -74,12 +74,21 @@ module Kreuzberg
       def to_h: () -> Hash[Symbol, untyped]
     end
 
+    class FontConfig
+      attr_accessor enabled: bool
+      attr_accessor custom_font_dirs: Array[String]?
+
+      def initialize: (?enabled: bool, ?custom_font_dirs: Array[String]?) -> void
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
     class PDF
       attr_reader extract_images: bool
       attr_reader passwords: Array[String]?
       attr_reader extract_metadata: bool
+      attr_reader font_config: FontConfig?
 
-      def initialize: (?extract_images: bool, ?passwords: (Array[String] | String)?, ?extract_metadata: bool) -> void
+      def initialize: (?extract_images: bool, ?passwords: (Array[String] | String)?, ?extract_metadata: bool, ?font_config: (FontConfig | Hash[Symbol, untyped])?) -> void
       def to_h: () -> Hash[Symbol, untyped]
     end
 

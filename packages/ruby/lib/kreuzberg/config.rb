@@ -194,18 +194,44 @@ module Kreuzberg
       end
     end
 
+    # Font configuration for PDF rendering
+    #
+    # @example
+    #   font_config = FontConfig.new(enabled: true, custom_font_dirs: ["/usr/share/fonts"])
+    #
+    class FontConfig
+      attr_accessor :enabled, :custom_font_dirs
+
+      def initialize(enabled: true, custom_font_dirs: nil)
+        @enabled = enabled ? true : false
+        @custom_font_dirs = custom_font_dirs
+      end
+
+      def to_h
+        {
+          enabled: @enabled,
+          custom_font_dirs: @custom_font_dirs
+        }.compact
+      end
+    end
+
     # PDF-specific options
     #
     # @example
     #   pdf = PDF.new(extract_images: true, passwords: ["secret", "backup"])
     #
+    # @example With font configuration
+    #   font_config = FontConfig.new(enabled: true, custom_font_dirs: ["/usr/share/fonts"])
+    #   pdf = PDF.new(extract_images: true, font_config: font_config)
+    #
     class PDF
-      attr_reader :extract_images, :passwords, :extract_metadata
+      attr_reader :extract_images, :passwords, :extract_metadata, :font_config
 
       def initialize(
         extract_images: false,
         passwords: nil,
-        extract_metadata: true
+        extract_metadata: true,
+        font_config: nil
       )
         @extract_images = extract_images ? true : false
         @passwords = if passwords.is_a?(Array)
@@ -214,14 +240,26 @@ module Kreuzberg
                        (passwords ? [passwords.to_s] : nil)
                      end
         @extract_metadata = extract_metadata ? true : false
+        @font_config = normalize_font_config(font_config)
       end
 
       def to_h
         {
           extract_images: @extract_images,
           passwords: @passwords,
-          extract_metadata: @extract_metadata
+          extract_metadata: @extract_metadata,
+          font_config: @font_config&.to_h
         }.compact
+      end
+
+      private
+
+      def normalize_font_config(value)
+        return nil if value.nil?
+        return value if value.is_a?(FontConfig)
+        return FontConfig.new(**value.transform_keys(&:to_sym)) if value.is_a?(Hash)
+
+        raise ArgumentError, "Expected #{FontConfig}, Hash, or nil, got #{value.class}"
       end
     end
 

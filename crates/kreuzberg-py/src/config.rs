@@ -1080,13 +1080,19 @@ pub struct PdfConfig {
 #[pymethods]
 impl PdfConfig {
     #[new]
-    #[pyo3(signature = (extract_images=None, passwords=None, extract_metadata=None))]
-    fn new(extract_images: Option<bool>, passwords: Option<Vec<String>>, extract_metadata: Option<bool>) -> Self {
+    #[pyo3(signature = (extract_images=None, passwords=None, extract_metadata=None, font_config=None))]
+    fn new(
+        extract_images: Option<bool>,
+        passwords: Option<Vec<String>>,
+        extract_metadata: Option<bool>,
+        font_config: Option<FontConfig>,
+    ) -> Self {
         Self {
             inner: kreuzberg::PdfConfig {
                 extract_images: extract_images.unwrap_or(false),
                 passwords,
                 extract_metadata: extract_metadata.unwrap_or(true),
+                font_config: font_config.map(Into::into),
             },
         }
     }
@@ -1121,6 +1127,16 @@ impl PdfConfig {
         self.inner.extract_metadata = value;
     }
 
+    #[getter]
+    fn font_config(&self) -> Option<FontConfig> {
+        self.inner.font_config.clone().map(Into::into)
+    }
+
+    #[setter]
+    fn set_font_config(&mut self, value: Option<FontConfig>) {
+        self.inner.font_config = value.map(Into::into);
+    }
+
     fn __repr__(&self) -> String {
         format!(
             "PdfConfig(extract_images={}, extract_metadata={}, passwords={})",
@@ -1143,6 +1159,85 @@ impl From<PdfConfig> for kreuzberg::PdfConfig {
 
 impl From<kreuzberg::PdfConfig> for PdfConfig {
     fn from(config: kreuzberg::PdfConfig) -> Self {
+        Self { inner: config }
+    }
+}
+
+/// Font provider configuration.
+///
+/// Controls the custom font provider used by PDF extraction. The font provider
+/// caches system fonts and serves them directly to pdfium, bypassing the
+/// CFX_Font::LoadSubst hotspot that accounts for ~13.8% of PDF processing time.
+///
+/// Example:
+///     >>> from kreuzberg import FontConfig
+///     >>> config = FontConfig(
+///     ...     enabled=True,
+///     ...     custom_font_dirs=["/usr/share/fonts/custom", "~/my-fonts"]
+///     ... )
+#[pyclass(name = "FontConfig", module = "kreuzberg")]
+#[derive(Clone)]
+pub struct FontConfig {
+    inner: kreuzberg::FontConfig,
+}
+
+#[pymethods]
+impl FontConfig {
+    #[new]
+    #[pyo3(signature = (enabled=None, custom_font_dirs=None))]
+    fn new(enabled: Option<bool>, custom_font_dirs: Option<Vec<String>>) -> Self {
+        Self {
+            inner: kreuzberg::FontConfig {
+                enabled: enabled.unwrap_or(true),
+                custom_font_dirs: custom_font_dirs.map(|dirs| dirs.into_iter().map(std::path::PathBuf::from).collect()),
+            },
+        }
+    }
+
+    #[getter]
+    fn enabled(&self) -> bool {
+        self.inner.enabled
+    }
+
+    #[setter]
+    fn set_enabled(&mut self, value: bool) {
+        self.inner.enabled = value;
+    }
+
+    #[getter]
+    fn custom_font_dirs(&self) -> Option<Vec<String>> {
+        self.inner
+            .custom_font_dirs
+            .as_ref()
+            .map(|dirs| dirs.iter().map(|p| p.to_string_lossy().to_string()).collect())
+    }
+
+    #[setter]
+    fn set_custom_font_dirs(&mut self, value: Option<Vec<String>>) {
+        self.inner.custom_font_dirs = value.map(|dirs| dirs.into_iter().map(std::path::PathBuf::from).collect());
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "FontConfig(enabled={}, custom_font_dirs={})",
+            self.inner.enabled,
+            if let Some(dirs) = &self.inner.custom_font_dirs {
+                format!("{}[...]", dirs.len())
+            } else {
+                "None".to_string()
+            }
+        )
+    }
+}
+
+impl From<FontConfig> for kreuzberg::FontConfig {
+    fn from(config: FontConfig) -> Self {
+        config.inner
+    }
+}
+
+impl From<kreuzberg::FontConfig> for FontConfig {
+    fn from(config: kreuzberg::FontConfig) -> Self {
         Self { inner: config }
     }
 }

@@ -15,6 +15,7 @@ public final class PdfConfig {
   private final boolean extractImages;
   private final List<String> passwords;
   private final boolean extractMetadata;
+  private final FontConfig fontConfig;
 
   private PdfConfig(Builder builder) {
     this.extractImages = builder.extractImages;
@@ -22,6 +23,7 @@ public final class PdfConfig {
         builder.passwords != null ? Collections.unmodifiableList(new ArrayList<>(builder.passwords))
             : null;
     this.extractMetadata = builder.extractMetadata;
+    this.fontConfig = builder.fontConfig;
   }
 
   public static Builder builder() {
@@ -40,6 +42,10 @@ public final class PdfConfig {
     return extractMetadata;
   }
 
+  public FontConfig getFontConfig() {
+    return fontConfig;
+  }
+
   public Map<String, Object> toMap() {
     Map<String, Object> map = new HashMap<>();
     map.put("extract_images", extractImages);
@@ -47,6 +53,9 @@ public final class PdfConfig {
       map.put("passwords", passwords);
     }
     map.put("extract_metadata", extractMetadata);
+    if (fontConfig != null) {
+      map.put("font_config", fontConfig.toMap());
+    }
     return map;
   }
 
@@ -54,6 +63,7 @@ public final class PdfConfig {
     private boolean extractImages = false;
     private List<String> passwords;
     private boolean extractMetadata = true;
+    private FontConfig fontConfig;
 
     private Builder() {
     }
@@ -78,6 +88,11 @@ public final class PdfConfig {
 
     public Builder extractMetadata(boolean extractMetadata) {
       this.extractMetadata = extractMetadata;
+      return this;
+    }
+
+    public Builder fontConfig(FontConfig fontConfig) {
+      this.fontConfig = fontConfig;
       return this;
     }
 
@@ -110,6 +125,13 @@ public final class PdfConfig {
     Object extractMetadataValue = map.get("extract_metadata");
     if (extractMetadataValue instanceof Boolean) {
       builder.extractMetadata((Boolean) extractMetadataValue);
+    }
+    @SuppressWarnings("unchecked")
+    Map<String, Object> fontConfigMap = map.get("font_config") instanceof Map
+        ? (Map<String, Object>) map.get("font_config")
+        : null;
+    if (fontConfigMap != null) {
+      builder.fontConfig(FontConfig.fromMap(fontConfigMap));
     }
     return builder.build();
   }

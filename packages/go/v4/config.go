@@ -174,6 +174,14 @@ type ImageExtractionConfig struct {
 	MaxDPI *int `json:"max_dpi,omitempty"`
 }
 
+// FontConfig exposes font provider configuration for PDF extraction.
+type FontConfig struct {
+	// Enabled enables the custom font provider.
+	Enabled bool `json:"enabled"`
+	// CustomFontDirs provides additional font directories beyond system fonts.
+	CustomFontDirs []string `json:"custom_font_dirs,omitempty"`
+}
+
 // PdfConfig exposes PDF-specific options.
 type PdfConfig struct {
 	// ExtractImages enables image extraction from PDFs.
@@ -182,6 +190,8 @@ type PdfConfig struct {
 	Passwords []string `json:"passwords,omitempty"`
 	// ExtractMetadata enables extraction of PDF metadata.
 	ExtractMetadata *bool `json:"extract_metadata,omitempty"`
+	// FontConfig configures the font provider for PDF extraction.
+	FontConfig *FontConfig `json:"font_config,omitempty"`
 }
 
 // TokenReductionConfig governs token pruning before embeddings.

@@ -68,7 +68,7 @@ impl PdfRenderer {
 
         let page = document
             .pages()
-            .get(page_index as u16)
+            .get(page_index as i32)
             .map_err(|_| PdfError::PageNotFound(page_index))?;
 
         let width_points = page.width().value;
