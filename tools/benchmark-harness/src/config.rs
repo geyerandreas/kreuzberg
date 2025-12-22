@@ -98,10 +98,13 @@ impl ProfilingConfig {
 
     /// Calculate optimal sampling frequency based on estimated task duration
     ///
-    /// Adapts the sampling frequency to achieve target sample count:
-    /// - Quick tasks (<100ms): 10000 Hz
-    /// - Medium tasks (100-1000ms): 1000 Hz
-    /// - Long tasks (>1000ms): 100 Hz
+    /// Uses realistic sysinfo limits (100-500 Hz) to achieve target sample count.
+    /// sysinfo cannot reliably achieve >500 Hz on most systems due to:
+    /// - Process scheduling granularity
+    /// - System call overhead
+    /// - File descriptor refresh costs
+    ///
+    /// Target: 500 samples minimum for statistical significance
     ///
     /// # Arguments
     ///
@@ -109,16 +112,32 @@ impl ProfilingConfig {
     ///
     /// # Returns
     ///
-    /// Optimal sampling frequency in Hz (clamped to 100-10000 range)
+    /// Optimal sampling frequency in Hz (clamped to 100-500 range)
     pub fn calculate_optimal_frequency(estimated_duration_ms: u64) -> i32 {
-        let frequency = if estimated_duration_ms < 100 {
-            10000
-        } else if estimated_duration_ms < 1000 {
-            1000
-        } else {
-            100
-        };
-        frequency.clamp(100, 10000)
+        const TARGET_SAMPLE_COUNT: u64 = 500;
+        const REALISTIC_MAX_HZ: i32 = 500;
+
+        if estimated_duration_ms == 0 {
+            return REALISTIC_MAX_HZ;
+        }
+
+        let required_hz = (TARGET_SAMPLE_COUNT * 1000) / estimated_duration_ms.max(1);
+        (required_hz as i32).clamp(100, REALISTIC_MAX_HZ)
+    }
+
+    /// Calculate sampling interval in milliseconds from frequency in Hz
+    ///
+    /// Converts sampling frequency to the actual interval between samples.
+    ///
+    /// # Arguments
+    ///
+    /// * `sampling_frequency_hz` - Sampling frequency in Hz
+    ///
+    /// # Returns
+    ///
+    /// Sampling interval in milliseconds (minimum 1ms)
+    pub fn calculate_sample_interval_ms(sampling_frequency_hz: i32) -> u64 {
+        (1000 / sampling_frequency_hz as u64).max(1)
     }
 }
 
