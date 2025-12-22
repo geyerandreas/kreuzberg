@@ -20,12 +20,24 @@ public class BatchTests : IAsyncLifetime
 {
     private readonly List<string> _testFiles = new();
 
+    private static string ResolveTestDocumentsDir()
+    {
+        var overrideDir = Environment.GetEnvironmentVariable("KREUZBERG_TEST_DOCUMENTS");
+        if (!string.IsNullOrWhiteSpace(overrideDir))
+        {
+            return overrideDir;
+        }
+
+        var repoRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../.."));
+        return Path.Combine(repoRoot, "test_documents");
+    }
+
     public async Task InitializeAsync()
     {
-        var testDir = Path.Combine(AppContext.BaseDirectory, "fixtures");
-        var pdfPath = Path.Combine(testDir, "sample.pdf");
-        var docxPath = Path.Combine(testDir, "sample.docx");
-        var txtPath = Path.Combine(testDir, "sample.txt");
+        var testDir = ResolveTestDocumentsDir();
+        var pdfPath = Path.Combine(testDir, "pdf", "simple.pdf");
+        var docxPath = Path.Combine(testDir, "documents", "word_sample.docx");
+        var txtPath = Path.Combine(testDir, "text", "contract.txt");
 
         if (File.Exists(pdfPath))
             _testFiles.Add(pdfPath);
