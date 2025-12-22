@@ -29,6 +29,36 @@ impl NativeAdapter {
         Self { config }
     }
 
+    /// Calculate adaptive sampling interval based on estimated task duration from file size
+    ///
+    /// Uses file size as a proxy for task duration to optimize sampling frequency:
+    /// - Small files (<100KB, ~50-100ms tasks): 1ms sampling for high resolution
+    /// - Medium files (100KB-1MB, ~100-1000ms tasks): 5ms sampling for balance
+    /// - Large files (>1MB, >1000ms tasks): 10ms sampling to reduce overhead
+    ///
+    /// This adaptive approach ensures:
+    /// - Quick tasks: 50-100 samples (sufficient for variance calculation)
+    /// - Long tasks: 100-1000+ samples (excellent statistical significance)
+    /// - Minimal monitoring overhead for all workloads
+    ///
+    /// # Arguments
+    /// * `file_size` - File size in bytes
+    ///
+    /// # Returns
+    /// Sampling interval in milliseconds (1, 5, or 10)
+    fn calculate_adaptive_sampling_interval(file_size: u64) -> u64 {
+        const SMALL_FILE_THRESHOLD: u64 = 100 * 1024; // 100KB
+        const MEDIUM_FILE_THRESHOLD: u64 = 1024 * 1024; // 1MB
+
+        if file_size < SMALL_FILE_THRESHOLD {
+            1 // 1ms for quick extractions
+        } else if file_size < MEDIUM_FILE_THRESHOLD {
+            5 // 5ms for medium extractions
+        } else {
+            10 // 10ms for long extractions
+        }
+    }
+
     /// Create a new native adapter with custom configuration
     pub fn with_config(config: ExtractionConfig) -> Self {
         Self { config }
@@ -83,7 +113,8 @@ impl FrameworkAdapter for NativeAdapter {
         let file_size = std::fs::metadata(file_path).map_err(Error::Io)?.len();
 
         let monitor = ResourceMonitor::new();
-        monitor.start(Duration::from_millis(10)).await;
+        let sampling_interval_ms = Self::calculate_adaptive_sampling_interval(file_size);
+        monitor.start(Duration::from_millis(sampling_interval_ms)).await;
 
         let start = Instant::now();
 
@@ -170,8 +201,16 @@ impl FrameworkAdapter for NativeAdapter {
     }
 
     async fn extract_batch(&self, file_paths: &[&Path], timeout: Duration) -> Result<Vec<BenchmarkResult>> {
+        // Calculate total file size for adaptive sampling interval
+        let total_file_size: u64 = file_paths
+            .iter()
+            .filter_map(|path| std::fs::metadata(path).ok())
+            .map(|m| m.len())
+            .sum();
+
         let monitor = ResourceMonitor::new();
-        monitor.start(Duration::from_millis(10)).await;
+        let sampling_interval_ms = Self::calculate_adaptive_sampling_interval(total_file_size);
+        monitor.start(Duration::from_millis(sampling_interval_ms)).await;
 
         let start = Instant::now();
 
@@ -187,12 +226,6 @@ impl FrameworkAdapter for NativeAdapter {
         let samples = monitor.stop().await;
         let snapshots = monitor.get_snapshots().await;
         let resource_stats = ResourceMonitor::calculate_stats(&samples, &snapshots);
-
-        let total_file_size: u64 = file_paths
-            .iter()
-            .filter_map(|path| std::fs::metadata(path).ok())
-            .map(|m| m.len())
-            .sum();
 
         if let Err(e) = batch_result {
             return Ok(vec![BenchmarkResult {
