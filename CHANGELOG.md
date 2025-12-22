@@ -16,6 +16,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Solution 2: Modified `kreuzberg-py/build.rs` to explicitly link static library by full path on Unix platforms
   - Solution 3: Removed `deps/` directory from library search paths to avoid dylibs with hardcoded install_name
   - Impact: Python wheels now install correctly on all platforms with no runtime linker errors
+- **Ruby gem dylib linking on macOS**: Fixed identical linker issue in Ruby Magnus bindings
+  - Root cause: Same as Python - vendored `kreuzberg-ffi` had `cdylib` in crate-type causing dynamic linking
+  - Error: `ld: library 'kreuzberg_ffi' not found` during gem build
+  - Solution: Rewrote `packages/ruby/ext/kreuzberg_rb/native/build.rs` to force static linking by passing full path to `libkreuzberg_ffi.a`
+  - Removed conflicting `#[link(name = "kreuzberg_ffi", kind = "static")]` attribute from `lib.rs`
+  - Impact: Ruby gems now bundle static library correctly and install without linker errors
+- **TypeScript plugin registration API design flaw**: Fixed TypeError preventing idiomatic JavaScript plugin usage
+  - Root cause: NAPI binding expected function properties (`{ name: () => "foo" }`) instead of value properties (`{ name: "foo" }`)
+  - Error: `TypeError: processor.name.bind is not a function` causing 36% test failure rate
+  - Solution: Modified NAPI binding (`crates/kreuzberg-node/src/lib.rs`) to accept BOTH value and function properties using `.or_else()` pattern
+  - Updated TypeScript wrapper (`typescript/index.ts`) to check `typeof` before calling functions
+  - Impact: Improved test pass rate from 64% → 75% (69/108 → 81/108 tests), supports idiomatic JavaScript
+- **Python build profile mapping**: Fixed `kreuzberg-py/build.rs` to correctly map profile names ("dev"/"test" → "debug")
+- **Java compiler version**: Maintained Java 25 compiler target in `packages/java/pom.xml` for FFM API compatibility
+
+### Added
+
+- **Docker ARM64 support**: Added `linux/arm64` platform to Docker publish workflow alongside `linux/amd64`
+  - Enables multi-architecture Docker images for ARM-based systems
+  - Increased Docker publish timeout from 180 to 360 minutes (6 hours) to accommodate slower ARM builds
+- **Java CI crash diagnostics**: Added comprehensive JVM crash logging to CI workflow
+  - JVM error files, heap dumps, and signal logs automatically uploaded as artifacts on test failures
+  - Environment variables: `-XX:ErrorFile`, `-XX:+LogVMOutput`, `-XX:+HeapDumpOnOutOfMemoryError`
+- **Test apps infrastructure**: Added comprehensive test applications for all language bindings
+  - New Taskfile commands: `test-apps:install`, `test-apps:python:run`, `test-apps:node:run`, etc.
+  - Each test app validates entire public API against published package versions
+  - Located in `test_apps/{python,node,ruby,java,go}/` with idiomatic structure per language
+
+### Performance
+
+- **Go ConfigMerge optimization**: Replaced FFI-based merge in `packages/go/v4/config.go` with native Go field copying
+  - Better performance and nil pointer handling for config overrides
 
 ## [4.0.0-rc.16] - 2025-12-21
 

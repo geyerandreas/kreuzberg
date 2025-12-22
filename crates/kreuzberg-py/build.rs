@@ -4,6 +4,10 @@ use std::path::PathBuf;
 fn main() {
     let target = env::var("TARGET").unwrap();
     let profile = env::var("PROFILE").unwrap_or_else(|_| "release".to_string());
+    let profile_dir = match profile.as_str() {
+        "dev" | "test" => "debug",
+        other => other,
+    };
 
     // Try to locate kreuzberg-ffi library built alongside this crate
     let cargo_manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
@@ -14,8 +18,8 @@ fn main() {
     // The deps/ directories may contain dylibs with hardcoded install_name paths,
     // which causes ImportError on macOS when users install the wheel.
     if let Some(workspace_root) = manifest_path.parent().and_then(|p| p.parent()) {
-        let host_lib_dir = workspace_root.join("target").join(&profile);
-        let target_lib_dir = workspace_root.join("target").join(&target).join(&profile);
+        let host_lib_dir = workspace_root.join("target").join(profile_dir);
+        let target_lib_dir = workspace_root.join("target").join(&target).join(profile_dir);
 
         // Try to find the static library and link it directly on Unix-like systems
         // to avoid the linker preferring dylib over static lib.

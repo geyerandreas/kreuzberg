@@ -78,8 +78,7 @@ pub struct CMetadataField {
 }
 
 // These C ABI functions are provided by the kreuzberg-ffi crate
-// We declare them here to ensure proper linking on all platforms
-#[link(name = "kreuzberg_ffi", kind = "static")]
+// Linking is handled by build.rs to ensure static linking
 unsafe extern "C" {
     pub fn kreuzberg_last_error_code() -> i32;
     pub fn kreuzberg_last_panic_context() -> *mut c_char;

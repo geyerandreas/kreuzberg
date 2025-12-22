@@ -2303,8 +2303,11 @@ impl RustPostProcessor for JsPostProcessor {
 pub fn register_post_processor(_env: Env, processor: Object) -> Result<()> {
     validate_plugin_object(&processor, "PostProcessor", &["name", "process"])?;
 
-    let name_fn: Function<(), String> = processor.get_named_property("name")?;
-    let name: String = name_fn.call(())?;
+    // Accept both value properties AND function properties for name
+    let name: String = processor.get_named_property::<String>("name").or_else(|_| {
+        let name_fn: Function<(), String> = processor.get_named_property("name")?;
+        name_fn.call(())
+    })?;
 
     if name.is_empty() {
         return Err(Error::new(
@@ -2313,7 +2316,15 @@ pub fn register_post_processor(_env: Env, processor: Object) -> Result<()> {
         ));
     }
 
-    let stage = if let Ok(stage_fn) = processor.get_named_property::<Function<(), String>>("processingStage") {
+    // Accept both value properties AND function properties for processingStage
+    let stage = if let Ok(stage_str) = processor.get_named_property::<String>("processingStage") {
+        match stage_str.to_lowercase().as_str() {
+            "early" => ProcessingStage::Early,
+            "middle" => ProcessingStage::Middle,
+            "late" => ProcessingStage::Late,
+            _ => ProcessingStage::Middle,
+        }
+    } else if let Ok(stage_fn) = processor.get_named_property::<Function<(), String>>("processingStage") {
         let stage_str: String = stage_fn.call(())?;
         match stage_str.to_lowercase().as_str() {
             "early" => ProcessingStage::Early,
@@ -2547,8 +2558,11 @@ impl RustValidator for JsValidator {
 pub fn register_validator(_env: Env, validator: Object) -> Result<()> {
     validate_plugin_object(&validator, "Validator", &["name", "validate"])?;
 
-    let name_fn: Function<(), String> = validator.get_named_property("name")?;
-    let name: String = name_fn.call(())?;
+    // Accept both value properties AND function properties for name
+    let name: String = validator.get_named_property::<String>("name").or_else(|_| {
+        let name_fn: Function<(), String> = validator.get_named_property("name")?;
+        name_fn.call(())
+    })?;
 
     if name.is_empty() {
         return Err(Error::new(
@@ -2557,7 +2571,10 @@ pub fn register_validator(_env: Env, validator: Object) -> Result<()> {
         ));
     }
 
-    let priority = if let Ok(priority_fn) = validator.get_named_property::<Function<(), i32>>("priority") {
+    // Accept both value properties AND function properties for priority
+    let priority = if let Ok(priority_val) = validator.get_named_property::<i32>("priority") {
+        priority_val
+    } else if let Ok(priority_fn) = validator.get_named_property::<Function<(), i32>>("priority") {
         priority_fn.call(())?
     } else {
         50
@@ -2863,8 +2880,11 @@ impl RustOcrBackend for JsOcrBackend {
 pub fn register_ocr_backend(_env: Env, backend: Object) -> Result<()> {
     validate_plugin_object(&backend, "OCR Backend", &["name", "supportedLanguages", "processImage"])?;
 
-    let name_fn: Function<(), String> = backend.get_named_property("name")?;
-    let name: String = name_fn.call(())?;
+    // Accept both value properties AND function properties for name
+    let name: String = backend.get_named_property::<String>("name").or_else(|_| {
+        let name_fn: Function<(), String> = backend.get_named_property("name")?;
+        name_fn.call(())
+    })?;
 
     if name.is_empty() {
         return Err(Error::new(
@@ -2873,8 +2893,13 @@ pub fn register_ocr_backend(_env: Env, backend: Object) -> Result<()> {
         ));
     }
 
-    let supported_languages_fn: Function<(), Vec<String>> = backend.get_named_property("supportedLanguages")?;
-    let supported_languages: Vec<String> = supported_languages_fn.call(())?;
+    // Accept both value properties AND function properties for supportedLanguages
+    let supported_languages: Vec<String> = backend
+        .get_named_property::<Vec<String>>("supportedLanguages")
+        .or_else(|_| {
+            let supported_languages_fn: Function<(), Vec<String>> = backend.get_named_property("supportedLanguages")?;
+            supported_languages_fn.call(())
+        })?;
 
     if supported_languages.is_empty() {
         return Err(Error::new(

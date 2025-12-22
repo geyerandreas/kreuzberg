@@ -1131,8 +1131,9 @@ export function registerPostProcessor(processor: PostProcessorProtocol): void {
 	const binding = getBinding();
 
 	const wrappedProcessor = {
-		name: processor.name.bind(processor),
-		processingStage: processor.processingStage?.bind(processor),
+		name: typeof processor.name === "function" ? processor.name() : processor.name,
+		processingStage:
+			typeof processor.processingStage === "function" ? processor.processingStage() : processor.processingStage,
 		async process(...args: unknown[]): Promise<string> {
 			const wrappedValue = args[0] as unknown[];
 			const jsonString = wrappedValue[0] as string;
@@ -1284,8 +1285,8 @@ export function registerValidator(validator: ValidatorProtocol): void {
 	const binding = getBinding();
 
 	const wrappedValidator = {
-		name: validator.name.bind(validator),
-		priority: validator.priority?.bind(validator),
+		name: typeof validator.name === "function" ? validator.name() : validator.name,
+		priority: typeof validator.priority === "function" ? validator.priority() : validator.priority,
 		async validate(...args: unknown[]): Promise<string> {
 			const jsonString = args[0] as string;
 
@@ -1470,8 +1471,9 @@ export function registerOcrBackend(backend: OcrBackendProtocol): void {
 	const binding = getBinding();
 
 	const wrappedBackend = {
-		name: backend.name.bind(backend),
-		supportedLanguages: backend.supportedLanguages.bind(backend),
+		name: typeof backend.name === "function" ? backend.name() : backend.name,
+		supportedLanguages:
+			typeof backend.supportedLanguages === "function" ? backend.supportedLanguages() : backend.supportedLanguages,
 		async processImage(
 			...processArgs: [OcrProcessPayload | OcrProcessTuple | NestedOcrProcessTuple, string?]
 		): Promise<string> {

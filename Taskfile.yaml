@@ -795,3 +795,80 @@ tasks:
     desc: Run Node smoke test locally (require KREUZBERG_NODE_SPEC=file:/abs/path/to/kreuzberg.tgz)
     cmds:
       - scripts/smoke_node.sh
+  test-apps:install:
+    desc: Install dependencies for all test apps
+    cmds:
+      - task: test-apps:python:install
+      - task: test-apps:node:install
+      - task: test-apps:ruby:install
+      - task: test-apps:java:install
+      - task: test-apps:go:install
+  test-apps:run:
+    desc: Run all comprehensive test apps against published versions
+    cmds:
+      - task: test-apps:python:run
+      - task: test-apps:node:run
+      - task: test-apps:ruby:run
+      - task: test-apps:java:run
+      - task: test-apps:go:run
+  test-apps:python:install:
+    desc: Install Python test app dependencies
+    dir: ../test_apps/python
+    cmds:
+      - uv sync
+  test-apps:python:run:
+    desc: Run Python comprehensive test app (tests published kreuzberg==4.0.0rc16)
+    dir: ../test_apps/python
+    cmds:
+      - uv run python main.py
+  test-apps:node:install:
+    desc: Install Node.js test app dependencies
+    dir: ../test_apps/node
+    cmds:
+      - pnpm install
+  test-apps:node:run:
+    desc: Run TypeScript/Node.js comprehensive test app (tests @kreuzberg/node@4.0.0-rc.16)
+    dir: ../test_apps/node
+    cmds:
+      - pnpm test
+  test-apps:node:typecheck:
+    desc: Run TypeScript type checking for Node test app
+    dir: ../test_apps/node
+    cmds:
+      - pnpm typecheck
+  test-apps:ruby:install:
+    desc: Install Ruby test app dependencies
+    dir: ../test_apps/ruby
+    cmds:
+      - bundle install
+  test-apps:ruby:run:
+    desc: Run Ruby comprehensive test app (tests kreuzberg 4.0.0.pre.rc.6)
+    dir: ../test_apps/ruby
+    cmds:
+      - ruby main_test.rb
+  test-apps:java:install:
+    desc: Install Java test app dependencies
+    dir: ../test_apps/java
+    cmds:
+      - mvn clean compile
+  test-apps:java:run:
+    desc: Run Java comprehensive test app (tests dev.kreuzberg:kreuzberg:4.0.0-rc.16)
+    dir: ../test_apps/java
+    cmds:
+      - mvn exec:java
+  test-apps:go:install:
+    desc: Install Go test app dependencies
+    dir: ../test_apps/go
+    cmds:
+      - go mod tidy
+      - go build -o main main.go
+  test-apps:go:run:
+    desc: Run Go comprehensive test app (tests local package v4.0.0-rc.16)
+    dir: ../test_apps/go
+    cmds:
+      - export DYLD_LIBRARY_PATH={{.ROOT}}/target/release:$DYLD_LIBRARY_PATH && export LD_LIBRARY_PATH={{.ROOT}}/target/release:$LD_LIBRARY_PATH && ./main
+  test-apps:go:test:
+    desc: Run Go existing test suite (extraction_test.go)
+    dir: ../test_apps/go
+    cmds:
+      - export DYLD_LIBRARY_PATH={{.ROOT}}/target/release:$DYLD_LIBRARY_PATH && export LD_LIBRARY_PATH={{.ROOT}}/target/release:$LD_LIBRARY_PATH && go test -v ./...
