@@ -4,6 +4,7 @@
 
 use super::bindings::bind_pdfium;
 use super::error::{PdfError, Result};
+use super::font_cache::DocumentFontCache;
 use crate::core::config::PageConfig;
 use crate::pdf::metadata::PdfExtractionMetadata;
 use crate::types::{PageBoundary, PageContent};
@@ -15,6 +16,12 @@ type PdfTextExtractionResult = (String, Option<Vec<PageBoundary>>, Option<Vec<Pa
 
 pub struct PdfTextExtractor {
     pdfium: Pdfium,
+    /// Font cache for performance optimization (infrastructure for future pdfium integration).
+    ///
+    /// Currently unused because pdfium-render doesn't expose font enumeration APIs.
+    /// Will be utilized when lower-level pdfium font loading is integrated.
+    #[allow(dead_code)]
+    font_cache: DocumentFontCache,
 }
 
 impl PdfTextExtractor {
@@ -22,7 +29,9 @@ impl PdfTextExtractor {
         let binding = bind_pdfium(PdfError::TextExtractionFailed, "text extraction")?;
 
         let pdfium = Pdfium::new(binding);
-        Ok(Self { pdfium })
+        let font_cache = DocumentFontCache::new();
+
+        Ok(Self { pdfium, font_cache })
     }
 
     pub fn extract_text(&self, pdf_bytes: &[u8]) -> Result<String> {
