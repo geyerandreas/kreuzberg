@@ -49,22 +49,31 @@ fn main() {
             }
         }
 
-        // Fallback: Add search paths and use standard linking
+        // Fallback: Add search paths and link only if a static library exists.
+        let static_lib_name = if target.contains("windows") {
+            "kreuzberg_ffi.lib"
+        } else {
+            "libkreuzberg_ffi.a"
+        };
+        let mut found_static = false;
         for dir in [host_lib_dir, target_lib_dir] {
             if dir.exists() {
                 println!("cargo:rustc-link-search=native={}", dir.display());
+                if dir.join(static_lib_name).exists() {
+                    found_static = true;
+                }
             }
         }
-    }
-
-    // Link the kreuzberg-ffi library
-    // When kreuzberg-ffi is built, its symbols become available for linking
-    println!("cargo:rustc-link-lib=static=kreuzberg_ffi");
-
-    if target.contains("darwin") {
-        println!("cargo:rustc-link-arg=-Wl,-rpath,@loader_path");
-    } else if target.contains("linux") {
-        println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN");
+        if found_static {
+            println!("cargo:rustc-link-lib=static=kreuzberg_ffi");
+            if target.contains("darwin") {
+                println!("cargo:rustc-link-arg=-Wl,-rpath,@loader_path");
+            } else if target.contains("linux") {
+                println!("cargo:rustc-link-arg=-Wl,-rpath,$ORIGIN");
+            }
+            println!("cargo:rerun-if-changed=build.rs");
+            return;
+        }
     }
 
     println!("cargo:rerun-if-changed=build.rs");
