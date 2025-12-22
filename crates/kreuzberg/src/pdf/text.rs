@@ -228,7 +228,6 @@ fn extract_text_lazy_fast_path(document: &PdfDocument<'_>) -> Result<PdfTextExtr
         }
 
         // Reserve additional capacity after processing first batch if needed
-        // Only proceed if we have samples (sample_count > 0) and more pages remaining
         if page_idx == 4 && sample_count > 0 && page_count > 5 {
             let avg_page_size = total_sample_size / sample_count;
             let estimated_remaining = avg_page_size * (page_count - 5);
@@ -295,9 +294,6 @@ fn extract_text_lazy_with_tracking(document: &PdfDocument<'_>, config: &PageConf
         }
 
         // Track byte positions for boundary
-        // SAFETY: byte_start and byte_end are always valid UTF-8 boundaries because they
-        // come from String::len() (start of valid boundaries) and String::push_str() only
-        // appends valid UTF-8 strings, so byte_end is also at a valid boundary.
         let byte_start = content.len();
         content.push_str(&page_text_ref);
         let byte_end = content.len();
@@ -319,7 +315,6 @@ fn extract_text_lazy_with_tracking(document: &PdfDocument<'_>, config: &PageConf
         }
 
         // Reserve capacity after processing first batch
-        // Only proceed if we have samples (sample_count > 0) and more pages remaining
         if page_idx == 4 && page_count > 5 && sample_count > 0 {
             let avg_page_size = total_sample_size / sample_count;
             let estimated_remaining = avg_page_size * (page_count - 5);

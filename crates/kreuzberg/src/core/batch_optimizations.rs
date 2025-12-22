@@ -240,11 +240,9 @@ mod tests {
 
     #[test]
     fn test_batch_processor_with_config() {
-        let config = BatchProcessorConfig {
-            string_pool_size: 5,
-            byte_pool_size: 3,
-            ..Default::default()
-        };
+        let mut config = BatchProcessorConfig::default();
+        config.string_pool_size = 5;
+        config.byte_pool_size = 3;
 
         let processor = BatchProcessor::with_config(config);
         assert_eq!(processor.config().string_pool_size, 5);

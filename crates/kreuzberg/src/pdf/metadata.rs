@@ -151,64 +151,9 @@ pub(crate) fn extract_metadata_from_document_impl(
     document: &PdfDocument<'_>,
     page_boundaries: Option<&[PageBoundary]>,
 ) -> Result<PdfExtractionMetadata> {
-    // Cache metadata to avoid redundant PDF parsing
-    let metadata = document.metadata();
+    let pdf_specific = extract_pdf_specific_metadata(document)?;
 
-    let mut pdf_specific = PdfMetadata {
-        pdf_version: format_pdf_version(document.version()),
-        ..Default::default()
-    };
-
-    pdf_specific.is_encrypted = document
-        .permissions()
-        .security_handler_revision()
-        .ok()
-        .map(|revision| revision != PdfSecurityHandlerRevision::Unprotected);
-
-    pdf_specific.producer = metadata
-        .get(PdfDocumentMetadataTagType::Producer)
-        .map(|tag| tag.value().to_string());
-
-    if !document.pages().is_empty()
-        && let Ok(page_rect) = document.pages().page_size(0)
-    {
-        pdf_specific.width = Some(page_rect.width().value.round() as i64);
-        pdf_specific.height = Some(page_rect.height().value.round() as i64);
-    }
-
-    let title = metadata
-        .get(PdfDocumentMetadataTagType::Title)
-        .map(|tag| tag.value().to_string());
-
-    let subject = metadata
-        .get(PdfDocumentMetadataTagType::Subject)
-        .map(|tag| tag.value().to_string());
-
-    let authors = if let Some(author_tag) = metadata.get(PdfDocumentMetadataTagType::Author) {
-        let parsed = parse_authors(author_tag.value());
-        if !parsed.is_empty() { Some(parsed) } else { None }
-    } else {
-        None
-    };
-
-    let keywords = if let Some(keywords_tag) = metadata.get(PdfDocumentMetadataTagType::Keywords) {
-        let parsed = parse_keywords(keywords_tag.value());
-        if !parsed.is_empty() { Some(parsed) } else { None }
-    } else {
-        None
-    };
-
-    let created_at = metadata
-        .get(PdfDocumentMetadataTagType::CreationDate)
-        .map(|tag| parse_pdf_date(tag.value()));
-
-    let modified_at = metadata
-        .get(PdfDocumentMetadataTagType::ModificationDate)
-        .map(|tag| parse_pdf_date(tag.value()));
-
-    let created_by = metadata
-        .get(PdfDocumentMetadataTagType::Creator)
-        .map(|tag| tag.value().to_string());
+    let common = extract_common_metadata_from_document(document)?;
 
     let page_structure = if let Some(boundaries) = page_boundaries {
         Some(build_page_structure(document, boundaries)?)
@@ -217,13 +162,13 @@ pub(crate) fn extract_metadata_from_document_impl(
     };
 
     Ok(PdfExtractionMetadata {
-        title,
-        subject,
-        authors,
-        keywords,
-        created_at,
-        modified_at,
-        created_by,
+        title: common.title,
+        subject: common.subject,
+        authors: common.authors,
+        keywords: common.keywords,
+        created_at: common.created_at,
+        modified_at: common.modified_at,
+        created_by: common.created_by,
         pdf_specific,
         page_structure,
     })
@@ -234,6 +179,7 @@ pub(crate) fn extract_metadata_from_document_impl(
 /// Returns only PDF-specific metadata (version, producer, encryption status, dimensions).
 fn extract_pdf_specific_metadata(document: &PdfDocument<'_>) -> Result<PdfMetadata> {
     let pdf_metadata = document.metadata();
+
     let mut metadata = PdfMetadata {
         pdf_version: format_pdf_version(document.version()),
         ..Default::default()
@@ -292,13 +238,10 @@ fn build_page_structure(document: &PdfDocument<'_>, boundaries: &[PageBoundary])
     for (index, boundary) in boundaries.iter().enumerate() {
         let page_number = boundary.page_number;
 
-        // Extract page dimensions; silently ignore errors as dimensions are optional
-        let dimensions = match document.pages().page_size(index as u16) {
-            Ok(page_rect) => Some((page_rect.width().value as f64, page_rect.height().value as f64)),
-            Err(_) => {
-                // Failed to retrieve page dimensions - non-fatal, page will be recorded without dimensions
-                None
-            }
+        let dimensions = if let Ok(page_rect) = document.pages().page_size(index as u16) {
+            Some((page_rect.width().value as f64, page_rect.height().value as f64))
+        } else {
+            None
         };
 
         pages.push(PageInfo {
@@ -324,39 +267,39 @@ fn build_page_structure(document: &PdfDocument<'_>, boundaries: &[PageBoundary])
 /// Returns common fields (title, authors, keywords, dates) that are now stored
 /// in the base `Metadata` struct instead of format-specific metadata.
 pub fn extract_common_metadata_from_document(document: &PdfDocument<'_>) -> Result<CommonPdfMetadata> {
-    let metadata = document.metadata();
+    let pdf_metadata = document.metadata();
 
-    let title = metadata
+    let title = pdf_metadata
         .get(PdfDocumentMetadataTagType::Title)
         .map(|tag| tag.value().to_string());
 
-    let subject = metadata
+    let subject = pdf_metadata
         .get(PdfDocumentMetadataTagType::Subject)
         .map(|tag| tag.value().to_string());
 
-    let authors = if let Some(author_tag) = metadata.get(PdfDocumentMetadataTagType::Author) {
+    let authors = if let Some(author_tag) = pdf_metadata.get(PdfDocumentMetadataTagType::Author) {
         let parsed = parse_authors(author_tag.value());
         if !parsed.is_empty() { Some(parsed) } else { None }
     } else {
         None
     };
 
-    let keywords = if let Some(keywords_tag) = metadata.get(PdfDocumentMetadataTagType::Keywords) {
+    let keywords = if let Some(keywords_tag) = pdf_metadata.get(PdfDocumentMetadataTagType::Keywords) {
         let parsed = parse_keywords(keywords_tag.value());
         if !parsed.is_empty() { Some(parsed) } else { None }
     } else {
         None
     };
 
-    let created_at = metadata
+    let created_at = pdf_metadata
         .get(PdfDocumentMetadataTagType::CreationDate)
         .map(|tag| parse_pdf_date(tag.value()));
 
-    let modified_at = metadata
+    let modified_at = pdf_metadata
         .get(PdfDocumentMetadataTagType::ModificationDate)
         .map(|tag| parse_pdf_date(tag.value()));
 
-    let created_by = metadata
+    let created_by = pdf_metadata
         .get(PdfDocumentMetadataTagType::Creator)
         .map(|tag| tag.value().to_string());
 
