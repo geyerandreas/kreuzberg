@@ -45,6 +45,12 @@ internal static class InteropUtilities
         }
     }
 
+    /// <summary>
+    /// Allocates native memory for a UTF-8 encoded string and returns a pointer to it.
+    /// The caller is responsible for freeing the memory with FreeUtf8().
+    /// </summary>
+    /// <param name="value">The string to allocate.</param>
+    /// <returns>Pointer to UTF-8 encoded string in native memory, with null terminator.</returns>
     internal static unsafe IntPtr AllocUtf8(string value)
     {
         var bytes = Encoding.UTF8.GetBytes(value);
@@ -58,6 +64,7 @@ internal static class InteropUtilities
 
     /// <summary>
     /// Allocates a UTF-8 encoded string, optionally using the cache for frequently accessed values.
+    /// Common MIME types are pre-cached on assembly load.
     /// </summary>
     /// <param name="value">The string to allocate.</param>
     /// <param name="useCache">If true, uses the cache for this value (default: false for backward compatibility).</param>
@@ -79,6 +86,11 @@ internal static class InteropUtilities
         return newPtr;
     }
 
+    /// <summary>
+    /// Frees native memory allocated by AllocUtf8().
+    /// Safe to call with IntPtr.Zero.
+    /// </summary>
+    /// <param name="ptr">Pointer to native memory to free.</param>
     internal static unsafe void FreeUtf8(IntPtr ptr)
     {
         if (ptr != IntPtr.Zero)
@@ -87,11 +99,22 @@ internal static class InteropUtilities
         }
     }
 
+    /// <summary>
+    /// Reads a null-terminated UTF-8 string from the given native pointer.
+    /// </summary>
+    /// <param name="ptr">Pointer to UTF-8 encoded string in native memory.</param>
+    /// <returns>The managed string, or null if ptr is IntPtr.Zero.</returns>
     internal static string? ReadUtf8(IntPtr ptr)
     {
         return ptr == IntPtr.Zero ? null : Marshal.PtrToStringUTF8(ptr);
     }
 
+    /// <summary>
+    /// Reads an array of pointers from native memory.
+    /// </summary>
+    /// <param name="ptr">Pointer to the array of IntPtr in native memory.</param>
+    /// <param name="count">Number of pointers to read.</param>
+    /// <returns>Managed array of IntPtr values copied from native memory.</returns>
     internal static unsafe IntPtr[] ReadPointerArray(IntPtr ptr, int count)
     {
         var result = new IntPtr[count];
