@@ -25,7 +25,7 @@ import java.util.jar.JarFile;
  * Low-level FFI bindings to the Kreuzberg C library.
  *
  * This class provides direct access to the C functions exported by kreuzberg-ffi.
- * It uses the Java Foreign Function & Memory API (Panama) introduced in JDK 22.
+ * It uses the Java Foreign Function &amp; Memory API (Panama) introduced in JDK 22.
  *
  * <p><strong>Internal API:</strong> This class is not intended for direct use.
  * Use the high-level {@link Kreuzberg} class instead.</p>

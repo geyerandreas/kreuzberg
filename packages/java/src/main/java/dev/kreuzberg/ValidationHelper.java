@@ -219,7 +219,7 @@ public final class ValidationHelper {
     /**
      * Validates chunking parameters.
      *
-     * Checks that max_chars > 0 and max_overlap < max_chars.
+     * Checks that {@code max_chars > 0} and {@code max_overlap < max_chars}.
      *
      * @param maxChars the maximum characters per chunk
      * @param maxOverlap the maximum overlap between chunks
