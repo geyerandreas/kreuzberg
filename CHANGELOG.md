@@ -9,194 +9,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Python wheel dylib linking on macOS**: Fixed ImportError caused by hardcoded dylib paths in Python wheels
-  - Root cause: PyO3 linker was preferring `libkreuzberg_ffi.dylib` over static library, embedding absolute CI build paths into the wheel
-  - Error: `ImportError: Library not loaded: /Users/.../target/.../libkreuzberg_ffi.dylib` when installing from wheel
-  - Solution 1: Added crate-type comment in `kreuzberg-ffi/Cargo.toml` documenting staticlib requirement for Python
-  - Solution 2: Modified `kreuzberg-py/build.rs` to explicitly link static library by full path on Unix platforms
-  - Solution 3: Removed `deps/` directory from library search paths to avoid dylibs with hardcoded install_name
-  - Impact: Python wheels now install correctly on all platforms with no runtime linker errors
-- **Ruby gem dylib linking on macOS**: Fixed identical linker issue in Ruby Magnus bindings
-  - Root cause: Same as Python - vendored `kreuzberg-ffi` had `cdylib` in crate-type causing dynamic linking
-  - Error: `ld: library 'kreuzberg_ffi' not found` during gem build
-  - Solution: Rewrote `packages/ruby/ext/kreuzberg_rb/native/build.rs` to force static linking by passing full path to `libkreuzberg_ffi.a`
-  - Removed conflicting `#[link(name = "kreuzberg_ffi", kind = "static")]` attribute from `lib.rs`
-  - Impact: Ruby gems now bundle static library correctly and install without linker errors
-- **TypeScript plugin registration API design flaw**: Fixed TypeError preventing idiomatic JavaScript plugin usage
-  - Root cause: NAPI binding expected function properties (`{ name: () => "foo" }`) instead of value properties (`{ name: "foo" }`)
-  - Error: `TypeError: processor.name.bind is not a function` causing 36% test failure rate
-  - Solution: Modified NAPI binding (`crates/kreuzberg-node/src/lib.rs`) to accept BOTH value and function properties using `.or_else()` pattern
-  - Updated TypeScript wrapper (`typescript/index.ts`) to check `typeof` before calling functions
-  - Impact: Improved test pass rate from 64% → 75% (69/108 → 81/108 tests), supports idiomatic JavaScript
-- **Python build profile mapping**: Fixed `kreuzberg-py/build.rs` to correctly map profile names ("dev"/"test" → "debug")
-- **Java compiler version**: Maintained Java 25 compiler target in `packages/java/pom.xml` for FFM API compatibility
+- **Python wheels on macOS**: Fixed ImportError when installing from wheel due to hardcoded dylib paths
+- **Ruby gems on macOS**: Fixed linker errors during gem build and installation
+- **TypeScript plugin registration**: Fixed TypeError when registering JavaScript-style plugins
 
 ### Added
 
-- **Docker ARM64 support**: Added `linux/arm64` platform to Docker publish workflow alongside `linux/amd64`
-  - Enables multi-architecture Docker images for ARM-based systems
-  - Increased Docker publish timeout from 180 to 360 minutes (6 hours) to accommodate slower ARM builds
-- **Java CI crash diagnostics**: Added comprehensive JVM crash logging to CI workflow
-  - JVM error files, heap dumps, and signal logs automatically uploaded as artifacts on test failures
-  - Environment variables: `-XX:ErrorFile`, `-XX:+LogVMOutput`, `-XX:+HeapDumpOnOutOfMemoryError`
-- **Test apps infrastructure**: Added comprehensive test applications for all language bindings
-  - New Taskfile commands: `test-apps:install`, `test-apps:python:run`, `test-apps:node:run`, etc.
-  - Each test app validates entire public API against published package versions
-  - Located in `test_apps/{python,node,ruby,java,go}/` with idiomatic structure per language
+- **Docker ARM64 support**: Multi-architecture Docker images now support linux/arm64 platform
 
 ### Performance
 
-- **Go ConfigMerge optimization**: Replaced FFI-based merge in `packages/go/v4/config.go` with native Go field copying
-  - Better performance and nil pointer handling for config overrides
+- **Go bindings**: Improved ConfigMerge performance with native field copying
 
 ## [4.0.0-rc.16] - 2025-12-21
 
 ### Added
 
-- **CPU profiling infrastructure for performance analysis** (#242):
-  - New `profiling.yaml` GitHub Actions workflow for automated profiling on PRs
-  - Signal-based sampling profiler with pprof at 1000 Hz (~1-3% overhead)
-  - SVG flamegraph generation with HTML gallery visualization
-  - Fixture filtering via `PROFILING_FIXTURES` env var (81% CI time reduction)
-  - Feature-gated compilation with zero overhead when disabled
-  - `generate-flamegraph-index` CLI subcommand for interactive flamegraph gallery
-  - 13 Kreuzberg binding jobs (native, Python, Node, WASM, Ruby, Go, Java, C#)
-  - Expected PR profiling runtime: 15-25 minutes (vs 120+ min for full benchmarks)
+- **Batch processing APIs**: 4-6x throughput improvement for high-volume document extraction across all language bindings
+- **CPU profiling infrastructure**: Automated flamegraph generation for performance analysis on pull requests
 
 ### Performance
 
-- **FFI batch operations for 4-6x throughput gain** (#242):
-  - Implemented batch streaming APIs in `kreuzberg-ffi` for amortized FFI overhead
-  - Ruby and Java batch extraction now process multiple documents per FFI call
-  - Result pooling to reduce allocation overhead in high-throughput scenarios
-  - Zero-copy result views for read-only access to extraction results
-  - String interning for deduplicated metadata strings across batch results
-- **C# comprehensive optimizations** (#242):
-  - Session 1: Quick win optimizations (method inlining, struct layout)
-  - Session 3: JSON serialization with source generation (100-200ms gain)
-  - Session 4: Batch operation tests for TypeScript and C#
-  - Session 7: Source generation validation and final optimizations
-  - GC handle pooling for reduced managed-native transitions
-  - Custom JSON serializer context for zero-reflection serialization
-- **Core performance improvements** (#242):
-  - PDF text extraction optimizations (reduced allocations, better buffering)
-  - Token reduction benchmarks and SIMD text processing
-  - OCR language registry for faster language detection lookups
-  - UTF-8 validation optimizations for text quality processing
-  - String pooling for deduplicated text content across documents
-  - Object pooling utilities for allocation-heavy operations
-  - Batch pooling benchmarks demonstrating 2-3x throughput improvements
-- **TypeScript/Node.js batch APIs** (#242):
-  - Config validation optimizations
-  - Type system improvements for batch operations
-  - Integration tests for concurrent batch processing
+- **Batch operations**: Implemented batch streaming APIs in FFI for amortized overhead; Ruby and Java can now process multiple documents per FFI call
+- **C# optimizations**: JSON serialization with source generation, GC handle pooling, and custom serializer context
+- **Core improvements**: PDF text extraction, token reduction, OCR language registry, and string pooling for 2-3x batch throughput gains
+- **TypeScript/Node.js**: Config validation and batch operation integration optimizations
 
 ### Fixed
 
-- **Python type stub file packaging**: Fixed `.pyi` stub files not being included in wheel distributions
-  - Root cause: maturin `include` directive only specified `"wheel"` format instead of `["sdist", "wheel"]`
-  - This caused `_internal_bindings.pyi` and `py.typed` to be missing from installed packages
-  - Solution: Updated `pyproject.toml` to include stub files in both sdist and wheel formats
-  - Impact: IDEs can now properly inspect types from the binary `_internal_bindings` module
-- **Java CI Maven version mismatch**: Fixed CI workflow failing with Maven 3.9.11 when project requires Maven 4.0.0-rc-4+
-  - Root cause: `actions/setup-java@v4` automatically bundles Maven 3.9.x with Java 25
-  - Solution: Added `stCarolas/setup-maven@v5` action to explicitly install Maven 4.0.0-rc-4
-  - Impact: Java CI builds now pass Maven version enforcement checks
-- **Go Windows CI linking failure**: Fixed duplicate CGO_LDFLAGS causing linker errors on Windows
-  - Root cause: Three separate scripts (build-bindings.ps1, setup-go-cgo-env/windows.ps1, library-paths.sh) each set CGO_LDFLAGS, causing flags to accumulate via GitHub Actions environment file appending
-  - Solution: Removed CGO variable setup from build-bindings.ps1, hardened setup-go-cgo-env/windows.ps1 to replace (not append), added conditional logic to library-paths.sh to skip if already set in GitHub Actions
-  - Impact: Go tests on Windows now link correctly without duplicate library flags
-- **Ruby gem Linux/Windows build linking failure**: Fixed missing link search path in Magnus FFI bindings build.rs
-  - Root cause: Linux and Windows build.rs were missing cargo:rustc-link-search directive to locate libkreuzberg_ffi
-  - Error: `rust-lld: error: unable to find library -lkreuzberg_ffi` during native extension compilation
-  - Solution: Added link search path logic to Linux and Windows build.rs matching the macOS implementation
-  - Impact: Ruby gem now builds successfully on all platforms
-- **Rust LibreOffice tests timeout on Windows CI**: Added ignore attribute to skip legacy Office tests on Windows
-  - Root cause: LibreOffice conversion tests (test_office_doc_legacy, test_office_ppt_legacy, test_office_xls_legacy, test_legacy_doc_extraction_async) timeout after 60+ seconds on Windows CI
-  - Solution: Added `#[cfg_attr(target_os = "windows", ignore)]` to all LibreOffice/legacy Office tests
-  - Impact: Windows CI no longer hangs on LibreOffice tests, test suite completes successfully
-- **Ruby gem publish Zlib corruption**: Fixed gem file corruption during GitHub Actions artifact transfer
-  - Root cause: GitHub Actions artifact download/merge corrupts binary gem files causing `Zlib::DataError: invalid stored block lengths`
-  - Solution: Redesigned publish workflow to rebuild gems fresh from source on publish runner instead of using transferred artifacts
-  - Created new `publish-gems-direct.sh` script for simplified gem publication
-  - Impact: Ruby gems publish successfully without corruption errors
+- **Python IDE support**: Type stub files (`.pyi`) now included in wheel distributions for proper IDE autocomplete
+- **Java Maven compatibility**: Fixed CI builds with Maven 4.0.0-rc-4+ support
+- **Go Windows linking**: Resolved duplicate linker flags causing compilation failures
+- **Ruby gem compilation**: Fixed missing link search paths on Linux and Windows
+- **Windows CI stability**: LibreOffice tests now skip on Windows to prevent timeouts
+- **Ruby gem publishing**: Fixed artifact corruption during publication process
 
 ## [4.0.0-rc.15] - 2025-12-20
 
 ### Fixed
 
-- **Node.js Windows package publishing**: Fixed PowerShell packaging script that prevented Windows bindings from being published to npm
-  - Root cause: `package-artifacts.ps1` was creating tarball with entire `npm/` directory instead of platform-specific directory
-  - This caused the Windows platform package (`@kreuzberg/node-win32-x64-msvc`) to be missing from rc.14 npm release
-  - Solution: Updated tar command to package only the specific platform directory, matching Bash script behavior
-  - Impact: Windows x64 users can now install `@kreuzberg/node` successfully from npm
+- **Node.js Windows publishing**: Windows x64 platform packages (`@kreuzberg/node-win32-x64-msvc`) now publish correctly to npm
 
 ## [4.0.0-rc.14] - 2025-12-20
 
 ### Added
 
-- **Comprehensive test suites for all language bindings**:
-  - Python: 34 tests covering type verification, batch APIs, byte extraction, MIME detection, OCR, all file types
-  - Node.js: 79 tests for type verification, batch APIs, MIME detection, configuration, error handling
-  - Ruby: 55 RSpec tests for batch APIs, byte extraction, type verification, configuration handling
-  - Java: 85 JUnit 5 tests with FFM API memory management, concurrency, all file format support
-  - WASM: 79 tests with performance validation, large document handling, concurrent operations
-  - Go: 63 table-driven tests with context support, error wrapping with `errors.Is()`, all file types
-  - All test suites verify batch extraction APIs (sync/async), type safety, result structure validation
+- **Comprehensive test suites**: End-to-end tests for all language bindings (Python, Node.js, Ruby, Java, Go, WASM) covering batch APIs, file format support, and type safety
 
 ### Fixed
 
-- **NuGet publish workflow reliability**: Replaced NuGet/login OIDC-based authentication with direct API key approach
-  - Issue: NuGet/login action could fail with 401 errors due to OIDC token context limitations (see https://github.com/NuGet/login/issues/6)
-  - Solution: Removed NuGet/login step and pass API key directly via `NUGET_AUTH_TOKEN` environment variable and `--api-key` parameter
-  - Impact: More reliable C# package publishing without dependency on OIDC token exchange
-  - Requires: `NUGET_API_KEY` secret to be configured in GitHub repository settings
-- **LibreOffice installation in Docker full image**: Updated LibreOffice from 25.8.2 to 25.8.4
-  - Version 25.8.2 download URLs were no longer available on DocumentFoundation servers
-  - Updated to latest stable release 25.8.4 (released Dec 18, 2025)
-  - Verified working for Office document extraction (DOCX, XLSX, ODT)
-  - Tested on both x86_64 and aarch64 architectures
-- **Python IDE type completions**: Fixed missing type hints in IDE autocomplete
-  - Root cause: `_internal_bindings.pyi` stub file was not being included in wheel distribution
-  - Solution: Added `ensure_stub_file()` function in `packages/python/build.py` to verify and include stub file in all build outputs
-  - Impact: Full autocomplete now works for all 67 public APIs, type checkers can find definitions, mypy strict mode compatible
-- **Ruby gem native extension compilation**: Fixed vendoring of Rust crates during build
-  - Added automatic vendoring task to `packages/ruby/Rakefile` that runs before compilation
-  - Ensures `vendor/kreuzberg`, `vendor/kreuzberg-ffi`, and `vendor/kreuzberg-tesseract` are properly copied and version-updated before building native extension
-- **Python `ExtractionResult.pages` type hints**: Fixed missing type definition in PyO3 stub file
-  - Root cause: `_internal_bindings.pyi` was missing `pages` field declaration in `ExtractionResult` class
-  - Added `pages: list[PageContent] | None` attribute and `PageContent` TypedDict definition
-  - Impact: IDEs now properly show autocomplete for `result.pages`, type checkers recognize the attribute
-  - Fixes `TypeError: 'NoneType' object is not iterable` confusion when users iterate without checking for None
+- **C# NuGet publishing**: Switched from OIDC authentication to direct API key authentication for more reliable package publishing
+- **LibreOffice in Docker**: Updated to version 25.8.4 for Office document extraction (DOCX, XLSX, ODT)
+- **Python IDE type hints**: Type stub files now included in wheels, enabling full IDE autocomplete for all public APIs
+- **Ruby gem compilation**: Fixed Rust crate vendoring during native extension build
+- **Python ExtractionResult**: Fixed missing `pages` field type hints in IDE autocomplete
 
 ## [4.0.0-rc.13] - 2025-12-19
 
 ### Fixed
 
-- **PDF extractor feature flag mismatch**: Corrected feature flag in conditional compilation for bundled PDFium
-  - Code was checking for legacy `pdf-bundled` feature in `#[cfg()]` but feature was renamed to `bundled-pdfium`
-  - Feature aliases don't apply to Rust conditional compilation - only to dependency resolution
-  - This caused bundled PDFium module to never compile when `bundled-pdfium` was enabled
-  - Affected: Python wheels, Ruby gem, WASM bindings, Java bindings
-  - Fixed all `#[cfg(feature = "pdf-bundled")]` to `#[cfg(feature = "bundled-pdfium")]`
-- **Python CLI binary discovery timeout**: Restored binary discovery timeout to 2 seconds (regression fix)
-  - Fixes benchmark tests that were timing out during CI runs
-- **Go Windows library linking**: Fixed missing system libraries in cgo linking and corrected build directory paths
-  - Ensures Windows binaries link correctly with platform-specific libraries
-  - Resolved benchmark path issues for Go bindings
-- **Ruby vendor workspace dependencies**: Added missing toml dependency to Ruby vendor workspace generation
-  - Enables proper workspace management during Ruby gem packaging
-- **Docker caching**: Improved Docker caching with GitHub Actions Cache (GHA) backend
-  - Reduces build times and improves CI efficiency
-- **Repository cleanup**: Removed smoke tests and unused scripts from publish pipeline
-  - Streamlined CI workflows for faster feedback
-  - Smoke test functionality moved to dedicated test_apps directories
-- **Ruby gem publish pipeline**: Enhanced Ruby gem publish pipeline to rebuild and validate before pushing
-  - Ensures gem integrity before package distribution
-  - Added pre-publish validation steps
-- **WASM binary publishing**: Added WASM binary files to git for NPM publishing
-  - Ensures compiled binaries are available during package distribution
-  - Supports both browser and Node.js WASM targets
+- **PDF bundled feature flag**: Corrected conditional compilation flag from `pdf-bundled` to `bundled-pdfium` (affects Python wheels, Ruby gems, WASM, Java)
+- **Python CLI binary discovery**: Restored timeout behavior for benchmark tests
+- **Go Windows linking**: Fixed missing system libraries in cgo linking
+- **Ruby gem packaging**: Added missing TOML dependency for workspace generation
+- **Docker caching**: Improved build performance with GitHub Actions Cache backend
+- **Ruby gem publishing**: Enhanced validation before pushing to registry
+- **WASM distribution**: Added compiled binaries to git for proper NPM publishing
 
 ## [4.0.0-rc.10] - 2025-12-16
 
@@ -219,78 +97,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- **Python bindings**: Fixed PDFium bundling in wheels by correcting feature flag in conditional compilation
-  - Root cause: Code was checking for legacy `pdf-bundled` feature in `#[cfg()]` but feature was renamed to `bundled-pdfium`
-  - Feature aliases don't apply to Rust conditional compilation - only to dependency resolution
-  - Result: Bundled PDFium module was never compiled when `bundled-pdfium` was enabled
-  - Fixed all `#[cfg(feature = "pdf-bundled")]` to `#[cfg(feature = "bundled-pdfium")]` in pdf module
-  - Verified: Python wheels now successfully extract and initialize PDFium at runtime
-- **C# bindings**: Fixed MSBuild target to prevent overwriting CI-downloaded native assets
-  - Added conditional logic to detect if runtimes directory already populated with cross-platform files
-  - Prevents build step from creating empty platform directories that overwrite CI artifacts
-  - Supports all platforms: Windows (x64/arm64), macOS (arm64/x64), Linux (x64/arm64)
-- **Rust 2024 compliance**: Added `unsafe` keyword to extern blocks in Ruby bindings
-  - Required by Rust 2024 edition for `extern "C"` declarations
-  - Fixes compilation error in packages/ruby/ext/kreuzberg_rb/native/src/lib.rs
-- **WASM**: Fixed unused import warning in pdf extractor
-  - Added `#[cfg(feature = "tokio-runtime")]` to conditional import of `std::path::Path`
-  - Path is only used in tokio-runtime enabled code paths
-- **Docker**: Fixed ONNX Runtime package installation
-  - Corrected Debian Trixie package name from `libonnxruntime` to `libonnxruntime1.21`
-  - Applied to both Dockerfile.core and Dockerfile.full
-  - Verified: Both Docker images build successfully and PDF extraction works with bundled PDFium
-- **Homebrew CLI**: Added bundled-pdfium feature to kreuzberg-cli dependency
-  - Ensures CLI binary includes embedded PDFium without requiring system installation
-  - User can run `kreuzberg extract file.pdf` without extra setup
-- **Python CI**: Fixed path traversal calculation in test script
-  - Script in scripts/ci/python/ needed proper directory levels to reach repo root
-  - Changed from 2 levels (`/../..`) to 3 levels (`/../../..`)
-- **LibreOffice tests**: Disabled on Windows CI to prevent hanging
-  - soffice binary lookup hangs on Windows runners during CI
-  - Added `#[cfg(not(target_os = "windows"))]` to 12 LibreOffice test cases in Rust core
-  - Tests continue running on macOS and Linux CI
+- **Python wheels PDFium bundling**: Corrected conditional compilation feature flag to enable bundled PDFium
+- **C# bindings**: Fixed MSBuild target to preserve CI-downloaded native assets across all platforms
+- **Ruby bindings**: Added missing `unsafe` keyword for Rust 2024 edition compatibility
+- **WASM**: Fixed unused import warning in PDF extractor
+- **Docker**: Corrected ONNX Runtime package name for Debian Trixie
+- **Homebrew CLI**: Bundled PDFium feature now included in CLI binary distribution
+- **LibreOffice tests**: Disabled on Windows CI to prevent test timeout issues
 
 ## [4.0.0-rc.11] - 2025-12-18
 
 ### Fixed
 
-- **PDFium bundling**: Now correctly bundled in all language bindings (Node.js, Python, Java, Ruby, Go, C#)
-  - FFI library copies `libpdfium.dylib/.so/.dll` from Rust build output during packaging
-  - C# Kreuzberg.csproj now includes build target to copy native libraries to runtimes directories for all platforms
-  - Node.js package.json includes all native library extensions (`*.dylib`, `*.so`, `*.dll`)
-  - Fixes PDF extraction failures with "libpdfium not found" error
-- **C# bindings**: Added native library bundling with PDFium support for all platforms
-  - Build target in Kreuzberg.csproj copies libkreuzberg_ffi and libpdfium to runtimes/{platform}/native directories
-  - Supports macOS (arm64/x64), Linux (x64/arm64), Windows (x64/arm64)
-  - Smoke test suite created in test_apps/csharp with 7 tests (PDF, DOCX, XLSX, JPG, PNG + OCR tests)
-  - All C# tests passing with bundled PDFium
-- **Rust core**: Fixed missing Path import in pdf.rs causing compilation errors
-  - Added `use std::path::Path;` to support async file extraction in PDF extractor
-- **Node.js (NAPI-RS)**: PDFium always included in npm packages (no longer conditional)
-- **Ruby gems**: Fixed gem publishing validation error caused by incorrect compression handling
-  - Root cause: Gems are POSIX tar archives with gzipped internal files (metadata.gz, data.tar.gz, checksums.yaml.gz) - this is the standard RubyGems format
-  - Removed broken manual gzip step in publish script that was double-compressing valid gems
-  - `gem spec` validation now passes directly on gems produced by `bundle exec rake build`
-- **Go bindings**: Removed duplicate Windows CGO linker flags causing compilation failures
-  - Fixed `packages/go/v4/ffi.go` and `packages/go/v4/plugins_test_helpers.go` to use environment-set flags
-  - Smoke test suite created in test_apps/go with 7 tests (PDF, DOCX, XLSX, JPG, PNG + OCR tests)
-  - All Go tests passing with bundled PDFium via CGO/pkg-config
-- **WASM (Deno)**: Fixed type definition references from `.d.mts` to `.d.ts`
-  - Corrects Deno test helper type imports
-- **C# NuGet**: Fixed artifact download path to preserve native runtime directory structure
-- **Java FFI**: Added system library path fallback for ONNX Runtime when not bundled in JAR
-  - Enables users with system-installed ONNX Runtime (e.g., `brew install onnxruntime`) to use the library
-  - Gracefully handles missing ONNX Runtime for operations that don't require embeddings
-- **Smoke tests**: All 7 tests now passing across all five language bindings (Java, Python, Node.js, C#, Go)
-  - PDF, DOCX, XLSX, JPG, PNG extraction + OCR tests all working
-  - Verified test suite created for each binding in test_apps/{java,python,node,csharp,go}
-- **WASM**: Added PDF support to `wasm-target` feature for browser and Node.js WASM targets
-  - Fixed build.rs to use bundled-pdfium for WASM instead of system-pdfium
-  - Fixed PDF extractor to handle WASM synchronously (no tokio::spawn_blocking in WASM context)
-  - Fixed PDF bindings initialization for WASM using system library binding
-- **WASM test generator**: Fixed hardcoded "application/pdf" MIME types in generated tests
-  - Now correctly uses actual fixture media_type for each document format (DOCX, XLSX, HTML, etc.)
-  - Regenerated all WASM e2e tests with correct MIME types
+- **PDFium bundling**: Now correctly included in all language bindings (Python, Node.js, Ruby, Java, Go, C#) for PDF extraction support
+- **C# native libraries**: Build target now properly copies platform-specific native libraries to all supported platforms (Windows, macOS, Linux)
+- **Ruby gem publishing**: Fixed validation errors caused by double-compression in publish workflow
+- **Go Windows linking**: Removed duplicate CGO linker flags causing compilation failures
+- **Java ONNX Runtime**: Added system library path fallback for users with system-installed ONNX Runtime
+- **WASM PDF support**: Added PDF extraction support for browser and Node.js WASM targets
+- **WASM MIME types**: Fixed test generator to use correct MIME types for all document formats
 
 ## [Unreleased]
 
