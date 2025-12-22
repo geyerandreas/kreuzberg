@@ -42,22 +42,17 @@ impl ExcelExtractor {
             let mut cells: Vec<Vec<String>> = Vec::with_capacity(sheet.row_count);
 
             // Extract table rows using iterator instead of collecting all lines first
-            let mut found_table = false;
             for line in sheet.markdown.lines() {
                 if line.starts_with("| ") {
                     // Skip separator rows (contain ---)
                     if line.contains("---") {
-                        found_table = true;
                         continue;
                     }
 
-                    if found_table || cells.is_empty() {
-                        // Parse row: strip "| " prefix and " |" suffix, then split by " | "
-                        if let Some(content) = line.strip_prefix("| ").and_then(|s| s.strip_suffix(" |")) {
-                            let row: Vec<String> = content.split(" | ").map(Self::unescape_cell_value).collect();
-                            cells.push(row);
-                            found_table = true;
-                        }
+                    // Parse row: strip "| " prefix and " |" suffix, then split by " | "
+                    if let Some(content) = line.strip_prefix("| ").and_then(|s| s.strip_suffix(" |")) {
+                        let row: Vec<String> = content.split(" | ").map(Self::unescape_cell_value).collect();
+                        cells.push(row);
                     }
                 }
             }

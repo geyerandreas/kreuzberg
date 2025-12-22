@@ -292,10 +292,13 @@ fn build_page_structure(document: &PdfDocument<'_>, boundaries: &[PageBoundary])
     for (index, boundary) in boundaries.iter().enumerate() {
         let page_number = boundary.page_number;
 
-        let dimensions = if let Ok(page_rect) = document.pages().page_size(index as u16) {
-            Some((page_rect.width().value as f64, page_rect.height().value as f64))
-        } else {
-            None
+        // Extract page dimensions; silently ignore errors as dimensions are optional
+        let dimensions = match document.pages().page_size(index as u16) {
+            Ok(page_rect) => Some((page_rect.width().value as f64, page_rect.height().value as f64)),
+            Err(_) => {
+                // Failed to retrieve page dimensions - non-fatal, page will be recorded without dimensions
+                None
+            }
         };
 
         pages.push(PageInfo {

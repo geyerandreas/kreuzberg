@@ -197,9 +197,11 @@ pub fn extract_text_from_image_with_ocr(
             content_len
         } else {
             let raw_end = (frame_num * content_per_frame).min(content_len);
-            (raw_end..=content_len)
+            // Find the nearest valid char boundary by searching backward from raw_end
+            (0..=raw_end)
+                .rev()
                 .find(|&i| ocr_result.is_char_boundary(i))
-                .unwrap_or(content_len)
+                .unwrap_or(0)
         };
 
         boundaries.push(crate::types::PageBoundary {
