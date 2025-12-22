@@ -86,6 +86,47 @@ RSpec.describe Kreuzberg::Config do
     end
   end
 
+  describe Kreuzberg::Config::FontConfig do
+    it 'creates with default values' do
+      font_config = described_class.new
+
+      expect(font_config.enabled).to be true
+      expect(font_config.custom_font_dirs).to be_nil
+    end
+
+    it 'creates with custom values' do
+      dirs = ['/usr/share/fonts', '/home/user/.fonts']
+      font_config = described_class.new(
+        enabled: false,
+        custom_font_dirs: dirs
+      )
+
+      expect(font_config.enabled).to be false
+      expect(font_config.custom_font_dirs).to eq(dirs)
+    end
+
+    it 'converts to hash' do
+      dirs = ['/usr/share/fonts']
+      font_config = described_class.new(
+        enabled: true,
+        custom_font_dirs: dirs
+      )
+      hash = font_config.to_h
+
+      expect(hash).to be_a(Hash)
+      expect(hash[:enabled]).to be true
+      expect(hash[:custom_font_dirs]).to eq(dirs)
+    end
+
+    it 'compacts nil values in hash' do
+      font_config = described_class.new(enabled: true)
+      hash = font_config.to_h
+
+      expect(hash).to be_a(Hash)
+      expect(hash.key?(:custom_font_dirs)).to be false
+    end
+  end
+
   describe Kreuzberg::Config::PDF do
     it 'creates with default values' do
       pdf = described_class.new
@@ -93,6 +134,7 @@ RSpec.describe Kreuzberg::Config do
       expect(pdf.extract_images).to be false
       expect(pdf.passwords).to be_nil
       expect(pdf.extract_metadata).to be true
+      expect(pdf.font_config).to be_nil
     end
 
     it 'creates with custom values' do
@@ -105,6 +147,23 @@ RSpec.describe Kreuzberg::Config do
       expect(pdf.passwords).to eq(%w[secret backup])
     end
 
+    it 'creates with font_config as instance' do
+      font_config = Kreuzberg::Config::FontConfig.new(enabled: true)
+      pdf = described_class.new(font_config: font_config)
+
+      expect(pdf.font_config).to be_a(Kreuzberg::Config::FontConfig)
+      expect(pdf.font_config.enabled).to be true
+    end
+
+    it 'creates with font_config as hash' do
+      font_config_hash = { enabled: false, custom_font_dirs: ['/fonts'] }
+      pdf = described_class.new(font_config: font_config_hash)
+
+      expect(pdf.font_config).to be_a(Kreuzberg::Config::FontConfig)
+      expect(pdf.font_config.enabled).to be false
+      expect(pdf.font_config.custom_font_dirs).to eq(['/fonts'])
+    end
+
     it 'converts to hash' do
       pdf = described_class.new(extract_images: true, passwords: ['test'])
       hash = pdf.to_h
@@ -112,6 +171,21 @@ RSpec.describe Kreuzberg::Config do
       expect(hash).to be_a(Hash)
       expect(hash[:extract_images]).to be true
       expect(hash[:passwords]).to eq(['test'])
+    end
+
+    it 'includes font_config in hash when present' do
+      font_config = Kreuzberg::Config::FontConfig.new(enabled: true)
+      pdf = described_class.new(font_config: font_config)
+      hash = pdf.to_h
+
+      expect(hash[:font_config]).to be_a(Hash)
+      expect(hash[:font_config][:enabled]).to be true
+    end
+
+    it 'raises error with invalid font_config type' do
+      expect do
+        described_class.new(font_config: 'invalid')
+      end.to raise_error(ArgumentError)
     end
   end
 

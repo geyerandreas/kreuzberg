@@ -54,10 +54,16 @@ export interface TokenReductionConfig {
 // Document Format Configuration
 // ============================================================================
 
+export interface FontConfig {
+	enabled?: boolean;
+	customFontDirs?: string[];
+}
+
 export interface PdfConfig {
 	extractImages?: boolean;
 	passwords?: string[];
 	extractMetadata?: boolean;
+	fontConfig?: FontConfig;
 }
 
 export interface ImageExtractionConfig {

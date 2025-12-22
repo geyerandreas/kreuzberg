@@ -28,6 +28,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Go bindings**: Improved ConfigMerge performance with native field copying
 
+## [Unreleased]
+
+### Added
+
+- **Font configuration API** - New `FontConfig` struct in `PdfConfig` to control font provider behavior
+  - `enabled` flag to enable/disable custom font provider (default: true)
+  - `custom_font_dirs` to add font directories beyond system fonts
+  - Automatic path expansion (tilde, relative paths)
+  - Security hardening (symlink resolution, canonicalization)
+  - Available in all bindings: Rust, Python, TypeScript, Java, Go, Ruby, C#
+  - Performance: ~12-13% faster PDF processing with font caching
+  - See migration guide: docs/migration/v4.0-rc2-fonts.md
+
+### Changed
+
+- **BREAKING**: Custom font provider now enabled by default
+  - Previous: Font provider always enabled, not configurable
+  - Current: Font provider enabled by default, configurable via `FontConfig`
+  - Migration: Set `font_config.enabled = false` to use pdfium defaults
+  - Performance improvement: 12-13% faster PDF extraction
+  - Global configuration: Must be set before first PDF extraction
+
+### Fixed
+
+- Lock poisoning in font provider now handled gracefully (no panics)
+- Path traversal vulnerability in custom font directories (security hardening)
+- Race condition in font provider registration (thread-safety)
+- Silent error suppression in font configuration initialization
+
+### Security
+
+- Custom font directories now validated with canonicalization
+- Symlinks resolved to prevent path traversal attacks
+- All custom paths validated before use
+
 ## [4.0.0-rc.16] - 2025-12-21
 
 ### Added

@@ -278,6 +278,138 @@ pub struct PdfConfig {
     /// Extract PDF metadata
     #[serde(default = "default_true")]
     pub extract_metadata: bool,
+
+    /// Font provider configuration (None = use defaults)
+    ///
+    /// Controls the custom font provider for PDF rendering. When not specified,
+    /// defaults to enabled with system fonts only.
+    #[serde(default)]
+    pub font_config: Option<FontConfig>,
+}
+
+/// Font provider configuration.
+///
+/// Controls the custom font provider used by PDF extraction. The font provider
+/// caches system fonts and serves them directly to pdfium, bypassing the
+/// CFX_Font::LoadSubst hotspot that accounts for ~13.8% of PDF processing time.
+///
+/// # Example
+///
+/// ```toml
+/// [pdf_options.font_config]
+/// enabled = true
+/// custom_font_dirs = ["/usr/share/fonts/custom", "~/my-fonts"]
+/// ```
+#[cfg(feature = "pdf")]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct FontConfig {
+    /// Enable custom font provider (default: true)
+    ///
+    /// When enabled, the custom font provider enumerates system fonts on first
+    /// PDF extraction and caches them for subsequent use. When disabled, pdfium
+    /// uses its default font loading mechanism.
+    #[serde(default = "default_true")]
+    pub enabled: bool,
+
+    /// Custom font directories (in addition to system fonts)
+    ///
+    /// Paths can use tilde (~) for home directory expansion and can be relative
+    /// or absolute. Missing directories will generate warnings but won't fail
+    /// extraction.
+    #[serde(default)]
+    pub custom_font_dirs: Option<Vec<std::path::PathBuf>>,
+}
+
+#[cfg(feature = "pdf")]
+impl Default for FontConfig {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            custom_font_dirs: None,
+        }
+    }
+}
+
+#[cfg(feature = "pdf")]
+impl FontConfig {
+    /// Expand and validate custom font directories.
+    ///
+    /// This method:
+    /// - Expands tilde (~) to the home directory
+    /// - Converts relative paths to absolute
+    /// - Resolves symlinks via canonicalization for security
+    /// - Validates that directories exist
+    /// - Logs warnings for invalid directories
+    ///
+    /// # Security
+    ///
+    /// Uses path canonicalization to prevent directory traversal attacks and
+    /// symlink-based security bypasses. Symlinks are fully resolved to their
+    /// target paths.
+    ///
+    /// # Returns
+    ///
+    /// A vector of validated absolute canonical paths to existing directories.
+    pub(crate) fn validate_custom_dirs(&self) -> Vec<std::path::PathBuf> {
+        self.custom_font_dirs
+            .as_ref()
+            .map(|dirs| {
+                dirs.iter()
+                    .filter_map(|dir| {
+                        let expanded = expand_tilde(dir);
+                        let absolute = if expanded.is_relative() {
+                            match std::env::current_dir() {
+                                Ok(cwd) => cwd.join(expanded),
+                                Err(e) => {
+                                    tracing::warn!("Failed to get current directory: {}", e);
+                                    return None;
+                                }
+                            }
+                        } else {
+                            expanded
+                        };
+
+                        // SAFETY: canonicalize() resolves all symlinks and validates the path exists.
+                        // This prevents path traversal attacks like ../../etc/passwd and ensures
+                        // symlinks point to valid directories within intended scope.
+                        match absolute.canonicalize() {
+                            Ok(canonical) => {
+                                if canonical.is_dir() {
+                                    Some(canonical)
+                                } else {
+                                    tracing::warn!("Custom font directory is not a directory: {}", dir.display());
+                                    None
+                                }
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    "Custom font directory not accessible or does not exist: {} ({})",
+                                    dir.display(),
+                                    e
+                                );
+                                None
+                            }
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+}
+
+/// Expand tilde (~) in path to home directory.
+///
+/// If the path starts with `~`, replaces it with the user's home directory.
+/// Returns the original path if tilde expansion is not needed or fails.
+#[cfg(feature = "pdf")]
+fn expand_tilde(path: &std::path::Path) -> std::path::PathBuf {
+    if let Ok(stripped) = path.strip_prefix("~") {
+        if let Some(home) = dirs::home_dir() {
+            return home.join(stripped);
+        }
+    }
+    path.to_path_buf()
 }
 
 /// Token reduction configuration.

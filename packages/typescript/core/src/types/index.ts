@@ -15,6 +15,7 @@
 export type {
 	ChunkingConfig,
 	ExtractionConfig,
+	FontConfig,
 	HtmlConversionOptions,
 	HtmlPreprocessingOptions,
 	ImageExtractionConfig,

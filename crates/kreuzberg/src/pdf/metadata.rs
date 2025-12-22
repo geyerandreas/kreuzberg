@@ -238,7 +238,7 @@ fn build_page_structure(document: &PdfDocument<'_>, boundaries: &[PageBoundary])
     for (index, boundary) in boundaries.iter().enumerate() {
         let page_number = boundary.page_number;
 
-        let dimensions = if let Ok(page_rect) = document.pages().page_size(index as u16) {
+        let dimensions = if let Ok(page_rect) = document.pages().page_size(index as i32) {
             Some((page_rect.width().value as f64, page_rect.height().value as f64))
         } else {
             None
