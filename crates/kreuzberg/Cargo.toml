@@ -21,6 +21,9 @@ default = ["tokio-runtime", "simd-utf8"]
 
 profiling = ["dep:pprof"]
 
+# Instrumentation and metrics
+pool-metrics = []
+
 # Performance features
 simd-utf8 = ["dep:simdutf8"]
 

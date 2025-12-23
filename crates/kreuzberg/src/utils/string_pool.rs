@@ -30,6 +30,9 @@ use once_cell::sync::Lazy;
 use std::collections::VecDeque;
 use std::sync::Arc;
 
+#[cfg(feature = "pool-metrics")]
+use std::sync::atomic::{AtomicUsize, Ordering};
+
 /// A reference to an interned string stored in an Arc.
 ///
 /// This wraps an Arc<String> and provides convenient access to the string content.
@@ -291,6 +294,10 @@ impl Default for PoolConfig {
 pub struct StringBufferPool {
     pool: dashmap::DashMap<usize, VecDeque<String>>,
     config: PoolConfig,
+    #[cfg(feature = "pool-metrics")]
+    acquire_count: AtomicUsize,
+    #[cfg(feature = "pool-metrics")]
+    reuse_count: AtomicUsize,
 }
 
 impl StringBufferPool {
@@ -299,6 +306,10 @@ impl StringBufferPool {
         StringBufferPool {
             pool: dashmap::DashMap::new(),
             config,
+            #[cfg(feature = "pool-metrics")]
+            acquire_count: AtomicUsize::new(0),
+            #[cfg(feature = "pool-metrics")]
+            reuse_count: AtomicUsize::new(0),
         }
     }
 
@@ -331,15 +342,22 @@ impl StringBufferPool {
     /// The returned buffer is automatically returned to the pool when dropped.
     /// Must be called with the pool wrapped in Arc.
     pub fn acquire(self: Arc<Self>) -> PooledString {
+        #[cfg(feature = "pool-metrics")]
+        self.acquire_count.fetch_add(1, Ordering::Relaxed);
+
         // Try to get from the default bucket first
         let default_bucket = self.config.initial_capacity;
         if let Some(buffer) = self.try_acquire_from_bucket(default_bucket) {
+            #[cfg(feature = "pool-metrics")]
+            self.reuse_count.fetch_add(1, Ordering::Relaxed);
             return PooledString { buffer, pool: self };
         }
 
         // Try other buckets
         for &bucket in &[1024, 16384, 65536] {
             if let Some(buffer) = self.try_acquire_from_bucket(bucket) {
+                #[cfg(feature = "pool-metrics")]
+                self.reuse_count.fetch_add(1, Ordering::Relaxed);
                 return PooledString { buffer, pool: self };
             }
         }
@@ -379,6 +397,36 @@ impl StringBufferPool {
     pub fn size(&self) -> usize {
         self.pool.iter().map(|entry| entry.value().len()).sum()
     }
+
+    /// Get buffer reuse metrics (only available with `pool-metrics` feature).
+    #[cfg(feature = "pool-metrics")]
+    pub fn metrics(&self) -> StringBufferPoolMetrics {
+        let acquire = self.acquire_count.load(Ordering::Relaxed);
+        let reuse = self.reuse_count.load(Ordering::Relaxed);
+        let hit_rate = if acquire == 0 {
+            0.0
+        } else {
+            (reuse as f64 / acquire as f64) * 100.0
+        };
+
+        StringBufferPoolMetrics {
+            total_acquires: acquire,
+            total_reuses: reuse,
+            hit_rate,
+        }
+    }
+}
+
+/// Metrics for StringBufferPool (only available with `pool-metrics` feature).
+#[cfg(feature = "pool-metrics")]
+#[derive(Debug, Clone, Copy)]
+pub struct StringBufferPoolMetrics {
+    /// Total number of acquire calls
+    pub total_acquires: usize,
+    /// Total number of buffer reuses from pool
+    pub total_reuses: usize,
+    /// Hit rate as percentage (0.0-100.0)
+    pub hit_rate: f64,
 }
 
 /// RAII wrapper for a pooled string buffer.
