@@ -4,6 +4,13 @@ pub mod text;
 #[cfg(feature = "ocr")]
 pub mod image;
 
+/// Capacity estimation utilities for string pre-allocation.
+///
+/// This module provides functions to estimate the capacity needed for string buffers
+/// based on input file sizes and content types. This enables pre-allocation, reducing
+/// reallocation cycles during string building operations.
+pub mod capacity;
+
 #[cfg(feature = "archives")]
 pub mod archive;
 
@@ -79,3 +86,8 @@ pub use xml::parse_xml;
 
 #[cfg(any(feature = "office", feature = "html"))]
 pub use markdown::cells_to_markdown;
+
+pub use capacity::{
+    estimate_content_capacity, estimate_html_markdown_capacity, estimate_presentation_capacity,
+    estimate_spreadsheet_capacity, estimate_table_markdown_capacity,
+};

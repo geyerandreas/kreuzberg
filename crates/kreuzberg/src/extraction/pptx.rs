@@ -1145,7 +1145,10 @@ pub fn extract_pptx_from_path(
     let mut iterator = SlideIterator::new(container);
     let slide_count = iterator.slide_count();
 
-    let estimated_capacity = slide_count * 1024;
+    // Estimate capacity based on typical presentation sizes
+    // Average slide has ~500-1000 bytes of extracted content
+    // Using conservative estimate: 1000 bytes per slide
+    let estimated_capacity = slide_count.saturating_mul(1000).max(8192);
     let mut content_builder = ContentBuilder::with_page_config(estimated_capacity, page_config.cloned());
 
     let mut total_image_count = 0;
