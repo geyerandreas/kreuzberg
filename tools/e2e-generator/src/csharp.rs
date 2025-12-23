@@ -367,20 +367,24 @@ public static class TestHelpers
 
     private static bool ValueContains(JsonNode value, JsonNode contains)
     {
-        if (value is JsonValue vv && contains is JsonValue cv)
+        if (value is JsonValue valueScalar && contains is JsonValue containsScalar)
         {
-            if (vv.TryGetValue<string>(out var vStr) && cv.TryGetValue<string>(out var cStr))
+            if (valueScalar.TryGetValue<string>(out var valueStr) &&
+                containsScalar.TryGetValue<string>(out var containsStr))
             {
-                return vStr.Contains(cStr, StringComparison.OrdinalIgnoreCase);
+                return valueStr.Contains(containsStr, StringComparison.OrdinalIgnoreCase);
             }
         }
 
-        if (value is JsonArray va && contains is JsonValue cs && cs.TryGetValue<string>(out var needle))
+        if (value is JsonArray valueArray &&
+            contains is JsonValue containsValue &&
+            containsValue.TryGetValue<string>(out var needle))
         {
-            foreach (var vItem in va)
+            foreach (var arrayValue in valueArray)
             {
-                if (vItem is JsonValue vv && vv.TryGetValue<string>(out var vStr) &&
-                    vStr.Contains(needle, StringComparison.OrdinalIgnoreCase))
+                if (arrayValue is JsonValue arrayScalar &&
+                    arrayScalar.TryGetValue<string>(out var arrayStr) &&
+                    arrayStr.Contains(needle, StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
@@ -388,14 +392,14 @@ public static class TestHelpers
             return false;
         }
 
-        if (value is JsonArray va && contains is JsonArray ca)
+        if (value is JsonArray valueArrayAll && contains is JsonArray containsArray)
         {
-            foreach (var item in ca)
+            foreach (var item in containsArray)
             {
                 bool found = false;
-                foreach (var vItem in va)
+                foreach (var arrayValue in valueArrayAll)
                 {
-                    if (JsonEquals(vItem!, item!))
+                    if (JsonEquals(arrayValue!, item!))
                     {
                         found = true;
                         break;

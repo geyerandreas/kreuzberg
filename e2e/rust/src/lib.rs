@@ -229,10 +229,10 @@ pub mod assertions {
         if let Some(found) = lookup_path_inner(value, path) {
             return Some(found);
         }
-        if let Value::Object(map) = value {
-            if let Some(format) = map.get("format") {
-                return lookup_path_inner(format, path);
-            }
+        if let Value::Object(map) = value
+            && let Some(format) = map.get("format")
+        {
+            return lookup_path_inner(format, path);
         }
         None
     }
