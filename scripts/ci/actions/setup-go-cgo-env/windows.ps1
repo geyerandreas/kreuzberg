@@ -53,10 +53,11 @@ $cgoEnabled = "1"
 $cgoCflags = "-I$msys2IncludePath"
 $importLibName = "libkreuzberg_ffi.dll.a"
 $importLibPath = Join-Path $ffiPath $importLibName
+$linkerVerboseFlags = "-Wl,-v"
 if (Test-Path $importLibPath) {
-  $cgoLdflags = "-L$msys2FfiPath -l:$importLibName -static-libgcc -static-libstdc++ -lws2_32 -luserenv -lbcrypt"
+  $cgoLdflags = "-L$msys2FfiPath -l:$importLibName -static-libgcc -static-libstdc++ -lws2_32 -luserenv -lbcrypt $linkerVerboseFlags"
 } else {
-  $cgoLdflags = "-L$msys2FfiPath -lkreuzberg_ffi -static-libgcc -static-libstdc++ -lws2_32 -luserenv -lbcrypt"
+  $cgoLdflags = "-L$msys2FfiPath -lkreuzberg_ffi -static-libgcc -static-libstdc++ -lws2_32 -luserenv -lbcrypt $linkerVerboseFlags"
 }
 
 # Add libraries to PATH for runtime discovery

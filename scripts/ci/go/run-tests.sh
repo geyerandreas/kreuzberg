@@ -66,7 +66,7 @@ if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; t
 	for module in "${modules[@]}"; do
 		echo "Running tests in $module..."
 		cd "$module"
-		go test -v -x "${extra_flags[@]:-}" ./...
+		go test -v -x -work "${extra_flags[@]:-}" ./...
 		cd "$REPO_ROOT/packages/go"
 	done
 else
