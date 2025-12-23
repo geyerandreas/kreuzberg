@@ -15,6 +15,11 @@ import type {
 
 const WORKSPACE_ROOT = resolve(__dirname, "../../../../..");
 const TEST_DOCUMENTS = join(WORKSPACE_ROOT, "test_documents");
+const FIXTURE_MAP: Record<string, string> = {
+	"sample.pdf": "pdf/simple.pdf",
+	"sample.docx": "documents/word_sample.docx",
+	"sample.txt": "text/contract.txt",
+};
 
 type PlainRecord = Record<string, unknown>;
 
@@ -24,6 +29,11 @@ function isPlainRecord(value: unknown): value is PlainRecord {
 
 export function resolveDocument(relative: string): string {
 	return join(TEST_DOCUMENTS, relative);
+}
+
+export function getFixturePath(name: string): string {
+	const mapped = FIXTURE_MAP[name];
+	return resolveDocument(mapped ?? name);
 }
 
 function assignBooleanField(target: PlainRecord, source: PlainRecord, sourceKey: string, targetKey: string): void {

@@ -54,15 +54,17 @@ fn main() {
 
         // Fallback: Add search paths and use standard linking
         for dir in [host_lib_dir, target_lib_dir] {
-            if dir.exists() {
-                println!("cargo:rustc-link-search=native={}", dir.display());
-            }
+            println!("cargo:rustc-link-search=native={}", dir.display());
         }
     }
 
     // Link the kreuzberg-ffi library
     // When kreuzberg-ffi is built, its symbols become available for linking
-    println!("cargo:rustc-link-lib=static=kreuzberg_ffi");
+    if target.contains("windows") {
+        println!("cargo:rustc-link-lib=dylib=kreuzberg_ffi");
+    } else {
+        println!("cargo:rustc-link-lib=static=kreuzberg_ffi");
+    }
 
     if target.contains("darwin") {
         println!("cargo:rustc-link-arg=-Wl,-undefined,dynamic_lookup");

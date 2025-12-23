@@ -220,7 +220,7 @@ jobs:
             -XX:LogFile=${{ github.workspace }}/packages/java/target/jvm-crash/jvm.log
             -XX:+HeapDumpOnOutOfMemoryError
             -XX:HeapDumpPath=${{ github.workspace }}/packages/java/target/jvm-crash/heapdump.hprof
-            -Xlog:os+signal=info
+            -Xlog:os=info
           RUST_BACKTRACE: full
         run: scripts/ci/java/run-tests.sh
 
