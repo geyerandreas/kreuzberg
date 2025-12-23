@@ -19,6 +19,9 @@ namespace Kreuzberg.E2E;
 public class BatchTests : IAsyncLifetime
 {
     private readonly List<string> _testFiles = new();
+    private string? _pdfPath;
+    private string? _docxPath;
+    private string? _txtPath;
 
     private static string ResolveTestDocumentsDir()
     {
@@ -35,16 +38,16 @@ public class BatchTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         var testDir = ResolveTestDocumentsDir();
-        var pdfPath = Path.Combine(testDir, "pdf", "simple.pdf");
-        var docxPath = Path.Combine(testDir, "documents", "word_sample.docx");
-        var txtPath = Path.Combine(testDir, "text", "contract.txt");
+        _pdfPath = Path.Combine(testDir, "pdf", "simple.pdf");
+        _docxPath = Path.Combine(testDir, "documents", "word_sample.docx");
+        _txtPath = Path.Combine(testDir, "text", "contract.txt");
 
-        if (File.Exists(pdfPath))
-            _testFiles.Add(pdfPath);
-        if (File.Exists(docxPath))
-            _testFiles.Add(docxPath);
-        if (File.Exists(txtPath))
-            _testFiles.Add(txtPath);
+        if (_pdfPath != null && File.Exists(_pdfPath))
+            _testFiles.Add(_pdfPath);
+        if (_docxPath != null && File.Exists(_docxPath))
+            _testFiles.Add(_docxPath);
+        if (_txtPath != null && File.Exists(_txtPath))
+            _testFiles.Add(_txtPath);
 
         // Ensure we have test files
         if (_testFiles.Count == 0)
@@ -58,6 +61,9 @@ public class BatchTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         _testFiles.Clear();
+        _pdfPath = null;
+        _docxPath = null;
+        _txtPath = null;
         await Task.CompletedTask;
     }
 
@@ -193,14 +199,18 @@ public class BatchTests : IAsyncLifetime
     public void BatchExtractBytesSync_WithMixedMimeTypes_Handles()
     {
         var buffer1 = File.ReadAllBytes(_testFiles[0]);
-        var buffer2 = _testFiles.Count > 1
-            ? File.ReadAllBytes(_testFiles[1])
-            : File.ReadAllBytes(_testFiles[0]);
+        var buffer2Path = _txtPath ?? _docxPath ?? _pdfPath ?? _testFiles[0];
+        var buffer2 = File.ReadAllBytes(buffer2Path);
+        var buffer2MimeType = _txtPath != null
+            ? "text/plain"
+            : _docxPath != null
+                ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                : "application/pdf";
 
         var items = new List<BytesWithMime>
         {
             new(buffer1, "application/pdf"),
-            new(buffer2, "text/plain"),
+            new(buffer2, buffer2MimeType),
         };
 
         var results = KreuzbergClient.BatchExtractBytesSync(items);

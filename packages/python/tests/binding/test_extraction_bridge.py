@@ -38,10 +38,11 @@ async def test_extract_bytes_with_valid_mime_type() -> None:
     assert isinstance(result, ExtractionResult)
     assert result.content.strip() == "Hello, World!"
     assert result.mime_type == "text/plain"
-    assert result.metadata.get("format_type") == "text"
-    assert "line_count" in result.metadata
-    assert "word_count" in result.metadata
-    assert "character_count" in result.metadata
+    format_meta = result.metadata.get("format", {})
+    assert format_meta.get("format_type") == "text"
+    assert "line_count" in format_meta
+    assert "word_count" in format_meta
+    assert "character_count" in format_meta
 
 
 def test_extract_bytes_sync_with_valid_mime_type() -> None:
@@ -54,9 +55,10 @@ def test_extract_bytes_sync_with_valid_mime_type() -> None:
     assert isinstance(result, ExtractionResult)
     assert result.content.strip() == "Hello, World!"
     assert result.mime_type == "text/plain"
-    assert result.metadata.get("format_type") == "text"
-    assert "line_count" in result.metadata
-    assert "word_count" in result.metadata
+    format_meta = result.metadata.get("format", {})
+    assert format_meta.get("format_type") == "text"
+    assert "line_count" in format_meta
+    assert "word_count" in format_meta
 
 
 @pytest.mark.asyncio
@@ -141,7 +143,7 @@ async def test_extract_bytes_with_chunking() -> None:
 
     result = await extract_bytes(content, mime_type, config)
 
-    assert "chunk_count" in result.metadata
+    assert result.get_chunk_count() > 0
 
 
 def test_extract_bytes_sync_with_chunking() -> None:
@@ -152,7 +154,7 @@ def test_extract_bytes_sync_with_chunking() -> None:
 
     result = extract_bytes_sync(content, mime_type, config)
 
-    assert "chunk_count" in result.metadata
+    assert result.get_chunk_count() > 0
 
 
 @pytest.mark.asyncio
