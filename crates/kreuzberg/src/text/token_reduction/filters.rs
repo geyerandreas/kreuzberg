@@ -64,31 +64,39 @@ impl FilterPipeline {
     }
 
     pub fn apply_light_filters(&self, text: &str) -> String {
-        let mut result = text.to_string();
+        use std::borrow::Cow;
+
+        let mut result = Cow::Borrowed(text);
 
         // Lazily allocate preserved_blocks only when actually needed.
         let mut preserved_blocks: Option<AHashMap<String, String>> = None;
         if self.config.preserve_markdown {
             let mut blocks = AHashMap::new();
-            result = self.extract_and_preserve_code(&result, &mut blocks);
+            result = Cow::Owned(self.extract_and_preserve_code(result.as_ref(), &mut blocks));
             preserved_blocks = Some(blocks);
         }
 
-        result = HTML_COMMENT_REGEX.replace_all(&result, "").to_string();
+        if HTML_COMMENT_REGEX.is_match(&result) {
+            result = Cow::Owned(HTML_COMMENT_REGEX.replace_all(&result, "").into_owned());
+        }
 
-        result = MULTIPLE_SPACES_REGEX.replace_all(&result, " ").to_string();
+        if MULTIPLE_SPACES_REGEX.is_match(&result) {
+            result = Cow::Owned(MULTIPLE_SPACES_REGEX.replace_all(&result, " ").into_owned());
+        }
 
-        result = EXCESSIVE_NEWLINES_REGEX.replace_all(&result, "\n\n").to_string();
+        if EXCESSIVE_NEWLINES_REGEX.is_match(&result) {
+            result = Cow::Owned(EXCESSIVE_NEWLINES_REGEX.replace_all(&result, "\n\n").into_owned());
+        }
 
         if self.config.preserve_markdown {
-            result = self.preserve_markdown_structure(&result);
+            result = Cow::Owned(self.preserve_markdown_structure(&result));
         }
 
         if let Some(blocks) = &preserved_blocks {
-            result = self.restore_preserved_blocks(&result, blocks);
+            result = Cow::Owned(self.restore_preserved_blocks(&result, blocks));
         }
 
-        result
+        result.into_owned()
     }
 
     pub fn apply_moderate_filters(&self, text: &str) -> String {
@@ -294,6 +302,10 @@ impl FilterPipeline {
     }
 
     fn restore_preserved_blocks(&self, text: &str, preserved: &AHashMap<String, String>) -> String {
+        if preserved.is_empty() {
+            return text.to_string();
+        }
+
         let mut result = text.to_string();
 
         for (placeholder, original_content) in preserved {

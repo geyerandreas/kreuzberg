@@ -99,10 +99,13 @@ impl TokenReducer {
             return text.to_string();
         }
 
+        // Pre-allocate normalized text only if needed
+        let nfc_string;
         let working_text = if text.is_ascii() {
             text
         } else {
-            &text.nfc().collect::<String>()
+            nfc_string = text.nfc().collect::<String>();
+            &nfc_string
         };
 
         match self.config.level {
@@ -183,13 +186,21 @@ impl TokenReducer {
     }
 
     fn clean_punctuation_optimized(&self, text: &str) -> String {
-        let mut result = text.to_string();
+        use std::borrow::Cow;
 
-        result = REPEATED_EXCLAMATION.replace_all(&result, "!").to_string();
-        result = REPEATED_QUESTION.replace_all(&result, "?").to_string();
-        result = REPEATED_COMMA.replace_all(&result, ",").to_string();
+        let mut result = Cow::Borrowed(text);
 
-        result
+        if REPEATED_EXCLAMATION.is_match(&result) {
+            result = Cow::Owned(REPEATED_EXCLAMATION.replace_all(&result, "!").into_owned());
+        }
+        if REPEATED_QUESTION.is_match(&result) {
+            result = Cow::Owned(REPEATED_QUESTION.replace_all(&result, "?").into_owned());
+        }
+        if REPEATED_COMMA.is_match(&result) {
+            result = Cow::Owned(REPEATED_COMMA.replace_all(&result, ",").into_owned());
+        }
+
+        result.into_owned()
     }
 
     fn remove_additional_common_words(&self, text: &str) -> String {
@@ -230,35 +241,35 @@ impl TokenReducer {
         };
 
         let original_count = words.len();
+        let has_cjk_content = text.chars().any(|c| c as u32 >= 0x4E00 && (c as u32) <= 0x9FFF);
 
         // Pre-allocate filtered_words to reduce reallocation during filtering.
-        let filtered_words: Vec<String> = words
-            .iter()
-            .filter(|word| {
-                let clean_word = if word.chars().all(|c| c.is_alphabetic()) {
-                    word.to_lowercase()
-                } else {
-                    word.chars()
-                        .filter(|c| c.is_alphabetic())
-                        .collect::<String>()
-                        .to_lowercase()
-                };
+        let mut filtered_words = Vec::with_capacity(words.len());
+        for word in &words {
+            let clean_word = if word.chars().all(|c| c.is_alphabetic()) {
+                word.to_lowercase()
+            } else {
+                word.chars()
+                    .filter(|c| c.is_alphabetic())
+                    .collect::<String>()
+                    .to_lowercase()
+            };
 
-                if clean_word.is_empty() {
-                    return true;
-                }
-
+            if clean_word.is_empty() {
+                filtered_words.push(word.clone());
+            } else {
                 let freq = word_freq.get(&clean_word).unwrap_or(&0);
                 let word_len = clean_word.chars().count() as f32;
 
-                self.has_important_characteristics(word)
+                if self.has_important_characteristics(word)
                     || (*freq <= 2 && word_len >= avg_length * 0.8)
                     || (word_len >= avg_length * 1.5)
-            })
-            .cloned()
-            .collect();
+                {
+                    filtered_words.push(word.clone());
+                }
+            }
+        }
 
-        let has_cjk_content = text.chars().any(|c| c as u32 >= 0x4E00 && (c as u32) <= 0x9FFF);
         let fallback_threshold = if has_cjk_content {
             original_count / 5
         } else {
@@ -266,19 +277,19 @@ impl TokenReducer {
         };
 
         if filtered_words.len() < fallback_threshold {
-            let fallback_words: Vec<String> = words
-                .iter()
-                .filter(|word| {
-                    let clean_word = if word.chars().all(|c| c.is_alphabetic()) {
-                        (*word).clone()
-                    } else {
-                        word.chars().filter(|c| c.is_alphabetic()).collect::<String>()
-                    };
+            let mut fallback_words = Vec::with_capacity(words.len());
+            for word in &words {
+                let clean_word = if word.chars().all(|c| c.is_alphabetic()) {
+                    word.to_lowercase()
+                } else {
+                    word.chars().filter(|c| c.is_alphabetic()).collect::<String>()
+                };
 
-                    clean_word.is_empty() || clean_word.chars().count() >= 3 || self.has_important_characteristics(word)
-                })
-                .cloned()
-                .collect();
+                if clean_word.is_empty() || clean_word.chars().count() >= 3 || self.has_important_characteristics(word)
+                {
+                    fallback_words.push(word.clone());
+                }
+            }
             self.smart_join(&fallback_words, has_cjk_content)
         } else {
             self.smart_join(&filtered_words, has_cjk_content)
@@ -442,31 +453,35 @@ impl TokenReducer {
         // Pre-allocate AHashSet with expected unique words.
         // Heuristic: ~60% unique in typical sentence.
         let estimated_unique = (words.len() as f32 * 0.6).ceil() as usize;
-        let unique_words: ahash::AHashSet<_> = words
-            .iter()
-            .take(estimated_unique.max(10))
-            .map(|w| {
-                w.chars()
-                    .filter(|c| c.is_alphabetic())
-                    .collect::<String>()
-                    .to_lowercase()
-            })
-            .collect();
+        let mut unique_words: ahash::AHashSet<String> = ahash::AHashSet::with_capacity(estimated_unique.max(10));
 
-        // Fall back to counting all words if we didn't collect enough unique words initially
+        for w in &words {
+            let clean = w
+                .chars()
+                .filter(|c| c.is_alphabetic())
+                .collect::<String>()
+                .to_lowercase();
+            unique_words.insert(clean);
+
+            // Early exit if we've collected enough unique words
+            if unique_words.len() >= estimated_unique {
+                break;
+            }
+        }
+
         let final_unique_count = if unique_words.len() >= estimated_unique {
             unique_words.len()
         } else {
-            words
-                .iter()
-                .map(|w| {
-                    w.chars()
-                        .filter(|c| c.is_alphabetic())
-                        .collect::<String>()
-                        .to_lowercase()
-                })
-                .collect::<ahash::AHashSet<_>>()
-                .len()
+            // Only iterate remaining words if needed
+            for w in &words {
+                let clean = w
+                    .chars()
+                    .filter(|c| c.is_alphabetic())
+                    .collect::<String>()
+                    .to_lowercase();
+                unique_words.insert(clean);
+            }
+            unique_words.len()
         };
 
         let diversity_ratio = final_unique_count as f32 / words.len() as f32;
