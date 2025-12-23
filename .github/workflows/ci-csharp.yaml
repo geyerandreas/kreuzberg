@@ -60,14 +60,82 @@ env:
   MACOSX_DEPLOYMENT_TARGET: '14.0'
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      csharp_matrix: ${{ steps.matrix.outputs.csharp_matrix }}
+      csharp_matrix_has_entries: ${{ steps.matrix.outputs.csharp_matrix_has_entries }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            csharp_windows:
+              - '.github/actions/**'
+              - 'crates/kreuzberg/**'
+              - 'crates/kreuzberg-ffi/**'
+              - 'crates/kreuzberg-tesseract/**'
+              - 'packages/csharp/**'
+              - 'e2e/csharp/**'
+              - 'test_documents/**'
+              - 'fixtures/**'
+              - 'tools/e2e-generator/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'packages/csharp/**/*.csproj'
+              - 'e2e/csharp/**/*.csproj'
+              - 'scripts/ci/csharp/**'
+              - '.github/workflows/ci-csharp.yaml'
+              - '.cargo/config.toml'
+            csharp_unix:
+              - '.github/actions/**'
+              - 'crates/kreuzberg/**'
+              - 'crates/kreuzberg-ffi/**'
+              - 'crates/kreuzberg-tesseract/**'
+              - 'packages/csharp/**'
+              - 'e2e/csharp/**'
+              - 'test_documents/**'
+              - 'fixtures/**'
+              - 'tools/e2e-generator/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'packages/csharp/**/*.csproj'
+              - 'e2e/csharp/**/*.csproj'
+              - 'scripts/ci/csharp/**'
+              - '.github/workflows/ci-csharp.yaml'
+              - '.cargo/config.toml'
+      - name: Build matrix
+        id: matrix
+        shell: bash
+        env:
+          CSHARP_WINDOWS: ${{ steps.filter.outputs.csharp_windows }}
+          CSHARP_UNIX: ${{ steps.filter.outputs.csharp_unix }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          include = []
+          if os.environ.get("CSHARP_WINDOWS") == "true":
+              include.append({"os": "windows-latest"})
+          if os.environ.get("CSHARP_UNIX") == "true":
+              include.extend([
+                  {"os": "ubuntu-latest"},
+                  {"os": "macos-latest"},
+              ])
+          print(f"csharp_matrix={json.dumps({'include': include})}")
+          print(f"csharp_matrix_has_entries={'true' if include else 'false'}")
+          PY
+
   build-csharp:
     name: C# Build + Smoke (${{ matrix.os }})
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: ${{ github.actor != 'dependabot[bot]' && needs.changes.outputs.csharp_matrix_has_entries == 'true' }}
+    needs: changes
     timeout-minutes: 180
     strategy:
       fail-fast: true
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+      matrix: ${{ fromJSON(needs.changes.outputs.csharp_matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -149,13 +217,12 @@ jobs:
 
   test-csharp:
     name: C# Tests (${{ matrix.os }})
-    if: ${{ github.actor != 'dependabot[bot]' }}
-    needs: build-csharp
+    if: ${{ github.actor != 'dependabot[bot]' && needs.changes.outputs.csharp_matrix_has_entries == 'true' }}
+    needs: [changes, build-csharp]
     timeout-minutes: 180
     strategy:
       fail-fast: true
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+      matrix: ${{ fromJSON(needs.changes.outputs.csharp_matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

@@ -62,23 +62,147 @@ env:
   MACOSX_DEPLOYMENT_TARGET: "14.0"
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      rust_unit_matrix: ${{ steps.matrix.outputs.rust_unit_matrix }}
+      rust_unit_matrix_has_entries: ${{ steps.matrix.outputs.rust_unit_matrix_has_entries }}
+      rust_pdfium_matrix: ${{ steps.matrix.outputs.rust_pdfium_matrix }}
+      rust_pdfium_matrix_has_entries: ${{ steps.matrix.outputs.rust_pdfium_matrix_has_entries }}
+      rust_cli_matrix: ${{ steps.matrix.outputs.rust_cli_matrix }}
+      rust_cli_matrix_has_entries: ${{ steps.matrix.outputs.rust_cli_matrix_has_entries }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            rust_windows:
+              - '.github/actions/**'
+              - 'crates/kreuzberg/**'
+              - 'crates/kreuzberg-cli/**'
+              - 'crates/kreuzberg-tesseract/**'
+              - 'e2e/rust/**'
+              - 'test_documents/**'
+              - 'fixtures/**'
+              - 'tools/e2e-generator/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.cargo/config.toml'
+              - 'rust-toolchain.toml'
+              - 'scripts/ci/rust/run-unit-tests.sh'
+              - 'scripts/ci/rust/setup-tessdata-env.sh'
+              - 'scripts/ci/rust/pre-build-diagnostics.sh'
+              - 'scripts/ci/rust/pre-build-diagnostics-cli.sh'
+              - 'scripts/ci/rust/configure-bindgen-windows.ps1'
+              - 'scripts/ci/rust/package-cli-windows.ps1'
+              - 'scripts/ci/rust/test-cli-windows.ps1'
+              - '.github/workflows/ci-rust.yaml'
+            rust_linux:
+              - '.github/actions/**'
+              - 'crates/kreuzberg/**'
+              - 'crates/kreuzberg-cli/**'
+              - 'crates/kreuzberg-tesseract/**'
+              - 'e2e/rust/**'
+              - 'test_documents/**'
+              - 'fixtures/**'
+              - 'tools/e2e-generator/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.cargo/config.toml'
+              - 'rust-toolchain.toml'
+              - 'scripts/ci/rust/run-unit-tests.sh'
+              - 'scripts/ci/rust/setup-tessdata-env.sh'
+              - 'scripts/ci/rust/pre-build-diagnostics.sh'
+              - 'scripts/ci/rust/pre-build-diagnostics-cli.sh'
+              - 'scripts/ci/rust/package-cli-unix.sh'
+              - 'scripts/ci/rust/test-cli-unix.sh'
+              - 'scripts/ci/rust/verify-pdfium-pkg-config.sh'
+              - 'scripts/ci/rust/verify-no-bundled-pdfium.sh'
+              - 'scripts/ci/rust/verify-system-pdfium-linux.sh'
+              - 'scripts/install-system-pdfium-linux.sh'
+              - '.github/workflows/ci-rust.yaml'
+            rust_macos:
+              - '.github/actions/**'
+              - 'crates/kreuzberg/**'
+              - 'crates/kreuzberg-cli/**'
+              - 'crates/kreuzberg-tesseract/**'
+              - 'e2e/rust/**'
+              - 'test_documents/**'
+              - 'fixtures/**'
+              - 'tools/e2e-generator/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.cargo/config.toml'
+              - 'rust-toolchain.toml'
+              - 'scripts/ci/rust/run-unit-tests.sh'
+              - 'scripts/ci/rust/setup-tessdata-env.sh'
+              - 'scripts/ci/rust/pre-build-diagnostics.sh'
+              - 'scripts/ci/rust/pre-build-diagnostics-cli.sh'
+              - 'scripts/ci/rust/package-cli-unix.sh'
+              - 'scripts/ci/rust/test-cli-unix.sh'
+              - 'scripts/ci/rust/verify-pdfium-pkg-config.sh'
+              - 'scripts/ci/rust/verify-no-bundled-pdfium.sh'
+              - 'scripts/ci/rust/verify-system-pdfium-macos.sh'
+              - 'scripts/install-system-pdfium-macos.sh'
+              - '.github/workflows/ci-rust.yaml'
+      - name: Build matrices
+        id: matrix
+        shell: bash
+        env:
+          RUST_WINDOWS: ${{ steps.filter.outputs.rust_windows }}
+          RUST_LINUX: ${{ steps.filter.outputs.rust_linux }}
+          RUST_MACOS: ${{ steps.filter.outputs.rust_macos }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          windows = os.environ.get("RUST_WINDOWS") == "true"
+          linux = os.environ.get("RUST_LINUX") == "true"
+          macos = os.environ.get("RUST_MACOS") == "true"
+
+          unit = []
+          if linux:
+              unit.append({"os": "ubuntu-latest", "target": "x86_64-unknown-linux-gnu"})
+          if macos:
+              unit.append({"os": "macos-latest", "target": "aarch64-apple-darwin"})
+          if windows:
+              unit.append({"os": "windows-latest", "target": "x86_64-pc-windows-msvc"})
+
+          pdfium = []
+          if linux:
+              pdfium.append({"os": "ubuntu-latest", "target": "x86_64-unknown-linux-gnu"})
+          if macos:
+              pdfium.append({"os": "macos-latest", "target": "aarch64-apple-darwin"})
+
+          cli = []
+          if linux:
+              cli.append({"os": "ubuntu-latest", "target": "x86_64-unknown-linux-gnu", "archive": "tar.gz"})
+          if macos:
+              cli.append({"os": "macos-latest", "target": "aarch64-apple-darwin", "archive": "tar.gz"})
+          if windows:
+              cli.append({"os": "windows-latest", "target": "x86_64-pc-windows-msvc", "archive": "zip"})
+
+          print(f"rust_unit_matrix={json.dumps({'include': unit})}")
+          print(f"rust_unit_matrix_has_entries={'true' if unit else 'false'}")
+          print(f"rust_pdfium_matrix={json.dumps({'include': pdfium})}")
+          print(f"rust_pdfium_matrix_has_entries={'true' if pdfium else 'false'}")
+          print(f"rust_cli_matrix={json.dumps({'include': cli})}")
+          print(f"rust_cli_matrix_has_entries={'true' if cli else 'false'}")
+          PY
+
   rust-unit:
     name: Rust Unit Tests (${{ matrix.os }})
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: ${{ github.actor != 'dependabot[bot]' && needs.changes.outputs.rust_unit_matrix_has_entries == 'true' }}
+    needs: changes
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
     permissions:
       contents: read
     strategy:
       fail-fast: true
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-          - os: macos-latest
-            target: aarch64-apple-darwin
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
+      matrix: ${{ fromJSON(needs.changes.outputs.rust_unit_matrix) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -216,19 +340,15 @@ jobs:
 
   test-system-pdfium:
     name: Test System PDFium (${{ matrix.os }})
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: ${{ github.actor != 'dependabot[bot]' && needs.changes.outputs.rust_pdfium_matrix_has_entries == 'true' }}
+    needs: changes
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
     permissions:
       contents: read
     strategy:
       fail-fast: true
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-          - os: macos-latest
-            target: aarch64-apple-darwin
+      matrix: ${{ fromJSON(needs.changes.outputs.rust_pdfium_matrix) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -294,23 +414,14 @@ jobs:
 
   build-and-smoke-cli:
     name: CLI Build + Smoke (${{ matrix.target }})
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: ${{ github.actor != 'dependabot[bot]' && needs.changes.outputs.rust_cli_matrix_has_entries == 'true' }}
+    needs: changes
     timeout-minutes: 180
     permissions:
       contents: read
     strategy:
       fail-fast: true
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            archive: tar.gz
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            archive: tar.gz
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            archive: zip
+      matrix: ${{ fromJSON(needs.changes.outputs.rust_cli_matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

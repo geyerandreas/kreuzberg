@@ -59,23 +59,94 @@ env:
   MACOSX_DEPLOYMENT_TARGET: "14.0"
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      python_matrix: ${{ steps.matrix.outputs.python_matrix }}
+      python_matrix_has_entries: ${{ steps.matrix.outputs.python_matrix_has_entries }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            python_windows:
+              - '.github/actions/**'
+              - 'crates/kreuzberg/**'
+              - 'crates/kreuzberg-py/**'
+              - 'crates/kreuzberg-tesseract/**'
+              - 'packages/python/**'
+              - 'e2e/python/**'
+              - 'test_documents/**'
+              - 'fixtures/**'
+              - 'tools/e2e-generator/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'uv.lock'
+              - 'pyproject.toml'
+              - 'scripts/ci/python/**'
+              - '.github/workflows/ci-python.yaml'
+              - '.cargo/config.toml'
+            python_unix:
+              - '.github/actions/**'
+              - 'crates/kreuzberg/**'
+              - 'crates/kreuzberg-py/**'
+              - 'crates/kreuzberg-tesseract/**'
+              - 'packages/python/**'
+              - 'e2e/python/**'
+              - 'test_documents/**'
+              - 'fixtures/**'
+              - 'tools/e2e-generator/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'uv.lock'
+              - 'pyproject.toml'
+              - 'scripts/ci/python/**'
+              - '.github/workflows/ci-python.yaml'
+              - '.cargo/config.toml'
+      - name: Build matrix
+        id: matrix
+        shell: bash
+        env:
+          PY_WINDOWS: ${{ steps.filter.outputs.python_windows }}
+          PY_UNIX: ${{ steps.filter.outputs.python_unix }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          include = []
+          if os.environ.get("PY_WINDOWS") == "true":
+              include.append({
+                  "os": "windows-latest",
+                  "target": "x86_64-pc-windows-msvc",
+                  "platform": "windows-x86_64",
+              })
+          if os.environ.get("PY_UNIX") == "true":
+              include.extend([
+                  {
+                      "os": "ubuntu-latest",
+                      "target": "x86_64-unknown-linux-gnu",
+                      "platform": "linux-x86_64",
+                  },
+                  {
+                      "os": "macos-latest",
+                      "target": "aarch64-apple-darwin",
+                      "platform": "macos-arm64",
+                  },
+              ])
+          print(f"python_matrix={json.dumps({'include': include})}")
+          print(f"python_matrix_has_entries={'true' if include else 'false'}")
+          PY
+
   build-and-smoke-python:
     name: Python Build + Smoke (${{ matrix.target }})
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: ${{ github.actor != 'dependabot[bot]' && needs.changes.outputs.python_matrix_has_entries == 'true' }}
+    needs: changes
     timeout-minutes: 180
     strategy:
       fail-fast: true
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            platform: linux-x86_64
-          - os: macos-latest
-            target: aarch64-apple-darwin
-            platform: macos-arm64
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            platform: windows-x86_64
+      matrix: ${{ fromJSON(needs.changes.outputs.python_matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

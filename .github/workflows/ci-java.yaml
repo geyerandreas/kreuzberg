@@ -57,14 +57,80 @@ env:
   MACOSX_DEPLOYMENT_TARGET: "14.0"
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      java_matrix: ${{ steps.matrix.outputs.java_matrix }}
+      java_matrix_has_entries: ${{ steps.matrix.outputs.java_matrix_has_entries }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            java_windows:
+              - '.github/actions/**'
+              - 'crates/kreuzberg/**'
+              - 'crates/kreuzberg-ffi/**'
+              - 'crates/kreuzberg-tesseract/**'
+              - 'packages/java/**'
+              - 'e2e/java/**'
+              - 'test_documents/**'
+              - 'fixtures/**'
+              - 'tools/e2e-generator/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'packages/java/pom.xml'
+              - 'scripts/ci/java/**'
+              - '.github/workflows/ci-java.yaml'
+              - '.cargo/config.toml'
+            java_unix:
+              - '.github/actions/**'
+              - 'crates/kreuzberg/**'
+              - 'crates/kreuzberg-ffi/**'
+              - 'crates/kreuzberg-tesseract/**'
+              - 'packages/java/**'
+              - 'e2e/java/**'
+              - 'test_documents/**'
+              - 'fixtures/**'
+              - 'tools/e2e-generator/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'packages/java/pom.xml'
+              - 'scripts/ci/java/**'
+              - '.github/workflows/ci-java.yaml'
+              - '.cargo/config.toml'
+      - name: Build matrix
+        id: matrix
+        shell: bash
+        env:
+          JAVA_WINDOWS: ${{ steps.filter.outputs.java_windows }}
+          JAVA_UNIX: ${{ steps.filter.outputs.java_unix }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          include = []
+          if os.environ.get("JAVA_WINDOWS") == "true":
+              include.append({"os": "windows-latest"})
+          if os.environ.get("JAVA_UNIX") == "true":
+              include.extend([
+                  {"os": "ubuntu-latest"},
+                  {"os": "macos-latest"},
+              ])
+          print(f"java_matrix={json.dumps({'include': include})}")
+          print(f"java_matrix_has_entries={'true' if include else 'false'}")
+          PY
+
   build-java:
     name: Java Bindings (${{ matrix.os }})
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: ${{ github.actor != 'dependabot[bot]' && needs.changes.outputs.java_matrix_has_entries == 'true' }}
+    needs: changes
     timeout-minutes: 180
     strategy:
       fail-fast: true
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+      matrix: ${{ fromJSON(needs.changes.outputs.java_matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

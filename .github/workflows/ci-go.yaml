@@ -61,14 +61,86 @@ env:
   MACOSX_DEPLOYMENT_TARGET: "14.0"
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      go_matrix: ${{ steps.matrix.outputs.go_matrix }}
+      go_matrix_has_entries: ${{ steps.matrix.outputs.go_matrix_has_entries }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            go_windows:
+              - '.github/actions/**'
+              - 'packages/go/v4/**'
+              - 'crates/kreuzberg/**'
+              - 'crates/kreuzberg-ffi/**'
+              - 'crates/kreuzberg-tesseract/**'
+              - 'scripts/ci/actions/**'
+              - 'scripts/ci/go/*.sh'
+              - 'scripts/ci/go/*.ps1'
+              - 'scripts/ci/go/configure-windows-gnu-env.sh'
+              - 'e2e/go/**'
+              - 'test_documents/**'
+              - 'fixtures/**'
+              - 'tools/e2e-generator/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.cargo/config.toml'
+              - 'packages/go/v4/go.mod'
+              - 'packages/go/v4/go.sum'
+              - '.github/workflows/ci-go.yaml'
+            go_unix:
+              - '.github/actions/**'
+              - 'packages/go/v4/**'
+              - 'crates/kreuzberg/**'
+              - 'crates/kreuzberg-ffi/**'
+              - 'crates/kreuzberg-tesseract/**'
+              - 'scripts/ci/actions/**'
+              - 'scripts/ci/go/*.sh'
+              - 'e2e/go/**'
+              - 'test_documents/**'
+              - 'fixtures/**'
+              - 'tools/e2e-generator/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - '.cargo/config.toml'
+              - 'packages/go/v4/go.mod'
+              - 'packages/go/v4/go.sum'
+              - '.github/workflows/ci-go.yaml'
+      - name: Build matrix
+        id: matrix
+        shell: bash
+        env:
+          GO_WINDOWS: ${{ steps.filter.outputs.go_windows }}
+          GO_UNIX: ${{ steps.filter.outputs.go_unix }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          include = []
+          if os.environ.get("GO_WINDOWS") == "true":
+              include.append({"os": "windows-latest"})
+          if os.environ.get("GO_UNIX") == "true":
+              include.extend([
+                  {"os": "ubuntu-latest"},
+                  {"os": "macos-latest"},
+              ])
+          print(f"go_matrix={json.dumps({'include': include})}")
+          print(f"go_matrix_has_entries={'true' if include else 'false'}")
+          PY
+
   build-go:
     name: Go Bindings (${{ matrix.os }})
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: ${{ github.actor != 'dependabot[bot]' && needs.changes.outputs.go_matrix_has_entries == 'true' }}
+    needs: changes
     timeout-minutes: 180
     strategy:
       fail-fast: true
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+      matrix: ${{ fromJSON(needs.changes.outputs.go_matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -181,13 +253,12 @@ jobs:
 
   test-go:
     name: Go Tests (${{ matrix.os }})
-    if: ${{ github.actor != 'dependabot[bot]' }}
-    needs: build-go
+    if: ${{ github.actor != 'dependabot[bot]' && needs.changes.outputs.go_matrix_has_entries == 'true' }}
+    needs: [changes, build-go]
     timeout-minutes: 180
     strategy:
       fail-fast: true
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+      matrix: ${{ fromJSON(needs.changes.outputs.go_matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

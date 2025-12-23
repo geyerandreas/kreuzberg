@@ -63,32 +63,90 @@ env:
   RUST_LOG: debug
 
 jobs:
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-latest
+    outputs:
+      ruby_matrix: ${{ steps.matrix.outputs.ruby_matrix }}
+      ruby_matrix_has_entries: ${{ steps.matrix.outputs.ruby_matrix_has_entries }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            ruby_windows:
+              - '.github/actions/**'
+              - 'crates/kreuzberg/**'
+              - 'crates/kreuzberg-ffi/**'
+              - 'crates/kreuzberg-tesseract/**'
+              - 'packages/ruby/**'
+              - 'e2e/ruby/**'
+              - 'test_documents/**'
+              - 'fixtures/**'
+              - 'tools/e2e-generator/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'Gemfile'
+              - 'Gemfile.lock'
+              - 'packages/ruby/Rakefile'
+              - 'scripts/ci/ruby/*.sh'
+              - 'scripts/ci/ruby/*.ps1'
+              - '.github/workflows/ci-ruby.yaml'
+              - '.cargo/config.toml'
+            ruby_unix:
+              - '.github/actions/**'
+              - 'crates/kreuzberg/**'
+              - 'crates/kreuzberg-ffi/**'
+              - 'crates/kreuzberg-tesseract/**'
+              - 'packages/ruby/**'
+              - 'e2e/ruby/**'
+              - 'test_documents/**'
+              - 'fixtures/**'
+              - 'tools/e2e-generator/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+              - 'Gemfile'
+              - 'Gemfile.lock'
+              - 'packages/ruby/Rakefile'
+              - 'scripts/ci/ruby/*.sh'
+              - '.github/workflows/ci-ruby.yaml'
+              - '.cargo/config.toml'
+      - name: Build matrix
+        id: matrix
+        shell: bash
+        env:
+          RUBY_WINDOWS: ${{ steps.filter.outputs.ruby_windows }}
+          RUBY_UNIX: ${{ steps.filter.outputs.ruby_unix }}
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          include = []
+          if os.environ.get("RUBY_UNIX") == "true":
+              include.extend([
+                  {"os": "ubuntu-latest", "ruby-version": "3.3", "platform": "linux-x64"},
+                  {"os": "ubuntu-latest", "ruby-version": "3.4", "platform": "linux-x64"},
+                  {"os": "macos-latest", "ruby-version": "3.3", "platform": "macos-arm64"},
+                  {"os": "macos-latest", "ruby-version": "3.4", "platform": "macos-arm64"},
+              ])
+          if os.environ.get("RUBY_WINDOWS") == "true":
+              include.extend([
+                  {"os": "windows-latest", "ruby-version": "3.3", "platform": "windows-x64"},
+                  {"os": "windows-latest", "ruby-version": "3.4", "platform": "windows-x64"},
+              ])
+          print(f"ruby_matrix={json.dumps({'include': include})}")
+          print(f"ruby_matrix_has_entries={'true' if include else 'false'}")
+          PY
+
   build-ruby-gem:
     name: Ruby Gem (${{ matrix.os }}, Ruby ${{ matrix.ruby-version }})
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: ${{ github.actor != 'dependabot[bot]' && needs.changes.outputs.ruby_matrix_has_entries == 'true' }}
+    needs: changes
     timeout-minutes: 180
     strategy:
       fail-fast: true
-      matrix:
-        include:
-          - os: ubuntu-latest
-            ruby-version: "3.3"
-            platform: linux-x64
-          - os: ubuntu-latest
-            ruby-version: "3.4"
-            platform: linux-x64
-          - os: macos-latest
-            ruby-version: "3.3"
-            platform: macos-arm64
-          - os: macos-latest
-            ruby-version: "3.4"
-            platform: macos-arm64
-          - os: windows-latest
-            ruby-version: "3.3"
-            platform: windows-x64
-          - os: windows-latest
-            ruby-version: "3.4"
-            platform: windows-x64
+      matrix: ${{ fromJSON(needs.changes.outputs.ruby_matrix) }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -220,31 +278,12 @@ jobs:
 
   test-ruby:
     name: Ruby Tests (${{ matrix.os }}, Ruby ${{ matrix.ruby-version }})
-    if: ${{ github.actor != 'dependabot[bot]' }}
-    needs: build-ruby-gem
+    if: ${{ github.actor != 'dependabot[bot]' && needs.changes.outputs.ruby_matrix_has_entries == 'true' }}
+    needs: [changes, build-ruby-gem]
     timeout-minutes: 180
     strategy:
       fail-fast: true
-      matrix:
-        include:
-          - os: ubuntu-latest
-            platform: linux-x64
-            ruby-version: "3.3"
-          - os: ubuntu-latest
-            platform: linux-x64
-            ruby-version: "3.4"
-          - os: macos-latest
-            platform: macos-arm64
-            ruby-version: "3.3"
-          - os: macos-latest
-            platform: macos-arm64
-            ruby-version: "3.4"
-          - os: windows-latest
-            platform: windows-x64
-            ruby-version: "3.3"
-          - os: windows-latest
-            platform: windows-x64
-            ruby-version: "3.4"
+      matrix: ${{ fromJSON(needs.changes.outputs.ruby_matrix) }}
     runs-on: ${{ matrix.os }}
     env:
       RUSTC_WRAPPER: ""
