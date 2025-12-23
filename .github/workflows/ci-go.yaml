@@ -287,6 +287,8 @@ jobs:
 
       - name: Setup Go CGO environment
         uses: ./.github/actions/setup-go-cgo-env
+        env:
+          KREUZBERG_GO_LINKER_VERBOSE: ${{ runner.os == 'Windows' && '1' || '' }}
         with:
           ffi-lib-dir: 'target/release'
           enable-rpath: 'true'
@@ -311,6 +313,7 @@ jobs:
           CGO_CFLAGS: ${{ env.CGO_CFLAGS }}
           CGO_LDFLAGS: ${{ env.CGO_LDFLAGS }}
           PKG_CONFIG_PATH: ${{ env.PKG_CONFIG_PATH }}
+          GO_TEST_FLAGS: ${{ runner.os == 'Windows' && '-ldflags=-linkmode=external -extldflags=-Wl,--verbose' || '' }}
 
       - name: Install Task
         uses: ./.github/actions/install-task
