@@ -30,6 +30,82 @@
 
 use std::sync::{Arc, Mutex};
 
+#[cfg(feature = "pool-metrics")]
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+/// Metrics tracking for pool allocations and reuse patterns.
+///
+/// These metrics help identify pool efficiency and allocation patterns.
+/// Only available when the `pool-metrics` feature is enabled.
+#[cfg(feature = "pool-metrics")]
+#[derive(Debug)]
+pub struct PoolMetrics {
+    /// Total number of acquire calls on this pool
+    pub total_acquires: AtomicUsize,
+    /// Total number of cache hits (reused objects from pool)
+    pub total_cache_hits: AtomicUsize,
+    /// Peak number of objects stored simultaneously in this pool
+    pub peak_items_stored: AtomicUsize,
+    /// Total number of objects created by the factory function
+    pub total_creations: AtomicUsize,
+}
+
+#[cfg(feature = "pool-metrics")]
+impl PoolMetrics {
+    /// Create a new metrics tracker with all counters at zero.
+    pub fn new() -> Self {
+        PoolMetrics {
+            total_acquires: AtomicUsize::new(0),
+            total_cache_hits: AtomicUsize::new(0),
+            peak_items_stored: AtomicUsize::new(0),
+            total_creations: AtomicUsize::new(0),
+        }
+    }
+
+    /// Calculate the cache hit rate as a percentage (0.0-100.0).
+    pub fn hit_rate(&self) -> f64 {
+        let acquires = self.total_acquires.load(Ordering::Relaxed);
+        if acquires == 0 {
+            return 0.0;
+        }
+        (self.total_cache_hits.load(Ordering::Relaxed) as f64 / acquires as f64) * 100.0
+    }
+
+    /// Get all metrics as a struct for reporting.
+    pub fn snapshot(&self) -> PoolMetricsSnapshot {
+        PoolMetricsSnapshot {
+            total_acquires: self.total_acquires.load(Ordering::Relaxed),
+            total_cache_hits: self.total_cache_hits.load(Ordering::Relaxed),
+            peak_items_stored: self.peak_items_stored.load(Ordering::Relaxed),
+            total_creations: self.total_creations.load(Ordering::Relaxed),
+        }
+    }
+
+    /// Reset all metrics to zero.
+    pub fn reset(&self) {
+        self.total_acquires.store(0, Ordering::Relaxed);
+        self.total_cache_hits.store(0, Ordering::Relaxed);
+        self.peak_items_stored.store(0, Ordering::Relaxed);
+        self.total_creations.store(0, Ordering::Relaxed);
+    }
+}
+
+#[cfg(feature = "pool-metrics")]
+impl Default for PoolMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(feature = "pool-metrics")]
+#[derive(Debug, Clone, Copy)]
+pub struct PoolMetricsSnapshot {
+    pub total_acquires: usize,
+    pub total_cache_hits: usize,
+    pub peak_items_stored: usize,
+    pub total_creations: usize,
+}
+
 /// A thread-safe object pool that reuses instances to reduce allocations.
 ///
 /// Generic over any type that implements `Recyclable`, allowing pooling of
@@ -39,6 +115,8 @@ pub struct Pool<T: Recyclable> {
     factory: Arc<dyn Fn() -> T + Send + Sync>,
     objects: Arc<Mutex<Vec<T>>>,
     max_size: usize,
+    #[cfg(feature = "pool-metrics")]
+    metrics: Arc<PoolMetrics>,
 }
 
 /// Trait for types that can be pooled and reused.
@@ -80,6 +158,8 @@ impl<T: Recyclable> Pool<T> {
             factory: Arc::new(factory),
             objects: Arc::new(Mutex::new(Vec::with_capacity(max_size))),
             max_size,
+            #[cfg(feature = "pool-metrics")]
+            metrics: Arc::new(PoolMetrics::new()),
         }
     }
 
@@ -93,12 +173,21 @@ impl<T: Recyclable> Pool<T> {
     ///
     /// Returns `PoolError` if the mutex is poisoned.
     pub fn acquire(&self) -> Result<PoolGuard<T>, PoolError> {
+        #[cfg(feature = "pool-metrics")]
+        self.metrics.total_acquires.fetch_add(1, Ordering::Relaxed);
+
         let mut objects = self.objects.lock().map_err(|_| PoolError::LockPoisoned)?;
 
         let object = if let Some(mut obj) = objects.pop() {
+            #[cfg(feature = "pool-metrics")]
+            self.metrics.total_cache_hits.fetch_add(1, Ordering::Relaxed);
+
             obj.reset();
             obj
         } else {
+            #[cfg(feature = "pool-metrics")]
+            self.metrics.total_creations.fetch_add(1, Ordering::Relaxed);
+
             (self.factory)()
         };
 
@@ -108,6 +197,8 @@ impl<T: Recyclable> Pool<T> {
                 factory: Arc::clone(&self.factory),
                 objects: Arc::clone(&self.objects),
                 max_size: self.max_size,
+                #[cfg(feature = "pool-metrics")]
+                metrics: Arc::clone(&self.metrics),
             },
         })
     }
@@ -121,6 +212,12 @@ impl<T: Recyclable> Pool<T> {
     pub fn clear(&self) -> Result<(), PoolError> {
         self.objects.lock().map_err(|_| PoolError::LockPoisoned)?.clear();
         Ok(())
+    }
+
+    /// Get a reference to the pool metrics (only available with `pool-metrics` feature).
+    #[cfg(feature = "pool-metrics")]
+    pub fn metrics(&self) -> &PoolMetrics {
+        &self.metrics
     }
 }
 
@@ -153,6 +250,18 @@ impl<T: Recyclable> Drop for PoolGuard<T> {
                 && objects.len() < self.pool.max_size
             {
                 objects.push(object);
+
+                #[cfg(feature = "pool-metrics")]
+                {
+                    let current_size = objects.len();
+                    let peak = self.pool.metrics.peak_items_stored.load(Ordering::Relaxed);
+                    if current_size > peak {
+                        self.pool
+                            .metrics
+                            .peak_items_stored
+                            .store(current_size, Ordering::Relaxed);
+                    }
+                }
                 // If pool is full, object is dropped and deallocated
             }
             // If lock is poisoned, object is dropped and deallocated
@@ -360,5 +469,50 @@ mod tests {
 
         // All threads completed successfully
         assert!(pool.size() <= 10);
+    }
+
+    #[test]
+    #[cfg(feature = "pool-metrics")]
+    fn test_pool_metrics_tracking() {
+        let pool = Pool::new(String::new, 5);
+
+        // First acquire creates a new object
+        {
+            let _s1 = pool.acquire().unwrap();
+            // Metrics: acquires=1, creations=1, hits=0
+        }
+
+        // Second acquire should hit cache
+        {
+            let _s2 = pool.acquire().unwrap();
+            // Metrics: acquires=2, creations=1, hits=1
+        }
+
+        // Check metrics
+        let metrics = pool.metrics();
+        assert_eq!(metrics.total_acquires.load(Ordering::Relaxed), 2);
+        assert_eq!(metrics.total_cache_hits.load(Ordering::Relaxed), 1);
+        assert_eq!(metrics.total_creations.load(Ordering::Relaxed), 1);
+
+        // Hit rate should be 50%
+        let hit_rate = metrics.hit_rate();
+        assert!(hit_rate > 49.0 && hit_rate < 51.0);
+    }
+
+    #[test]
+    #[cfg(feature = "pool-metrics")]
+    fn test_pool_metrics_peak_tracking() {
+        let pool = Pool::new(String::new, 5);
+
+        let g1 = pool.acquire().unwrap();
+        let g2 = pool.acquire().unwrap();
+        let g3 = pool.acquire().unwrap();
+
+        drop(g1);
+        drop(g2);
+        drop(g3);
+
+        let metrics = pool.metrics();
+        assert!(metrics.peak_items_stored.load(Ordering::Relaxed) >= 3);
     }
 }
