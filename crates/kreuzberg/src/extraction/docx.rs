@@ -7,6 +7,7 @@
 //! in the document XML. This does not account for automatic pagination based on content reflowing.
 
 use crate::error::{KreuzbergError, Result};
+use crate::extraction::capacity;
 use crate::types::PageBoundary;
 use std::io::Cursor;
 
@@ -108,7 +109,9 @@ fn detect_page_breaks(bytes: &[u8]) -> Result<Vec<usize>> {
     let document_xml = match archive.by_name("word/document.xml") {
         Ok(mut file) => {
             // Estimate XML size; typical DOCX documents have 50KB-5MB XML
-            let estimated_size = file.size() as usize;
+            // DOCX files are ZIP-compressed, so actual XML can be 3-10x larger
+            let file_size = file.size();
+            let estimated_size = capacity::estimate_content_capacity(file_size, "docx").max(file_size as usize);
             let mut content = String::with_capacity(estimated_size);
             std::io::Read::read_to_string(&mut file, &mut content)
                 .map_err(|e| KreuzbergError::parsing(format!("Failed to read document.xml: {}", e)))?;

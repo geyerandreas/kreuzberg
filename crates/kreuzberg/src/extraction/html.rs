@@ -340,6 +340,7 @@ pub fn parse_html_metadata(markdown: &str) -> Result<(Option<HtmlMetadata>, Stri
     let mut metadata = HtmlMetadata::default();
     let mut title: Option<String> = None;
     let mut description: Option<String> = None;
+    // Pre-allocate keywords vector with estimated capacity (typically 5-20 keywords)
     let mut keywords: Option<Vec<String>> = None;
     let mut author: Option<String> = None;
 
@@ -352,13 +353,16 @@ pub fn parse_html_metadata(markdown: &str) -> Result<(Option<HtmlMetadata>, Stri
                     "canonical" => metadata.canonical = Some(value_str),
                     "meta-description" => description = Some(value_str),
                     "meta-keywords" => {
-                        keywords = Some(
-                            value_str
-                                .split(',')
-                                .map(|k| k.trim().to_string())
-                                .filter(|k| !k.is_empty())
-                                .collect(),
-                        )
+                        // Pre-allocate with estimated keyword count (typically 5-20 keywords)
+                        let keyword_estimate = value_str.chars().filter(|&c| c == ',').count() + 1;
+                        let mut kws: Vec<String> = Vec::with_capacity(keyword_estimate.clamp(4, 50));
+                        for k in value_str.split(',') {
+                            let trimmed = k.trim();
+                            if !trimmed.is_empty() {
+                                kws.push(trimmed.to_string());
+                            }
+                        }
+                        keywords = Some(kws);
                     }
                     "meta-author" => author = Some(value_str),
                     "meta-og-title" | "meta-og:title" => metadata.og_title = Some(value_str),

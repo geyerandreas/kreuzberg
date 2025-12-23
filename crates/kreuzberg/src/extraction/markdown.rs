@@ -3,6 +3,8 @@
 //! This module provides utilities for converting tabular data into GitHub-Flavored Markdown (GFM) tables.
 //! It's used by multiple extractors (DOCX, HTML) that need to represent structured table data in markdown format.
 
+use crate::extraction::capacity;
+
 /// Converts a 2D vector of cell strings into a GitHub-Flavored Markdown table.
 ///
 /// # Behavior
@@ -45,9 +47,8 @@ pub fn cells_to_markdown(cells: &[Vec<String>]) -> String {
         return String::new();
     }
 
-    // Estimate capacity: each cell gets ~10 chars on average, plus 2 pipes per row
-    // Plus separator row. Typical markdown table: cells.len() * num_cols * 12 bytes
-    let estimated_capacity = cells.len().saturating_mul(num_cols).saturating_mul(12).max(64);
+    // Use capacity estimation function for precise calculation
+    let estimated_capacity = capacity::estimate_table_markdown_capacity(cells.len(), num_cols);
     let mut markdown = String::with_capacity(estimated_capacity);
 
     if let Some(header) = cells.first() {
