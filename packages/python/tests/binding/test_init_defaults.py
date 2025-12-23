@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import contextlib
+import importlib
 from pathlib import Path
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
@@ -22,6 +24,20 @@ from kreuzberg import (
     extract_file,
     extract_file_sync,
 )
+
+if TYPE_CHECKING:
+    from types import ModuleType
+
+
+def _import_paddleocr_or_skip() -> ModuleType:
+    try:
+        return importlib.import_module("paddleocr")
+    except ModuleNotFoundError:
+        pytest.skip("PaddleOCR not installed")
+    except RuntimeError as exc:
+        if "PDX has already been initialized" in str(exc):
+            pytest.skip("PaddleOCR is in a bad state on this runner")
+        raise
 
 
 def test_hash_kwargs_with_serializable_dict() -> None:
@@ -241,7 +257,7 @@ def test_easyocr_kwargs_passed_to_backend(docx_document: Path) -> None:
 
 def test_paddleocr_kwargs_passed_to_backend(docx_document: Path) -> None:
     """Test that paddleocr_kwargs are properly passed to PaddleOCR backend."""
-    pytest.importorskip("paddleocr", reason="PaddleOCR not installed")
+    _import_paddleocr_or_skip()
 
     config = ExtractionConfig(ocr=OcrConfig(backend="paddleocr", language="en"))
 

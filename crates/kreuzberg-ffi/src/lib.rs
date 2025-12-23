@@ -519,8 +519,15 @@ fn to_c_extraction_result(result: ExtractionResult) -> std::result::Result<*mut 
         pages,
     } = result;
 
-    let content_guard =
-        CStringGuard::new(CString::new(content).map_err(|e| format!("Failed to convert content to C string: {}", e))?);
+    let sanitized_content = if content.contains('\0') {
+        content.replace('\0', "\u{FFFD}")
+    } else {
+        content
+    };
+
+    let content_guard = CStringGuard::new(
+        CString::new(sanitized_content).map_err(|e| format!("Failed to convert content to C string: {}", e))?,
+    );
 
     let mime_type_guard = CStringGuard::new(
         CString::new(mime_type).map_err(|e| format!("Failed to convert MIME type to C string: {}", e))?,

@@ -13,7 +13,7 @@ import type {
 	TokenReductionConfig,
 } from "@kreuzberg/node";
 
-const WORKSPACE_ROOT = resolve(__dirname, "../../../../..");
+const WORKSPACE_ROOT = resolve(__dirname, "../../../..");
 const TEST_DOCUMENTS = join(WORKSPACE_ROOT, "test_documents");
 const FIXTURE_MAP: Record<string, string> = {
 	"sample.pdf": "pdf/simple.pdf",

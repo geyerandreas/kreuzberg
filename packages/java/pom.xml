@@ -174,7 +174,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
                 <configuration>
-                    <argLine>@{argLine} --enable-native-access=ALL-UNNAMED --enable-preview -Djava.library.path=${project.basedir}/../../target/release</argLine>
+                    <argLine>@{argLine} -XX:-ClassUnloading -XX:-ClassUnloadingWithConcurrentMark --enable-native-access=ALL-UNNAMED --enable-preview -Djava.library.path=${project.basedir}/../../target/release</argLine>
                     <forkedProcessTimeoutInSeconds>300</forkedProcessTimeoutInSeconds>
                     <skipAfterFailureCount>1</skipAfterFailureCount>
                 </configuration>
