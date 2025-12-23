@@ -2853,6 +2853,7 @@ dependencies = [
  "opentelemetry",
  "opentelemetry_sdk",
  "org",
+ "parking_lot",
  "pastey 0.2.1",
  "pdfium-render",
  "pkg-config",

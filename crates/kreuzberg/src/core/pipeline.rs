@@ -301,6 +301,7 @@ pub async fn run_pipeline(mut result: ExtractionResult, config: &ExtractionConfi
         );
     }
 
+    // Early exit: Skip validator execution if no validators registered
     {
         let validator_registry = crate::plugins::registry::get_validator_registry();
         let validators = {
@@ -310,9 +311,12 @@ pub async fn run_pipeline(mut result: ExtractionResult, config: &ExtractionConfi
             registry.get_all()
         };
 
-        for validator in validators {
-            if validator.should_validate(&result, config) {
-                validator.validate(&result, config).await?;
+        // Early exit optimization: Skip loop if validators list is empty
+        if !validators.is_empty() {
+            for validator in validators {
+                if validator.should_validate(&result, config) {
+                    validator.validate(&result, config).await?;
+                }
             }
         }
     }
