@@ -42,8 +42,6 @@ pub mod bundled;
 #[cfg(feature = "pdf")]
 pub mod error;
 #[cfg(feature = "pdf")]
-pub mod font_provider;
-#[cfg(feature = "pdf")]
 pub mod images;
 #[cfg(feature = "pdf")]
 pub mod metadata;

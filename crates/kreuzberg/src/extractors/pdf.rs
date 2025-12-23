@@ -390,18 +390,6 @@ impl DocumentExtractor for PdfExtractor {
             // Other targets: use spawn_blocking in batch mode for better parallelism
             #[cfg(target_arch = "wasm32")]
             {
-                // Set font config from extraction config if provided
-                if let Some(pdf_config) = &config.pdf_options {
-                    if let Some(font_config) = &pdf_config.font_config {
-                        if let Err(e) = crate::pdf::font_provider::set_font_config(font_config.clone()) {
-                            tracing::warn!(
-                                "Font config not applied (already initialized from previous extraction): {}",
-                                e
-                            );
-                        }
-                    }
-                }
-
                 // For WASM targets, PDFium must be properly initialized in the environment.
                 // The error message will direct users to the documentation for setup requirements.
                 let bindings =
@@ -443,18 +431,6 @@ impl DocumentExtractor for PdfExtractor {
                     tokio::task::spawn_blocking(move || {
                         let _guard = span.entered();
 
-                        // Set font config from extraction config if provided
-                        if let Some(pdf_config) = &config_owned.pdf_options {
-                            if let Some(font_config) = &pdf_config.font_config {
-                                if let Err(e) = crate::pdf::font_provider::set_font_config(font_config.clone()) {
-                                    tracing::warn!(
-                                        "Font config not applied (already initialized from previous extraction): {}",
-                                        e
-                                    );
-                                }
-                            }
-                        }
-
                         let bindings =
                             crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")?;
 
@@ -488,18 +464,6 @@ impl DocumentExtractor for PdfExtractor {
                     .await
                     .map_err(|e| crate::error::KreuzbergError::Other(format!("PDF extraction task failed: {}", e)))??
                 } else {
-                    // Set font config from extraction config if provided
-                    if let Some(pdf_config) = &config.pdf_options {
-                        if let Some(font_config) = &pdf_config.font_config {
-                            if let Err(e) = crate::pdf::font_provider::set_font_config(font_config.clone()) {
-                                tracing::warn!(
-                                    "Font config not applied (already initialized from previous extraction): {}",
-                                    e
-                                );
-                            }
-                        }
-                    }
-
                     let bindings =
                         crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")?;
 
@@ -520,18 +484,6 @@ impl DocumentExtractor for PdfExtractor {
             }
             #[cfg(all(not(target_arch = "wasm32"), not(feature = "tokio-runtime")))]
             {
-                // Set font config from extraction config if provided
-                if let Some(pdf_config) = &config.pdf_options {
-                    if let Some(font_config) = &pdf_config.font_config {
-                        if let Err(e) = crate::pdf::font_provider::set_font_config(font_config.clone()) {
-                            tracing::warn!(
-                                "Font config not applied (already initialized from previous extraction): {}",
-                                e
-                            );
-                        }
-                    }
-                }
-
                 let bindings =
                     crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")?;
 

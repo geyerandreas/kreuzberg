@@ -1,125 +1,31 @@
 use super::error::PdfError;
-use super::font_provider::create_custom_font_provider;
 use once_cell::sync::Lazy;
 use pdfium_render::prelude::*;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 /// Cached state for lazy Pdfium initialization.
-///
-/// Stores either the initialization error (if failed) or the library path
-/// (for bundled Pdfium) to enable subsequent fast binding.
 enum InitializationState {
-    /// Not yet initialized
     Uninitialized,
-    /// Initialization succeeded; can create bindings from this path
     Initialized {
         #[allow(dead_code)]
         lib_dir: Option<PathBuf>,
     },
-    /// Initialization failed with this error message
     Failed(String),
 }
 
-/// Lazily initialized Pdfium state.
-///
-/// This static ensures Pdfium is only initialized once, on first use. Subsequent calls
-/// retrieve cached state and create fresh bindings, eliminating cold start overhead for
-/// non-PDF workloads.
-///
-/// # Thread Safety
-///
-/// Initialization is protected by a `Mutex` to ensure only one thread performs binding
-/// while others wait for completion. Once initialized, the state is immutable and safe
-/// to share across threads.
-///
-/// # Design
-///
-/// We cache the initialization state (lib_dir or error) rather than the bindings themselves.
-/// This allows us to create fresh bindings on each call without requiring `Clone` on
-/// `Box<dyn PdfiumLibraryBindings>`. Subsequent bindings are created quickly since
-/// `extract_bundled_pdfium()` is cached internally via its own mutex.
-///
-/// # Performance
-///
-/// - **First call**: Performs extraction (8-12ms) and binding.
-/// - **Subsequent calls**: Only creates new binding from cached state (< 0.1ms) since
-///   library is already extracted.
 static PDFIUM_STATE: Lazy<Mutex<InitializationState>> = Lazy::new(|| Mutex::new(InitializationState::Uninitialized));
 
-/// Tracks whether the custom font provider has been registered with pdfium.
-///
-/// The font provider is a global pdfium setting, so we only need to set it once
-/// during the first initialization. This flag prevents redundant registrations.
-static FONT_PROVIDER_INITIALIZED: AtomicBool = AtomicBool::new(false);
-
-/// Register custom font provider with pdfium (once only).
-///
-/// This sets up a custom FPDF_SYSFONTINFO implementation that caches fonts
-/// to avoid the CFX_Font::LoadSubst hotspot (13.8% of PDF processing time).
-///
-/// Only registers if font config is enabled. Respects user configuration and
-/// logs appropriately based on the font_config.enabled flag.
-///
-/// The font provider is registered globally with pdfium, so this function
-/// uses an atomic flag to ensure it's only called once across all threads.
-///
-/// # Safety
-///
-/// Calls unsafe FFI function `create_custom_font_provider()` and passes
-/// the resulting pointer to pdfium via `FPDF_SetSystemFontInfo()`. The
-/// pointer is intentionally leaked (via `Box::into_raw()`) because pdfium
-/// takes ownership and may call the Release callback when the library is
-/// unloaded.
-#[allow(unsafe_code)]
-fn register_font_provider_once(bindings: &dyn PdfiumLibraryBindings) {
-    // Use compare_exchange to ensure atomic check-and-set
-    if FONT_PROVIDER_INITIALIZED
-        .compare_exchange(false, true, Ordering::SeqCst, Ordering::Acquire)
-        .is_ok()
-    {
-        // SAFETY: Only one thread can succeed in compare_exchange, so this is called exactly once
-        // Get font config from global storage
-        let font_config = crate::pdf::font_provider::get_font_config();
-
-        // Check if enabled - if disabled, log and return early
-        if !font_config.enabled {
-            tracing::info!("Custom font provider disabled via configuration");
-            return;
-        }
-
-        // SAFETY: create_custom_font_provider() creates a valid FPDF_SYSFONTINFO
-        // pointer with all required callbacks. The pointer is intentionally leaked
-        // because pdfium takes ownership and manages the lifetime.
-        unsafe {
-            let font_info = create_custom_font_provider();
-            bindings.FPDF_SetSystemFontInfo(font_info);
-            tracing::debug!("Custom font provider registered with pdfium");
-        }
-    }
-}
-
-/// Perform Pdfium binding.
-///
-/// For bundled Pdfium: extracts library to temp dir, binds to it.
-/// For system Pdfium: binds to system library.
-/// For WASM: binds to WASM module.
 fn bind_pdfium_impl() -> Result<(Option<PathBuf>, Box<dyn PdfiumLibraryBindings>), String> {
     #[cfg(all(feature = "pdf", feature = "bundled-pdfium"))]
     {
-        // WASM target: use dynamic binding to WASM module
         #[cfg(target_arch = "wasm32")]
         {
             let bindings =
                 Pdfium::bind_to_system_library().map_err(|e| format!("Failed to initialize Pdfium for WASM: {}", e))?;
-
-            register_font_provider_once(&*bindings);
-
             Ok((None, bindings))
         }
 
-        // Non-WASM targets: extract and link dynamically
         #[cfg(not(target_arch = "wasm32"))]
         {
             let lib_path =
@@ -135,8 +41,6 @@ fn bind_pdfium_impl() -> Result<(Option<PathBuf>, Box<dyn PdfiumLibraryBindings>
             let bindings = Pdfium::bind_to_library(Pdfium::pdfium_platform_library_name_at_path(lib_dir))
                 .map_err(|e| format!("Failed to initialize Pdfium: {}", e))?;
 
-            register_font_provider_once(&*bindings);
-
             Ok((Some(lib_dir.to_path_buf()), bindings))
         }
     }
@@ -144,9 +48,6 @@ fn bind_pdfium_impl() -> Result<(Option<PathBuf>, Box<dyn PdfiumLibraryBindings>
     #[cfg(all(feature = "pdf", not(feature = "bundled-pdfium")))]
     {
         let bindings = Pdfium::bind_to_system_library().map_err(|e| format!("Failed to initialize Pdfium: {}", e))?;
-
-        register_font_provider_once(&*bindings);
-
         Ok((None, bindings))
     }
 }
