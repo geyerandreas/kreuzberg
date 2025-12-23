@@ -450,6 +450,8 @@ final class ConfigResultTest {
                 "Sample Title",
                 "author",
                 "Sample Author",
+                "language",
+                "en",
                 "subject",
                 "Sample Subject"
             ),

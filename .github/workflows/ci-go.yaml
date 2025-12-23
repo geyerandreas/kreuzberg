@@ -203,15 +203,15 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: msys2/setup-msys2@v2
         with:
-          msystem: UCRT64
+          msystem: MINGW64
           update: true
           install: >-
-            mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-cmake
-            mingw-w64-ucrt-x86_64-pkg-config
-            mingw-w64-ucrt-x86_64-nasm
-            mingw-w64-ucrt-x86_64-zstd
-            mingw-w64-ucrt-x86_64-binutils
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-nasm
+            mingw-w64-x86_64-zstd
+            mingw-w64-x86_64-binutils
 
       - name: Verify MSYS2 toolchain and add to PATH (Windows only)
         if: matrix.os == 'windows-latest'
@@ -291,15 +291,15 @@ jobs:
         if: matrix.os == 'windows-latest'
         uses: msys2/setup-msys2@v2
         with:
-          msystem: UCRT64
+          msystem: MINGW64
           update: true
           install: >-
-            mingw-w64-ucrt-x86_64-gcc
-            mingw-w64-ucrt-x86_64-cmake
-            mingw-w64-ucrt-x86_64-pkg-config
-            mingw-w64-ucrt-x86_64-nasm
-            mingw-w64-ucrt-x86_64-zstd
-            mingw-w64-ucrt-x86_64-binutils
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-nasm
+            mingw-w64-x86_64-zstd
+            mingw-w64-x86_64-binutils
 
       - name: Verify MSYS2 toolchain and add to PATH (Windows only)
         if: matrix.os == 'windows-latest'

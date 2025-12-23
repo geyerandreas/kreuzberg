@@ -1,12 +1,12 @@
 #!/usr/bin/env pwsh
-# Setup and verify MSYS2 UCRT64 MinGW toolchain for Windows builds
+# Setup and verify MSYS2 MINGW64 toolchain for Windows builds
 # This script should be run after msys2/setup-msys2@v2 action
 # It verifies required tools are installed and adds MSYS2 to PATH for subsequent steps
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$msys2Path = "C:\msys64\ucrt64\bin"
+$msys2Path = "C:\msys64\mingw64\bin"
 $msys2BashExe = "C:\msys64\usr\bin\bash.exe"
 $msys2RootPath = "C:\msys64"
 
@@ -16,7 +16,7 @@ if (-not (Test-Path $msys2Path)) {
 }
 
 Write-Host "MSYS2 installation found at $msys2RootPath"
-Write-Host "UCRT64 bin directory: $msys2Path"
+Write-Host "MINGW64 bin directory: $msys2Path"
 
 # List installed executables for debugging
 Write-Host "Sample of installed MSYS2 executables:"
@@ -34,7 +34,7 @@ if ($missing.Count -gt 0) {
 
   # Run pacman in MSYS2 shell to ensure packages are installed
   # Use --disable-download-timeout to avoid transient mirror issues on CI
-  $pacmanCmd = "pacman -S --needed --noconfirm --disable-download-timeout mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-binutils mingw-w64-ucrt-x86_64-pkg-config mingw-w64-ucrt-x86_64-nasm"
+  $pacmanCmd = "pacman -S --needed --noconfirm --disable-download-timeout mingw-w64-x86_64-gcc mingw-w64-x86_64-binutils mingw-w64-x86_64-pkg-config mingw-w64-x86_64-nasm"
   Write-Host "Running: $pacmanCmd"
 
   # Retry pacman up to 3 times to handle flaky mirrors
@@ -75,7 +75,7 @@ foreach ($tool in $requiredTools) {
 
 # Add UCRT64 bin to PATH for subsequent steps
 # CRITICAL: Add to the BEGINNING of PATH to override any MSVC tools that may be present
-Write-Host "Adding MSYS2 UCRT64 bin directory to PATH (at priority position)..."
+Write-Host "Adding MSYS2 MINGW64 bin directory to PATH (at priority position)..."
 $currentPath = $env:PATH
 $env:PATH = "$msys2Path;$currentPath"
 Add-Content -Path $env:GITHUB_PATH -Value $msys2Path
@@ -132,7 +132,7 @@ $arPath = (Get-Command -Name "ar" -ErrorAction SilentlyContinue).Source
 if ($arPath) {
   Write-Host "  ar found at: $arPath"
   # Verify it's the MSYS2 ar, not MSVC lib.exe
-  if ($arPath -like "*msys64*" -or $arPath -like "*ucrt64*") {
+  if ($arPath -like "*msys64*" -or $arPath -like "*mingw64*") {
     Write-Host "  [OK] Using MSYS2/MinGW ar (correct)"
   } else {
     Write-Host "  [FAIL] ar is NOT from MSYS2/MinGW: $arPath"
@@ -149,7 +149,7 @@ $gccPath = (Get-Command -Name "gcc" -ErrorAction SilentlyContinue).Source
 if ($gccPath) {
   Write-Host "  gcc found at: $gccPath"
   # Verify it's the MSYS2 gcc, not MSVC cl.exe
-  if ($gccPath -like "*msys64*" -or $gccPath -like "*ucrt64*") {
+  if ($gccPath -like "*msys64*" -or $gccPath -like "*mingw64*") {
     Write-Host "  [OK] Using MSYS2/MinGW gcc (correct)"
   } else {
     Write-Host "  [FAIL] gcc is NOT from MSYS2/MinGW: $gccPath"
@@ -188,4 +188,4 @@ Write-Host "RUSTFLAGS: $env:RUSTFLAGS"
 Write-Host "CC_PREFER_CLANG: $env:CC_PREFER_CLANG"
 
 Write-Host ""
-Write-Host "MSYS2 UCRT64 toolchain setup completed successfully"
+Write-Host "MSYS2 MINGW64 toolchain setup completed successfully"

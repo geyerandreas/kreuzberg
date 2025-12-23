@@ -106,7 +106,7 @@ public static class TestHelpers
         var ext = Path.GetExtension(relativePath).ToLowerInvariant();
         if (ext == ".ppt" || ext == ".doc" || ext == ".xls")
         {
-            throw new SkipException("Legacy Office conversion skipped on Windows CI");
+            throw new SkipException();
         }
     }
 
