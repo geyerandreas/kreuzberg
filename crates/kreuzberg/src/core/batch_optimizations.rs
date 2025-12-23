@@ -19,6 +19,7 @@
 use crate::core::config::ExtractionConfig;
 use crate::types::ExtractionResult;
 use crate::utils::pool::{ByteBufferPool, StringBufferPool, create_byte_buffer_pool, create_string_buffer_pool};
+use crate::utils::pool_sizing::PoolSizeHint;
 use crate::{KreuzbergError, Result};
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -121,6 +122,40 @@ impl BatchProcessor {
             string_pool_initialized: AtomicBool::new(false),
             byte_pool_initialized: AtomicBool::new(false),
         }
+    }
+
+    /// Create a batch processor with pool sizes optimized for a specific document.
+    ///
+    /// This method uses a `PoolSizeHint` (derived from file size and MIME type)
+    /// to create a batch processor with appropriately sized pools. This reduces
+    /// memory waste by tailoring pool allocation to actual document complexity.
+    ///
+    /// # Arguments
+    ///
+    /// * `hint` - Pool sizing hint containing recommended buffer counts and capacities
+    ///
+    /// # Returns
+    ///
+    /// A new `BatchProcessor` configured with the hint-based pool sizes
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// use kreuzberg::core::batch_optimizations::BatchProcessor;
+    /// use kreuzberg::utils::pool_sizing::estimate_pool_size;
+    ///
+    /// let hint = estimate_pool_size(5_000_000, "application/pdf");
+    /// let processor = BatchProcessor::with_pool_hint(&hint);
+    /// ```
+    pub fn with_pool_hint(hint: &PoolSizeHint) -> Self {
+        let config = BatchProcessorConfig {
+            string_pool_size: hint.string_buffer_count,
+            string_buffer_capacity: hint.string_buffer_capacity,
+            byte_pool_size: hint.byte_buffer_count,
+            byte_buffer_capacity: hint.byte_buffer_capacity,
+            max_concurrent: None,
+        };
+        Self::with_config(config)
     }
 
     /// Get a reference to the string buffer pool.

@@ -19,7 +19,7 @@ use crate::plugins::DocumentExtractor;
 use crate::types::ExtractionResult;
 #[cfg(feature = "office")]
 use crate::types::LibreOfficeConversionResult;
-use crate::utils::intern_mime_type;
+use crate::utils::{PoolSizeHint, estimate_pool_size, intern_mime_type};
 use crate::{KreuzbergError, Result};
 #[cfg(feature = "tokio-runtime")]
 use once_cell::sync::Lazy;
@@ -127,6 +127,34 @@ fn get_extractor(mime_type: &str) -> Result<Arc<dyn DocumentExtractor>> {
         .read()
         .map_err(|e| KreuzbergError::Other(format!("Document extractor registry lock poisoned: {}", e)))?;
     registry_read.get(mime_type)
+}
+
+/// Get optimal pool sizing hint for a document.
+///
+/// This function calculates recommended pool sizes based on the document's
+/// file size and MIME type. The hint can be used to create appropriately
+/// sized thread pools for extraction, reducing memory waste from over-allocation.
+///
+/// # Arguments
+///
+/// * `file_size` - The size of the file in bytes
+/// * `mime_type` - The MIME type of the document
+///
+/// # Returns
+///
+/// A `PoolSizeHint` with recommended pool configurations
+///
+/// # Example
+///
+/// ```rust,ignore
+/// use kreuzberg::core::extractor::get_pool_sizing_hint;
+///
+/// let hint = get_pool_sizing_hint(5_000_000, "application/pdf");
+/// println!("Recommended string buffers: {}", hint.string_buffer_count);
+/// ```
+#[inline]
+pub fn get_pool_sizing_hint(file_size: u64, mime_type: &str) -> PoolSizeHint {
+    estimate_pool_size(file_size, mime_type)
 }
 
 /// Extract content from a file.
