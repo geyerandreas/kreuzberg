@@ -135,6 +135,8 @@ async fn test_concurrent_extractions_with_cache() {
             enabled: false,
             enabled_processors: None,
             disabled_processors: None,
+            enabled_set: None,
+            disabled_set: None,
         }),
         ..Default::default()
     };
@@ -352,6 +354,8 @@ async fn test_concurrent_pipeline_processing() {
             enabled: true,
             enabled_processors: Some(vec!["concurrent-test".to_string()]),
             disabled_processors: None,
+            enabled_set: None,
+            disabled_set: None,
         }),
         ..Default::default()
     };
