@@ -143,7 +143,7 @@ if ($IsWindowsOS) {
     $gnuTargetDir = "target\$TargetTriple\release"
     $releaseDir = "target\release"
 
-    Write-Host "Checking for FFI libraries in $gnuTargetDir:"
+    Write-Host "Checking for FFI libraries in ${gnuTargetDir}:"
     $builtLibs = Get-ChildItem -Path $gnuTargetDir -Filter "libkreuzberg_ffi.*" -ErrorAction SilentlyContinue
     if ($builtLibs) {
         Write-Host "✓ FFI libraries found:"
@@ -170,7 +170,7 @@ if ($IsWindowsOS) {
     }
 
     Write-Host ""
-    Write-Host "Verifying artifacts in $releaseDir:"
+    Write-Host "Verifying artifacts in ${releaseDir}:"
     if (Test-Path $releaseDir) {
         Get-ChildItem -Path $releaseDir -Filter "libkreuzberg_ffi.*" | ForEach-Object {
             Write-Host "  ✓ $($_.Name)"
