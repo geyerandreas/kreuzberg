@@ -91,7 +91,7 @@ RUN apt-get update && \
         tesseract-ocr-ara \
         tesseract-ocr-rus \
         tesseract-ocr-hin \
-        libonnxruntime1.23 \
+        libonnxruntime1.21 \
         libonnxruntime-dev \
         fontconfig \
         libxinerama1 \
