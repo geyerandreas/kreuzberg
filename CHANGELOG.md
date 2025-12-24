@@ -32,6 +32,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Homebrew bottle support** - Pre-built macOS bottles for faster installation (arm64_sequoia, arm64_sonoma, ventura)
+- **Go binary download script** - Automatic binary download from GitHub releases with source build fallback (tools/scripts/go/download-binaries.go)
+- **Comprehensive E2E tests for large file handling** - Tests covering 2MB, 5MB, 10MB, 50MB, and 90MB files to validate multi-part streaming and memory efficiency
 - **Font configuration API** - New `FontConfig` struct in `PdfConfig` to control font provider behavior
   - `enabled` flag to enable/disable custom font provider (default: true)
   - `custom_font_dirs` to add font directories beyond system fonts
@@ -42,11 +45,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - See migration guide: docs/migration/v4.0-rc2-fonts.md
 - **Config file caching** - DashMap-based cache with mtime-based invalidation for TOML/YAML/JSON config files (2-3% improvement on server workloads)
 - **Processor config pre-computation** - HashSet-based O(1) lookups for enabled/disabled post-processors (1-2% improvement)
-- **Comprehensive E2E tests for large file handling** - Tests covering 2MB, 5MB, 10MB, 50MB, and 90MB files to validate multi-part streaming and memory efficiency
 - **Environment variable configuration for API size limits** - `KREUZBERG_MAX_REQUEST_BODY_BYTES` and `KREUZBERG_MAX_MULTIPART_FIELD_BYTES` for fine-grained server configuration
 
 ### Changed
 
+- **Default API size limits set to 100MB** - Configurable via `KREUZBERG_MAX_UPLOAD_SIZE_MB` environment variable
 - **BREAKING**: Custom font provider now enabled by default
   - Previous: Font provider always enabled, not configurable
   - Current: Font provider enabled by default, configurable via `FontConfig`
@@ -86,6 +89,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Large file upload limit** (issue #248) - Files larger than 2MB were being rejected due to Axum's internal multipart field limit. Added `DefaultBodyLimit::max()` configuration to allow files up to the configured size limit (default 100MB, configurable via `KREUZBERG_MAX_UPLOAD_SIZE_MB` environment variable).
 - **Browser package Vite compatibility** (issue #249) - Fixed missing `pdfium.js` in dist bundle, added `@vite-ignore` comments for dynamic imports, externalized Node.js modules for browser builds to ensure proper bundling.
+- **Node.js missing binaries in Docker/pnpm monorepo** (issue #241) - Fixed by adding optionalDependencies for all 27 platform-specific binary packages, ensuring proper resolution across environments.
 - **Ruby gem native extension build** - Simplified build system to use Cargo workspace coordination with explicit kreuzberg-ffi dependency, fixing linker path resolution.
 - **Java E2E tests compatibility with Java 25** - Regenerated tests to match current API signatures and ensure compatibility with latest JDK.
 - **Docker**: Pin ONNX Runtime to version 1.23 to match ort crate compatibility (fixes incompatibility with libonnxruntime1.21)

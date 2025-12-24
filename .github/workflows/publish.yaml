@@ -817,6 +817,130 @@ jobs:
           path: kreuzberg-cli-${{ matrix.target }}.zip
           retention-days: 14
 
+  homebrew-bottles:
+    name: Build Homebrew bottles (${{ matrix.bottle_tag }})
+    needs: [prepare, check-homebrew]
+    if: |
+      needs.prepare.outputs.release_homebrew == 'true' &&
+      (needs.prepare.outputs.force_republish == 'true' || needs.check-homebrew.outputs.exists != 'true')
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14
+            bottle_tag: arm64_sequoia
+          - runner: macos-13
+            bottle_tag: ventura
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.checkout_ref }}
+          fetch-depth: 0
+
+      - name: Ensure target commit
+        if: ${{ needs.prepare.outputs.target_sha != '' }}
+        run: git checkout --progress --force ${{ needs.prepare.outputs.target_sha }}
+
+      - name: Setup Rust toolchain
+        uses: ./.github/actions/setup-rust
+        with:
+          cache-key-prefix: publish-homebrew-${{ matrix.bottle_tag }}
+
+      - name: Setup Homebrew
+        run: |
+          brew tap homebrew/core
+          brew update
+
+      - name: Extract version
+        id: version
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          VERSION="${TAG#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build CLI for bottle
+        run: |
+          cargo build --release \
+            -p kreuzberg-cli \
+            --features api,mcp,mcp-http
+
+      - name: Create Homebrew bottle
+        id: bottle
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          # Prepare bottle directory structure
+          bottle_dir="/tmp/kreuzberg-bottle"
+          mkdir -p "${bottle_dir}/bin"
+
+          # Copy the built binary
+          cp target/release/kreuzberg "${bottle_dir}/bin/"
+
+          # Create bottle tarball
+          cd "${bottle_dir}"
+          bottle_filename="kreuzberg--${VERSION}.${{ matrix.bottle_tag }}.bottle.tar.gz"
+          tar -czf "${bottle_filename}" bin/
+
+          # Calculate SHA256
+          sha256=$(shasum -a 256 "${bottle_filename}" | cut -d' ' -f1)
+          echo "sha256=${sha256}" >> "$GITHUB_OUTPUT"
+          echo "filename=${bottle_filename}" >> "$GITHUB_OUTPUT"
+
+          # Copy to workspace for artifact upload
+          cp "${bottle_filename}" "${{ github.workspace }}/"
+          echo "Bottle created: ${bottle_filename}"
+          echo "SHA256: ${sha256}"
+
+      - name: Upload bottle artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: homebrew-bottle-${{ matrix.bottle_tag }}
+          path: kreuzberg--${{ steps.version.outputs.version }}.${{ matrix.bottle_tag }}.bottle.tar.gz
+          retention-days: 14
+
+  upload-homebrew-bottles:
+    name: Upload Homebrew bottles to GitHub Release
+    needs: [prepare, check-homebrew, homebrew-bottles]
+    if: |
+      always() &&
+      needs.prepare.outputs.dry_run != 'true' &&
+      needs.prepare.outputs.is_tag == 'true' &&
+      needs.prepare.outputs.release_homebrew == 'true' &&
+      (needs.prepare.outputs.force_republish == 'true' || needs.check-homebrew.outputs.exists != 'true') &&
+      needs.homebrew-bottles.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.ref }}
+
+      - name: Ensure GitHub release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: scripts/publish/ensure-github-release-exists.sh "${{ needs.prepare.outputs.tag }}"
+
+      - name: Download bottle artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: homebrew-bottle-*
+          path: dist/homebrew
+          merge-multiple: true
+
+      - name: Upload bottles (idempotent)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: scripts/publish/upload-homebrew-bottles.sh "${{ needs.prepare.outputs.tag }}" dist/homebrew
+
   ruby-gem:
     name: Build Ruby gem (${{ matrix.label }})
     needs: [prepare, check-rubygems]
@@ -2324,14 +2448,15 @@ jobs:
 
   publish-homebrew:
     name: Update Homebrew formula
-    needs: [prepare, validate-versions, check-homebrew, upload-cli-release]
+    needs: [prepare, validate-versions, check-homebrew, upload-cli-release, upload-homebrew-bottles]
     if: |
       always() &&
       needs.prepare.outputs.dry_run != 'true' &&
       needs.prepare.outputs.is_tag == 'true' &&
       needs.prepare.outputs.release_homebrew == 'true' &&
       (needs.prepare.outputs.force_republish == 'true' || needs.check-homebrew.outputs.exists != 'true') &&
-      needs.upload-cli-release.result == 'success'
+      needs.upload-cli-release.result == 'success' &&
+      needs.upload-homebrew-bottles.result == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -2348,20 +2473,35 @@ jobs:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: scripts/publish/homebrew/extract-release-info.sh
 
-      - name: Update Homebrew formula
-        uses: mislav/bump-homebrew-formula-action@v3
+      - name: Download bottle artifacts
+        uses: actions/download-artifact@v7
         with:
-          formula-name: kreuzberg
-          formula-path: Formula/kreuzberg.rb
-          homebrew-tap: kreuzberg-dev/homebrew-tap
-          tag-name: ${{ needs.prepare.outputs.tag }}
-          download-url: ${{ steps.release.outputs.url }}
-          commit-message: |
-            chore(homebrew): update kreuzberg to ${{ steps.release.outputs.version }}
+          pattern: homebrew-bottle-*
+          path: dist/homebrew
+          merge-multiple: true
 
-            Auto-update from release ${{ steps.release.outputs.tag }}
+      - name: Extract bottle hashes
+        id: bottles
         env:
-          COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TOKEN }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: scripts/publish/homebrew/extract-bottle-hashes.sh dist/homebrew
+
+      - name: Setup Git credentials
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TOKEN }}
+        run: |
+          git config --global credential.helper store
+          echo "https://x-access-token:${GH_TOKEN}@github.com" > ~/.git-credentials
+          git config --global user.name "kreuzberg-bot"
+          git config --global user.email "bot@kreuzberg.dev"
+
+      - name: Update Homebrew formula with bottles
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          DRY_RUN: 'false'
+        run: scripts/publish/homebrew/update-formula-with-bottles.sh dist/homebrew homebrew-tap
 
   release-finalize:
     name: Finalize release and update notes
@@ -2385,6 +2525,8 @@ jobs:
       - upload-cli-release
       - upload-csharp-release
       - upload-go-release
+      - homebrew-bottles
+      - upload-homebrew-bottles
     if: always() && needs.prepare.outputs.is_tag == 'true'
     runs-on: ubuntu-latest
     permissions:

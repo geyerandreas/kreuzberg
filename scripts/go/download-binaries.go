@@ -1,7 +1,8 @@
 // Command download-binaries downloads pre-built kreuzberg-ffi binaries from GitHub releases.
 //
 // Usage:
-//   go run scripts/go/download-binaries.go [options]
+//
+//	go run scripts/go/download-binaries.go [options]
 //
 // This tool:
 //   - Detects the current OS/architecture (darwin/linux, amd64/arm64)
@@ -11,10 +12,11 @@
 //   - Sets up environment variables for runtime library discovery
 //
 // Options:
-//   -tag string         Release tag (default: auto-detect latest)
-//   -dest string        Installation destination (default: ~/.local or system)
-//   -skip-build-fallback Don't attempt to build from source if download fails
-//   -verbose            Verbose output
+//
+//	-tag string         Release tag (default: auto-detect latest)
+//	-dest string        Installation destination (default: ~/.local or system)
+//	-skip-build-fallback Don't attempt to build from source if download fails
+//	-verbose            Verbose output
 package main
 
 import (
@@ -115,8 +117,8 @@ func detectPlatform() (string, string, error) {
 
 	// Map Go platform names to release artifact names
 	platformMap := map[string]string{
-		"darwin": "macos",
-		"linux":  "linux",
+		"darwin":  "macos",
+		"linux":   "linux",
 		"windows": "windows",
 	}
 
