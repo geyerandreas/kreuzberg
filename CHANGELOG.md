@@ -40,6 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Available in all bindings: Rust, Python, TypeScript, Java, Go, Ruby, C#
   - Performance: ~12-13% faster PDF processing with font caching
   - See migration guide: docs/migration/v4.0-rc2-fonts.md
+- **Config file caching** - DashMap-based cache with mtime-based invalidation for TOML/YAML/JSON config files (2-3% improvement on server workloads)
+- **Processor config pre-computation** - HashSet-based O(1) lookups for enabled/disabled post-processors (1-2% improvement)
 
 ### Changed
 
@@ -49,6 +51,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Migration: Set `font_config.enabled = false` to use pdfium defaults
   - Performance improvement: 12-13% faster PDF extraction
   - Global configuration: Must be set before first PDF extraction
+- **TypeScript serialization** - Replaced MessagePack + Base64 double-encoding with direct JSON serialization (5-8% improvement on plugin workloads)
+- **Batch semaphore tuning** - Reduced concurrency multiplier from 2.0x to 1.5x CPU count to reduce contention on external libraries (15-20% improvement on multi-format batches)
+
+### Performance
+
+- **Multi-session optimization campaign** - 15-25% overall execution improvement, 30-45% memory reduction
+  - **String allocations** - Enhanced StringPool, capacity pre-allocation, Copy-on-Write optimization (-2.57% CPU, -0.81% memory, 40-60% fewer allocations)
+  - **Memory pools** - Lazy initialization, dynamic sizing, improved reuse (-35-50% memory baseline: 60-135 MB → 30-80 MB)
+    - PDF: -40% (200M → 120M), Office: -45% (100M → 55M), HTML: -50% (134M → 67M)
+  - **HTML/Markdown/Image** - Optimized HTML processing, Markdown AST reduction, conditional image decompression, pipeline early exits (-1.01% CPU)
+  - **Binding & parallelization** - Dynamic TypeScript thread pool (4 → num_cpus workers), JSON serialization, config caching, batch semaphore tuning (+10-15% improvement on binding workloads)
+    - TypeScript: +8-12% on multi-core systems
+    - Plugin overhead: -5-8% (removed double serialization)
+    - Server workloads: +2-3% (config caching)
+  - **Post-processing pipeline** - Removed duplicate quality processing, lazy metadata conversion, single-pass quality scanning (+10-17% CPU improvement)
+    - Quality processing: 5-7% gain (eliminated redundant calculation)
+    - Metadata conversion: 1-2% gain (avoided HashMap clone + string conversion)
+    - Quality scanning: 3-5% gain (combined 5 regex patterns into single pass)
+
+### Removed
+
+- **Legacy code cleanup** - Comprehensive removal of deprecated backward compatibility code (27 files, -494 net lines)
+  - TypeScript: `KREUZBERG_LEGACY_SERIALIZATION` environment variable and MessagePack + Base64 serialization branches
+  - Go: 7 legacy error codes and 11 deprecated error wrapper functions (updated 77 call sites to context-aware constructors)
+  - Ruby: `Ocr = OCR` backward compatibility alias
+  - Rust: Deprecated `Metadata.date` field (use `created_at`/`modified_at` instead)
+  - Build: Unused legacy EMSDK download function (226 lines)
+  - Cargo: 3 legacy feature aliases (`pdf-static`, `pdf-bundled`, `pdf-system`)
 
 ### Fixed
 
@@ -56,6 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Path traversal vulnerability in custom font directories (security hardening)
 - Race condition in font provider registration (thread-safety)
 - Silent error suppression in font configuration initialization
+- Duplicate quality processing calculation running twice per extraction
+- O(n) processor name lookups (now O(1) with HashSet pre-computation)
 
 ### Security
 
