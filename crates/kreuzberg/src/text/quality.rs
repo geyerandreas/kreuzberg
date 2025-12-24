@@ -39,6 +39,23 @@ static MALFORMED_WORDS_PATTERN: Lazy<Regex> = Lazy::new(|| {
 static EXCESSIVE_WHITESPACE_PATTERN: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"\s{3,}").expect("Excessive whitespace regex pattern is valid and should compile"));
 
+/// Combined OCR artifact pattern for single-pass scanning (used in calculate_ocr_penalty).
+/// This pattern combines 5 of the 6 OCR patterns with alternation to reduce regex passes
+/// from 5 separate find_iter calls to 1. The dash pattern is handled separately due to
+/// line-based context checking.
+static COMBINED_OCR_ARTIFACTS_PATTERN: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(
+        r"(?x)
+        \b[a-zA-Z]\s{2,}[a-zA-Z]\s{2,}[a-zA-Z]\b |  # Scattered chars
+        [.]{3,}|[_]{3,} |                              # Repeated punctuation
+        \s[.,;:!?]\s |                                 # Isolated punctuation
+        \b[a-zA-Z]+[0-9]+[a-zA-Z]+[a-zA-Z0-9]*\b |   # Malformed words
+        \s{3,}                                        # Excessive whitespace
+    ",
+    )
+    .expect("Combined OCR artifacts regex pattern is valid and should compile")
+});
+
 static JS_FUNCTION_PATTERN: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?i)function\s+\w+\s*\([^)]*\)\s*\{[^}]*\}")
         .expect("JavaScript function regex pattern is valid and should compile")
@@ -151,12 +168,10 @@ fn calculate_ocr_penalty(text: &str, total_chars: f64) -> f64 {
         return 0.0;
     }
 
-    let artifact_chars = sum_match_lengths(text, &SCATTERED_CHARS_PATTERN)
-        + sum_match_lengths(text, &REPEATED_PUNCT_PATTERN)
-        + count_non_table_dash_artifacts(text)
-        + sum_match_lengths(text, &ISOLATED_PUNCT_PATTERN)
-        + sum_match_lengths(text, &MALFORMED_WORDS_PATTERN)
-        + sum_match_lengths(text, &EXCESSIVE_WHITESPACE_PATTERN);
+    // Use combined regex for most patterns (single pass instead of 5),
+    // then add the dash count which requires line-based context checking
+    let artifact_chars =
+        sum_match_lengths(text, &COMBINED_OCR_ARTIFACTS_PATTERN) + count_non_table_dash_artifacts(text);
 
     (artifact_chars as f64 / total_chars).min(1.0)
 }
