@@ -307,6 +307,8 @@ async fn test_pipeline_postprocessing_disabled() {
             enabled: false,
             enabled_processors: None,
             disabled_processors: None,
+            enabled_set: None,
+            disabled_set: None,
         }),
         ..Default::default()
     };
@@ -1301,6 +1303,8 @@ async fn test_pipeline_enabled_processors_whitelist() {
             enabled: true,
             enabled_processors: Some(vec!["proc1".to_string(), "proc3".to_string()]),
             disabled_processors: None,
+            enabled_set: None,
+            disabled_set: None,
         }),
         ..Default::default()
     };
@@ -1346,6 +1350,8 @@ async fn test_pipeline_disabled_processors_blacklist() {
             enabled: true,
             enabled_processors: None,
             disabled_processors: Some(vec!["proc2".to_string()]),
+            enabled_set: None,
+            disabled_set: None,
         }),
         ..Default::default()
     };
@@ -1429,6 +1435,8 @@ async fn test_pipeline_empty_whitelist_runs_none() {
             enabled: true,
             enabled_processors: Some(vec![]),
             disabled_processors: None,
+            enabled_set: None,
+            disabled_set: None,
         }),
         ..Default::default()
     };

@@ -30,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0-rc.19] - 2025-12-24
+
 ### Added
 
 - **Homebrew bottle support** - Pre-built macOS bottles for faster installation (arm64_sequoia, arm64_sonoma, ventura)
