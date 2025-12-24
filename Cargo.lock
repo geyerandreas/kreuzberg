@@ -2961,6 +2961,7 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
+ "num_cpus",
  "once_cell",
  "rmp-serde",
  "serde",

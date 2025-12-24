@@ -367,7 +367,12 @@ pub async fn batch_extract_file(
 
     let config = Arc::new(config.clone());
 
-    let max_concurrent = config.max_concurrent_extractions.unwrap_or_else(|| num_cpus::get() * 2);
+    // Conservative concurrency multiplier (1.5x instead of 2.0x) to reduce contention
+    // on external libraries (pdfium, tesseract) which have their own internal threading.
+    // Users can override via config.max_concurrent_extractions if needed.
+    let max_concurrent = config
+        .max_concurrent_extractions
+        .unwrap_or_else(|| (num_cpus::get() as f64 * 1.5).ceil() as usize);
     let semaphore = Arc::new(Semaphore::new(max_concurrent));
 
     let mut tasks = JoinSet::new();
@@ -466,7 +471,12 @@ pub async fn batch_extract_bytes(
     let batch_config = config.clone();
     let config = Arc::new(batch_config);
 
-    let max_concurrent = config.max_concurrent_extractions.unwrap_or_else(|| num_cpus::get() * 2);
+    // Conservative concurrency multiplier (1.5x instead of 2.0x) to reduce contention
+    // on external libraries (pdfium, tesseract) which have their own internal threading.
+    // Users can override via config.max_concurrent_extractions if needed.
+    let max_concurrent = config
+        .max_concurrent_extractions
+        .unwrap_or_else(|| (num_cpus::get() as f64 * 1.5).ceil() as usize);
     let semaphore = Arc::new(Semaphore::new(max_concurrent));
 
     let owned_contents: Vec<(Vec<u8>, String)> = contents
