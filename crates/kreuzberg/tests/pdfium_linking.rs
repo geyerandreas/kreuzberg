@@ -185,7 +185,7 @@ fn test_pdf_extraction_from_bytes() {
 /// When `pdf-bundled` feature is enabled, PDFium is embedded in the binary.
 /// This test verifies the bundled extraction mechanism works correctly.
 #[test]
-#[cfg(feature = "pdf-bundled")]
+#[cfg(feature = "bundled-pdfium")]
 fn test_bundled_pdfium_extraction() {
     use kreuzberg::pdf::extract_bundled_pdfium;
 
@@ -217,7 +217,7 @@ fn test_bundled_pdfium_extraction() {
 /// Verify that repeated calls to extract_bundled_pdfium return the same path
 /// and don't create duplicate extracted libraries.
 #[test]
-#[cfg(feature = "pdf-bundled")]
+#[cfg(feature = "bundled-pdfium")]
 fn test_bundled_pdfium_caching() {
     use kreuzberg::pdf::extract_bundled_pdfium;
 
@@ -236,7 +236,7 @@ fn test_bundled_pdfium_caching() {
 /// This integration test verifies that PDFium extracted via bundled mechanism
 /// actually works for PDF content extraction.
 #[test]
-#[cfg(feature = "pdf-bundled")]
+#[cfg(feature = "bundled-pdfium")]
 fn test_bundled_pdfium_with_pdf_extraction() {
     if skip_if_missing("pdfs_with_tables/tiny.pdf") {
         return;
@@ -369,6 +369,6 @@ fn test_pdf_module_availability() {
     let _ = kreuzberg::pdf::extract_metadata;
 
     // Verify bundled module is available when feature enabled
-    #[cfg(feature = "pdf-bundled")]
+    #[cfg(feature = "bundled-pdfium")]
     let _ = kreuzberg::pdf::extract_bundled_pdfium;
 }
