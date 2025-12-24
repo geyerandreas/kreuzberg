@@ -58,19 +58,11 @@ impl Plugin for QualityProcessor {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 impl PostProcessor for QualityProcessor {
     async fn process(&self, result: &mut ExtractionResult, _config: &ExtractionConfig) -> Result<()> {
-        // Only allocate metadata HashMap if important fields are present
+        // Calculate quality score - calculate_quality_score handles metadata directly
+        // without requiring string conversion, avoiding unnecessary allocations
         let quality_score = if should_use_metadata(&result.metadata) {
-            // Convert metadata to string HashMap only when needed
-            let metadata_strings: std::collections::HashMap<String, String> = result
-                .metadata
-                .additional
-                .iter()
-                .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
-                .collect();
-
-            crate::text::quality::calculate_quality_score(&result.content, Some(&metadata_strings))
+            crate::text::quality::calculate_quality_score(&result.content, Some(&result.metadata.additional))
         } else {
-            // Skip allocation when no important metadata present
             crate::text::quality::calculate_quality_score(&result.content, None)
         };
 
