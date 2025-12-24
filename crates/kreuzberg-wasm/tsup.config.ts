@@ -23,5 +23,14 @@ export default defineConfig({
 	shims: false,
 	platform: "neutral",
 	target: "es2022",
-	external: ["@kreuzberg/core", /\.wasm$/, /@kreuzberg\/wasm-.*/, /\.\.\/pkg\/.*/, "./index.js", "../index.js"],
+	external: [
+		"@kreuzberg/core",
+		"tesseract-wasm",
+		"node:fs/promises",
+		/\.wasm$/,
+		/@kreuzberg\/wasm-.*/,
+		/\.\.\/pkg\/.*/,
+		"./index.js",
+		"../index.js",
+	],
 });

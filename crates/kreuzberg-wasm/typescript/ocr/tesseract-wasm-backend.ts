@@ -509,6 +509,7 @@ export class TesseractWasmBackend implements OcrBackendProtocol {
 		try {
 			// Use dynamic import to handle both ESM and CJS
 			// @ts-expect-error - tesseract-wasm has package.json exports issues with TypeScript
+			// @vite-ignore - tesseract-wasm package resolution
 			const module = await import("tesseract-wasm");
 			return module;
 		} catch (error) {

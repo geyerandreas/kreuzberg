@@ -304,6 +304,7 @@ async function initializePdfiumAsync(wasmModule: WasmModule): Promise<void> {
 	try {
 		// For browser environments, load PDFium from the package distribution
 		// @ts-expect-error - Dynamic module loading
+		// @vite-ignore - PDFium is loaded from dist at runtime
 		const pdfiumModule = await import("./pdfium.js");
 		const pdfium = typeof pdfiumModule.default === "function" ? await pdfiumModule.default() : pdfiumModule;
 
@@ -569,6 +570,7 @@ export async function extractFile(
 
 		if (runtime === "node") {
 			// Node.js: use dynamic import to avoid issues in non-Node.js environments
+			// @vite-ignore - Dynamic require for Node.js only
 			const { readFile } = await import("node:fs/promises");
 			const buffer = await readFile(path);
 			fileData = new Uint8Array(buffer);
@@ -580,6 +582,7 @@ export async function extractFile(
 			fileData = await deno.readFile(path);
 		} else if (runtime === "bun") {
 			// Bun: use dynamic import for fs/promises (compatible with Node.js API)
+			// @vite-ignore - Dynamic require for Bun only
 			const { readFile } = await import("node:fs/promises");
 			const buffer = await readFile(path);
 			fileData = new Uint8Array(buffer);

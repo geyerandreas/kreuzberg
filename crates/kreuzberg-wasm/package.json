@@ -18,6 +18,26 @@
 	"types": "dist/index.d.ts",
 	"exports": {
 		".": {
+			"browser": {
+				"import": {
+					"types": "./dist/index.d.ts",
+					"default": "./dist/index.js"
+				},
+				"require": {
+					"types": "./dist/index.d.cts",
+					"default": "./dist/index.cjs"
+				}
+			},
+			"node": {
+				"import": {
+					"types": "./dist/index.d.ts",
+					"default": "./dist/index.js"
+				},
+				"require": {
+					"types": "./dist/index.d.cts",
+					"default": "./dist/index.cjs"
+				}
+			},
 			"import": {
 				"types": "./dist/index.d.ts",
 				"default": "./dist/index.js"
@@ -97,6 +117,7 @@
 		"pkg",
 		"*.wasm",
 		"*.d.ts",
+		"pdfium.js",
 		"README.md"
 	],
 	"engines": {
