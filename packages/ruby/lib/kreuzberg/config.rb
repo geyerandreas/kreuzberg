@@ -858,8 +858,5 @@ module Kreuzberg
         @max_concurrent_extractions = merged.max_concurrent_extractions
       end
     end
-
-    # Backwards compatibility aliases
-    Ocr = OCR
   end
 end

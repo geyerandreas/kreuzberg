@@ -1,6 +1,6 @@
 #![deny(clippy::all)]
 
-use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
+use base64::Engine;
 use html_to_markdown_rs::options::{
     CodeBlockStyle, ConversionOptions, HeadingStyle, HighlightStyle, ListIndentType, NewlineStyle,
     PreprocessingOptions as HtmlPreprocessingOptions, PreprocessingPreset, WhitespaceMode,
@@ -23,21 +23,12 @@ use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use once_cell::sync::Lazy;
 use std::collections::HashSet;
-use std::env;
 use std::ffi::{CStr, c_char};
 
 // KNOWN_FORMAT_FIELDS is imported from kreuzberg::core::formats::KNOWN_FORMATS
 // This is the single source of truth for format field names across all language bindings.
 // See crates/kreuzberg/src/core/formats.rs for the canonical list of 58 known format fields.
 static KNOWN_FORMAT_FIELDS: Lazy<HashSet<&'static str>> = Lazy::new(|| KNOWN_FORMATS.iter().copied().collect());
-
-/// Check if legacy MessagePack+Base64 serialization should be used.
-/// Set KREUZBERG_LEGACY_SERIALIZATION=1 to use old format for backward compatibility.
-fn use_legacy_serialization() -> bool {
-    env::var("KREUZBERG_LEGACY_SERIALIZATION")
-        .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
-        .unwrap_or(false)
-}
 
 #[allow(unused_extern_crates)]
 extern crate kreuzberg_ffi;
@@ -2242,88 +2233,42 @@ impl RustPostProcessor for JsPostProcessor {
                 plugin_name: self.name.clone(),
             })?;
 
-        if use_legacy_serialization() {
-            // Legacy path: MessagePack + Base64 (deprecated)
-            let encoded = rmp_serde::to_vec(&js_result).map_err(|e| kreuzberg::KreuzbergError::Plugin {
-                message: format!("Failed to encode result for JavaScript PostProcessor: {}", e),
+        // JSON serialization only (faster, no Base64 overhead)
+        let json_string = serde_json::to_string(&js_result).map_err(|e| kreuzberg::KreuzbergError::Plugin {
+            message: format!("Failed to serialize result to JSON for JavaScript PostProcessor: {}", e),
+            plugin_name: self.name.clone(),
+        })?;
+
+        let output_json = self
+            .process_fn
+            .call_async(json_string)
+            .await
+            .map_err(|e| kreuzberg::KreuzbergError::Plugin {
+                message: format!("JavaScript PostProcessor '{}' call failed: {}", self.name, e),
                 plugin_name: self.name.clone(),
-            })?;
-            let encoded_b64 = BASE64.encode(&encoded);
-
-            let output_b64 = self
-                .process_fn
-                .call_async(encoded_b64)
-                .await
-                .map_err(|e| kreuzberg::KreuzbergError::Plugin {
-                    message: format!("JavaScript PostProcessor '{}' call failed: {}", self.name, e),
-                    plugin_name: self.name.clone(),
-                })?
-                .await
-                .map_err(|e| kreuzberg::KreuzbergError::Plugin {
-                    message: format!("JavaScript PostProcessor '{}' promise failed: {}", self.name, e),
-                    plugin_name: self.name.clone(),
-                })?;
-
-            let decoded = BASE64
-                .decode(output_b64.as_bytes())
-                .map_err(|e| kreuzberg::KreuzbergError::Plugin {
-                    message: format!("Failed to decode result from JavaScript PostProcessor: {}", e),
-                    plugin_name: self.name.clone(),
-                })?;
-            let updated: JsExtractionResult =
-                rmp_serde::from_slice(&decoded).map_err(|e| kreuzberg::KreuzbergError::Plugin {
-                    message: format!(
-                        "Failed to deserialize result from JavaScript PostProcessor '{}': {}",
-                        self.name, e
-                    ),
-                    plugin_name: self.name.clone(),
-                })?;
-
-            let rust_result =
-                kreuzberg::ExtractionResult::try_from(updated).map_err(|e| kreuzberg::KreuzbergError::Plugin {
-                    message: format!("Failed to convert result from JavaScript PostProcessor: {}", e),
-                    plugin_name: self.name.clone(),
-                })?;
-
-            *result = rust_result;
-        } else {
-            // New path: JSON serialization only (faster, no Base64 overhead)
-            let json_string = serde_json::to_string(&js_result).map_err(|e| kreuzberg::KreuzbergError::Plugin {
-                message: format!("Failed to serialize result to JSON for JavaScript PostProcessor: {}", e),
+            })?
+            .await
+            .map_err(|e| kreuzberg::KreuzbergError::Plugin {
+                message: format!("JavaScript PostProcessor '{}' promise failed: {}", self.name, e),
                 plugin_name: self.name.clone(),
             })?;
 
-            let output_json = self
-                .process_fn
-                .call_async(json_string)
-                .await
-                .map_err(|e| kreuzberg::KreuzbergError::Plugin {
-                    message: format!("JavaScript PostProcessor '{}' call failed: {}", self.name, e),
-                    plugin_name: self.name.clone(),
-                })?
-                .await
-                .map_err(|e| kreuzberg::KreuzbergError::Plugin {
-                    message: format!("JavaScript PostProcessor '{}' promise failed: {}", self.name, e),
-                    plugin_name: self.name.clone(),
-                })?;
+        let updated: JsExtractionResult =
+            serde_json::from_str(&output_json).map_err(|e| kreuzberg::KreuzbergError::Plugin {
+                message: format!(
+                    "Failed to deserialize JSON result from JavaScript PostProcessor '{}': {}",
+                    self.name, e
+                ),
+                plugin_name: self.name.clone(),
+            })?;
 
-            let updated: JsExtractionResult =
-                serde_json::from_str(&output_json).map_err(|e| kreuzberg::KreuzbergError::Plugin {
-                    message: format!(
-                        "Failed to deserialize JSON result from JavaScript PostProcessor '{}': {}",
-                        self.name, e
-                    ),
-                    plugin_name: self.name.clone(),
-                })?;
+        let rust_result =
+            kreuzberg::ExtractionResult::try_from(updated).map_err(|e| kreuzberg::KreuzbergError::Plugin {
+                message: format!("Failed to convert result from JavaScript PostProcessor: {}", e),
+                plugin_name: self.name.clone(),
+            })?;
 
-            let rust_result =
-                kreuzberg::ExtractionResult::try_from(updated).map_err(|e| kreuzberg::KreuzbergError::Plugin {
-                    message: format!("Failed to convert result from JavaScript PostProcessor: {}", e),
-                    plugin_name: self.name.clone(),
-                })?;
-
-            *result = rust_result;
-        }
+        *result = rust_result;
 
         Ok(())
     }
@@ -2541,86 +2486,44 @@ impl RustValidator for JsValidator {
                 plugin_name: self.name.clone(),
             })?;
 
-        if use_legacy_serialization() {
-            // Legacy path: MessagePack + Base64 (deprecated)
-            let encoded = rmp_serde::to_vec(&js_result).map_err(|e| kreuzberg::KreuzbergError::Plugin {
-                message: format!("Failed to encode result for JavaScript Validator: {}", e),
-                plugin_name: self.name.clone(),
-            })?;
-            let encoded_b64 = BASE64.encode(&encoded);
+        // JSON serialization only (faster, no Base64 overhead)
+        let json_string = serde_json::to_string(&js_result).map_err(|e| kreuzberg::KreuzbergError::Plugin {
+            message: format!("Failed to serialize result to JSON for JavaScript Validator: {}", e),
+            plugin_name: self.name.clone(),
+        })?;
 
-            self.validate_fn
-                .call_async(encoded_b64)
-                .await
-                .map_err(|e| {
-                    let err_msg = e.to_string();
-                    if err_msg.contains("ValidationError") || err_msg.contains("validation") {
-                        kreuzberg::KreuzbergError::Validation {
-                            message: err_msg,
-                            source: None,
-                        }
-                    } else {
-                        kreuzberg::KreuzbergError::Plugin {
-                            message: format!("JavaScript Validator '{}' call failed: {}", self.name, err_msg),
-                            plugin_name: self.name.clone(),
-                        }
+        self.validate_fn
+            .call_async(json_string)
+            .await
+            .map_err(|e| {
+                let err_msg = e.to_string();
+                if err_msg.contains("ValidationError") || err_msg.contains("validation") {
+                    kreuzberg::KreuzbergError::Validation {
+                        message: err_msg,
+                        source: None,
                     }
-                })?
-                .await
-                .map_err(|e| {
-                    let err_msg = e.to_string();
-                    if err_msg.contains("ValidationError") || err_msg.contains("validation") {
-                        kreuzberg::KreuzbergError::Validation {
-                            message: err_msg,
-                            source: None,
-                        }
-                    } else {
-                        kreuzberg::KreuzbergError::Plugin {
-                            message: format!("JavaScript Validator '{}' promise failed: {}", self.name, err_msg),
-                            plugin_name: self.name.clone(),
-                        }
+                } else {
+                    kreuzberg::KreuzbergError::Plugin {
+                        message: format!("JavaScript Validator '{}' call failed: {}", self.name, err_msg),
+                        plugin_name: self.name.clone(),
                     }
-                })?;
-        } else {
-            // New path: JSON serialization only (faster, no Base64 overhead)
-            let json_string = serde_json::to_string(&js_result).map_err(|e| kreuzberg::KreuzbergError::Plugin {
-                message: format!("Failed to serialize result to JSON for JavaScript Validator: {}", e),
-                plugin_name: self.name.clone(),
+                }
+            })?
+            .await
+            .map_err(|e| {
+                let err_msg = e.to_string();
+                if err_msg.contains("ValidationError") || err_msg.contains("validation") {
+                    kreuzberg::KreuzbergError::Validation {
+                        message: err_msg,
+                        source: None,
+                    }
+                } else {
+                    kreuzberg::KreuzbergError::Plugin {
+                        message: format!("JavaScript Validator '{}' promise failed: {}", self.name, err_msg),
+                        plugin_name: self.name.clone(),
+                    }
+                }
             })?;
-
-            self.validate_fn
-                .call_async(json_string)
-                .await
-                .map_err(|e| {
-                    let err_msg = e.to_string();
-                    if err_msg.contains("ValidationError") || err_msg.contains("validation") {
-                        kreuzberg::KreuzbergError::Validation {
-                            message: err_msg,
-                            source: None,
-                        }
-                    } else {
-                        kreuzberg::KreuzbergError::Plugin {
-                            message: format!("JavaScript Validator '{}' call failed: {}", self.name, err_msg),
-                            plugin_name: self.name.clone(),
-                        }
-                    }
-                })?
-                .await
-                .map_err(|e| {
-                    let err_msg = e.to_string();
-                    if err_msg.contains("ValidationError") || err_msg.contains("validation") {
-                        kreuzberg::KreuzbergError::Validation {
-                            message: err_msg,
-                            source: None,
-                        }
-                    } else {
-                        kreuzberg::KreuzbergError::Plugin {
-                            message: format!("JavaScript Validator '{}' promise failed: {}", self.name, err_msg),
-                            plugin_name: self.name.clone(),
-                        }
-                    }
-                })?;
-        }
 
         Ok(())
     }
@@ -2831,170 +2734,82 @@ impl RustOcrBackend for JsOcrBackend {
         let language = config.language.clone();
         let backend_name = self.name.clone();
 
-        if use_legacy_serialization() {
-            // Legacy path: MessagePack + Base64 (deprecated)
-            let output_b64 = self
-                .process_image_fn
-                .call_async((encoded, language))
-                .await
-                .map_err(|e| kreuzberg::KreuzbergError::Ocr {
-                    message: format!("JavaScript OCR backend '{}' failed: {}", backend_name, e),
-                    source: Some(Box::new(e)),
-                })?
-                .await
-                .map_err(|e| kreuzberg::KreuzbergError::Ocr {
-                    message: format!("JavaScript OCR backend '{}' failed: {}", backend_name, e),
-                    source: Some(Box::new(e)),
-                })?;
+        // JSON serialization only (faster, no Base64 overhead)
+        let output_json = self
+            .process_image_fn
+            .call_async((encoded, language))
+            .await
+            .map_err(|e| kreuzberg::KreuzbergError::Ocr {
+                message: format!("JavaScript OCR backend '{}' failed: {}", backend_name, e),
+                source: Some(Box::new(e)),
+            })?
+            .await
+            .map_err(|e| kreuzberg::KreuzbergError::Ocr {
+                message: format!("JavaScript OCR backend '{}' failed: {}", backend_name, e),
+                source: Some(Box::new(e)),
+            })?;
 
-            let decoded = BASE64
-                .decode(output_b64.as_bytes())
-                .map_err(|e| kreuzberg::KreuzbergError::Ocr {
-                    message: format!(
-                        "Failed to decode result from JavaScript OCR backend '{}': {}",
-                        backend_name, e
-                    ),
-                    source: Some(Box::new(e)),
-                })?;
-            let wire_result: serde_json::Value =
-                rmp_serde::from_slice(&decoded).map_err(|e| kreuzberg::KreuzbergError::Ocr {
-                    message: format!(
-                        "Failed to deserialize result from JavaScript OCR backend '{}': {}",
-                        backend_name, e
-                    ),
-                    source: Some(Box::new(e)),
-                })?;
+        let wire_result: serde_json::Value =
+            serde_json::from_str(&output_json).map_err(|e| kreuzberg::KreuzbergError::Ocr {
+                message: format!(
+                    "Failed to deserialize JSON result from JavaScript OCR backend '{}': {}",
+                    backend_name, e
+                ),
+                source: Some(Box::new(e)),
+            })?;
 
-            let content = wire_result
-                .get("content")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| kreuzberg::KreuzbergError::Ocr {
-                    message: format!(
-                        "JavaScript OCR backend '{}' result missing 'content' field",
-                        backend_name
-                    ),
-                    source: None,
-                })?
-                .to_string();
+        let content = wire_result
+            .get("content")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| kreuzberg::KreuzbergError::Ocr {
+                message: format!(
+                    "JavaScript OCR backend '{}' result missing 'content' field",
+                    backend_name
+                ),
+                source: None,
+            })?
+            .to_string();
 
-            let mime_type = wire_result
-                .get("mime_type")
-                .and_then(|v| v.as_str())
-                .unwrap_or("text/plain")
-                .to_string();
+        let mime_type = wire_result
+            .get("mime_type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("text/plain")
+            .to_string();
 
-            let metadata = wire_result
-                .get("metadata")
-                .cloned()
-                .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
+        let metadata = wire_result
+            .get("metadata")
+            .cloned()
+            .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
 
-            let metadata: kreuzberg::types::Metadata =
-                serde_json::from_value(metadata).map_err(|e| kreuzberg::KreuzbergError::Ocr {
-                    message: format!(
-                        "Failed to parse metadata from JavaScript OCR backend '{}': {}",
-                        backend_name, e
-                    ),
-                    source: Some(Box::new(e)),
-                })?;
+        let metadata: kreuzberg::types::Metadata =
+            serde_json::from_value(metadata).map_err(|e| kreuzberg::KreuzbergError::Ocr {
+                message: format!(
+                    "Failed to parse metadata from JavaScript OCR backend '{}': {}",
+                    backend_name, e
+                ),
+                source: Some(Box::new(e)),
+            })?;
 
-            let tables = wire_result
-                .get("tables")
-                .and_then(|v| v.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|t| serde_json::from_value::<kreuzberg::Table>(t.clone()).ok())
-                        .collect()
-                })
-                .unwrap_or_default();
-
-            Ok(kreuzberg::ExtractionResult {
-                content,
-                mime_type,
-                metadata,
-                tables,
-                detected_languages: None,
-                chunks: None,
-                images: None,
-                pages: None,
+        let tables = wire_result
+            .get("tables")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|t| serde_json::from_value::<kreuzberg::Table>(t.clone()).ok())
+                    .collect()
             })
-        } else {
-            // New path: JSON serialization only (faster, no Base64 overhead)
-            let output_json = self
-                .process_image_fn
-                .call_async((encoded, language))
-                .await
-                .map_err(|e| kreuzberg::KreuzbergError::Ocr {
-                    message: format!("JavaScript OCR backend '{}' failed: {}", backend_name, e),
-                    source: Some(Box::new(e)),
-                })?
-                .await
-                .map_err(|e| kreuzberg::KreuzbergError::Ocr {
-                    message: format!("JavaScript OCR backend '{}' failed: {}", backend_name, e),
-                    source: Some(Box::new(e)),
-                })?;
+            .unwrap_or_default();
 
-            let wire_result: serde_json::Value =
-                serde_json::from_str(&output_json).map_err(|e| kreuzberg::KreuzbergError::Ocr {
-                    message: format!(
-                        "Failed to deserialize JSON result from JavaScript OCR backend '{}': {}",
-                        backend_name, e
-                    ),
-                    source: Some(Box::new(e)),
-                })?;
-
-            let content = wire_result
-                .get("content")
-                .and_then(|v| v.as_str())
-                .ok_or_else(|| kreuzberg::KreuzbergError::Ocr {
-                    message: format!(
-                        "JavaScript OCR backend '{}' result missing 'content' field",
-                        backend_name
-                    ),
-                    source: None,
-                })?
-                .to_string();
-
-            let mime_type = wire_result
-                .get("mime_type")
-                .and_then(|v| v.as_str())
-                .unwrap_or("text/plain")
-                .to_string();
-
-            let metadata = wire_result
-                .get("metadata")
-                .cloned()
-                .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
-
-            let metadata: kreuzberg::types::Metadata =
-                serde_json::from_value(metadata).map_err(|e| kreuzberg::KreuzbergError::Ocr {
-                    message: format!(
-                        "Failed to parse metadata from JavaScript OCR backend '{}': {}",
-                        backend_name, e
-                    ),
-                    source: Some(Box::new(e)),
-                })?;
-
-            let tables = wire_result
-                .get("tables")
-                .and_then(|v| v.as_array())
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|t| serde_json::from_value::<kreuzberg::Table>(t.clone()).ok())
-                        .collect()
-                })
-                .unwrap_or_default();
-
-            Ok(kreuzberg::ExtractionResult {
-                content,
-                mime_type,
-                metadata,
-                tables,
-                detected_languages: None,
-                chunks: None,
-                images: None,
-                pages: None,
-            })
-        }
+        Ok(kreuzberg::ExtractionResult {
+            content,
+            mime_type,
+            metadata,
+            tables,
+            detected_languages: None,
+            chunks: None,
+            images: None,
+            pages: None,
+        })
     }
 
     async fn process_file(

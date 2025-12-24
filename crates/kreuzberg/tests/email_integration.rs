@@ -52,7 +52,7 @@ This is the email body content.";
 
     assert!(email_meta.attachments.is_empty(), "Should have no attachments");
 
-    assert!(result.metadata.date.is_some());
+    assert!(result.metadata.created_at.is_some());
 
     assert!(result.content.contains("Subject: Test Email Subject"));
     assert!(result.content.contains("From: sender@example.com"));

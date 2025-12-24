@@ -32,13 +32,9 @@ tokio-runtime = ["dep:tokio"]
 
 # Format extractors
 pdf = ["dep:pdfium-render", "dep:lopdf", "dep:image"]
-static-pdfium = ["pdf"]                               # Static link (no runtime dep) - requires PDFIUM_STATIC_LIB_PATH env var
-bundled-pdfium = ["pdf"]                              # Embed library in binary (self-contained, dynamic link)
-system-pdfium = ["pdf"]                               # Use system-installed pdfium via pkg-config
-# Legacy names for backward compatibility
-pdf-static = ["static-pdfium"]
-pdf-bundled = ["bundled-pdfium"]
-pdf-system = ["system-pdfium"]
+static-pdfium = ["pdf"] # Static link (no runtime dep) - requires PDFIUM_STATIC_LIB_PATH env var
+bundled-pdfium = ["pdf"] # Embed library in binary (self-contained, dynamic link)
+system-pdfium = ["pdf"] # Use system-installed pdfium via pkg-config
 excel = ["dep:calamine", "dep:polars", "tokio-runtime"]
 office = [
     "dep:roxmltree",

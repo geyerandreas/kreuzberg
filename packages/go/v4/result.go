@@ -66,18 +66,18 @@ type MetadataField struct {
 // If the field doesn't exist, IsNull will be true in the returned MetadataField.
 func (r *ExtractionResult) GetMetadataField(fieldName string) (*MetadataField, error) {
 	if fieldName == "" {
-		return nil, newValidationError("field name cannot be empty", nil)
+		return nil, newValidationErrorWithContext("field name cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	// Parse the metadata JSON to extract the field
 	metadataJSON, err := json.Marshal(r.Metadata)
 	if err != nil {
-		return nil, newSerializationError("failed to encode metadata", err)
+		return nil, newSerializationErrorWithContext("failed to encode metadata", err, ErrorCodeValidation, nil)
 	}
 
 	var metadataMap map[string]interface{}
 	if err := json.Unmarshal(metadataJSON, &metadataMap); err != nil {
-		return nil, newSerializationError("failed to parse metadata", err)
+		return nil, newSerializationErrorWithContext("failed to parse metadata", err, ErrorCodeValidation, nil)
 	}
 
 	// Handle simple field access (no nesting for now)
@@ -110,12 +110,12 @@ func (r *ExtractionResult) GetMetadataField(fieldName string) (*MetadataField, e
 // This is useful for passing results through FFI or storing them.
 func ResultToJSON(result *ExtractionResult) (string, error) {
 	if result == nil {
-		return "", newValidationError("result cannot be nil", nil)
+		return "", newValidationErrorWithContext("result cannot be nil", nil, ErrorCodeValidation, nil)
 	}
 
 	data, err := json.Marshal(result)
 	if err != nil {
-		return "", newSerializationError("failed to encode result", err)
+		return "", newSerializationErrorWithContext("failed to encode result", err, ErrorCodeValidation, nil)
 	}
 
 	return string(data), nil
@@ -125,12 +125,12 @@ func ResultToJSON(result *ExtractionResult) (string, error) {
 // This is the inverse of ResultToJSON.
 func ResultFromJSON(jsonStr string) (*ExtractionResult, error) {
 	if jsonStr == "" {
-		return nil, newValidationError("JSON string cannot be empty", nil)
+		return nil, newValidationErrorWithContext("JSON string cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	var result ExtractionResult
 	if err := json.Unmarshal([]byte(jsonStr), &result); err != nil {
-		return nil, newSerializationError("failed to decode result JSON", err)
+		return nil, newSerializationErrorWithContext("failed to decode result JSON", err, ErrorCodeValidation, nil)
 	}
 
 	return &result, nil

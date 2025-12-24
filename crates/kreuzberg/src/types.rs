@@ -245,10 +245,6 @@ pub struct Metadata {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub pages: Option<PageStructure>,
 
-    /// Document date (DEPRECATED - use created_at/modified_at instead)
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub date: Option<String>,
-
     /// Format-specific metadata (discriminated union)
     ///
     /// Contains detailed metadata specific to the document format.

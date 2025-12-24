@@ -71,7 +71,7 @@ impl OrgModeExtractor {
                 additional.insert("authors".to_string(), serde_json::json!(vec![value]));
             } else if let Some(rest) = trimmed.strip_prefix("#+DATE:") {
                 let value = rest.trim().to_string();
-                metadata.date = Some(value.clone());
+                metadata.created_at = Some(value.clone());
                 additional.insert("date".to_string(), serde_json::json!(value));
             } else if let Some(rest) = trimmed.strip_prefix("#+KEYWORDS:") {
                 let value = rest.trim();
@@ -376,7 +376,7 @@ mod tests {
         let org = Org::from_vec(&lines).expect("Failed to parse org");
         let (metadata, _) = OrgModeExtractor::extract_metadata_and_content(org_text, &org);
 
-        assert_eq!(metadata.date, Some("2024-01-15".to_string()));
+        assert_eq!(metadata.created_at, Some("2024-01-15".to_string()));
     }
 
     #[test]

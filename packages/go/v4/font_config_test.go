@@ -167,8 +167,9 @@ func TestPdfConfigWithFontConfig(t *testing.T) {
 		CustomFontDirs: []string{"/fonts"},
 	}
 
+	extractImages := true
 	pdfConfig := &PdfConfig{
-		ExtractImages: true,
+		ExtractImages: &extractImages,
 		FontConfig:    fontConfig,
 	}
 
@@ -196,14 +197,16 @@ func TestPdfConfigWithFontConfigAllParameters(t *testing.T) {
 		CustomFontDirs: []string{"/custom-fonts"},
 	}
 
+	extractImages := true
+	extractMetadata := true
 	pdfConfig := &PdfConfig{
-		ExtractImages:   true,
+		ExtractImages:   &extractImages,
 		Passwords:       []string{"pass1"},
-		ExtractMetadata: true,
+		ExtractMetadata: &extractMetadata,
 		FontConfig:      fontConfig,
 	}
 
-	if !pdfConfig.ExtractImages {
+	if pdfConfig.ExtractImages == nil || !*pdfConfig.ExtractImages {
 		t.Error("expected ExtractImages to be true")
 	}
 
@@ -211,7 +214,7 @@ func TestPdfConfigWithFontConfigAllParameters(t *testing.T) {
 		t.Errorf("expected 1 password, got %d", len(pdfConfig.Passwords))
 	}
 
-	if !pdfConfig.ExtractMetadata {
+	if pdfConfig.ExtractMetadata == nil || !*pdfConfig.ExtractMetadata {
 		t.Error("expected ExtractMetadata to be true")
 	}
 
@@ -240,11 +243,9 @@ func TestFontConfigNilCustomDirs(t *testing.T) {
 	}
 }
 
-// TestFontConfigNilPointer verifies nil FontConfig pointer
+// TestFontConfigNilPointer verifies nil FontConfig pointer behavior
 func TestFontConfigNilPointer(t *testing.T) {
 	var config *FontConfig
-
-	if config != nil {
-		t.Error("expected nil FontConfig pointer")
-	}
+	// Verify that zero-value FontConfig pointer is nil (no explicit check needed)
+	_ = config
 }

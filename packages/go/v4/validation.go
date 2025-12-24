@@ -16,7 +16,7 @@ import (
 // Valid values include "otsu", "adaptive", "sauvola", and others.
 func ValidateBinarizationMethod(method string) error {
 	if method == "" {
-		return newValidationError("binarization method cannot be empty", nil)
+		return newValidationErrorWithContext("binarization method cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	cMethod := C.CString(method)
@@ -24,7 +24,7 @@ func ValidateBinarizationMethod(method string) error {
 
 	result := int32(C.kreuzberg_validate_binarization_method(cMethod))
 	if result != 1 {
-		return newValidationError(fmt.Sprintf("invalid binarization method: %s", method), nil)
+		return newValidationErrorWithContext(fmt.Sprintf("invalid binarization method: %s", method), nil, ErrorCodeValidation, nil)
 	}
 	return nil
 }
@@ -33,7 +33,7 @@ func ValidateBinarizationMethod(method string) error {
 // Valid values include "tesseract", "easyocr", "paddleocr", and others.
 func ValidateOCRBackend(backend string) error {
 	if backend == "" {
-		return newValidationError("OCR backend cannot be empty", nil)
+		return newValidationErrorWithContext("OCR backend cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	cBackend := C.CString(backend)
@@ -41,7 +41,7 @@ func ValidateOCRBackend(backend string) error {
 
 	result := int32(C.kreuzberg_validate_ocr_backend(cBackend))
 	if result != 1 {
-		return newValidationError(fmt.Sprintf("invalid OCR backend: %s", backend), nil)
+		return newValidationErrorWithContext(fmt.Sprintf("invalid OCR backend: %s", backend), nil, ErrorCodeValidation, nil)
 	}
 	return nil
 }
@@ -50,7 +50,7 @@ func ValidateOCRBackend(backend string) error {
 // Accepts both 2-letter codes (e.g., "en", "de") and 3-letter codes (e.g., "eng", "deu").
 func ValidateLanguageCode(code string) error {
 	if code == "" {
-		return newValidationError("language code cannot be empty", nil)
+		return newValidationErrorWithContext("language code cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	cCode := C.CString(code)
@@ -58,7 +58,7 @@ func ValidateLanguageCode(code string) error {
 
 	result := int32(C.kreuzberg_validate_language_code(cCode))
 	if result != 1 {
-		return newValidationError(fmt.Sprintf("invalid language code: %s", code), nil)
+		return newValidationErrorWithContext(fmt.Sprintf("invalid language code: %s", code), nil, ErrorCodeValidation, nil)
 	}
 	return nil
 }
@@ -67,7 +67,7 @@ func ValidateLanguageCode(code string) error {
 // Valid values include "off", "light", "moderate", "aggressive", and others.
 func ValidateTokenReductionLevel(level string) error {
 	if level == "" {
-		return newValidationError("token reduction level cannot be empty", nil)
+		return newValidationErrorWithContext("token reduction level cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	cLevel := C.CString(level)
@@ -75,7 +75,7 @@ func ValidateTokenReductionLevel(level string) error {
 
 	result := int32(C.kreuzberg_validate_token_reduction_level(cLevel))
 	if result != 1 {
-		return newValidationError(fmt.Sprintf("invalid token reduction level: %s", level), nil)
+		return newValidationErrorWithContext(fmt.Sprintf("invalid token reduction level: %s", level), nil, ErrorCodeValidation, nil)
 	}
 	return nil
 }
@@ -85,7 +85,7 @@ func ValidateTokenReductionLevel(level string) error {
 func ValidateTesseractPSM(psm int) error {
 	result := int32(C.kreuzberg_validate_tesseract_psm(C.int32_t(psm)))
 	if result != 1 {
-		return newValidationError(fmt.Sprintf("invalid Tesseract PSM value: %d (valid range: 0-13)", psm), nil)
+		return newValidationErrorWithContext(fmt.Sprintf("invalid Tesseract PSM value: %d (valid range: 0-13)", psm), nil, ErrorCodeValidation, nil)
 	}
 	return nil
 }
@@ -95,7 +95,7 @@ func ValidateTesseractPSM(psm int) error {
 func ValidateTesseractOEM(oem int) error {
 	result := int32(C.kreuzberg_validate_tesseract_oem(C.int32_t(oem)))
 	if result != 1 {
-		return newValidationError(fmt.Sprintf("invalid Tesseract OEM value: %d (valid range: 0-3)", oem), nil)
+		return newValidationErrorWithContext(fmt.Sprintf("invalid Tesseract OEM value: %d (valid range: 0-3)", oem), nil, ErrorCodeValidation, nil)
 	}
 	return nil
 }
@@ -104,7 +104,7 @@ func ValidateTesseractOEM(oem int) error {
 // Valid values include "text", "markdown", "hocr", and others.
 func ValidateOutputFormat(format string) error {
 	if format == "" {
-		return newValidationError("output format cannot be empty", nil)
+		return newValidationErrorWithContext("output format cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	cFormat := C.CString(format)
@@ -112,7 +112,7 @@ func ValidateOutputFormat(format string) error {
 
 	result := int32(C.kreuzberg_validate_output_format(cFormat))
 	if result != 1 {
-		return newValidationError(fmt.Sprintf("invalid output format: %s", format), nil)
+		return newValidationErrorWithContext(fmt.Sprintf("invalid output format: %s", format), nil, ErrorCodeValidation, nil)
 	}
 	return nil
 }
@@ -122,7 +122,7 @@ func ValidateOutputFormat(format string) error {
 func ValidateConfidence(confidence float64) error {
 	result := int32(C.kreuzberg_validate_confidence(C.double(confidence)))
 	if result != 1 {
-		return newValidationError(fmt.Sprintf("invalid confidence threshold: %.2f (must be between 0.0 and 1.0)", confidence), nil)
+		return newValidationErrorWithContext(fmt.Sprintf("invalid confidence threshold: %.2f (must be between 0.0 and 1.0)", confidence), nil, ErrorCodeValidation, nil)
 	}
 	return nil
 }
@@ -132,7 +132,7 @@ func ValidateConfidence(confidence float64) error {
 func ValidateDPI(dpi int) error {
 	result := int32(C.kreuzberg_validate_dpi(C.int32_t(dpi)))
 	if result != 1 {
-		return newValidationError(fmt.Sprintf("invalid DPI value: %d (must be a positive integer)", dpi), nil)
+		return newValidationErrorWithContext(fmt.Sprintf("invalid DPI value: %d (must be a positive integer)", dpi), nil, ErrorCodeValidation, nil)
 	}
 	return nil
 }
@@ -141,18 +141,18 @@ func ValidateDPI(dpi int) error {
 // Checks that maxChars > 0 and maxOverlap < maxChars.
 func ValidateChunkingParams(maxChars int, maxOverlap int) error {
 	if maxChars <= 0 {
-		return newValidationError(fmt.Sprintf("invalid max_chars: %d (must be > 0)", maxChars), nil)
+		return newValidationErrorWithContext(fmt.Sprintf("invalid max_chars: %d (must be > 0)", maxChars), nil, ErrorCodeValidation, nil)
 	}
 	if maxOverlap < 0 {
-		return newValidationError(fmt.Sprintf("invalid max_overlap: %d (must be >= 0)", maxOverlap), nil)
+		return newValidationErrorWithContext(fmt.Sprintf("invalid max_overlap: %d (must be >= 0)", maxOverlap), nil, ErrorCodeValidation, nil)
 	}
 	if maxOverlap >= maxChars {
-		return newValidationError(fmt.Sprintf("invalid chunking parameters: max_overlap (%d) must be < max_chars (%d)", maxOverlap, maxChars), nil)
+		return newValidationErrorWithContext(fmt.Sprintf("invalid chunking parameters: max_overlap (%d) must be < max_chars (%d)", maxOverlap, maxChars), nil, ErrorCodeValidation, nil)
 	}
 
 	result := int32(C.kreuzberg_validate_chunking_params(C.uintptr_t(maxChars), C.uintptr_t(maxOverlap)))
 	if result != 1 {
-		return newValidationError(fmt.Sprintf("invalid chunking parameters: max_chars=%d, max_overlap=%d", maxChars, maxOverlap), nil)
+		return newValidationErrorWithContext(fmt.Sprintf("invalid chunking parameters: max_chars=%d, max_overlap=%d", maxChars, maxOverlap), nil, ErrorCodeValidation, nil)
 	}
 	return nil
 }
@@ -168,7 +168,7 @@ func GetValidBinarizationMethods() ([]string, error) {
 	jsonStr := C.GoString(ptr)
 	var methods []string
 	if err := json.Unmarshal([]byte(jsonStr), &methods); err != nil {
-		return nil, newSerializationError("failed to parse binarization methods list", err)
+		return nil, newSerializationErrorWithContext("failed to parse binarization methods list", err, ErrorCodeValidation, nil)
 	}
 	return methods, nil
 }
@@ -184,7 +184,7 @@ func GetValidLanguageCodes() ([]string, error) {
 	jsonStr := C.GoString(ptr)
 	var codes []string
 	if err := json.Unmarshal([]byte(jsonStr), &codes); err != nil {
-		return nil, newSerializationError("failed to parse language codes list", err)
+		return nil, newSerializationErrorWithContext("failed to parse language codes list", err, ErrorCodeValidation, nil)
 	}
 	return codes, nil
 }
@@ -200,7 +200,7 @@ func GetValidOCRBackends() ([]string, error) {
 	jsonStr := C.GoString(ptr)
 	var backends []string
 	if err := json.Unmarshal([]byte(jsonStr), &backends); err != nil {
-		return nil, newSerializationError("failed to parse OCR backends list", err)
+		return nil, newSerializationErrorWithContext("failed to parse OCR backends list", err, ErrorCodeValidation, nil)
 	}
 	return backends, nil
 }
@@ -216,7 +216,7 @@ func GetValidTokenReductionLevels() ([]string, error) {
 	jsonStr := C.GoString(ptr)
 	var levels []string
 	if err := json.Unmarshal([]byte(jsonStr), &levels); err != nil {
-		return nil, newSerializationError("failed to parse token reduction levels list", err)
+		return nil, newSerializationErrorWithContext("failed to parse token reduction levels list", err, ErrorCodeValidation, nil)
 	}
 	return levels, nil
 }

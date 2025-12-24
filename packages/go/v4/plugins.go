@@ -38,10 +38,10 @@ import (
 // `//export` in a cgo file) that follows the OcrBackendCallback contract.
 func RegisterOCRBackend(name string, callback C.OcrBackendCallback) error {
 	if name == "" {
-		return newValidationError("ocr backend name cannot be empty", nil)
+		return newValidationErrorWithContext("ocr backend name cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 	if callback == nil {
-		return newValidationError("ocr backend callback cannot be nil", nil)
+		return newValidationErrorWithContext("ocr backend callback cannot be nil", nil, ErrorCodeValidation, nil)
 	}
 
 	cName := C.CString(name)
@@ -59,10 +59,10 @@ func RegisterOCRBackend(name string, callback C.OcrBackendCallback) error {
 // `//export`).
 func RegisterPostProcessor(name string, priority int32, callback C.PostProcessorCallback) error {
 	if name == "" {
-		return newValidationError("post processor name cannot be empty", nil)
+		return newValidationErrorWithContext("post processor name cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 	if callback == nil {
-		return newValidationError("post processor callback cannot be nil", nil)
+		return newValidationErrorWithContext("post processor callback cannot be nil", nil, ErrorCodeValidation, nil)
 	}
 
 	cName := C.CString(name)
@@ -77,7 +77,7 @@ func RegisterPostProcessor(name string, priority int32, callback C.PostProcessor
 // UnregisterPostProcessor removes a previously registered post processor.
 func UnregisterPostProcessor(name string) error {
 	if name == "" {
-		return newValidationError("post processor name cannot be empty", nil)
+		return newValidationErrorWithContext("post processor name cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	cName := C.CString(name)
@@ -92,10 +92,10 @@ func UnregisterPostProcessor(name string) error {
 // RegisterValidator registers a Go-defined validator callback.
 func RegisterValidator(name string, priority int32, callback C.ValidatorCallback) error {
 	if name == "" {
-		return newValidationError("validator name cannot be empty", nil)
+		return newValidationErrorWithContext("validator name cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 	if callback == nil {
-		return newValidationError("validator callback cannot be nil", nil)
+		return newValidationErrorWithContext("validator callback cannot be nil", nil, ErrorCodeValidation, nil)
 	}
 
 	cName := C.CString(name)
@@ -110,7 +110,7 @@ func RegisterValidator(name string, priority int32, callback C.ValidatorCallback
 // UnregisterValidator deregisters a validator by name.
 func UnregisterValidator(name string) error {
 	if name == "" {
-		return newValidationError("validator name cannot be empty", nil)
+		return newValidationErrorWithContext("validator name cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	cName := C.CString(name)
@@ -133,7 +133,7 @@ func ListValidators() ([]string, error) {
 	jsonStr := C.GoString(listPtr)
 	var validators []string
 	if err := json.Unmarshal([]byte(jsonStr), &validators); err != nil {
-		return nil, newSerializationError("failed to parse validators list", err)
+		return nil, newSerializationErrorWithContext("failed to parse validators list", err, ErrorCodeValidation, nil)
 	}
 	return validators, nil
 }
@@ -157,7 +157,7 @@ func ListPostProcessors() ([]string, error) {
 	jsonStr := C.GoString(listPtr)
 	var processors []string
 	if err := json.Unmarshal([]byte(jsonStr), &processors); err != nil {
-		return nil, newSerializationError("failed to parse post-processors list", err)
+		return nil, newSerializationErrorWithContext("failed to parse post-processors list", err, ErrorCodeValidation, nil)
 	}
 	return processors, nil
 }
@@ -173,7 +173,7 @@ func ClearPostProcessors() error {
 // UnregisterOCRBackend removes a registered OCR backend by name.
 func UnregisterOCRBackend(name string) error {
 	if name == "" {
-		return newValidationError("ocr backend name cannot be empty", nil)
+		return newValidationErrorWithContext("ocr backend name cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	cName := C.CString(name)
@@ -196,7 +196,7 @@ func ListOCRBackends() ([]string, error) {
 	jsonStr := C.GoString(listPtr)
 	var backends []string
 	if err := json.Unmarshal([]byte(jsonStr), &backends); err != nil {
-		return nil, newSerializationError("failed to parse OCR backends list", err)
+		return nil, newSerializationErrorWithContext("failed to parse OCR backends list", err, ErrorCodeValidation, nil)
 	}
 	return backends, nil
 }
@@ -220,7 +220,7 @@ func ListDocumentExtractors() ([]string, error) {
 	jsonStr := C.GoString(listPtr)
 	var extractors []string
 	if err := json.Unmarshal([]byte(jsonStr), &extractors); err != nil {
-		return nil, newSerializationError("failed to parse document extractors list", err)
+		return nil, newSerializationErrorWithContext("failed to parse document extractors list", err, ErrorCodeValidation, nil)
 	}
 	return extractors, nil
 }
@@ -228,7 +228,7 @@ func ListDocumentExtractors() ([]string, error) {
 // UnregisterDocumentExtractor removes a registered document extractor by name.
 func UnregisterDocumentExtractor(name string) error {
 	if name == "" {
-		return newValidationError("document extractor name cannot be empty", nil)
+		return newValidationErrorWithContext("document extractor name cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	cName := C.CString(name)

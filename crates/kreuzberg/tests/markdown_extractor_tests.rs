@@ -45,7 +45,7 @@ async fn test_pandoc_baseline_yaml_fields() {
         result.metadata.additional.get("author").and_then(|v| v.as_str()),
         Some("John Doe")
     );
-    assert_eq!(result.metadata.date, Some("2024-01-15".to_string()));
+    assert_eq!(result.metadata.created_at, Some("2024-01-15".to_string()));
 
     assert!(result.metadata.additional.contains_key("keywords"));
     let keywords = result
@@ -318,7 +318,7 @@ async fn test_standard_yaml_metadata_fields() {
         result.metadata.additional.get("author").and_then(|v| v.as_str()),
         Some("Test Author")
     );
-    assert_eq!(result.metadata.date, Some("2024-12-06".to_string()));
+    assert_eq!(result.metadata.created_at, Some("2024-12-06".to_string()));
 }
 
 /// Test extraction of description field (maps to subject)

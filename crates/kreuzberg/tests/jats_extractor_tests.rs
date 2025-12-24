@@ -488,7 +488,7 @@ mod jats_extractor_tests {
         assert!(result.is_ok());
         let extraction = result.unwrap();
 
-        assert!(extraction.metadata.date.is_some());
+        assert!(extraction.metadata.created_at.is_some());
     }
 
     /// Test handling of empty/minimal JATS documents

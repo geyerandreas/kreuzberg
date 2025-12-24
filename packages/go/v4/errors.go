@@ -48,17 +48,6 @@ const (
 	ErrorCodeInternal          ErrorCode = 7
 )
 
-// Legacy error codes for backward compatibility (deprecated)
-const (
-	ErrorCodeSuccess         ErrorCode = 99
-	ErrorCodeGenericError    ErrorCode = 99
-	ErrorCodePanic           ErrorCode = 99
-	ErrorCodeInvalidArgument ErrorCode = 99
-	ErrorCodeIoError         ErrorCode = 99
-	ErrorCodeParsingError    ErrorCode = 99
-	ErrorCodeOcrError        ErrorCode = 99
-)
-
 // String returns the string representation of an ErrorCode.
 func (ec ErrorCode) String() string {
 	namePtr := C.kreuzberg_error_code_name(C.uint32_t(ec))
@@ -244,62 +233,6 @@ func newIOErrorWithContext(message string, cause error, code ErrorCode, panicCtx
 
 func newRuntimeErrorWithContext(message string, cause error, code ErrorCode, panicCtx *PanicContext) *RuntimeError {
 	return &RuntimeError{baseError: makeBaseError(ErrorKindRuntime, message, cause, code, panicCtx)}
-}
-
-// Backward compatibility wrappers for error constructors without context.
-// nolint:unused
-func newValidationError(message string, cause error) *ValidationError {
-	return newValidationErrorWithContext(message, cause, ErrorCodeInvalidArgument, nil)
-}
-
-// nolint:unused
-func newParsingError(message string, cause error) *ParsingError {
-	return newParsingErrorWithContext(message, cause, ErrorCodeParsingError, nil)
-}
-
-// nolint:unused
-func newOCRError(message string, cause error) *OCRError {
-	return newOCRErrorWithContext(message, cause, ErrorCodeOcrError, nil)
-}
-
-// nolint:unused
-func newCacheError(message string, cause error) *CacheError {
-	return newCacheErrorWithContext(message, cause, ErrorCodeGenericError, nil)
-}
-
-// nolint:unused
-func newImageProcessingError(message string, cause error) *ImageProcessingError {
-	return newImageProcessingErrorWithContext(message, cause, ErrorCodeGenericError, nil)
-}
-
-// nolint:unused
-func newSerializationError(message string, cause error) *SerializationError {
-	return newSerializationErrorWithContext(message, cause, ErrorCodeGenericError, nil)
-}
-
-// nolint:unused
-func newMissingDependencyError(dependency string, message string, cause error) *MissingDependencyError {
-	return newMissingDependencyErrorWithContext(dependency, message, cause, ErrorCodeMissingDependency, nil)
-}
-
-// nolint:unused
-func newPluginError(plugin string, message string, cause error) *PluginError {
-	return newPluginErrorWithContext(plugin, message, cause, ErrorCodeGenericError, nil)
-}
-
-// nolint:unused
-func newUnsupportedFormatError(format string, message string, cause error) *UnsupportedFormatError {
-	return newUnsupportedFormatErrorWithContext(format, message, cause, ErrorCodeGenericError, nil)
-}
-
-// nolint:unused
-func newIOError(message string, cause error) *IOError {
-	return newIOErrorWithContext(message, cause, ErrorCodeIoError, nil)
-}
-
-// nolint:unused
-func newRuntimeError(message string, cause error) *RuntimeError {
-	return newRuntimeErrorWithContext(message, cause, ErrorCodeGenericError, nil)
 }
 
 func messageWithFallback(message string, fallback string) string {

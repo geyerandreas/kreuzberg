@@ -393,7 +393,7 @@ impl DocumentExtractor for DocbookExtractor {
         }
 
         if let Some(date_val) = date {
-            metadata.date = Some(date_val);
+            metadata.created_at = Some(date_val);
         }
 
         Ok(ExtractionResult {

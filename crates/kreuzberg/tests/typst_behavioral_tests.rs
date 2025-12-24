@@ -787,7 +787,7 @@ async fn test_typst_metadata_field_completeness() {
 
     let has_title = result.metadata.additional.get("title").is_some();
     let has_author = result.metadata.additional.get("author").is_some();
-    let has_date = result.metadata.date.is_some();
+    let has_date = result.metadata.created_at.is_some();
 
     assert!(
         has_title && has_author && has_date,

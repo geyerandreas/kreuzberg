@@ -157,7 +157,7 @@ impl TypstParser {
         }
 
         if let Some(date) = self.extract_quoted_value("date") {
-            self.metadata.date = Some(date);
+            self.metadata.created_at = Some(date);
         }
 
         if let Some(subject) = self.extract_quoted_value("subject") {
@@ -606,7 +606,7 @@ $ a^2 + b^2 = c^2 $"#;
 
         assert!(metadata.additional.contains_key("title"), "Title should be extracted");
         assert!(metadata.additional.contains_key("author"), "Author should be extracted");
-        assert!(metadata.date.is_some(), "Date should be extracted");
+        assert!(metadata.created_at.is_some(), "Date should be extracted");
         assert!(
             metadata.additional.contains_key("subject"),
             "Subject should be extracted"

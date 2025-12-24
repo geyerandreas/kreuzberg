@@ -229,7 +229,7 @@ impl FictionBookExtractor {
                             if let Ok(Event::Text(t)) = reader.read_event() {
                                 let date = String::from_utf8_lossy(t.as_ref()).to_string();
                                 if !date.trim().is_empty() {
-                                    metadata.date = Some(date.trim().to_string());
+                                    metadata.created_at = Some(date.trim().to_string());
                                 }
                             }
                         }

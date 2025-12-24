@@ -526,7 +526,7 @@ impl DocumentExtractor for JatsExtractor {
         }
 
         if let Some(date) = &jats_metadata.publication_date {
-            metadata.date = Some(date.clone());
+            metadata.created_at = Some(date.clone());
             subject_parts.push(format!("Publication Date: {}", date));
         }
 

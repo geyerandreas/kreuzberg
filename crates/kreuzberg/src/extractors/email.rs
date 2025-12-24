@@ -77,7 +77,7 @@ impl SyncExtractor for EmailExtractor {
             metadata: Metadata {
                 format: Some(crate::types::FormatMetadata::Email(email_metadata)),
                 subject: email_result.subject.clone(),
-                date: email_result.date.clone(),
+                created_at: email_result.date.clone(),
                 additional,
                 ..Default::default()
             },

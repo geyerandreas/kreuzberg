@@ -85,7 +85,7 @@ impl MarkdownExtractor {
         }
 
         if let Some(date) = yaml.get("date").and_then(|v| v.as_str()) {
-            metadata.date = Some(date.to_string());
+            metadata.created_at = Some(date.to_string());
         }
 
         if let Some(keywords) = yaml.get("keywords") {
@@ -434,7 +434,7 @@ mod tests {
             metadata.additional.get("author").and_then(|v| v.as_str()),
             Some("John Doe")
         );
-        assert_eq!(metadata.date, Some("2024-01-15".to_string()));
+        assert_eq!(metadata.created_at, Some("2024-01-15".to_string()));
         assert!(metadata.subject.is_some());
         assert!(
             metadata
@@ -652,7 +652,7 @@ nested:
         let yaml: YamlValue = serde_yaml_ng::from_str(yaml_str).expect("Valid YAML");
         let metadata = MarkdownExtractor::extract_metadata_from_yaml(&yaml);
 
-        assert_eq!(metadata.date, Some("2024-01-15".to_string()));
+        assert_eq!(metadata.created_at, Some("2024-01-15".to_string()));
         assert_eq!(
             metadata.additional.get("title").and_then(|v| v.as_str()),
             Some("Test Document")

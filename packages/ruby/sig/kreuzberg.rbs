@@ -228,8 +228,6 @@ module Kreuzberg
       def normalize_config: [T] (T | Hash[Symbol, untyped] | nil value, Class klass) -> T?
     end
 
-    # Backwards compatibility alias
-    Ocr: singleton(OCR)
   end
 
   # Alias for Config::Extraction (for API consistency with other language bindings)

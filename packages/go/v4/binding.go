@@ -112,10 +112,10 @@ func ExtractFileSync(path string, config *ExtractionConfig) (*ExtractionResult, 
 // ExtractBytesSync extracts content and metadata from a byte array with the given MIME type.
 func ExtractBytesSync(data []byte, mimeType string, config *ExtractionConfig) (*ExtractionResult, error) {
 	if len(data) == 0 {
-		return nil, newValidationError("data cannot be empty", nil)
+		return nil, newValidationErrorWithContext("data cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 	if mimeType == "" {
-		return nil, newValidationError("mimeType is required", nil)
+		return nil, newValidationErrorWithContext("mimeType is required", nil, ErrorCodeValidation, nil)
 	}
 
 	buf := C.CBytes(data)
@@ -156,7 +156,7 @@ func BatchExtractFilesSync(paths []string, config *ExtractionConfig) ([]*Extract
 	cStrings := make([]*C.char, len(paths))
 	for i, path := range paths {
 		if path == "" {
-			return nil, newValidationError(fmt.Sprintf("path at index %d is empty", i), nil)
+			return nil, newValidationErrorWithContext(fmt.Sprintf("path at index %d is empty", i), nil, ErrorCodeValidation, nil)
 		}
 		cStrings[i] = C.CString(path)
 	}
@@ -194,10 +194,10 @@ func BatchExtractBytesSync(items []BytesWithMime, config *ExtractionConfig) ([]*
 
 	for i, item := range items {
 		if len(item.Data) == 0 {
-			return nil, newValidationError(fmt.Sprintf("data at index %d is empty", i), nil)
+			return nil, newValidationErrorWithContext(fmt.Sprintf("data at index %d is empty", i), nil, ErrorCodeValidation, nil)
 		}
 		if item.MimeType == "" {
-			return nil, newValidationError(fmt.Sprintf("mimeType at index %d is empty", i), nil)
+			return nil, newValidationErrorWithContext(fmt.Sprintf("mimeType at index %d is empty", i), nil, ErrorCodeValidation, nil)
 		}
 		buf := C.CBytes(item.Data)
 		cBuffers[i] = buf
@@ -317,15 +317,15 @@ func convertCResult(cRes *C.CExtractionResult) (*ExtractionResult, error) {
 	}
 
 	if err := decodeJSONCString(cRes.tables_json, &result.Tables); err != nil {
-		return nil, newSerializationError("failed to decode tables", err)
+		return nil, newSerializationErrorWithContext("failed to decode tables", err, ErrorCodeValidation, nil)
 	}
 
 	if err := decodeJSONCString(cRes.detected_languages_json, &result.DetectedLanguages); err != nil {
-		return nil, newSerializationError("failed to decode detected languages", err)
+		return nil, newSerializationErrorWithContext("failed to decode detected languages", err, ErrorCodeValidation, nil)
 	}
 
 	if err := decodeJSONCString(cRes.metadata_json, &result.Metadata); err != nil {
-		return nil, newSerializationError("failed to decode metadata", err)
+		return nil, newSerializationErrorWithContext("failed to decode metadata", err, ErrorCodeValidation, nil)
 	}
 
 	if result.Metadata.Language == nil && cRes.language != nil {
@@ -345,11 +345,11 @@ func convertCResult(cRes *C.CExtractionResult) (*ExtractionResult, error) {
 	}
 
 	if err := decodeJSONCString(cRes.chunks_json, &result.Chunks); err != nil {
-		return nil, newSerializationError("failed to decode chunks", err)
+		return nil, newSerializationErrorWithContext("failed to decode chunks", err, ErrorCodeValidation, nil)
 	}
 
 	if err := decodeJSONCString(cRes.images_json, &result.Images); err != nil {
-		return nil, newSerializationError("failed to decode images", err)
+		return nil, newSerializationErrorWithContext("failed to decode images", err, ErrorCodeValidation, nil)
 	}
 
 	return result, nil
@@ -394,7 +394,7 @@ func newConfigJSON(config *ExtractionConfig) (*C.char, func(), error) {
 	}
 	data, err := json.Marshal(config)
 	if err != nil {
-		return nil, nil, newSerializationError("failed to encode config", err)
+		return nil, nil, newSerializationErrorWithContext("failed to encode config", err, ErrorCodeValidation, nil)
 	}
 	if len(data) == 0 {
 		return nil, nil, nil
@@ -409,7 +409,7 @@ func newConfigJSON(config *ExtractionConfig) (*C.char, func(), error) {
 func lastError() error {
 	errPtr := C.kreuzberg_last_error()
 	if errPtr == nil {
-		return newRuntimeError("unknown error", nil)
+		return newRuntimeErrorWithContext("unknown error", nil, ErrorCodeInternal, nil)
 	}
 
 	errMsg := C.GoString(errPtr)
@@ -443,7 +443,7 @@ func stringPtr(value string) *string {
 // LoadExtractionConfigFromFile parses a TOML/YAML/JSON config file into an ExtractionConfig.
 func LoadExtractionConfigFromFile(path string) (*ExtractionConfig, error) {
 	if path == "" {
-		return nil, newValidationError("config path cannot be empty", nil)
+		return nil, newValidationErrorWithContext("config path cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	cPath := C.CString(path)
@@ -458,7 +458,7 @@ func LoadExtractionConfigFromFile(path string) (*ExtractionConfig, error) {
 	raw := C.GoString(ptr)
 	cfg := &ExtractionConfig{}
 	if err := json.Unmarshal([]byte(raw), cfg); err != nil {
-		return nil, newSerializationError("failed to decode config JSON", err)
+		return nil, newSerializationErrorWithContext("failed to decode config JSON", err, ErrorCodeValidation, nil)
 	}
 	return cfg, nil
 }
@@ -476,7 +476,7 @@ func ConfigDiscover() (*ExtractionConfig, error) {
 
 	currentDir, err := os.Getwd()
 	if err != nil {
-		return nil, newIOError("failed to get current directory", err)
+		return nil, newIOErrorWithContext("failed to get current directory", err, ErrorCodeIo, nil)
 	}
 
 	dir := currentDir
@@ -501,7 +501,7 @@ func ConfigDiscover() (*ExtractionConfig, error) {
 // DetectMimeType detects MIME type from byte content using magic bytes.
 func DetectMimeType(data []byte) (string, error) {
 	if len(data) == 0 {
-		return "", newValidationError("data cannot be empty", nil)
+		return "", newValidationErrorWithContext("data cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	buf := C.CBytes(data)
@@ -519,7 +519,7 @@ func DetectMimeType(data []byte) (string, error) {
 // DetectMimeTypeFromPath detects MIME type from a file path (checks extension and content).
 func DetectMimeTypeFromPath(path string) (string, error) {
 	if path == "" {
-		return "", newValidationError("path cannot be empty", nil)
+		return "", newValidationErrorWithContext("path cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	cPath := C.CString(path)
@@ -537,7 +537,7 @@ func DetectMimeTypeFromPath(path string) (string, error) {
 // GetExtensionsForMime returns file extensions associated with a MIME type.
 func GetExtensionsForMime(mimeType string) ([]string, error) {
 	if mimeType == "" {
-		return nil, newValidationError("mimeType cannot be empty", nil)
+		return nil, newValidationErrorWithContext("mimeType cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	cMime := C.CString(mimeType)
@@ -552,7 +552,7 @@ func GetExtensionsForMime(mimeType string) ([]string, error) {
 	jsonStr := C.GoString(ptr)
 	var extensions []string
 	if err := json.Unmarshal([]byte(jsonStr), &extensions); err != nil {
-		return nil, newSerializationError("failed to parse extensions list", err)
+		return nil, newSerializationErrorWithContext("failed to parse extensions list", err, ErrorCodeValidation, nil)
 	}
 	return extensions, nil
 }
@@ -560,7 +560,7 @@ func GetExtensionsForMime(mimeType string) ([]string, error) {
 // ValidateMimeType validates that the given MIME type is supported.
 func ValidateMimeType(mimeType string) (string, error) {
 	if mimeType == "" {
-		return "", newValidationError("mimeType cannot be empty", nil)
+		return "", newValidationErrorWithContext("mimeType cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	cMime := C.CString(mimeType)
@@ -599,7 +599,7 @@ func ListEmbeddingPresets() ([]string, error) {
 	}
 	var names []string
 	if err := json.Unmarshal([]byte(raw), &names); err != nil {
-		return nil, newSerializationError("failed to decode preset names", err)
+		return nil, newSerializationErrorWithContext("failed to decode preset names", err, ErrorCodeValidation, nil)
 	}
 	return names, nil
 }
@@ -607,7 +607,7 @@ func ListEmbeddingPresets() ([]string, error) {
 // GetEmbeddingPreset returns preset metadata by name.
 func GetEmbeddingPreset(name string) (*EmbeddingPreset, error) {
 	if name == "" {
-		return nil, newValidationError("preset name cannot be empty", nil)
+		return nil, newValidationErrorWithContext("preset name cannot be empty", nil, ErrorCodeValidation, nil)
 	}
 
 	cName := C.CString(name)
@@ -621,7 +621,7 @@ func GetEmbeddingPreset(name string) (*EmbeddingPreset, error) {
 
 	var preset EmbeddingPreset
 	if err := json.Unmarshal([]byte(C.GoString(ptr)), &preset); err != nil {
-		return nil, newSerializationError("failed to decode embedding preset", err)
+		return nil, newSerializationErrorWithContext("failed to decode embedding preset", err, ErrorCodeValidation, nil)
 	}
 	return &preset, nil
 }
