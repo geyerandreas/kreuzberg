@@ -54,10 +54,10 @@ char *kreuzberg_config_get_field(const ExtractionConfig *config, const char *fie
 int32_t kreuzberg_config_merge(ExtractionConfig *base, const ExtractionConfig *override_config);
 
 // Phase 1 Result Accessor FFI functions
-int32_t kreuzberg_result_get_page_count(const CExtractionResult *result);
-int32_t kreuzberg_result_get_chunk_count(const CExtractionResult *result);
-char *kreuzberg_result_get_detected_language(const CExtractionResult *result);
-CMetadataField kreuzberg_result_get_metadata_field(const CExtractionResult *result, const char *field_name);
+int32_t kreuzberg_result_get_page_count(const ExtractionResult *result);
+int32_t kreuzberg_result_get_chunk_count(const ExtractionResult *result);
+char *kreuzberg_result_get_detected_language(const ExtractionResult *result);
+struct CMetadataField kreuzberg_result_get_metadata_field(const ExtractionResult *result, const char *field_name);
 
 // Phase 2 Error Classification FFI functions
 uint32_t kreuzberg_error_code_count(void);

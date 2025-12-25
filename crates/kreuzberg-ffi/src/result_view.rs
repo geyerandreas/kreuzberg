@@ -420,7 +420,7 @@ mod tests {
         let mut metadata = Metadata::default();
         metadata.title = Some("Test Document".to_string());
         metadata.language = Some("en".to_string());
-        metadata.date = Some("2025-01-01".to_string());
+        metadata.created_at = Some("2025-01-01".to_string());
         metadata.subject = Some("Test Subject".to_string());
 
         let page_structure = PageStructure {

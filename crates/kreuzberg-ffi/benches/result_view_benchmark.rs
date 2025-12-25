@@ -9,7 +9,7 @@ fn create_test_result(content_size: usize, chunk_count: usize) -> ExtractionResu
     let mut metadata = Metadata::default();
     metadata.title = Some("Benchmark Test Document".to_string());
     metadata.language = Some("en".to_string());
-    metadata.date = Some("2025-01-01T00:00:00Z".to_string());
+    metadata.created_at = Some("2025-01-01T00:00:00Z".to_string());
     metadata.subject = Some("Performance Testing".to_string());
 
     let page_structure = PageStructure {

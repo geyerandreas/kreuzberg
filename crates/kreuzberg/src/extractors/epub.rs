@@ -385,7 +385,7 @@ impl EpubExtractor {
                         }
                         "date" => {
                             if let Some(text) = node.text() {
-                                metadata.date = Some(text.trim().to_string());
+                                metadata.created_at = Some(text.trim().to_string());
                             }
                         }
                         "language" => {
