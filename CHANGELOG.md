@@ -5,13 +5,14 @@ All notable changes to Kreuzberg will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [4.0.0-rc.20] - 2025-12-25
 
-## [4.0.0-rc.19] - 2025-12-25
+- **Font configuration API** - Configurable font provider with custom directory support and automatic path expansion
+
+## [4.0.0-rc.19] - 2025-12-24
 
 ### Added
 
-- **Font configuration API** - Configurable font provider with custom directory support and automatic path expansion
 - **Homebrew bottle support** - Pre-built macOS bottles for faster installation
 - **Environment variable configuration** - `KREUZBERG_MAX_REQUEST_BODY_BYTES` and `KREUZBERG_MAX_MULTIPART_FIELD_BYTES` for API size limits
 - **Config file caching** - Improved performance for TOML/YAML/JSON config file loading

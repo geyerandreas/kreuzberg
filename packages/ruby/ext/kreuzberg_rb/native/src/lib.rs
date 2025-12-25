@@ -670,6 +670,8 @@ fn parse_postprocessor_config(ruby: &Ruby, hash: RHash) -> Result<PostProcessorC
         enabled,
         enabled_processors,
         disabled_processors,
+        enabled_set: None,
+        disabled_set: None,
     };
 
     Ok(config)
