@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  kreuzberg-core:
+    image: goldziher/kreuzberg:4.0.0-rc.17-core
+    container_name: kreuzberg-core-test
+    ports:
+      - "8000:8000"
+    environment:
+      - RUST_LOG=info
+      - KREUZBERG_CACHE_DIR=/app/.kreuzberg
+    volumes:
+      - ./fixtures:/fixtures:ro
+      - kreuzberg-core-cache:/app/.kreuzberg
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    command: ["serve", "--host", "0.0.0.0", "--port", "8000"]
+    networks:
+      - kreuzberg-network
+    profiles:
+      - core
+      - all
+
+  kreuzberg-full:
+    image: goldziher/kreuzberg:4.0.0-rc.17
+    container_name: kreuzberg-full-test
+    ports:
+      - "8001:8000"
+    environment:
+      - RUST_LOG=info
+      - KREUZBERG_CACHE_DIR=/app/.kreuzberg
+    volumes:
+      - ./fixtures:/fixtures:ro
+      - kreuzberg-full-cache:/app/.kreuzberg
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    command: ["serve", "--host", "0.0.0.0", "--port", "8000"]
+    networks:
+      - kreuzberg-network
+    profiles:
+      - full
+      - all
+
+volumes:
+  kreuzberg-core-cache:
+  kreuzberg-full-cache:
+
+networks:
+  kreuzberg-network:
+    driver: bridge

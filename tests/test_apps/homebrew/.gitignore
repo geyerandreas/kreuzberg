@@ -1,0 +1,29 @@
+# Homebrew cache and artifacts
+.brew/
+Cellar/
+Caskroom/
+
+# Test artifacts
+test_documents/*.pdf
+*.log
+result.json
+test_output.json
+response.json
+test_report.txt
+
+# Temporary files
+/tmp/
+*.tmp
+*.pid
+.DS_Store
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Process management
+.server_pid
+.mcp_pid

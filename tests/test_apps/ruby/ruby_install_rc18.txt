@@ -1,0 +1,810 @@
+Fetching gem metadata from https://rubygems.org/.
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=websocket-driver version=0.8.0 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=strscan version=3.1.5 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=spikard version=0.3.5 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=spikard version=0.3.6 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=rbs version=4.0.0.dev.4 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=puma version=6.6.1 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=prism version=1.6.0 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=kreuzberg version=4.0.0.pre.rc.6 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=json version=2.15.2 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=json version=2.16.0 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=json version=2.17.0 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=json version=2.17.1 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=jaro_winkler version=1.6.1 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=html-to-markdown version=2.7.1 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=html-to-markdown version=2.8.1 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=html-to-markdown version=2.8.3 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=html-to-markdown version=2.9.1 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=html-to-markdown version=2.9.2 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=html-to-markdown version=2.11.1 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=html-to-markdown version=2.11.4 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=html-to-markdown version=2.12.0 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=html-to-markdown version=2.14.1 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=html-to-markdown version=2.14.2 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=eventmachine version=1.2.7 platform=ruby> because it is missing extensions
+Source rubygems repository https://rubygems.org/ or installed locally is ignoring #<Bundler::StubSpecification name=bigdecimal version=4.0.0 platform=ruby> because it is missing extensions
+Resolving dependencies...
+Fetching kreuzberg 4.0.0.pre.rc.18
+Installing kreuzberg 4.0.0.pre.rc.18 with native extensions
+Gem::Ext::BuildError: ERROR: Failed to build gem native extension.
+
+current directory:
+/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb
+/opt/homebrew/opt/ruby/bin/ruby extconf.rb
+Ignoring bigdecimal-4.0.0 because its extensions are not built. Try: gem
+pristine bigdecimal --version 4.0.0
+Ignoring eventmachine-1.2.7 because its extensions are not built. Try: gem
+pristine eventmachine --version 1.2.7
+Ignoring html-to-markdown-2.14.2 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.14.2
+Ignoring html-to-markdown-2.14.1 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.14.1
+Ignoring html-to-markdown-2.12.0 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.12.0
+Ignoring html-to-markdown-2.11.4 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.11.4
+Ignoring html-to-markdown-2.11.1 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.11.1
+Ignoring html-to-markdown-2.9.2 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.9.2
+Ignoring html-to-markdown-2.9.1 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.9.1
+Ignoring html-to-markdown-2.8.3 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.8.3
+Ignoring html-to-markdown-2.8.1 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.8.1
+Ignoring html-to-markdown-2.7.1 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.7.1
+Ignoring jaro_winkler-1.6.1 because its extensions are not built. Try: gem
+pristine jaro_winkler --version 1.6.1
+Ignoring json-2.17.1 because its extensions are not built. Try: gem pristine
+json --version 2.17.1
+Ignoring json-2.17.0 because its extensions are not built. Try: gem pristine
+json --version 2.17.0
+Ignoring json-2.16.0 because its extensions are not built. Try: gem pristine
+json --version 2.16.0
+Ignoring json-2.15.2 because its extensions are not built. Try: gem pristine
+json --version 2.15.2
+Ignoring kreuzberg-4.0.0.pre.rc.6 because its extensions are not built. Try: gem
+pristine kreuzberg --version 4.0.0.pre.rc.6
+Ignoring prism-1.6.0 because its extensions are not built. Try: gem pristine
+prism --version 1.6.0
+Ignoring puma-6.6.1 because its extensions are not built. Try: gem pristine puma
+--version 6.6.1
+Ignoring bigdecimal-4.0.0 because its extensions are not built. Try: gem
+pristine bigdecimal --version 4.0.0
+Ignoring eventmachine-1.2.7 because its extensions are not built. Try: gem
+pristine eventmachine --version 1.2.7
+Ignoring html-to-markdown-2.14.2 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.14.2
+Ignoring html-to-markdown-2.14.1 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.14.1
+Ignoring html-to-markdown-2.12.0 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.12.0
+Ignoring html-to-markdown-2.11.4 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.11.4
+Ignoring html-to-markdown-2.11.1 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.11.1
+Ignoring html-to-markdown-2.9.2 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.9.2
+Ignoring html-to-markdown-2.9.1 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.9.1
+Ignoring html-to-markdown-2.8.3 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.8.3
+Ignoring html-to-markdown-2.8.1 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.8.1
+Ignoring html-to-markdown-2.7.1 because its extensions are not built. Try: gem
+pristine html-to-markdown --version 2.7.1
+Ignoring jaro_winkler-1.6.1 because its extensions are not built. Try: gem
+pristine jaro_winkler --version 1.6.1
+Ignoring json-2.17.1 because its extensions are not built. Try: gem pristine
+json --version 2.17.1
+Ignoring json-2.17.0 because its extensions are not built. Try: gem pristine
+json --version 2.17.0
+Ignoring json-2.16.0 because its extensions are not built. Try: gem pristine
+json --version 2.16.0
+Ignoring json-2.15.2 because its extensions are not built. Try: gem pristine
+json --version 2.15.2
+Ignoring kreuzberg-4.0.0.pre.rc.6 because its extensions are not built. Try: gem
+pristine kreuzberg --version 4.0.0.pre.rc.6
+Ignoring prism-1.6.0 because its extensions are not built. Try: gem pristine
+prism --version 1.6.0
+Ignoring puma-6.6.1 because its extensions are not built. Try: gem pristine puma
+--version 6.6.1
+Ignoring rbs-4.0.0.dev.4 because its extensions are not built. Try: gem pristine
+rbs --version 4.0.0.dev.4
+Ignoring spikard-0.3.6 because its extensions are not built. Try: gem pristine
+spikard --version 0.3.6
+Ignoring spikard-0.3.5 because its extensions are not built. Try: gem pristine
+spikard --version 0.3.5
+Ignoring strscan-3.1.5 because its extensions are not built. Try: gem pristine
+strscan --version 3.1.5
+Ignoring websocket-driver-0.8.0 because its extensions are not built. Try: gem
+pristine websocket-driver --version 0.8.0
+checking for clang... yes
+checking for clang++... yes
+checking for ar... yes
+checking for cargo... yes
+checking for install_name_tool... yes
+
+current directory:
+/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb
+make -j15 DESTDIR\= sitearchdir\=./.gem.20251224-12080-st5584
+sitelibdir\=./.gem.20251224-12080-st5584 clean
+
+current directory:
+/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb
+make -j15 DESTDIR\= sitearchdir\=./.gem.20251224-12080-st5584
+sitelibdir\=./.gem.20251224-12080-st5584
+generating target/release/libkreuzberg_rb.dylib (release)
+cargo rustc  --manifest-path ./native/Cargo.toml --target-dir target --lib
+--profile release -- -C linker=clang -L
+native=/opt/homebrew/Cellar/ruby/3.4.8/lib -L
+native=/opt/homebrew/Cellar/libyaml/0.2.5/lib -L
+native=/opt/homebrew/Cellar/openssl@3/3.6.0/lib -C
+link-arg=-Wl,-undefined,dynamic_lookup -l pthread
+    Updating crates.io index
+     Locking 2 packages to latest Rust 1.91 compatible versions
+Updating kreuzberg v4.0.0-rc.17
+(/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/vendor/kreuzberg)
+-> v4.0.0-rc.18
+Updating kreuzberg-tesseract v4.0.0-rc.17
+(/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/vendor/kreuzberg-tesseract)
+-> v4.0.0-rc.18
+   Compiling proc-macro2 v1.0.103
+   Compiling unicode-ident v1.0.22
+   Compiling quote v1.0.42
+   Compiling libc v0.2.178
+   Compiling cfg-if v1.0.4
+   Compiling version_check v0.9.5
+   Compiling serde_core v1.0.228
+   Compiling shlex v1.3.0
+   Compiling memchr v2.7.6
+   Compiling find-msvc-tools v0.1.5
+   Compiling serde v1.0.228
+   Compiling itoa v1.0.15
+   Compiling typenum v1.19.0
+   Compiling smallvec v1.15.1
+   Compiling autocfg v1.5.0
+   Compiling once_cell v1.21.3
+   Compiling pkg-config v0.3.32
+   Compiling getrandom v0.3.4
+   Compiling crossbeam-utils v0.8.21
+   Compiling bytes v1.11.0
+   Compiling either v1.15.0
+   Compiling generic-array v0.14.7
+   Compiling log v0.4.29
+   Compiling num-traits v0.2.19
+   Compiling rayon-core v1.13.0
+   Compiling crc32fast v1.5.0
+   Compiling zerocopy v0.8.31
+   Compiling ryu v1.0.20
+   Compiling bitflags v2.10.0
+   Compiling allocator-api2 v0.2.21
+   Compiling equivalent v1.0.2
+   Compiling rustversion v1.0.22
+   Compiling icu_normalizer_data v2.1.1
+   Compiling pin-project-lite v0.2.16
+   Compiling icu_properties_data v2.1.1
+   Compiling parking_lot_core v0.9.12
+   Compiling stable_deref_trait v1.2.1
+   Compiling scopeguard v1.2.0
+   Compiling futures-core v0.3.31
+   Compiling lock_api v0.4.14
+   Compiling aho-corasick v1.1.4
+   Compiling regex-syntax v0.8.8
+   Compiling siphasher v1.0.1
+   Compiling foldhash v0.2.0
+   Compiling syn v2.0.111
+   Compiling crossbeam-epoch v0.9.18
+   Compiling regex-automata v0.4.13
+   Compiling httparse v1.10.1
+   Compiling jobserver v0.1.34
+   Compiling crossbeam-deque v0.8.6
+   Compiling cc v1.2.50
+   Compiling signal-hook-registry v1.4.7
+   Compiling rand_core v0.9.3
+   Compiling writeable v0.6.2
+   Compiling futures-sink v0.3.31
+   Compiling rayon v1.11.0
+   Compiling simd-adler32 v0.3.7
+   Compiling ring v0.17.14
+   Compiling percent-encoding v2.3.2
+   Compiling subtle v2.6.1
+   Compiling litemap v0.8.1
+   Compiling serde_json v1.0.145
+   Compiling core-foundation-sys v0.8.7
+   Compiling zlib-rs v0.5.2
+   Compiling adler2 v2.0.1
+   Compiling miniz_oxide v0.8.9
+   Compiling parking_lot v0.12.5
+   Compiling iana-time-zone v0.1.64
+   Compiling synstructure v0.13.2
+   Compiling futures-channel v0.3.31
+   Compiling foldhash v0.1.5
+   Compiling pin-utils v0.1.0
+   Compiling hashbrown v0.15.5
+   Compiling socket2 v0.6.1
+   Compiling mio v1.1.0
+   Compiling regex v1.12.2
+   Compiling http v1.4.0
+   Compiling object v0.32.2
+   Compiling hashbrown v0.16.1
+   Compiling serde_derive v1.0.228
+   Compiling zerofrom-derive v0.1.6
+   Compiling yoke-derive v0.8.1
+   Compiling zerovec-derive v0.11.2
+   Compiling displaydoc v0.2.5
+   Compiling zerocopy-derive v0.8.31
+   Compiling zeroize_derive v1.4.2
+   Compiling tracing-attributes v0.1.31
+   Compiling crypto-common v0.1.7
+   Compiling futures-macro v0.3.31
+   Compiling zerofrom v0.1.6
+   Compiling tokio-macros v2.6.0
+   Compiling indexmap v2.12.1
+   Compiling tracing-core v0.1.35
+   Compiling yoke v0.8.1
+   Compiling futures-io v0.3.31
+   Compiling bumpalo v3.19.0
+   Compiling thiserror v2.0.17
+   Compiling slab v0.4.11
+   Compiling futures-task v0.3.31
+   Compiling tokio v1.48.0
+   Compiling futures-util v0.3.31
+   Compiling bytemuck_derive v1.10.2
+   Compiling zerovec v0.11.5
+   Compiling zerotrie v0.2.3
+   Compiling thiserror-impl v2.0.17
+   Compiling zstd-sys v2.0.16+zstd.1.5.7
+   Compiling strsim v0.11.1
+   Compiling wasm-bindgen-shared v0.2.106
+   Compiling byteorder v1.5.0
+   Compiling ident_case v1.0.1
+   Compiling libz-rs-sys v0.5.2
+   Compiling bytemuck v1.24.0
+   Compiling flate2 v1.1.5
+   Compiling zeroize v1.8.2
+   Compiling ar_archive_writer v0.2.0
+   Compiling tinystr v0.8.2
+   Compiling psm v0.1.28
+   Compiling ppv-lite86 v0.2.21
+   Compiling rand_chacha v0.9.0
+   Compiling castaway v0.2.4
+   Compiling rand v0.9.2
+   Compiling icu_locale_core v2.1.1
+   Compiling potential_utf v0.1.4
+   Compiling icu_collections v2.1.1
+   Compiling uuid v1.19.0
+   Compiling static_assertions v1.1.0
+   Compiling icu_provider v2.1.1
+   Compiling signal-hook v0.3.18
+   Compiling array-init-cursor v0.2.1
+   Compiling planus v1.1.1
+   Compiling phf_shared v0.13.1
+   Compiling chrono v0.4.42
+   Compiling tracing v0.1.43
+   Compiling block-buffer v0.10.4
+   Compiling stacker v0.1.22
+   Compiling slotmap v1.0.7
+   Compiling heck v0.5.0
+   Compiling glob v0.3.3
+   Compiling compact_str v0.9.0
+   Compiling zstd-safe v7.2.4
+   Compiling fastrand v2.3.0
+   Compiling clang-sys v1.8.1
+   Compiling phf_generator v0.13.1
+   Compiling strum_macros v0.27.2
+   Compiling http-body v1.0.1
+   Compiling rustls-pki-types v1.13.1
+   Compiling digest v0.10.7
+   Compiling polars-arrow-format v0.2.1
+   Compiling form_urlencoded v1.2.2
+   Compiling lz4-sys v1.11.1+lz4-1.10.0
+   Compiling getrandom v0.2.16
+   Compiling polars-utils v0.52.0
+   Compiling utf8_iter v1.0.4
+   Compiling untrusted v0.9.0
+   Compiling simdutf8 v0.1.5
+   Compiling icu_properties v2.1.1
+   Compiling icu_normalizer v2.1.1
+   Compiling memmap2 v0.9.9
+   Compiling cpufeatures v0.2.17
+   Compiling phf_shared v0.12.1
+   Compiling raw-cpuid v11.6.0
+   Compiling polars-schema v0.52.0
+   Compiling encoding_rs v0.8.35
+   Compiling polars-error v0.52.0
+   Compiling minimal-lexical v0.2.1
+   Compiling try-lock v0.2.5
+   Compiling new_debug_unreachable v1.0.6
+   Compiling tower-service v0.3.3
+   Compiling rustls v0.23.35
+   Compiling chrono-tz v0.10.4
+   Compiling base64 v0.22.1
+   Compiling dyn-clone v1.0.20
+   Compiling nom v7.1.3
+   Compiling want v0.3.1
+   Compiling rustls-webpki v0.103.8
+   Compiling phf v0.12.1
+   Compiling idna_adapter v1.2.1
+   Compiling phf_codegen v0.13.1
+   Compiling string_cache_codegen v0.6.1
+   Compiling block-padding v0.3.3
+   Compiling libloading v0.8.9
+   Compiling polars-arrow v0.52.0
+   Compiling bindgen v0.69.5
+   Compiling fnv v1.0.7
+   Compiling atomic-waker v1.1.2
+   Compiling paste v1.0.15
+   Compiling itertools v0.12.1
+   Compiling hyper v1.8.1
+   Compiling darling_core v0.20.11
+   Compiling cexpr v0.6.0
+   Compiling inout v0.1.4
+   Compiling web_atoms v0.2.0
+   Compiling idna v1.1.0
+   Compiling wasm-bindgen-macro-support v0.2.106
+   Compiling sync_wrapper v1.0.2
+   Compiling wasm-bindgen v0.2.106
+   Compiling itertools v0.14.0
+   Compiling tower-layer v0.3.3
+   Compiling lazycell v1.3.0
+   Compiling portable-atomic v1.11.1
+   Compiling unicode-width v0.2.2
+   Compiling crc-catalog v2.4.0
+   Compiling rustc-hash v1.1.0
+   Compiling debug_unsafe v0.1.3
+   Compiling powerfmt v0.2.0
+   Compiling ipnet v2.11.0
+   Compiling lz4 v1.28.1
+   Compiling mac v0.1.1
+   Compiling ethnum v1.5.2
+   Compiling lazy_static v1.5.0
+   Compiling streaming-iterator v0.1.9
+   Compiling precomputed-hash v0.1.1
+   Compiling hyper-util v0.1.18
+   Compiling string_cache v0.9.0
+   Compiling futf v0.1.5
+   Compiling darling_macro v0.20.11
+   Compiling deranged v0.5.5
+   Compiling atoi_simd v0.16.1
+   Compiling crc v3.3.0
+   Compiling tower v0.5.2
+   Compiling cipher v0.4.4
+   Compiling url v2.5.7
+   Compiling wasm-bindgen-macro v0.2.106
+   Compiling phf v0.13.1
+   Compiling sha2 v0.10.9
+   Compiling http-body-util v0.1.3
+   Compiling hmac v0.12.1
+   Compiling webpki-roots v1.0.4
+   Compiling matrixmultiply v0.3.10
+   Compiling polars-compute v0.52.0
+   Compiling utf-8 v0.7.6
+   Compiling num-conv v0.1.0
+   Compiling fast-float2 v0.2.3
+   Compiling weezl v0.1.12
+   Compiling shell-words v1.1.0
+   Compiling httpdate v1.0.3
+   Compiling iri-string v0.7.9
+   Compiling time-core v0.1.6
+   Compiling libbz2-rs-sys v0.2.2
+   Compiling time v0.3.44
+   Compiling tokio-rustls v0.26.4
+   Compiling zstd v0.13.3
+   Compiling hyper-rustls v0.27.7
+   Compiling bzip2 v0.6.1
+   Compiling zopfli v0.8.3
+   Compiling tendril v0.4.3
+   Compiling pbkdf2 v0.12.2
+   Compiling lzma-rust2 v0.15.4
+   Compiling aes v0.8.4
+   Compiling darling v0.20.11
+   Compiling serde_urlencoded v0.7.1
+   Compiling tower-http v0.6.8
+   Compiling sha1 v0.10.6
+   Compiling fax_derive v0.2.0
+   Compiling rb-sys-build v0.9.119
+   Compiling onig_sys v69.9.1
+   Compiling ahash v0.8.12
+   Compiling zune-core v0.4.12
+   Compiling ppmd-rust v1.3.0
+   Compiling matchgen v0.3.1
+   Compiling boxcar v0.2.14
+   Compiling winnow v0.7.14
+   Compiling libm v0.2.15
+   Compiling ucd-trie v0.1.7
+   Compiling quick-error v2.0.1
+   Compiling strength_reduce v0.2.4
+   Compiling constant_time_eq v0.3.1
+   Compiling rawpointer v0.2.1
+   Compiling tinyvec_macros v0.1.1
+   Compiling icu_locale_data v2.1.1
+   Compiling anyhow v1.0.100
+   Compiling mime v0.3.17
+   Compiling deflate64 v0.1.10
+   Compiling derive_builder_core v0.20.2
+   Compiling tinyvec v1.10.0
+   Compiling zip v7.0.0
+   Compiling js-sys v0.3.83
+   Compiling pest v2.8.4
+   Compiling htmlize v1.0.6
+   Compiling zune-jpeg v0.4.21
+   Compiling fax v0.2.6
+Compiling rb-sys v0.9.119
+(/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/vendor/rb-sys)
+   Compiling reqwest v0.12.26
+   Compiling markup5ever v0.36.1
+   Compiling futures-executor v0.3.31
+   Compiling half v2.7.1
+   Compiling darling_core v0.23.0
+   Compiling fdeflate v0.3.7
+   Compiling num-integer v0.1.46
+   Compiling pxfm v0.1.26
+   Compiling num-complex v0.4.6
+   Compiling cmake v0.1.57
+   Compiling ort-sys v2.0.0-rc.10
+   Compiling polars-core v0.52.0
+   Compiling multer v3.1.0
+   Compiling unicode-segmentation v1.12.0
+   Compiling ref-cast v1.0.25
+   Compiling zune-core v0.5.0
+   Compiling icu_segmenter_data v2.1.1
+   Compiling option-ext v0.2.0
+   Compiling rustix v1.1.2
+   Compiling rb-sys-env v0.2.2
+   Compiling thiserror v1.0.69
+   Compiling color_quant v1.1.0
+   Compiling bit-vec v0.8.0
+   Compiling byteorder-lite v0.1.0
+   Compiling esaxx-rs v0.1.10
+   Compiling bit-set v0.8.0
+   Compiling image-webp v0.2.4
+   Compiling gif v0.14.0
+   Compiling dirs-sys v0.5.0
+   Compiling zune-jpeg v0.5.5
+   Compiling web-sys v0.3.83
+   Compiling darling_macro v0.23.0
+Compiling kreuzberg-tesseract v4.0.0-rc.18
+(/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/vendor/kreuzberg-tesseract)
+   Compiling png v0.18.0
+   Compiling pest_meta v2.8.4
+   Compiling moxcms v0.7.10
+   Compiling tiff v0.10.3
+   Compiling derive_builder_macro v0.20.2
+   Compiling unicode-normalization v0.1.25
+   Compiling webpki-roots v0.26.11
+   Compiling console v0.15.11
+   Compiling tokio-stream v0.1.17
+   Compiling toml_datetime v0.6.11
+   Compiling serde_spanned v0.6.9
+   Compiling socks v0.3.4
+   Compiling thiserror-impl v1.0.69
+   Compiling ref-cast-impl v1.0.25
+   Compiling monostate-impl v0.1.18
+   Compiling serde_derive_internals v0.28.0
+   Compiling serde_derive_internals v0.29.1
+   Compiling errno v0.3.14
+   Compiling toml_write v0.1.2
+   Compiling spin v0.9.8
+   Compiling number_prefix v0.4.0
+   Compiling macro_rules_attribute-proc_macro v0.2.2
+   Compiling pulldown-cmark v0.13.0
+   Compiling radium v0.7.0
+   Compiling pastey v0.1.1
+   Compiling unicase v2.8.1
+   Compiling base64 v0.13.1
+   Compiling xxhash-rust v0.8.15
+   Compiling schemars_derive v1.1.0
+   Compiling tsify-macros v0.4.5
+   Compiling spm_precompiled v0.1.4
+   Compiling mime_guess v2.0.5
+   Compiling macro_rules_attribute v0.2.2
+   Compiling indicatif v0.17.11
+   Compiling toml_edit v0.22.27
+   Compiling gloo-utils v0.1.7
+   Compiling monostate v0.1.18
+   Compiling ureq v2.12.1
+   Compiling core_maths v0.1.1
+   Compiling icu_locale v2.1.1
+   Compiling derive_builder v0.20.2
+   Compiling pest_generator v2.8.4
+   Compiling darling v0.23.0
+   Compiling dirs v6.0.0
+   Compiling fancy-regex v0.14.0
+   Compiling sharded-slab v0.1.7
+   Compiling ndarray v0.16.1
+   Compiling xml5ever v0.36.1
+   Compiling image v0.25.9
+   Compiling html5ever v0.36.1
+   Compiling onig v6.5.1
+   Compiling axum-core v0.5.5
+   Compiling cbc v0.1.2
+   Compiling rayon-cond v0.4.0
+   Compiling getopts v0.2.24
+   Compiling strum v0.27.2
+   Compiling opentelemetry v0.31.0
+   Compiling dary_heap v0.3.8
+   Compiling axum-macros v0.5.0
+   Compiling derive_utils v0.15.0
+   Compiling serde_path_to_error v0.1.20
+   Compiling nom v8.0.0
+   Compiling polars v0.52.0
+   Compiling unicode-normalization-alignments v0.1.12
+   Compiling thread_local v1.1.9
+   Compiling unicode-math-class v0.1.0
+   Compiling litrs v1.0.0
+   Compiling thin-vec v0.2.14
+   Compiling tap v1.0.1
+   Compiling matchit v0.8.4
+   Compiling smallvec v2.0.0-alpha.10
+   Compiling bytecount v0.6.9
+   Compiling utf8-width v0.1.8
+   Compiling home v0.5.12
+   Compiling rustc-hash v2.1.1
+   Compiling unicode-bidi v0.3.18
+   Compiling pdfium-render v0.8.37
+   Compiling pulldown-cmark-escape v0.11.0
+   Compiling unicode-properties v0.1.4
+   Compiling unscanny v0.1.0
+   Compiling piston-float v1.0.1
+   Compiling unicode_categories v0.1.1
+   Compiling vecmath v1.0.0
+   Compiling tokenizers v0.22.2
+   Compiling stringprep v0.1.5
+   Compiling typst-utils v0.14.1
+   Compiling cfb v0.7.3
+   Compiling segtok v0.1.5
+   Compiling ort v2.0.0-rc.10
+   Compiling nom_locate v5.0.0
+   Compiling html-escape v0.2.13
+   Compiling axum v0.8.7
+   Compiling wyz v0.5.1
+   Compiling document-features v0.2.12
+   Compiling tracing-subscriber v0.3.22
+   Compiling opentelemetry_sdk v0.31.0
+   Compiling auto_enums v0.8.7
+   Compiling markup5ever_rcdom v0.36.0+unofficial
+   Compiling toml v0.8.23
+   Compiling rmcp-macros v0.12.0
+   Compiling hf-hub v0.4.3
+Compiling magnus v0.9.0
+(https://github.com/matsadler/magnus?rev=f6db11769efb517427bf7f121f9c32e18b059b38#f6db1176)
+   Compiling icu_segmenter v2.1.1
+   Compiling pest_derive v2.8.4
+   Compiling xattr v1.6.1
+   Compiling schemars v1.1.0
+   Compiling tsify v0.4.5
+   Compiling document_tree v0.4.2
+   Compiling zip v4.6.1
+   Compiling toml_parser v1.0.6+spec-1.1.0
+   Compiling futures v0.3.31
+   Compiling sse-stream v0.2.1
+   Compiling ecb v0.1.2
+   Compiling rmp v0.8.14
+Compiling kreuzberg v4.0.0-rc.18
+(/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/vendor/kreuzberg)
+   Compiling quick-xml v0.38.4
+   Compiling codepage v0.1.2
+   Compiling md-5 v0.10.6
+   Compiling tokio-util v0.7.17
+   Compiling language-tags v0.3.2
+   Compiling quick-xml v0.30.0
+   Compiling ecow v0.2.6
+   Compiling typst-timing v0.14.1
+   Compiling hex v0.4.3
+   Compiling zip v0.6.6
+   Compiling utf16string v0.2.0
+   Compiling tracing-log v0.2.0
+   Compiling hashify v0.2.7
+   Compiling async-trait v0.1.89
+   Compiling streaming-stats v0.2.3
+   Compiling filetime v0.2.26
+   Compiling toml_datetime v0.7.5+spec-1.1.0
+   Compiling serde_spanned v1.0.4
+   Compiling quick-xml v0.36.2
+   Compiling astral-tl v0.7.11
+   Compiling libloading v0.9.0
+   Compiling pastey v0.2.1
+   Compiling outref v0.5.2
+   Compiling vsimd v0.8.0
+   Compiling rangemap v1.7.0
+   Compiling unicode-script v0.5.8
+   Compiling ttf-parser v0.25.1
+   Compiling funty v2.0.0
+   Compiling levenshtein v1.0.5
+   Compiling jiff v0.2.16
+   Compiling polars-dtype v0.52.0
+   Compiling mutate_once v0.1.2
+   Compiling maybe-owned v0.3.4
+   Compiling unsafe-libyaml v0.2.11
+   Compiling hashbrown v0.14.5
+   Compiling roman-numerals-rs v3.1.0
+   Compiling toml_writer v1.0.6+spec-1.1.0
+   Compiling toml v0.9.10+spec-1.1.0
+   Compiling dashmap v6.1.0
+   Compiling serde_yaml_ng v0.10.0
+   Compiling biblatex v0.11.0
+   Compiling kamadak-exif v0.6.1
+   Compiling bitvec v1.0.1
+   Compiling typst-syntax v0.14.1
+   Compiling yake-rust v1.0.3
+   Compiling base64-simd v0.8.0
+   Compiling docx-lite v0.2.0
+   Compiling rmcp v0.12.0
+   Compiling lopdf v0.38.0
+   Compiling html-to-markdown-rs v2.15.0
+   Compiling fb2 v0.4.4
+   Compiling polars-row v0.52.0
+   Compiling tar v0.4.44
+   Compiling mail-parser v0.11.1
+   Compiling calamine v0.32.0
+   Compiling tracing-opentelemetry v0.32.0
+   Compiling msg_parser v0.1.1
+   Compiling fastembed v5.5.0
+   Compiling rst_parser v0.4.2
+   Compiling rmp-serde v1.3.0
+   Compiling rtf-parser v0.4.2
+   Compiling text-splitter v0.28.0
+   Compiling fast_image_resize v5.4.0
+   Compiling infer v0.19.0
+   Compiling sevenz-rust2 v0.20.0
+   Compiling rake v0.3.6
+   Compiling ndarray v0.17.1
+   Compiling chardetng v0.1.17
+   Compiling whatlang v0.18.0
+Compiling magnus-macros v0.9.0
+(https://github.com/matsadler/magnus?rev=f6db11769efb517427bf7f121f9c32e18b059b38#f6db1176)
+   Compiling num_cpus v1.17.0
+   Compiling roxmltree v0.21.1
+   Compiling org v0.3.1
+Compiling kreuzberg-rb v4.0.0-rc.18
+(/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/native)
+   Compiling seq-macro v0.3.6
+warning: kreuzberg-tesseract@4.0.0-rc.18: custom_out_dir:
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/tesseract-rs-cache"
+warning: kreuzberg-tesseract@4.0.0-rc.18: Downloading leptonica from
+https://codeload.github.com/DanBloomberg/leptonica/zip/refs/tags/1.86.0
+warning: kreuzberg-tesseract@4.0.0-rc.18: Downloaded 14280125 bytes for
+leptonica
+warning: kreuzberg-tesseract@4.0.0-rc.18: Downloading tesseract from
+https://codeload.github.com/tesseract-ocr/tesseract/zip/refs/tags/5.5.1
+warning: kreuzberg-tesseract@4.0.0-rc.18: Downloaded 2465561 bytes for tesseract
+warning: kreuzberg-tesseract@4.0.0-rc.18: Found leptonica library at:
+/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/tesseract-rs-cache/leptonica/lib/libleptonica.a
+warning: kreuzberg-tesseract@4.0.0-rc.18: Library already available at expected
+location:
+/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/tesseract-rs-cache/leptonica/lib/libleptonica.a
+warning: kreuzberg-tesseract@4.0.0-rc.18: Cached leptonica library for
+aarch64-apple-darwin
+warning: kreuzberg-tesseract@4.0.0-rc.18: Linking with library (static linking):
+leptonica
+warning: kreuzberg-tesseract@4.0.0-rc.18: Found tesseract library at:
+/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/tesseract-rs-cache/tesseract/lib/libtesseract.a
+warning: kreuzberg-tesseract@4.0.0-rc.18: Library already available at expected
+location:
+/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/tesseract-rs-cache/tesseract/lib/libtesseract.a
+warning: kreuzberg-tesseract@4.0.0-rc.18: Cached tesseract library for
+aarch64-apple-darwin
+warning: kreuzberg-tesseract@4.0.0-rc.18: Linking with library (static linking):
+tesseract
+warning: kreuzberg-tesseract@4.0.0-rc.18: Leptonica include dir:
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/tesseract-rs-cache/leptonica/include"
+warning: kreuzberg-tesseract@4.0.0-rc.18: Leptonica lib dir:
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/tesseract-rs-cache/leptonica/lib"
+warning: kreuzberg-tesseract@4.0.0-rc.18: Tesseract install dir:
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/tesseract-rs-cache/tesseract"
+warning: kreuzberg-tesseract@4.0.0-rc.18: Tessdata dir:
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/tesseract-rs-cache"
+   Compiling polars-io v0.52.0
+error: linking with `clang` failed: exit status: 1
+  |
+= note:  "clang" "-Wl,-exported_symbols_list"
+"-Wl,/var/folders/88/hg20130j1lv82jbjnvw0yq5m0000gn/T/rustcWT9t9N/list"
+"/var/folders/88/hg20130j1lv82jbjnvw0yq5m0000gn/T/rustcWT9t9N/symbols.o" "<17
+object files omitted>" "-lpthread" "-lkreuzberg_ffi"
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/release/deps/{libmagnus-14654ff962d6854a,librb_sys-dc11d8a107a715a0,libkreuzberg-36e7318899f89fe6,libdashmap-d88e07d8ee887bf9,libhashbrown-a17b838667bcb8f0,libdocx_lite-8b33f23bb01366ff,libzip-f0bd0f86d95afff7,libquick_xml-0454af11d0907c6d,libmsg_parser-86487aed08dfa31e,libthiserror-8b885be5bd76fbf5,libhex-4b0a2a405f749057,librmp_serde-23ec11b96ef4b717,librmp-0c4a4642fddf60a0,libinfer-bebdf0d78fddac66,libcfb-90997405381c040c,libfnv-c4c36710933d185b,libmime_guess-88888b5d03890bf3,libnum_cpus-5e2772ee2685c9f5,libtoml-2806cbdf0adfd6fa,libtoml_writer-e5d13a97399ca2ed,libtoml_parser-49b9f5f3b9a39fc5,libwinnow-dd5f2ba12509c64f,libserde_spanned-604984abb4134766,libtoml_datetime-7f77f0d8511d3d8a,liblopdf-ae3c5550899527ad,libttf_parser-0e3045d6bd50e392,libstringprep-cb0ab44179aab869,libunicode_properties-9c4e6d79d3fbbe74,libunicode_bidi-6a46e46c2a993bab,libecb-ac18231993000ab0,libnom_locate-a01abbd047d79452,libbytecount-c9974d50fdfbfb04,libnom-a755fab88d177660,librangemap-ec9a6352ab07ba4e,libjiff-8041439f115839ad,libmd5-11dcd52b051f0510,libkreuzberg_tesseract-0ba852db91af78cc,librake-bdf77bea48b9ad46,libyake_rust-d34fc479ef4d5443,liblevenshtein-3dcbb3a77897f1f1,libsegtok-08293145d71ab3f5,libhtmlize-b300f480e6634a7f,libfancy_regex-14ce11f4ec5996be,libbit_set-9d956114ecc7eb9d,libbit_vec-312949d22a247654,libstats-55654b4de3b5f9bc,libwhatlang-72c77b8047ed47b2,libfast_image_resize-1570f53a624c6fcf,liblazy_static-f26eeb73f4807ba4,libfastembed-93db8c740f045a67,libort-cf276b4383de4de5,liblibloading-0d44b4cea9275729,libort_sys-1b0d7ef64c3c911c,libndarray-149a5af4989c72bd,libmatrixmultiply-4a7f7d037a750331,libnum_complex-56b4dd968d90218c,libnum_integer-c6cbde8550bd80b4,librawpointer-caeb10c519b17685,libsmallvec-54c83197ab5a7e2a,libtokenizers-8b546f1a0c8dbc05,libesaxx_rs-c3750edbaaf97272,libunicode_normalization_alignments-c33d0ac1a21ede21,libspm_precompiled-8ad79980ba7bafbb,libbase64-5ab7e65d01c094d0,libunicode_segmentation-fee995a1a64c3513,libnom-ed31d0aa1c67140d,libunicode_categories-5d94f5b9dd039b7a,libdary_heap-19e4bd2ed3ad03f4,libmonostate-ecf375bf9f9e8bc0,libmacro_rules_attribute-fea659244e5771c4,librayon_cond-80c80789ab3ca3b5,libonig-9bacf1137769e0e8,libonig_sys-aa20ef78c0147f07,libderive_builder-e22d488ec0aa7e75,libhf_hub-8f579ab82e535ad3,libdirs-89423a666ce0c957,libdirs_sys-7d7aa5d54448e936,liboption_ext-84cf71cdb225ae72,libureq-ec8d89479661eff8,libwebpki_roots-10f2fc9a75f65106,libwebpki_roots-0e0969a30ef6f71d,libsocks-0e889854113e9cb9,liburl-95107c2b449bbffa,libidna-0aacd545e68f69b8,libidna_adapter-e9e73565f8be8f30,libicu_properties-5bddcfe6803cb5fc,libicu_properties_data-8d2175b53737928c,libicu_normalizer-7993629d59e5de45,libicu_normalizer_data-817ba07f39f9f061,librustls-c9b839b5f0c140b4,libwebpki-781483e4488ce1d4,libring-cbf12a0580747262,libgetrandom-57f43f1e4144e7cb,libuntrusted-39409f02a1cf9f3e,librustls_pki_types-89e0f96bcd13c448,libindicatif-80671937b9c7657b,libportable_atomic-85cb940675331892,libnumber_prefix-e75597ff481a6adb,libconsole-e01d311a9ab06ba7,libunicode_width-b92003d6bbb48266,libanyhow-837c5794c0915e96,libtext_splitter-85c57921bd6bb8d4,libicu_segmenter-ff04b71c5cb428cc,libicu_locale-eb1716b768a62cac,libicu_locale_data-316a4e17b49372ad,libicu_segmenter_data-086a82be9e15f5af,libutf8_iter-1a2c8e5c136804ef,libcore_maths-2c4e316aecd530e3,liblibm-29d717512ffb0e4f,libicu_collections-2b6490d5408b4445,libpotential_utf-003190ef11bd4520,libicu_provider-d4a6dd1aa28c4222,libicu_locale_core-14c5dd65490d29cb,libtinystr-e99a1032a1d7260b,liblitemap-c1b9999ae59d0077,libwriteable-7cd1453afcea7eb6,libzerovec-033c32c6dd941434,libzerotrie-570ace4b9849c85d,libyoke-e3ba98093f023141,libstable_deref_trait-4fabe89405ea3881,libzerofrom-e496b4fa691a4726,libbitvec-b4cac315ec3f299d,libwyz-ade655418886e2d3,libtap-480a7236d1d0f05c,libradium-ad0f835e79261576,libfunty-28f85aa34d0f0a51,librmcp-c51bd9f4b10bfd11,libsse_stream-ba928c54cb448f90,libtokio_stream-09cf4df52d3971de,libtokio_util-073b65b7ecc1cfe1,libfutures-eea35e788adcd111,libfutures_executor-05ba2e25c87dd6ad,libschemars-39c234a754b9cc8b,libref_cast-0f7429e789219eaf,libtower_http-32f1c67e2a088e17,libiri_string-c5879646a939239e,libaxum-3d15a8170e626cc6,libmulter-ca17ed5d0697c47c,libspin-dd23a874862ab464,libserde_path_to_error-7c94867c0b212811,libserde_urlencoded-a98977de2eb71b44,libform_urlencoded-36ca36ed35cba435,libhyper_util-f75ca5c49b943225,libipnet-56b9eb51103799d9,libhyper-66da3f976d2891ba,libwant-58d26d4e36fcec7f,libtry_lock-192cdf0d69db95f7,libhttparse-a0376752591d7016,libatomic_waker-f632f150939054f0,libhttpdate-8060a7558837bdbc,libmatchit-cd9daa6e8a2d2589,libaxum_core-30516a8f63b4fab9,libmime-009f005f35fd611a,libhttp_body_util-bc2291694208220f,libhttp_body-0d4bdeed7088aa56,libhttp-c6d6170693fdf61e,libtracing-346189850c0bfaf3,libtracing_core-f50df9d9bf773e47,libtower-da3fe386c8626dff,libsync_wrapper-26478d60b4258e50,libfutures_util-eed123d36d15fa4f,libfutures_io-71e5fda30da29217,libslab-3facccf61f9db94f,libfutures_channel-e98899bd0dca72e2,libfutures_sink-f907cb12fac914b8,libfutures_task-19c2fdf8ab565294,libpin_utils-240b6606362d1332,libtower_layer-3e24d9e8313cc11f,libfutures_core-4e8f5b5ef003b0f6,libtower_service-d95e342ed1bd0758,libchardetng-83be4f024e9650ec,libpdfium_render-51ef740b1078c1c9,libutf16string-e79b297e44ef770f,libitertools-8bb103ab4eaf333a,libvecmath-8ffc34301ef2a8f8,libfloat-8a6e44ab8092f7b8,liblibloading-ee5938b91ab4198e,liborg-4c428e8994c0c84f,libserde_yaml_ng-f889d9d464a62e1b,libunsafe_libyaml-cec434fc0d35b189,libpulldown_cmark-f2d9aa26fceb8457,libunicase-688c2326484c69e3,libpulldown_cmark_escape-d9bc0b14da3f4a0e,libbiblatex-31ea8ef61205af9e,libroman_numerals_rs-ede1b064f3119828,libunicode_normalization-6f4ad189369610df,libtinyvec-8dd918d66cc2b739,libtinyvec_macros-7627264e204f6dc9,libunscanny-b4a43b74e86e1cc9,libstrum-aa1e272e37832b21,libpolars-88c6155b5e4ce6c1,libpolars_io-034b902c0c0777ea,libpercent_encoding-14e8f7784a07811c,libglob-e6332f63e166d234,libhome-b154fb2cc832c675,libpolars_core-bd98689b38b2007c,libxxhash_rust-7c840305e1bbf42e,libpolars_row-7821cb6340b6c233,libpolars_dtype-449ea0374a496e03,libboxcar-07e812b524d8db1e,libpolars_compute-0557ee5433bd4273,libstrength_reduce-41e38156af21e7e6,libpolars_arrow-a5e8416d0327936e,libpolars_schema-c0aeccd670fe4bc0,libchrono_tz-fce3d298d40a9a8d,libphf-444c76d645eb1d64,libphf_shared-d907bb269f09901b,liblz4-092c6893a4aa8fd3,liblz4_sys-a5d4913e80fb12eb,libethnum-62a0cd6253e990d8,libdyn_clone-0cbba2bd9eeb9e03,libstreaming_iterator-b99cee2659dcd368,libpolars_utils-e6d2a2fa58c84e88,libcompact_str-a75116ba68e74b7e,libstatic_assertions-c47a9429481b4837,libcastaway-99237cc12d57020c,librand-dfa39d22b6a1f03b,librand_chacha-e715199a61343d07,libppv_lite86-518ce19d8f728d08,librand_core-d36f89732e141f58,libmemmap2-bbb90400d087dc97,libuuid-d23107dc6828077a,libpolars_error-9c0024e2667e7575,libpolars_arrow_format-641e6e0aefe28aee,libplanus-c1c31881a52768d6,libarray_init_cursor-2961bb5e92ea027b,libhashbrown-9013754addaddf3e,libfoldhash-3ef37b0ba0a227c1,libsimdutf8-24e510c62dabe040,libsignal_hook-6c87bba2403b3100,libslotmap-414b9f5dabbf3d91,libroxmltree-0ecdcfa6cf14506d,libcalamine-bdc2deb79936b250,libfast_float2-98a9a22621634fda,libatoi_simd-ccf6a0a5026a2564,libdebug_unsafe-34f2c89600df2460,libcodepage-40cda46f02d4a80c,libbyteorder-bfb0dfef2030f5f8,libzip-46f7db16e96c4902,libchrono-e953d37f32338202,libiana_time_zone-29a8ed449c797f25,libcore_foundation_sys-367f724f17029ce0,libquick_xml-bf53eb092c12c2b8,libmail_parser-4bbc0a10b6d44cc1,libencoding_rs-c60654900f641fff,libzip-8f1755abd3e32931,libdeflate64-951cf9c61371b5b5,libpbkdf2-73f9ab39ec0be0c2,libzstd-67d8a0c160ee66f9,libzstd_safe-bac808954bf0e06e,libzstd_sys-51f1e86fb410cc02,libzopfli-e972edd75c2ebdd5,libbumpalo-4068e03ce9a4b75a,libtime-6db6ddf1501c0919,libtime_core-2084227966bd849c,libnum_conv-1d3cd12a795f8a53,libderanged-ac24415f7ff16cf7,libpowerfmt-71acd632597a29c7,libindexmap-3e3237c332793e88,libhashbrown-ec56494c7f6e9d3c,libequivalent-0d50177ab313d7b1,liballocator_api2-600536043c287533,libfoldhash-5c06937eeaccae12,libzeroize-1c4cd16fecf2740d,libsha1-fea1ff62c9ef7631,libhmac-9d5f44852d64080a,libconstant_time_eq-5d1af95b8672c2bc,libtar-0fe0c2e4354ec4a0,libxattr-5c75f25a360579ee,librustix-3fe19fd18356d1bf,liberrno-4644d5514f5d5229,libfiletime-4fa4528f5866b423,libsevenz_rust2-30776ff09032affc,libcbc-00c85107a430be80,libbzip2-fba998b481b50ad2,liblibbz2_rs_sys-67e26b381cc7ef61,libaes-27ea608e5cfdd252,libcipher-a35b8597f8bab814,libinout-1e14415c433101be,libblock_padding-64c51df177e002a2,libppmd_rust-4001a434afac5b5c,liblzma_rust2-c63a7afe894238a5,libcrc-7003077e5c2d827b,libcrc_catalog-9c7a495feb7b3060,libsha2-e8e661b7d6355999,libdigest-45840cc78dd86ae9,libsubtle-74a10a6d5b622436,libblock_buffer-5afc0003f14d9ddc,libcrypto_common-13f10a8487e4fc9a,libgeneric_array-5bf520dd5d207bca,libtypenum-e2e8234f9179a96d,libexif-ee18f9e5fa30cadf,libmutate_once-051f2935b419e4e8,libserde_json-4cf9badf4e801bd3,libitoa-8655181f4e5e2833,libryu-71b023433133f502,libtokio-c35419984f7dbab4,libsignal_hook_registry-406fa993a1041384,libsocket2-329e9203a40562ec,libbytes-2f623fb733083c18,libmio-42aad839a80e4c30,libpin_project_lite-c31755dd0f32e66e,libahash-8d285a497ff8b8d0,libgetrandom-8c7081895d9251fe,libhtml_to_markdown_rs-384f49ae7d1319f6,libhtml_escape-138b0d88a8a8d134,libutf8_width-97d1c3e52bebfe70,libimage-f0a629ee92587619,libimage_webp-4773060656ed4aab,libbytemuck-370f79f433b23cf6,libmoxcms-1a5a88ea93cf6342,libpxfm-30d969f4a8525d2f,librayon-1f4a8a627ad80d90,librayon_core-ad2c89362a638a68,libcrossbeam_deque-520419faa6539458,libcrossbeam_epoch-e63fdf52a0c7c431,libcrossbeam_utils-f87d246dfb366010,libeither-00762c444f8fcdc6,libtiff-6200f61b6eb03002,libfax-0511c7f5e4d97506,libquick_error-42f6a26a02ffff0b,libzune_jpeg-3da5d5b7dc026c23,libzune_core-6292ababb0912dd1,libhalf-6be0bce0a0079f9f,libzerocopy-a52c919f4c051f13,libpng-d7a410870d9440a8,libbitflags-2a5af9f508ae6b55,libflate2-e01d102a8c710039,liblibz_rs_sys-a31e972f73432363,libzlib_rs-1755e99019155721,libfdeflate-16ce434c02eb9750,libsimd_adler32-5411f7b7846c41b7,libcrc32fast-752d353a1651ef1d,libzune_jpeg-2c7239857bf1910f,libzune_core-221247d135e86207,libgif-4509ca9856b6b9ea,libcolor_quant-39717d0f4bdbd6d8,libweezl-94c7be62d5de6f06,libbyteorder_lite-4727cf83ec5b95a0,libnum_traits-08a6bfbf8c4d3a9b,libtl-7d80bec8b3b4ce8a,libregex-0a55384c1523c7e4,libregex_automata-5bba23914369f634,libaho_corasick-0fb263988b20590c,libmemchr-52be9682b21c8053,libregex_syntax-1b4ea813834e6a81,libonce_cell-ec70e270c6619e6a,libthiserror-2a6e3ed9f3e5f2e1,libbase64-23ac21a3527a302b,libmarkup5ever_rcdom-6de04b78e798d98f,libhtml5ever-e31fa2bf976a8038,liblog-3ade471a8a7671e0,libmarkup5ever-3e721d79a2c8c66f,libtendril-1c86c7c017e82535,libutf8-9822cc988714692c,libfutf-e565f12055b46ab1,libmac-3563c2784532370b,libweb_atoms-7a4101b095ead34c,libstring_cache-163cb85beed0f15e,libprecomputed_hash-d42c3c45f722549d,libserde-be9a2738002a670b,libserde_core-14a2235eb3a3c4c0,libparking_lot-7cfe0acaad54bce6,libparking_lot_core-52f112e403e678a5,liblibc-501dcdde854ea14a,libcfg_if-508f515f7a19ea56,libsmallvec-738c2c2552ee818e,liblock_api-cda9c2c894d0a494,libscopeguard-e5ddecdd13398348,libdebug_unreachable-fa18be3a44b06a5b,libphf-2ba6c7cb3e88d44b,libphf_shared-c12ed30384313af8,libsiphasher-59f6e730a64167e6}.rlib"
+"<sysroot>/lib/rustlib/aarch64-apple-darwin/lib/{libstd-*,libpanic_unwind-*,libobject-*,libmemchr-*,libaddr2line-*,libgimli-*,libcfg_if-*,librustc_demangle-*,libstd_detect-*,libhashbrown-*,librustc_std_workspace_alloc-*,libminiz_oxide-*,libadler2-*,libunwind-*,liblibc-*,librustc_std_workspace_core-*,liballoc-*,libcore-*,libcompiler_builtins-*}.rlib"
+"-framework" "CoreFoundation" "-framework" "CoreGraphics" "-framework"
+"CoreText" "-framework" "AppKit" "-lc++" "-lc++" "-lonnxruntime" "-framework"
+"CoreFoundation" "-liconv" "-lSystem" "-lc" "-lm" "-arch" "arm64"
+"-mmacosx-version-min=11.0.0" "-L" "/opt/homebrew/Cellar/ruby/3.4.8/lib" "-L"
+"/opt/homebrew/Cellar/libyaml/0.2.5/lib" "-L"
+"/opt/homebrew/Cellar/openssl@3/3.6.0/lib" "-L"
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/release/build/ring-20858087406449b2/out"
+"-L"
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/release/build/onig_sys-67d10db688cc33ac/out"
+"-L"
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/release/build/kreuzberg-tesseract-718cf7323342ed53/out"
+"-L"
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/release/build/lz4-sys-511a8d0b43dc5b68/out"
+"-L"
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/release/build/psm-b532b588b4a28e9e/out"
+"-L"
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/release/build/zstd-sys-c22fdacfeef63f29/out"
+"-L" "/Users/naamanhirschfeld/.gem/target/release" "-L"
+"/Users/naamanhirschfeld/.gem/target/aarch64-apple-darwin/release" "-L"
+"/opt/homebrew/Cellar/onnxruntime/1.22.2_7/lib" "-L"
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/tesseract-rs-cache/leptonica/lib"
+"-L"
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/tesseract-rs-cache/tesseract/lib"
+"-o"
+"/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18/ext/kreuzberg_rb/target/release/deps/libkreuzberg_rb.dylib"
+"-Wl,-dead_strip" "-dynamiclib" "-nodefaultlibs" "-Wl,-undefined,dynamic_lookup"
+"-Wl,-undefined,dynamic_lookup" "-Wl,-rpath,@loader_path"
+= note: some arguments are omitted. use `--verbose` to show all linker
+arguments
+  = note: ld: warning: ignoring duplicate libraries: '-lc++'
+ld: warning: search path '/Users/naamanhirschfeld/.gem/target/release'
+not found
+ld: warning: search path
+'/Users/naamanhirschfeld/.gem/target/aarch64-apple-darwin/release' not found
+          ld: library 'kreuzberg_ffi' not found
+clang: error: linker command failed with exit code 1 (use -v to see
+invocation)
+
+
+error: could not compile `kreuzberg-rb` (lib) due to 1 previous error
+make: *** [target/release/libkreuzberg_rb.dylib] Error 101
+
+make failed, exit code 2
+
+Gem files will remain installed in
+/Users/naamanhirschfeld/.gem/gems/kreuzberg-4.0.0.pre.rc.18 for inspection.
+Results logged to
+/Users/naamanhirschfeld/.gem/extensions/arm64-darwin-25/3.4.0/kreuzberg-4.0.0.pre.rc.18/gem_make.out
+
+/opt/homebrew/Cellar/ruby/3.4.8/lib/ruby/3.4.0/rubygems/ext/builder.rb:139:in
+'Gem::Ext::Builder.run'
+/opt/homebrew/Cellar/ruby/3.4.8/lib/ruby/3.4.0/rubygems/ext/builder.rb:65:in
+'block in Gem::Ext::Builder.make'
+/opt/homebrew/Cellar/ruby/3.4.8/lib/ruby/3.4.0/rubygems/ext/builder.rb:57:in
+'Array#each'
+/opt/homebrew/Cellar/ruby/3.4.8/lib/ruby/3.4.0/rubygems/ext/builder.rb:57:in
+'Gem::Ext::Builder.make'
+/opt/homebrew/Cellar/ruby/3.4.8/lib/ruby/3.4.0/rubygems/ext/ext_conf_builder.rb:44:in
+'Gem::Ext::ExtConfBuilder.build'
+/opt/homebrew/Cellar/ruby/3.4.8/lib/ruby/3.4.0/rubygems/ext/builder.rb:221:in
+'Gem::Ext::Builder#build_extension'
+/opt/homebrew/Cellar/ruby/3.4.8/lib/ruby/3.4.0/rubygems/ext/builder.rb:255:in
+'block in Gem::Ext::Builder#build_extensions'
+/opt/homebrew/Cellar/ruby/3.4.8/lib/ruby/3.4.0/rubygems/ext/builder.rb:252:in
+'Array#each'
+/opt/homebrew/Cellar/ruby/3.4.8/lib/ruby/3.4.0/rubygems/ext/builder.rb:252:in
+'Gem::Ext::Builder#build_extensions'
+/opt/homebrew/Cellar/ruby/3.4.8/lib/ruby/3.4.0/rubygems/installer.rb:809:in
+'Gem::Installer#build_extensions'
+/Users/naamanhirschfeld/.gem/gems/bundler-4.0.3/lib/bundler/rubygems_gem_installer.rb:115:in
+'Bundler::RubyGemsGemInstaller#build_extensions'
+/Users/naamanhirschfeld/.gem/gems/bundler-4.0.3/lib/bundler/rubygems_gem_installer.rb:30:in
+'Bundler::RubyGemsGemInstaller#install'
+/Users/naamanhirschfeld/.gem/gems/bundler-4.0.3/lib/bundler/source/rubygems.rb:217:in
+'block in Bundler::Source::Rubygems#install'
+  /opt/homebrew/Cellar/ruby/3.4.8/lib/ruby/3.4.0/rubygems.rb:1051:in 'Gem.time'
+/Users/naamanhirschfeld/.gem/gems/bundler-4.0.3/lib/bundler/source/rubygems.rb:216:in
+'Bundler::Source::Rubygems#install'
+/Users/naamanhirschfeld/.gem/gems/bundler-4.0.3/lib/bundler/installer/gem_installer.rb:54:in
+'Bundler::GemInstaller#install'
+/Users/naamanhirschfeld/.gem/gems/bundler-4.0.3/lib/bundler/installer/gem_installer.rb:17:in
+'Bundler::GemInstaller#install_from_spec'
+/Users/naamanhirschfeld/.gem/gems/bundler-4.0.3/lib/bundler/installer/parallel_installer.rb:133:in
+'Bundler::ParallelInstaller#do_install'
+/Users/naamanhirschfeld/.gem/gems/bundler-4.0.3/lib/bundler/installer/parallel_installer.rb:124:in
+'block in Bundler::ParallelInstaller#worker_pool'
+/Users/naamanhirschfeld/.gem/gems/bundler-4.0.3/lib/bundler/worker.rb:62:in
+'Bundler::Worker#apply_func'
+/Users/naamanhirschfeld/.gem/gems/bundler-4.0.3/lib/bundler/worker.rb:57:in
+'block in Bundler::Worker#process_queue'
+  <internal:kernel>:168:in 'Kernel#loop'
+/Users/naamanhirschfeld/.gem/gems/bundler-4.0.3/lib/bundler/worker.rb:54:in
+'Bundler::Worker#process_queue'
+/Users/naamanhirschfeld/.gem/gems/bundler-4.0.3/lib/bundler/worker.rb:90:in
+'block (2 levels) in Bundler::Worker#create_threads'
+
+An error occurred while installing kreuzberg (4.0.0.pre.rc.18), and Bundler
+cannot continue.
+
+In Gemfile:
+  kreuzberg

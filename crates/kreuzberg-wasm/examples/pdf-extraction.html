@@ -93,7 +93,7 @@
         let pdfiumInitialized = false;
 
         // Make functions available globally
-        window.initializeKreuzberg = async function() {
+        window.initializeKreuzberg = async () => {
             const statusEl = document.getElementById('initStatus');
             const btn = document.getElementById('initBtn');
 
@@ -116,7 +116,7 @@
             }
         };
 
-        window.initializePdfium = async function() {
+        window.initializePdfium = async () => {
             const statusEl = document.getElementById('pdfiumStatus');
             const btn = document.getElementById('pdfiumBtn');
 
@@ -151,7 +151,7 @@
             }
         };
 
-        window.extractPDF = async function() {
+        window.extractPDF = async () => {
             const fileInput = document.getElementById('fileInput');
             const statusEl = document.getElementById('extractStatus');
             const resultEl = document.getElementById('result');

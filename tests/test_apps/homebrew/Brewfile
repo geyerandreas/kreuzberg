@@ -1,0 +1,15 @@
+# Homebrew dependencies for Kreuzberg test suite
+# Install with: brew bundle
+
+# Kreuzberg itself
+brew "kreuzberg"
+
+# Utilities used in test scripts
+brew "curl"      # HTTP client (usually pre-installed)
+
+# Optional but useful for JSON parsing in tests
+tap "stedolan/jq"
+brew "jq"
+
+# Optional: useful for process management
+brew "gnu-sed"   # For advanced text processing if needed

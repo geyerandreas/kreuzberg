@@ -1,0 +1,177 @@
+[hOCR] Detected table structure: 7 rows × 3 columns
+[hOCR] Detected table structure: 7 rows × 3 columns
+[hOCR] Detected table structure: 7 rows × 3 columns
+[hOCR] Detected table structure: 7 rows × 3 columns
+[hOCR] Detected table structure: 7 rows × 3 columns
+[hOCR] Detected table structure: 7 rows × 3 columns
+[hOCR] Detected table structure: 7 rows × 3 columns
+[hOCR] Detected table structure: 7 rows × 3 columns
+[hOCR] Detected table structure: 7 rows × 3 columns
+[hOCR] Detected table structure: 7 rows × 3 columns
+[hOCR] Detected table structure: 7 rows × 3 columns
+[hOCR] Detected table structure: 7 rows × 3 columns
+================================================================================
+KREUZBERG PYTHON BINDINGS COMPREHENSIVE TEST SUITE
+================================================================================
+✓ ALL IMPORTS SUCCESSFUL (Kreuzberg v4.0.0rc17)
+================================================================================
+
+[SECTION 1] Configuration Classes
+--------------------------------------------------------------------------------
+  ✓ ExtractionConfig() default construction
+  ✓ ExtractionConfig() with force_ocr
+  ✓ OcrConfig() construction
+  ✓ OcrConfig() with tesseract backend
+  ✓ PdfConfig() construction
+  ✓ PageConfig() construction
+  ✓ PageConfig() with extract_pages=True
+  ✓ ChunkingConfig() construction
+  ✓ EmbeddingConfig() construction
+  ✓ EmbeddingModelType.preset('fast')
+  ✓ EmbeddingModelType.preset('balanced')
+  ✓ ImageExtractionConfig() construction
+  ✓ ImagePreprocessingConfig() construction
+  ✓ TesseractConfig() construction
+  ✓ TokenReductionConfig() construction
+  ✓ LanguageDetectionConfig() construction
+  ✓ KeywordConfig() construction
+  ✓ KeywordAlgorithm enum access
+  ✓ YakeParams() construction
+  ✓ RakeParams() construction
+  ✓ PostProcessorConfig() construction
+
+[SECTION 2] Exception Classes
+--------------------------------------------------------------------------------
+  ✓ KreuzbergError base exception
+  ✓ ValidationError inherits from KreuzbergError
+  ✓ ParsingError inherits from KreuzbergError
+  ✓ OCRError inherits from KreuzbergError
+  ✓ MissingDependencyError inherits from KreuzbergError
+  ✓ CacheError inherits from KreuzbergError
+  ✓ ImageProcessingError inherits from KreuzbergError
+  ✓ PluginError inherits from KreuzbergError
+  ✓ ErrorCode enum exists
+  ✓ PanicContext dataclass exists
+
+[SECTION 3] Core Extraction Functions - Sync
+--------------------------------------------------------------------------------
+  ✓ extract_file_sync() with PDF
+  ✓ extract_file_sync() with DOCX
+  ✓ extract_file_sync() with XLSX
+  ✓ extract_bytes_sync() with PDF bytes
+
+[SECTION 4] Core Extraction Functions - Async
+--------------------------------------------------------------------------------
+  ✓ extract_file() with PDF
+  ✓ extract_file() with DOCX
+  ✓ extract_bytes() with PDF bytes
+
+[SECTION 5] Batch Extraction Functions
+--------------------------------------------------------------------------------
+  ✓ batch_extract_files_sync() with multiple files
+  ✓ batch_extract_bytes_sync() with multiple bytes
+  ✓ batch_extract_files() async
+  ✓ batch_extract_bytes() async
+
+[SECTION 6] MIME Type Functions
+--------------------------------------------------------------------------------
+  ✓ detect_mime_type() with PDF bytes
+  ✓ detect_mime_type_from_path() with PDF
+  ✗ validate_mime_type() with valid type
+  ✓ get_extensions_for_mime() for PDF
+
+[SECTION 7] Result Object Validation
+--------------------------------------------------------------------------------
+  ✓ ExtractionResult.content is string
+  ✓ ExtractionResult.mime_type is correct
+  ✓ ExtractionResult.metadata is dict
+  ✓ ExtractionResult.tables is list
+  ✓ ExtractionResult.__repr__() works
+  ✓ ExtractionResult.pages is not None when enabled
+  ✓ ExtractionResult.pages iteration works
+  ✓ ExtractionResult.metadata contains extraction_duration
+  ✓ ExtractionResult.tables contains ExtractedTable instances
+
+[SECTION 8] Plugin Registry Functions
+--------------------------------------------------------------------------------
+  ✓ list_ocr_backends() returns list
+  ✓ list_post_processors() returns list
+  ✓ list_validators() returns list
+  ✓ list_document_extractors() returns list
+  ✗ register_ocr_backend() with mock backend
+  ✓ unregister_ocr_backend() removes backend
+  ✗ register_post_processor() with mock processor
+  ✓ unregister_post_processor() removes processor
+  ✗ register_validator() with mock validator
+  ✓ unregister_validator() removes validator
+
+[SECTION 9] Embedding Preset Functions
+--------------------------------------------------------------------------------
+  ✓ list_embedding_presets() returns 4 presets
+  ✓ get_embedding_preset('fast') returns preset
+  ✓ get_embedding_preset('balanced') returns preset
+  ✓ get_embedding_preset('invalid') returns None
+
+[SECTION 10] Config Utility Functions
+--------------------------------------------------------------------------------
+  ✓ config_to_json() serializes config
+  ✗ config_merge() merges two configs
+  ✓ config_get_field() retrieves config value
+
+[SECTION 11] Validation Functions
+--------------------------------------------------------------------------------
+  ✓ validate_binarization_method('otsu') returns True
+  ✓ validate_binarization_method('invalid') returns False
+  ✓ validate_ocr_backend('tesseract') returns True
+  ✓ validate_language_code('eng') returns True
+  ✓ validate_token_reduction_level('moderate') returns True
+  ✓ validate_tesseract_psm(6) returns True
+  ✓ validate_tesseract_psm(99) returns False
+  ✓ validate_tesseract_oem(3) returns True
+  ✓ validate_output_format('markdown') returns True
+  ✓ validate_confidence(0.8) returns True
+  ✓ validate_confidence(1.5) returns False
+  ✓ validate_dpi(300) returns True
+  ✓ validate_chunking_params(1000, 200) returns True
+  ✓ validate_chunking_params(100, 200) returns False (overlap > max)
+  ✓ get_valid_binarization_methods() returns list
+  ✓ get_valid_language_codes() returns list
+  ✓ get_valid_ocr_backends() returns list
+  ✓ get_valid_token_reduction_levels() returns list
+
+[SECTION 12] Error Functions
+--------------------------------------------------------------------------------
+  ✓ get_last_error_code() returns int or None
+  ✓ get_error_details() returns dict
+  ✓ classify_error('OCR failed') returns int
+  ✓ error_code_name(0) returns string
+  ✓ get_last_panic_context() returns None or str
+
+[SECTION 13] Missing API Coverage Tests
+--------------------------------------------------------------------------------
+  ✓ __version__ is accessible
+  ✓ PostProcessorProtocol is accessible
+  ✓ Chunk dataclass is accessible
+  ✓ ChunkMetadata dataclass is accessible
+  ✓ ExtractedImage dataclass is accessible
+  ✓ Metadata type is accessible
+  ✓ clear_ocr_backends() clears OCR backends
+  ✓ clear_post_processors() clears post processors
+  ✓ clear_validators() clears validators
+  ✓ clear_document_extractors() clears extractors
+  ✓ unregister_document_extractor() unregisters extractor
+
+[SECTION 14] Error Handling Tests
+--------------------------------------------------------------------------------
+  ✓ File not found raises appropriate error
+  ✓ Invalid chunking params should be detected
+
+================================================================================
+TEST SUMMARY
+================================================================================
+Total Tests: 108
+  Passed:  103
+  Failed:  5
+  Skipped: 0
+
+✗✗✗ 5 TEST(S) FAILED ✗✗✗

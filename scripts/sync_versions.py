@@ -84,22 +84,33 @@ def update_pyproject_toml(file_path: Path, version: str) -> Tuple[bool, str, str
     Returns: (changed, old_version, new_version)
     """
     content = file_path.read_text()
+    original_content = content
     match = re.search(r'^version\s*=\s*"([^"]+)"', content, re.MULTILINE)
     old_version = match.group(1) if match else "NOT FOUND"
 
-    if old_version == version:
-        return False, old_version, version
+    if old_version != version:
+        # Update project version
+        content = re.sub(
+            r'^(version\s*=\s*)"[^"]+"',
+            rf'\1"{version}"',
+            content,
+            count=1,
+            flags=re.MULTILINE
+        )
 
-    new_content = re.sub(
-        r'^(version\s*=\s*)"[^"]+"',
-        rf'\1"{version}"',
-        content,
-        count=1,
-        flags=re.MULTILINE
-    )
+    # Also update kreuzberg dependency version if present
+    # Python dependencies should not have dots before rc (e.g., 4.0.0rc19 not 4.0.0rc.19)
+    dep_version = version.replace("rc.", "rc")
+    dep_pattern = r'(kreuzberg\s*==\s*")([^"]+)(")'
+    dep_match = re.search(dep_pattern, content)
+    if dep_match and dep_match.group(2) != dep_version:
+        content = re.sub(dep_pattern, rf'\g<1>{dep_version}\g<3>', content)
 
-    file_path.write_text(new_content)
-    return True, old_version, version
+    if content != original_content:
+        file_path.write_text(content)
+        return True, old_version, version
+
+    return False, old_version, version
 
 
 def update_ruby_version(file_path: Path, version: str) -> Tuple[bool, str, str]:
@@ -133,22 +144,31 @@ def update_cargo_toml(file_path: Path, version: str) -> Tuple[bool, str, str]:
     Returns: (changed, old_version, new_version)
     """
     content = file_path.read_text()
+    original_content = content
     match = re.search(r'^version\s*=\s*"([^"]+)"', content, re.MULTILINE)
     old_version = match.group(1) if match else "NOT FOUND"
 
-    if old_version == version:
-        return False, old_version, version
+    if old_version != version:
+        # Update package version
+        content = re.sub(
+            r'^(version\s*=\s*)"[^"]+"',
+            rf'\1"{version}"',
+            content,
+            count=1,
+            flags=re.MULTILINE
+        )
 
-    new_content = re.sub(
-        r'^(version\s*=\s*)"[^"]+"',
-        rf'\1"{version}"',
-        content,
-        count=1,
-        flags=re.MULTILINE
-    )
+    # Also update kreuzberg dependency version if present
+    dep_pattern = r'(kreuzberg\s*=\s*")([^"]+)(")'
+    dep_match = re.search(dep_pattern, content)
+    if dep_match and dep_match.group(2) != version:
+        content = re.sub(dep_pattern, rf'\g<1>{version}\g<3>', content)
 
-    file_path.write_text(new_content)
-    return True, old_version, version
+    if content != original_content:
+        file_path.write_text(content)
+        return True, old_version, version
+
+    return False, old_version, version
 
 
 def update_go_mod(file_path: Path, version: str) -> Tuple[bool, str, str]:
@@ -160,8 +180,9 @@ def update_go_mod(file_path: Path, version: str) -> Tuple[bool, str, str]:
     content = file_path.read_text()
 
     # Look for kreuzberg module dependencies
-    # Pattern: github.com/kreuzberg-dev/kreuzberg[/path] v0.0.0 => version
-    pattern = r'(github\.com/kreuzberg-dev/kreuzberg(?:/[^\s]+)?\s+)v([0-9]+\.[0-9]+\.[0-9]+)'
+    # Pattern: github.com/kreuzberg-dev/kreuzberg[/path] vX.Y.Z[-prerelease]
+    # Updated pattern to support pre-release versions with dashes
+    pattern = r'(github\.com/kreuzberg-dev/kreuzberg(?:/[^\s]+)?\s+)v([0-9]+\.[0-9]+\.[0-9]+(?:-[^\s]+)?)'
     match = re.search(pattern, content)
     old_version = match.group(2) if match else "NOT FOUND"
 
@@ -221,6 +242,101 @@ def normalize_rubygems_version(version: str) -> str:
         return version
     base, prerelease = version.split("-", 1)
     return f"{base}.pre.{prerelease.replace('-', '.')}"
+
+
+def normalize_python_version(version: str) -> str:
+    """Convert semver version to Python package version format (replace - with no separator)."""
+    return version.replace("-", "")
+
+
+def update_pom_xml(file_path: Path, version: str) -> Tuple[bool, str, str]:
+    """
+    Update kreuzberg dependency version in pom.xml.
+
+    Returns: (changed, old_version, new_version)
+    """
+    content = file_path.read_text()
+
+    # Pattern to match kreuzberg dependency version
+    pattern = r'(<artifactId>kreuzberg</artifactId>\s*<version>)([^<]+)(</version>)'
+    match = re.search(pattern, content, re.DOTALL)
+    old_version = match.group(2) if match else "NOT FOUND"
+
+    if old_version == version:
+        return False, old_version, version
+
+    new_content = re.sub(
+        pattern,
+        rf"\g<1>{version}\g<3>",
+        content,
+        flags=re.DOTALL
+    )
+
+    if new_content != content:
+        file_path.write_text(new_content)
+        return True, old_version, version
+
+    return False, old_version, version
+
+
+def update_csproj(file_path: Path, version: str) -> Tuple[bool, str, str]:
+    """
+    Update Kreuzberg package version in .csproj file.
+
+    Returns: (changed, old_version, new_version)
+    """
+    content = file_path.read_text()
+
+    # Pattern to match Kreuzberg package reference
+    pattern = r'(<PackageReference Include="Kreuzberg" Version=")([^"]+)(" />)'
+    match = re.search(pattern, content)
+    old_version = match.group(2) if match else "NOT FOUND"
+
+    if old_version == version:
+        return False, old_version, version
+
+    new_content = re.sub(
+        pattern,
+        rf"\g<1>{version}\g<3>",
+        content
+    )
+
+    if new_content != content:
+        file_path.write_text(new_content)
+        return True, old_version, version
+
+    return False, old_version, version
+
+
+def update_gemfile(file_path: Path, version: str) -> Tuple[bool, str, str]:
+    """
+    Update kreuzberg gem version in Gemfile.
+
+    Returns: (changed, old_version, new_version)
+    """
+    content = file_path.read_text()
+
+    # Pattern to match: gem 'kreuzberg', 'VERSION'
+    pattern = r"(gem\s+['\"]kreuzberg['\"]\s*,\s*['\"])([^'\"]+)(['\"])"
+    match = re.search(pattern, content)
+    old_version = match.group(2) if match else "NOT FOUND"
+
+    ruby_version = normalize_rubygems_version(version)
+
+    if old_version == ruby_version:
+        return False, old_version, ruby_version
+
+    new_content = re.sub(
+        pattern,
+        rf"\g<1>{ruby_version}\g<3>",
+        content
+    )
+
+    if new_content != content:
+        file_path.write_text(new_content)
+        return True, old_version, ruby_version
+
+    return False, old_version, ruby_version
 
 
 def main():
@@ -411,6 +527,64 @@ def main():
             print(f"✓ {rel_path}: {old_ver} → {new_ver}")
             updated_files.append(str(rel_path))
         elif old_ver != "NOT FOUND":
+            unchanged_files.append(str(rel_path))
+
+    # Sync test_apps manifests
+    print()
+    test_apps_manifests = [
+        # Python test app
+        (
+            repo_root / "tests/test_apps/python/pyproject.toml",
+            lambda p, v: update_pyproject_toml(p, normalize_python_version(v))
+        ),
+        # Node test app
+        (
+            repo_root / "tests/test_apps/node/package.json",
+            lambda p, v: update_package_json(p, v)
+        ),
+        # WASM test app
+        (
+            repo_root / "tests/test_apps/wasm/package.json",
+            lambda p, v: update_package_json(p, v)
+        ),
+        # Ruby test app
+        (
+            repo_root / "tests/test_apps/ruby/Gemfile",
+            lambda p, v: update_gemfile(p, v)
+        ),
+        # Go test app
+        (
+            repo_root / "tests/test_apps/go/go.mod",
+            lambda p, v: update_go_mod(p, v)
+        ),
+        # Java test app
+        (
+            repo_root / "tests/test_apps/java/pom.xml",
+            lambda p, v: update_pom_xml(p, v)
+        ),
+        # C# test app
+        (
+            repo_root / "tests/test_apps/csharp/KreuzbergSmokeTest.csproj",
+            lambda p, v: update_csproj(p, v)
+        ),
+        # Rust test app
+        (
+            repo_root / "tests/test_apps/rust/Cargo.toml",
+            lambda p, v: update_cargo_toml(p, v)
+        ),
+    ]
+
+    for manifest_path, update_func in test_apps_manifests:
+        if not manifest_path.exists():
+            continue
+
+        changed, old_ver, new_ver = update_func(manifest_path, version)
+        rel_path = manifest_path.relative_to(repo_root)
+
+        if changed:
+            print(f"✓ {rel_path}: {old_ver} → {new_ver}")
+            updated_files.append(str(rel_path))
+        else:
             unchanged_files.append(str(rel_path))
 
     print(f"\n📊 Summary:")

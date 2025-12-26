@@ -1,0 +1,25 @@
+version = 1
+revision = 3
+requires-python = ">=3.10"
+
+[[package]]
+name = "kreuzberg"
+version = "4.0.0rc17"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/cc/a1545dd1a8b50208f1ecb710ab1aae0ad58b78cd3d08c127fd9866cda314/kreuzberg-4.0.0rc17.tar.gz", hash = "sha256:2e002efa75512c355f895e44a988173af179f1867dcc03b6076dfc0e28bc5eaa", size = 809059, upload-time = "2025-12-22T20:24:34.251Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2c/fa/a3b1d7514de3d44844aa4f26f417831d059589d1377ef36737b3906c8614/kreuzberg-4.0.0rc17-cp310-abi3-macosx_14_0_arm64.whl", hash = "sha256:da0771c1b325d3d379195050ff059a1c130d2d782fdf2c78677f773787cadb7c", size = 14200833, upload-time = "2025-12-22T20:24:27.432Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/b1/70e9700d54056ddeef90fba24ef33a5d95906a0c3943e7113112dc92c00a/kreuzberg-4.0.0rc17-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:89526ef23377271fec8987b9a70b41ba305f37d373c34622ce65693c69dc91e5", size = 16213367, upload-time = "2025-12-22T20:24:29.871Z" },
+    { url = "https://files.pythonhosted.org/packages/58/92/b790d4c12ccc90c60f45d21088111fc8e7175d2f2fbc57cbea91f35162ff/kreuzberg-4.0.0rc17-cp310-abi3-win_amd64.whl", hash = "sha256:dc42206b3e4796b5af70b66d05e6c5f5164097a89da96f7fd6ab1d244c524b7c", size = 16471961, upload-time = "2025-12-22T20:24:31.856Z" },
+]
+
+[[package]]
+name = "kreuzberg-test-app-python"
+version = "4.0.0rc17"
+source = { virtual = "." }
+dependencies = [
+    { name = "kreuzberg" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "kreuzberg", specifier = "==4.0.0rc17" }]

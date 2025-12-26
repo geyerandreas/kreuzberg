@@ -1,0 +1,26 @@
+[package]
+name = "kreuzberg-test-app-rust"
+version = "4.0.0-rc.20"
+edition = "2024"
+rust-version = "1.85"
+authors = ["Kreuzberg Contributors"]
+license = "MIT OR Apache-2.0"
+description = "Comprehensive API coverage test for Kreuzberg 4.0.0-rc.17 Rust library"
+readme = "README.md"
+publish = false
+
+[dependencies]
+kreuzberg = "4.0.0-rc.20"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+
+[[bin]]
+name = "kreuzberg-test"
+path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1

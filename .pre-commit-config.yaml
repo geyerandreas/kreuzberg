@@ -69,6 +69,7 @@ repos:
     rev: v0.6.31
     hooks:
       - id: cpd
+        exclude: ^tests/test_apps/
       - id: checkstyle
         args: ["-c", "packages/java/checkstyle.xml"]
         files: ^(packages/java|e2e/java)/src/.*\.java$

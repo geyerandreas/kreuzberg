@@ -1,0 +1,19 @@
+Kreuzberg - Document Intelligence Library
+
+Kreuzberg is a Rust document intelligence library with polyglot bindings for Python, TypeScript, Ruby, Java, and Go.
+
+Key Features:
+- PDF text extraction
+- OCR for scanned documents
+- Office document support (DOCX, XLSX)
+- Metadata extraction
+- Text chunking and embeddings
+- MCP (Model Context Protocol) support
+
+Supported Formats:
+- PDF (native and scanned)
+- DOCX, XLSX, PPT
+- Images (PNG, JPG, TIFF, WEBP)
+- Plain text and markup
+
+This file is used for testing text extraction capabilities.

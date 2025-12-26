@@ -20,7 +20,7 @@ async function extractWithRetry(
       console.warn(`Attempt ${attempt} failed:`, lastError.message);
 
       if (attempt < maxRetries) {
-        const delay = Math.pow(2, attempt) * 100;
+        const delay = 2 ** attempt * 100;
         console.log(`Retrying in ${delay}ms...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }

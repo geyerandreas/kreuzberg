@@ -1,0 +1,9 @@
+This is a sample text file for testing.
+It contains multiple lines of text.
+
+Features tested:
+- Basic text extraction
+- Multi-line content
+- File format detection
+
+Created for Docker test suite.
