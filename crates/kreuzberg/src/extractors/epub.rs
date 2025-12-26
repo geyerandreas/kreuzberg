@@ -293,49 +293,32 @@ impl EpubExtractor {
     }
 
     /// Extract metadata from EPUB OPF file
-    fn extract_metadata(opf_xml: &str) -> Result<BTreeMap<String, serde_json::Value>> {
-        let mut metadata = BTreeMap::new();
+    fn extract_metadata(opf_xml: &str) -> Result<(OepbMetadata, BTreeMap<String, serde_json::Value>)> {
+        let mut additional_metadata = BTreeMap::new();
 
         let (epub_metadata, _) = Self::parse_opf(opf_xml)?;
 
-        if let Some(title) = epub_metadata.title {
-            metadata.insert("title".to_string(), serde_json::json!(title));
+        if let Some(identifier) = epub_metadata.identifier.clone() {
+            additional_metadata.insert("identifier".to_string(), serde_json::json!(identifier));
         }
 
-        if let Some(creator) = epub_metadata.creator {
-            metadata.insert("creator".to_string(), serde_json::json!(creator.clone()));
-            metadata.insert("authors".to_string(), serde_json::json!(vec![creator]));
+        if let Some(publisher) = epub_metadata.publisher.clone() {
+            additional_metadata.insert("publisher".to_string(), serde_json::json!(publisher));
         }
 
-        if let Some(date) = epub_metadata.date {
-            metadata.insert("date".to_string(), serde_json::json!(date));
+        if let Some(subject) = epub_metadata.subject.clone() {
+            additional_metadata.insert("subject".to_string(), serde_json::json!(subject));
         }
 
-        if let Some(language) = epub_metadata.language {
-            metadata.insert("language".to_string(), serde_json::json!(language));
+        if let Some(description) = epub_metadata.description.clone() {
+            additional_metadata.insert("description".to_string(), serde_json::json!(description));
         }
 
-        if let Some(identifier) = epub_metadata.identifier {
-            metadata.insert("identifier".to_string(), serde_json::json!(identifier));
+        if let Some(rights) = epub_metadata.rights.clone() {
+            additional_metadata.insert("rights".to_string(), serde_json::json!(rights));
         }
 
-        if let Some(publisher) = epub_metadata.publisher {
-            metadata.insert("publisher".to_string(), serde_json::json!(publisher));
-        }
-
-        if let Some(subject) = epub_metadata.subject {
-            metadata.insert("subject".to_string(), serde_json::json!(subject));
-        }
-
-        if let Some(description) = epub_metadata.description {
-            metadata.insert("description".to_string(), serde_json::json!(description));
-        }
-
-        if let Some(rights) = epub_metadata.rights {
-            metadata.insert("rights".to_string(), serde_json::json!(rights));
-        }
-
-        Ok(metadata)
+        Ok((epub_metadata, additional_metadata))
     }
 
     /// Parse container.xml to find the OPF file path
@@ -564,13 +547,18 @@ impl DocumentExtractor for EpubExtractor {
 
         let extracted_content = Self::extract_content(&mut archive, &opf_path, &manifest_dir)?;
 
-        let metadata_btree = Self::extract_metadata(&opf_xml)?;
-        let metadata_map: std::collections::HashMap<String, serde_json::Value> = metadata_btree.into_iter().collect();
+        let (epub_metadata, additional_metadata) = Self::extract_metadata(&opf_xml)?;
+        let metadata_map: std::collections::HashMap<String, serde_json::Value> =
+            additional_metadata.into_iter().collect();
 
         Ok(ExtractionResult {
             content: extracted_content,
             mime_type: mime_type.to_string(),
             metadata: Metadata {
+                title: epub_metadata.title,
+                authors: epub_metadata.creator.map(|c| vec![c]),
+                language: epub_metadata.language,
+                created_at: epub_metadata.date,
                 additional: metadata_map,
                 ..Default::default()
             },
