@@ -32,7 +32,6 @@ export MAVEN_OPTS="${MAVEN_OPTS:-} \
   -XX:+LogVMOutput \
   -XX:LogFile=test-jvm.log \
   -XX:+PrintGCDetails \
-  -XX:+PrintGCTimeStamps \
   -XX:+PrintCommandLineFlags \
   -Xlog:os=info:file=test-jvm-os.log"
 
