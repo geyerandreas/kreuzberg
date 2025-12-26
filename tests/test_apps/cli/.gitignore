@@ -1,0 +1,8 @@
+# Installed binary
+kreuzberg
+
+# Log files
+*.log
+
+# Temporary files
+/tmp/

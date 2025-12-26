@@ -795,80 +795,136 @@ tasks:
     desc: Run Node smoke test locally (require KREUZBERG_NODE_SPEC=file:/abs/path/to/kreuzberg.tgz)
     cmds:
       - scripts/smoke_node.sh
+  # Test Apps - Published Package Validation
+  # These test apps validate PUBLISHED packages from npm, PyPI, RubyGems, Maven Central, Docker Hub, Homebrew, and crates.io
   test-apps:install:
     desc: Install dependencies for all test apps
     cmds:
       - task: test-apps:python:install
       - task: test-apps:node:install
+      - task: test-apps:wasm:install
       - task: test-apps:ruby:install
       - task: test-apps:java:install
       - task: test-apps:go:install
+      - task: test-apps:rust:install
+      - task: test-apps:csharp:install
+      - task: test-apps:cli:install
   test-apps:run:
-    desc: Run all comprehensive test apps against published versions
+    desc: Run all test apps to validate published packages
     cmds:
       - task: test-apps:python:run
       - task: test-apps:node:run
+      - task: test-apps:wasm:run
       - task: test-apps:ruby:run
       - task: test-apps:java:run
       - task: test-apps:go:run
+      - task: test-apps:rust:run
+      - task: test-apps:csharp:run
+      - task: test-apps:cli:run
+      - task: test-apps:docker:run
+      - task: test-apps:homebrew:run
   test-apps:python:install:
-    desc: Install Python test app dependencies
-    dir: ../test_apps/python
+    desc: Install Python test app dependencies (from PyPI)
+    dir: tests/test_apps/python
     cmds:
-      - uv sync
+      - pip install kreuzberg
   test-apps:python:run:
-    desc: Run Python comprehensive test app (tests published kreuzberg==4.0.0rc16)
-    dir: ../test_apps/python
+    desc: Run Python test app (validates published kreuzberg package)
+    dir: tests/test_apps/python
     cmds:
-      - uv run python main.py
+      - python main.py
   test-apps:node:install:
-    desc: Install Node.js test app dependencies
-    dir: ../test_apps/node
+    desc: Install Node.js test app dependencies (from npm)
+    dir: tests/test_apps/node
     cmds:
       - pnpm install
   test-apps:node:run:
-    desc: Run TypeScript/Node.js comprehensive test app (tests @kreuzberg/node@4.0.0-rc.16)
-    dir: ../test_apps/node
+    desc: Run Node.js test app (validates @kreuzberg/node from npm)
+    dir: tests/test_apps/node
     cmds:
       - pnpm test
   test-apps:node:typecheck:
     desc: Run TypeScript type checking for Node test app
-    dir: ../test_apps/node
+    dir: tests/test_apps/node
     cmds:
       - pnpm typecheck
+  test-apps:wasm:install:
+    desc: Install WASM test app dependencies (from npm)
+    dir: tests/test_apps/wasm
+    cmds:
+      - pnpm install
+  test-apps:wasm:run:
+    desc: Run WASM test app (validates @kreuzberg/wasm from npm)
+    dir: tests/test_apps/wasm
+    cmds:
+      - pnpm test
   test-apps:ruby:install:
-    desc: Install Ruby test app dependencies
-    dir: ../test_apps/ruby
+    desc: Install Ruby test app dependencies (from RubyGems)
+    dir: tests/test_apps/ruby
     cmds:
       - bundle install
   test-apps:ruby:run:
-    desc: Run Ruby comprehensive test app (tests kreuzberg 4.0.0.pre.rc.6)
-    dir: ../test_apps/ruby
+    desc: Run Ruby test app (validates kreuzberg gem from RubyGems)
+    dir: tests/test_apps/ruby
     cmds:
       - ruby main_test.rb
   test-apps:java:install:
-    desc: Install Java test app dependencies
-    dir: ../test_apps/java
+    desc: Install Java test app dependencies (from Maven Central)
+    dir: tests/test_apps/java
     cmds:
       - mvn clean compile
   test-apps:java:run:
-    desc: Run Java comprehensive test app (tests dev.kreuzberg:kreuzberg:4.0.0-rc.16)
-    dir: ../test_apps/java
+    desc: Run Java test app (validates kreuzberg from Maven Central)
+    dir: tests/test_apps/java
     cmds:
-      - mvn exec:java
+      - mvn clean test
   test-apps:go:install:
-    desc: Install Go test app dependencies
-    dir: ../test_apps/go
+    desc: Install Go test app dependencies (from pkg.go.dev)
+    dir: tests/test_apps/go
     cmds:
       - go mod tidy
-      - go build -o main main.go
   test-apps:go:run:
-    desc: Run Go comprehensive test app (tests local package v4.0.0-rc.16)
-    dir: ../test_apps/go
+    desc: Run Go test app (validates kreuzberg Go package)
+    dir: tests/test_apps/go
     cmds:
-      - export DYLD_LIBRARY_PATH={{.ROOT}}/target/release:$DYLD_LIBRARY_PATH && export LD_LIBRARY_PATH={{.ROOT}}/target/release:$LD_LIBRARY_PATH && ./main
-  test-apps:go:test:
-    desc: Run Go existing test suite (extraction_test.go)
-    dir: ../test_apps/go
+      - go test -v ./...
+  test-apps:rust:install:
+    desc: Install Rust test app dependencies (from crates.io)
+    dir: tests/test_apps/rust
     cmds:
-      - export DYLD_LIBRARY_PATH={{.ROOT}}/target/release:$DYLD_LIBRARY_PATH && export LD_LIBRARY_PATH={{.ROOT}}/target/release:$LD_LIBRARY_PATH && go test -v ./...
+      - cargo build
+  test-apps:rust:run:
+    desc: Run Rust test app (validates kreuzberg crate from crates.io)
+    dir: tests/test_apps/rust
+    cmds:
+      - cargo run
+  test-apps:csharp:install:
+    desc: Install C# test app dependencies (from NuGet)
+    dir: tests/test_apps/csharp
+    cmds:
+      - dotnet restore
+  test-apps:csharp:run:
+    desc: Run C# test app (validates Kreuzberg from NuGet)
+    dir: tests/test_apps/csharp
+    cmds:
+      - dotnet run
+  test-apps:cli:install:
+    desc: Install CLI via cargo install (from crates.io)
+    dir: tests/test_apps/cli
+    cmds:
+      - bash tests/install.sh
+  test-apps:cli:run:
+    desc: Run CLI test suite (validates kreuzberg-cli from crates.io)
+    dir: tests/test_apps/cli
+    cmds:
+      - bash tests/test-all.sh
+  test-apps:docker:run:
+    desc: Run Docker test suite (validates Docker images from Docker Hub)
+    dir: tests/test_apps/docker
+    cmds:
+      - bash tests/test-all.sh
+  test-apps:homebrew:run:
+    desc: Run Homebrew test suite (validates Homebrew formula)
+    dir: tests/test_apps/homebrew
+    cmds:
+      - bash tests/test-all.sh
