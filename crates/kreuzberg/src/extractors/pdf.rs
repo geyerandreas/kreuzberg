@@ -408,7 +408,7 @@ impl DocumentExtractor for PdfExtractor {
                         }
                     },
                 )?;
-                let pdfium = Pdfium {};
+                let pdfium = Pdfium;
 
                 let document = pdfium.load_pdf_from_byte_slice(content, None).map_err(|e| {
                     let err_msg = crate::pdf::error::format_pdfium_error(e);
@@ -433,7 +433,7 @@ impl DocumentExtractor for PdfExtractor {
 
                         crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")?;
 
-                        let pdfium = Pdfium {};
+                        let pdfium = Pdfium;
 
                         let document = pdfium.load_pdf_from_byte_slice(&content_owned, None).map_err(|e| {
                             let err_msg = crate::pdf::error::format_pdfium_error(e);
@@ -465,10 +465,10 @@ impl DocumentExtractor for PdfExtractor {
                 } else {
                     crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")?;
 
-                    let pdfium = Pdfium {};
+                    let pdfium = Pdfium;
 
                     let document = pdfium.load_pdf_from_byte_slice(content, None).map_err(|e| {
-                        let err_msg = e.to_string();
+                        let err_msg = crate::pdf::error::format_pdfium_error(e);
                         if err_msg.contains("password") || err_msg.contains("Password") {
                             PdfError::PasswordRequired
                         } else {
@@ -484,7 +484,7 @@ impl DocumentExtractor for PdfExtractor {
             {
                 crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")?;
 
-                let pdfium = Pdfium {};
+                let pdfium = Pdfium;
 
                 let document = pdfium.load_pdf_from_byte_slice(content, None).map_err(|e| {
                     let err_msg = crate::pdf::error::format_pdfium_error(e);
