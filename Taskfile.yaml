@@ -863,10 +863,12 @@ tasks:
     dir: tests/test_apps/ruby
     cmds:
       - bundle install
+      - gem install kreuzberg --pre
   test-apps:ruby:run:
     desc: Run Ruby test app (validates kreuzberg gem from RubyGems)
     dir: tests/test_apps/ruby
     cmds:
+      - task: test-apps:ruby:install
       - ruby main_test.rb
   test-apps:java:install:
     desc: Install Java test app dependencies (from Maven Central)

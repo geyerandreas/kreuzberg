@@ -11,6 +11,7 @@ members = [
     "tools/e2e-generator",
     "e2e/rust",
 ]
+exclude = ["tests/test_apps/rust"]
 # Note: packages/ruby/ext/kreuzberg_rb/native is excluded because it uses a vendored
 # kreuzberg crate for gem packaging. Build it separately via: cd packages/ruby && bundle exec rake compile
 default-members = ["crates/kreuzberg", "crates/kreuzberg-cli"]
