@@ -946,6 +946,10 @@ jobs:
       - name: Build PHP bindings
         run: task php:build:ci
 
+      - name: Install Composer dependencies
+        working-directory: packages/php
+        run: composer install --no-progress --prefer-dist
+
       - name: Run benchmark
         env:
           FRAMEWORK: kreuzberg-php

@@ -299,21 +299,6 @@ async fn main() -> Result<()> {
                 kreuzberg_count, total_requested
             );
 
-            // Track which requested frameworks failed to initialize
-            let mut failed_frameworks = Vec::new();
-            for name in &frameworks {
-                if !registry.contains(name) {
-                    failed_frameworks.push(name.clone());
-                }
-            }
-            if !failed_frameworks.is_empty() {
-                eprintln!(
-                    "[adapter] WARNING: {} requested kreuzberg framework(s) failed to initialize: {}",
-                    failed_frameworks.len(),
-                    failed_frameworks.join(", ")
-                );
-            }
-
             use benchmark_harness::adapters::{
                 create_docling_adapter, create_markitdown_adapter, create_mineru_adapter, create_pandoc_adapter,
                 create_pdfplumber_adapter, create_pymupdf4llm_adapter, create_tika_adapter,
@@ -339,6 +324,22 @@ async fn main() -> Result<()> {
                 "[adapter] Total adapters: {} available",
                 kreuzberg_count + external_count
             );
+
+            // Track which requested frameworks failed to initialize
+            // NOTE: This check must run AFTER all adapters (kreuzberg + external) are registered
+            let mut failed_frameworks = Vec::new();
+            for name in &frameworks {
+                if !registry.contains(name) {
+                    failed_frameworks.push(name.clone());
+                }
+            }
+            if !failed_frameworks.is_empty() {
+                eprintln!(
+                    "[adapter] WARNING: {} requested framework(s) failed to initialize: {}",
+                    failed_frameworks.len(),
+                    failed_frameworks.join(", ")
+                );
+            }
 
             let mut runner = BenchmarkRunner::new(config, registry);
             runner.load_fixtures(&fixtures)?;
