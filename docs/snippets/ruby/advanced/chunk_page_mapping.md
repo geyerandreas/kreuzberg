@@ -1,4 +1,4 @@
-```ruby title="chunk_page_mapping.rb"
+```ruby title="Ruby"
 require 'kreuzberg'
 
 config = Kreuzberg::ExtractionConfig.new(
