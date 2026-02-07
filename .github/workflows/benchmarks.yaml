@@ -963,7 +963,7 @@ jobs:
 
   # Third-party benchmarks are temporarily disabled while kreuzberg variants are stabilized.
   bench-docling:
-    name: docling (${{ matrix.mode }})
+    name: docling (${{ matrix.mode }}, shard ${{ matrix.shard }}/3)
     needs: setup
     runs-on: ubuntu-latest
     timeout-minutes: 360
@@ -973,6 +973,7 @@ jobs:
       fail-fast: false
       matrix:
         mode: [single-file, batch]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -1002,13 +1003,14 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
+          SHARD: ${{ matrix.shard }}/3
         run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: benchmarks-docling-${{ matrix.mode }}-${{ github.run_id }}
+          name: benchmarks-docling-${{ matrix.mode }}-shard${{ matrix.shard }}-${{ github.run_id }}
           path: benchmark-results/
           retention-days: 30
 
@@ -1123,7 +1125,7 @@ jobs:
           retention-days: 30
 
   bench-unstructured:
-    name: unstructured (${{ matrix.mode }})
+    name: unstructured (${{ matrix.mode }}, shard ${{ matrix.shard }}/3)
     needs: setup
     runs-on: ubuntu-latest
     timeout-minutes: 360
@@ -1133,6 +1135,7 @@ jobs:
       fail-fast: false
       matrix:
         mode: [single-file, batch]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -1168,18 +1171,19 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
+          SHARD: ${{ matrix.shard }}/3
         run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: benchmarks-unstructured-${{ matrix.mode }}-${{ github.run_id }}
+          name: benchmarks-unstructured-${{ matrix.mode }}-shard${{ matrix.shard }}-${{ github.run_id }}
           path: benchmark-results/
           retention-days: 30
 
   bench-tika:
-    name: tika (${{ matrix.mode }})
+    name: tika (${{ matrix.mode }}, shard ${{ matrix.shard }}/3)
     needs: setup
     runs-on: ubuntu-latest
     timeout-minutes: 360
@@ -1189,6 +1193,7 @@ jobs:
       fail-fast: false
       matrix:
         mode: [single-file, batch]
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
         with:
@@ -1219,13 +1224,14 @@ jobs:
           MODE: ${{ matrix.mode }}
           ITERATIONS: ${{ env.ITERATIONS }}
           TIMEOUT: ${{ github.event.inputs.timeout }}
+          SHARD: ${{ matrix.shard }}/3
         run: scripts/benchmarks/run-benchmark.sh
 
       - name: Upload artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: benchmarks-tika-${{ matrix.mode }}-${{ github.run_id }}
+          name: benchmarks-tika-${{ matrix.mode }}-shard${{ matrix.shard }}-${{ github.run_id }}
           path: benchmark-results/
           retention-days: 30
 

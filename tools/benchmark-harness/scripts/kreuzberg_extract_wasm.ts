@@ -19,7 +19,7 @@ function createConfig(ocrEnabled: boolean): ExtractionConfig {
 async function extractAsync(filePath: string, ocrEnabled: boolean): Promise<ExtractionOutput> {
 	const config = createConfig(ocrEnabled);
 	const start = performance.now();
-	const result = await extractFile(filePath, config);
+	const result = await extractFile(filePath, null, config);
 	const durationMs = performance.now() - start;
 
 	return {
@@ -32,7 +32,7 @@ async function extractAsync(filePath: string, ocrEnabled: boolean): Promise<Extr
 async function extractBatch(filePaths: string[], ocrEnabled: boolean): Promise<ExtractionOutput[]> {
 	const config = createConfig(ocrEnabled);
 	const start = performance.now();
-	const results = await Promise.all(filePaths.map((path) => extractFile(path, config)));
+	const results = await Promise.all(filePaths.map((path) => extractFile(path, null, config)));
 	const totalDurationMs = performance.now() - start;
 
 	const perFileDurationMs = filePaths.length > 0 ? totalDurationMs / filePaths.length : 0;
@@ -57,12 +57,14 @@ async function runServer(ocrEnabled: boolean): Promise<void> {
 		if (!filePath) {
 			continue;
 		}
+		const start = performance.now();
 		try {
 			const payload = await extractAsync(filePath, ocrEnabled);
 			console.log(JSON.stringify(payload));
 		} catch (err) {
+			const durationMs = performance.now() - start;
 			const error = err as Error;
-			console.log(JSON.stringify({ error: error.message, _extraction_time_ms: 0 }));
+			console.log(JSON.stringify({ error: error.message, _extraction_time_ms: durationMs }));
 		}
 	}
 }

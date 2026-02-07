@@ -362,6 +362,27 @@ impl FixtureManager {
             .cloned()
             .collect()
     }
+
+    /// Retain only the fixtures belonging to shard `index` of `total` shards.
+    ///
+    /// Fixtures are sorted by path for deterministic ordering, then assigned
+    /// round-robin to shards. This ensures even distribution across shards
+    /// regardless of file type or size ordering.
+    ///
+    /// `index` is 1-based (1..=total).
+    pub fn retain_shard(&mut self, index: usize, total: usize) {
+        assert!(index >= 1 && index <= total, "shard index must be 1..=total");
+        // Sort by path for deterministic assignment across jobs
+        self.fixtures.sort_by(|a, b| a.0.cmp(&b.0));
+        let shard_index = index - 1; // convert to 0-based
+        self.fixtures = self
+            .fixtures
+            .drain(..)
+            .enumerate()
+            .filter(|(i, _)| i % total == shard_index)
+            .map(|(_, f)| f)
+            .collect();
+    }
 }
 
 impl Default for FixtureManager {

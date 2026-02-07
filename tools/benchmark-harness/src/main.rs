@@ -99,6 +99,10 @@ enum Commands {
         /// Enable quality assessment
         #[arg(long, default_value = "false")]
         measure_quality: bool,
+
+        /// Run only a subset of fixtures (format: INDEX/TOTAL, e.g. 1/3 for first of 3 shards)
+        #[arg(long)]
+        shard: Option<String>,
     },
 
     /// Consolidate multiple benchmark runs
@@ -194,6 +198,7 @@ async fn main() -> Result<()> {
             iterations,
             ocr,
             measure_quality,
+            shard,
         } => {
             use benchmark_harness::{AdapterRegistry, BenchmarkRunner, NativeAdapter};
             use kreuzberg::{ExtractionConfig, OcrConfig};
@@ -322,6 +327,38 @@ async fn main() -> Result<()> {
 
             let mut runner = BenchmarkRunner::new(config, registry);
             runner.load_fixtures(&fixtures)?;
+
+            // Apply sharding if requested
+            if let Some(ref shard_spec) = shard {
+                let parts: Vec<&str> = shard_spec.split('/').collect();
+                if parts.len() != 2 {
+                    return Err(benchmark_harness::Error::Config(format!(
+                        "Invalid shard format '{}': expected INDEX/TOTAL (e.g. 1/3)",
+                        shard_spec
+                    )));
+                }
+                let index: usize = parts[0].parse().map_err(|_| {
+                    benchmark_harness::Error::Config(format!("Invalid shard index '{}': must be a number", parts[0]))
+                })?;
+                let total: usize = parts[1].parse().map_err(|_| {
+                    benchmark_harness::Error::Config(format!("Invalid shard total '{}': must be a number", parts[1]))
+                })?;
+                if index < 1 || index > total || total < 1 {
+                    return Err(benchmark_harness::Error::Config(format!(
+                        "Invalid shard {}/{}: index must be 1..=total",
+                        index, total
+                    )));
+                }
+                let total_before = runner.fixture_count();
+                runner.apply_shard(index, total);
+                println!(
+                    "Shard {}/{}: {} of {} fixtures",
+                    index,
+                    total,
+                    runner.fixture_count(),
+                    total_before
+                );
+            }
 
             println!("Loaded {} fixture(s)", runner.fixture_count());
             println!("Frameworks: {:?}", frameworks);

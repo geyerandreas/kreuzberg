@@ -79,12 +79,14 @@ async function runServer(ocrEnabled: boolean): Promise<void> {
 		if (!filePath) {
 			continue;
 		}
+		const start = performance.now();
 		try {
 			const payload = await extractAsync(filePath, ocrEnabled);
 			console.log(JSON.stringify(payload));
 		} catch (err) {
+			const durationMs = performance.now() - start;
 			const error = err as Error;
-			console.log(JSON.stringify({ error: error.message, _extraction_time_ms: 0 }));
+			console.log(JSON.stringify({ error: error.message, _extraction_time_ms: durationMs }));
 		}
 	}
 }

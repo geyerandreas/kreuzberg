@@ -29,12 +29,17 @@ rm -rf "${OUTPUT_DIR}"
 
 MAX_CONCURRENT=$([[ "$MODE" == "single-file" ]] && echo 1 || echo 4)
 
+SHARD="${SHARD:-}"
+
 EXTRA_ARGS=()
 if [ "$MEASURE_QUALITY" = "true" ]; then
   EXTRA_ARGS+=("--measure-quality")
 fi
 if [ "$OCR_ENABLED" = "true" ]; then
   EXTRA_ARGS+=("--ocr")
+fi
+if [ -n "$SHARD" ]; then
+  EXTRA_ARGS+=("--shard" "${SHARD}")
 fi
 
 BENCHMARK_DEBUG=1 "${HARNESS_PATH}" \

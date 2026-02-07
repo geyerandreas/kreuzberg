@@ -90,11 +90,13 @@ def run_server(ocr_enabled: bool) -> None:
         file_path = line.strip()
         if not file_path:
             continue
+        start = time.perf_counter()
         try:
             payload = extract_sync(file_path, ocr_enabled)
             print(json.dumps(payload), flush=True)
         except Exception as e:
-            print(json.dumps({"error": str(e), "_extraction_time_ms": 0}), flush=True)
+            duration_ms = (time.perf_counter() - start) * 1000.0
+            print(json.dumps({"error": str(e), "_extraction_time_ms": duration_ms}), flush=True)
 
 
 def main() -> None:

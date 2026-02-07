@@ -240,6 +240,11 @@ impl BenchmarkRunner {
         // TODO: Implement fixture filtering if needed
     }
 
+    /// Retain only fixtures for the given shard (1-based index, total shards)
+    pub fn apply_shard(&mut self, index: usize, total: usize) {
+        self.fixtures.retain_shard(index, total);
+    }
+
     /// Get count of loaded fixtures
     pub fn fixture_count(&self) -> usize {
         self.fixtures.len()
@@ -441,12 +446,19 @@ impl BenchmarkRunner {
 
         let first_result = &all_results[0];
 
+        let any_success = all_results.iter().any(|r| r.success);
+        let error_message = if any_success {
+            None
+        } else {
+            all_results.first().and_then(|r| r.error_message.clone())
+        };
+
         Ok(BenchmarkResult {
             framework: first_result.framework.clone(),
             file_path: first_result.file_path.clone(),
             file_size: first_result.file_size,
-            success: true,
-            error_message: None,
+            success: any_success,
+            error_message,
             error_kind: first_result.error_kind,
             duration: statistics.mean,
             extraction_duration: avg_extraction_duration,

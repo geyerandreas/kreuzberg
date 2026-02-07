@@ -72,25 +72,14 @@ fn get_kreuzberg_supported_formats() -> Vec<String> {
         "tiff",
         "tif",
         "webp",
-        "jp2",
-        "jpx",
-        "jpm",
-        "mj2",
-        "pnm",
-        "pbm",
-        "pgm",
-        "ppm",
         // Academic/Publishing
         "epub",
         "bib",
         "ipynb",
         "tex",
         "latex",
-        "typst",
-        "typ",
         // Other
         "svg",
-        "djot",
     ]
     .into_iter()
     .map(|s| s.to_string())
@@ -643,8 +632,8 @@ pub fn create_csharp_batch_adapter(ocr_enabled: bool) -> Result<SubprocessAdapte
     let mut env = build_library_env()?;
     env.push(("KREUZBERG_FFI_DIR".to_string(), lib_dir.to_string_lossy().to_string()));
     let supported_formats = get_kreuzberg_supported_formats();
-    Ok(SubprocessAdapter::with_batch_support(
-        "kreuzberg-csharp-batch",
+    Ok(SubprocessAdapter::with_persistent_mode(
+        "kreuzberg-csharp",
         command,
         args,
         env,
