@@ -1,3 +1,4 @@
+```ruby title="chunk_page_mapping.rb"
 require 'kreuzberg'
 
 config = Kreuzberg::ExtractionConfig.new(
@@ -17,3 +18,4 @@ result.chunks&.each do |chunk|
     puts "Chunk: #{chunk.content[0..50]}... (#{page_range})"
   end
 end
+```

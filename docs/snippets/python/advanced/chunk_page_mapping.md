@@ -1,3 +1,4 @@
+```python title="Python"
 from kreuzberg import extract_file_sync, ExtractionConfig, ChunkingConfig, PageConfig
 
 config = ExtractionConfig(
@@ -16,3 +17,4 @@ if result.chunks:
                 else f"Pages {chunk.metadata.first_page}-{chunk.metadata.last_page}"
             )
             print(f"Chunk: {chunk.content[:50]}... ({page_range})")
+```
