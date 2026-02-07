@@ -1393,7 +1393,7 @@ jobs:
     name: Aggregate & Release Results
     needs: [setup, bench-native, bench-python, bench-node, bench-wasm, bench-ruby, bench-go, bench-java, bench-csharp, bench-elixir, bench-php, bench-docling, bench-markitdown, bench-pandoc, bench-unstructured, bench-tika, bench-pymupdf4llm, bench-pdfplumber, bench-mineru]
     runs-on: ubuntu-latest
-    if: always() && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
+    if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch') }}
     permissions:
       contents: write
     steps:
