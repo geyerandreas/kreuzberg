@@ -22,8 +22,8 @@ async def main() -> None:
         ),
         pdf_options=PdfConfig(extract_images=True),
         chunking=ChunkingConfig(
-            max_characters=1000,
-            overlap=200,
+            max_chars=1000,
+            max_overlap=200,
             embedding=EmbeddingConfig(
                 model=EmbeddingModelType.preset("all-MiniLM-L6-v2")
             ),

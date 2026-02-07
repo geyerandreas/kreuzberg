@@ -3,7 +3,7 @@ from kreuzberg import EmbeddingConfig, EmbeddingModelType, ChunkingConfig, Extra
 # Example 1: Preset model (recommended)
 # Fast, balanced, or quality preset configurations optimized for common use cases.
 embedding_config = EmbeddingConfig(
-    model=EmbeddingModelType.Preset(name="balanced"),
+    model=EmbeddingModelType.preset("balanced"),
     batch_size=32,
     normalize=True,
     show_download_progress=True,
@@ -20,7 +20,7 @@ embedding_config = EmbeddingConfig(
 # Example 2: FastEmbed model (requires embeddings feature)
 # Direct access to specific fastembed models with custom dimensions.
 embedding_config = EmbeddingConfig(
-    model=EmbeddingModelType.FastEmbed(
+    model=EmbeddingModelType.fastembed(
         model="BAAI/bge-small-en-v1.5",
         dimensions=384,
     ),
@@ -40,7 +40,7 @@ embedding_config = EmbeddingConfig(
 # Example 3: Custom HuggingFace model
 # For advanced users wanting specific HuggingFace embedding models.
 embedding_config = EmbeddingConfig(
-    model=EmbeddingModelType.Custom(
+    model=EmbeddingModelType.custom(
         model_id="sentence-transformers/all-mpnet-base-v2",
         dimensions=768,
     ),
@@ -54,8 +54,8 @@ embedding_config = EmbeddingConfig(
 # Integration with ChunkingConfig
 # Add embeddings to your chunking configuration:
 chunking_with_embeddings = ChunkingConfig(
-    max_characters=1024,
-    overlap=100,
+    max_chars=1024,
+    max_overlap=100,
     preset="balanced",
     embedding=EmbeddingConfig(),  # Uses balanced preset
 )

@@ -10,8 +10,8 @@ from kreuzberg import (
 
 config = ExtractionConfig(
     ocr=OcrConfig(backend="tesseract", language="eng+deu"),
-    chunking=ChunkingConfig(max_characters=1000, overlap=100),
-    token_reduction=TokenReductionConfig(enabled=True),
+    chunking=ChunkingConfig(max_chars=1000, max_overlap=100),
+    token_reduction=TokenReductionConfig(mode="light"),
     language_detection=LanguageDetectionConfig(
         enabled=True, detect_multiple=True
     ),
@@ -21,7 +21,7 @@ config = ExtractionConfig(
 
 result = extract_file_sync("document.pdf", config=config)
 
-for chunk in result.chunks:
+for chunk in result.chunks or []:
     print(f"Chunk: {chunk.content[:100]}")
 
 if result.detected_languages:

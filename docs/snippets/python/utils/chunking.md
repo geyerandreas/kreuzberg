@@ -8,8 +8,8 @@ from kreuzberg import (
 
 config: ExtractionConfig = ExtractionConfig(
     chunking=ChunkingConfig(
-        max_characters=1500,
-        overlap=200,
+        max_chars=1500,
+        max_overlap=200,
         embedding=EmbeddingConfig(
             model=EmbeddingModelType.preset("all-minilm-l6-v2")
         ),

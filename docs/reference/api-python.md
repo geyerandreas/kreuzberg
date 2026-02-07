@@ -348,10 +348,8 @@ Same as [`batch_extract_bytes_sync()`](#batch_extract_bytes_sync).
 
 ### ExtractionConfig
 
-
-
 !!! warning "Deprecated API"
-    The `force_ocr` parameter has been deprecated in favor of the new `ocr` configuration object.
+The `force_ocr` parameter has been deprecated in favor of the new `ocr` configuration object.
 
     **Old pattern (no longer supported):**
     ```python
@@ -371,13 +369,45 @@ Main configuration class for extraction operations.
 
 **Fields:**
 
-- `ocr` (OcrConfig | None): OCR configuration. Default: None (no OCR)
-- `pdf_options` (PdfConfig | None): PDF-specific configuration. Default: None
-- `chunking` (ChunkingConfig | None): Text chunking configuration. Default: None
-- `language_detection` (LanguageDetectionConfig | None): Language detection configuration. Default: None
-- `token_reduction` (TokenReductionConfig | None): Token reduction configuration. Default: None
-- `image_extraction` (ImageExtractionConfig | None): Image extraction from documents. Default: None
-- `post_processor` (PostProcessorConfig | None): Post-processing configuration. Default: None
+- `use_cache` (`bool`): Enable caching of extraction results to improve performance
+  on repeated extractions. Default: `True`
+- `enable_quality_processing` (`bool`): Enable quality post-processing to clean
+  and normalize extracted text. Default: `True`
+- `ocr` (`OcrConfig | None`): OCR configuration for extracting text from images
+  and scanned documents. `None` = OCR disabled. Default: `None`
+- `force_ocr` (`bool`): Force OCR processing even for searchable PDFs that contain
+  extractable text. Useful for ensuring consistent formatting. Default: `False`
+- `chunking` (`ChunkingConfig | None`): Text chunking configuration for dividing
+  content into manageable chunks. `None` = chunking disabled. Default: `None`
+- `images` (`ImageExtractionConfig | None`): Image extraction configuration for
+  extracting images FROM documents (not for OCR preprocessing).
+  `None` = no image extraction. Default: `None`
+- `pdf_options` (`PdfConfig | None`): PDF-specific options like password handling
+  and metadata extraction. `None` = use defaults. Default: `None`
+- `token_reduction` (`TokenReductionConfig | None`): Token reduction configuration
+  for reducing token count in extracted content (useful for LLM APIs).
+  `None` = no token reduction. Default: `None`
+- `language_detection` (`LanguageDetectionConfig | None`): Language detection
+  configuration for identifying the language(s) in documents.
+  `None` = no language detection. Default: `None`
+- `pages` (`PageConfig | None`): Page extraction configuration for tracking and
+  extracting page boundaries. `None` = no page tracking. Default: `None`
+- `keywords` (`KeywordConfig | None`): Keyword extraction configuration for
+  identifying important terms and phrases in content.
+  `None` = no keyword extraction. Default: `None`
+- `postprocessor` (`PostProcessorConfig | None`): Post-processor configuration
+  for custom text processing. `None` = use defaults. Default: `None`
+- `max_concurrent_extractions` (`int | None`): Maximum concurrent extractions
+  in batch operations. `None` = `num_cpus * 2`. Default: `None`
+- `html_options` (`HtmlConversionOptions | None`): HTML conversion options for
+  converting documents to markdown. Default: `None`
+- `result_format` (`str`): Result format for extraction output.
+  Specifies whether results use unified format (all content in `content` field)
+  or element-based format (with semantic elements for Unstructured-compatible output).
+  Values: `"unified"` (default), `"element_based"`. Default: `"unified"`
+- `output_format` (`str`): Output content format.
+  Controls the format of the extracted content.
+  Values: `"plain"` (default), `"markdown"`, `"djot"`, `"html"`. Default: `"plain"`
 
 **Example:**
 
@@ -394,6 +424,16 @@ config = ExtractionConfig(
 
 result = extract_file_sync("document.pdf", config=config)
 ```
+
+**Configuration loading:**
+
+- `ExtractionConfig.from_file(path: str | Path)` → `ExtractionConfig`: Load configuration from a file (`.toml`, `.yaml`, or `.json` by extension).
+- `ExtractionConfig.discover()` → `ExtractionConfig`: Discover config from `KREUZBERG_CONFIG_PATH` or search for `kreuzberg.toml` / `kreuzberg.yaml` / `kreuzberg.json` in current and parent directories (raises if not found).
+
+Module-level:
+
+- `load_extraction_config_from_file(path)` → `ExtractionConfig`
+- `discover_extraction_config()` → `ExtractionConfig | None` (returns None if no config file found)
 
 ---
 
@@ -429,13 +469,19 @@ ocr_config = OcrConfig(backend="easyocr", language="en")
 
 Tesseract OCR backend configuration.
 
-**Fields:**
+**Fields (common):**
 
 - `psm` (int): Page segmentation mode (0-13). Default: 3 (auto)
-- `oem` (int): OCR engine mode (0-3). Default: 3 (LSTM only)
-- `enable_table_detection` (bool): Enable table detection and extraction. Default: False
-- `tessedit_char_whitelist` (str | None): Character whitelist (e.g., "0123456789" for digits only). Default: None
-- `tessedit_char_blacklist` (str | None): Character blacklist. Default: None
+- `oem` (int): OCR engine mode (0-3). Default: 3 (Auto - Tesseract chooses based on build)
+- `enable_table_detection` (bool): Enable table detection and extraction. Default: True
+- `tessedit_char_whitelist` (str): Character whitelist (e.g., "0123456789" for digits only). Empty string = all characters. Default: ""
+- `tessedit_char_blacklist` (str): Character blacklist. Empty string = none. Default: ""
+- `language` (str): OCR language (ISO 639-3). Default: "eng"
+- `min_confidence` (float): Minimum confidence (0.0-1.0) for accepting OCR results. Default: 0.0
+- `preprocessing` (ImagePreprocessingConfig | None): Image preprocessing before OCR. Default: None
+- `output_format` (str): OCR output format. Default: "markdown"
+
+Additional fields (table thresholds, cache, tessedit options, etc.) are available; see the type stub for the full list.
 
 **Example:**
 
@@ -463,9 +509,16 @@ PDF-specific configuration.
 
 **Fields:**
 
-- `passwords` (list[str] | None): List of passwords to try for encrypted PDFs. Default: None
-- `extract_images` (bool): Extract images from PDF. Default: False
-- `image_dpi` (int): DPI for image extraction. Default: 300
+- `extract_images` (`bool`): Extract images from PDF documents.
+  Default: `False`
+- `passwords` (`list[str] | None`): List of passwords to try when opening
+  encrypted PDFs. Try each password in order until one succeeds.
+  Default: None
+- `extract_metadata` (`bool`): Extract PDF metadata (title, author, creation date,
+  etc.). Default: `True`
+- `hierarchy` (`HierarchyConfig | None`): Document hierarchy detection configuration
+  for detecting document structure and organization. `None` = no hierarchy detection.
+  Default: `None`
 
 **Example:**
 
@@ -475,9 +528,34 @@ from kreuzberg import PdfConfig
 pdf_config = PdfConfig(
     passwords=["password1", "password2"],
     extract_images=True,
-    image_dpi=300
+    extract_metadata=True
 )
 ```
+
+---
+
+### HierarchyConfig
+
+Document hierarchy detection configuration (used with `PdfConfig.hierarchy`).
+
+**Fields:**
+
+- `enabled` (bool): Enable hierarchy detection. Default: True
+- `k_clusters` (int): Number of clusters for k-means clustering. Default: 6
+- `include_bbox` (bool): Include bounding box information in hierarchy output. Default: True
+- `ocr_coverage_threshold` (float | None): Optional threshold for OCR coverage before enabling hierarchy detection. Default: None
+
+---
+
+### PageConfig
+
+Page extraction and tracking configuration.
+
+**Fields:**
+
+- `extract_pages` (bool): Enable page tracking and per-page extraction. Default: False
+- `insert_page_markers` (bool): Insert page markers into `content`. Default: False
+- `marker_format` (str): Marker template containing `{page_num}`. Default: `"\n\n<!-- PAGE {page_num} -->\n\n"`
 
 ---
 
@@ -490,7 +568,7 @@ Text chunking configuration for splitting long documents.
 - `max_chars` (int): Maximum characters per chunk. Default: 1000
 - `max_overlap` (int): Overlap between chunks in characters. Default: 200
 - `embedding` (EmbeddingConfig | None): Embedding configuration for generating embeddings. Default: None
-- `preset` (str | None): Chunking preset to use. Default: None
+- `preset` (str | None): Chunking preset to use (e.g. from `list_embedding_presets()`). Default: None
 
 **Example:**
 
@@ -512,7 +590,8 @@ Language detection configuration.
 **Fields:**
 
 - `enabled` (bool): Enable language detection. Default: True
-- `confidence_threshold` (float): Minimum confidence threshold (0.0-1.0). Default: 0.5
+- `min_confidence` (float): Minimum confidence threshold (0.0-1.0). Default: 0.8
+- `detect_multiple` (bool): Detect multiple languages in the document. When False, only the most confident language is returned. Default: False
 
 **Example:**
 
@@ -521,9 +600,25 @@ from kreuzberg import LanguageDetectionConfig
 
 lang_config = LanguageDetectionConfig(
     enabled=True,
-    confidence_threshold=0.7
+    min_confidence=0.7
 )
 ```
+
+---
+
+### KeywordConfig
+
+Keyword extraction configuration (used with `ExtractionConfig.keywords`).
+
+**Fields:**
+
+- `algorithm` (KeywordAlgorithm): Algorithm to use. Values: `KeywordAlgorithm.Yake`, `KeywordAlgorithm.Rake`. Default: Yake
+- `max_keywords` (int): Maximum number of keywords to extract. Default: 10
+- `min_score` (float): Minimum score threshold. Default: 0.0
+- `ngram_range` (tuple[int, int]): N-gram range (min, max). Default: (1, 3)
+- `language` (str | None): Optional language hint. Default: "en"
+- `yake_params` (YakeParams | None): YAKE-specific tuning (e.g. `window_size`). Default: None
+- `rake_params` (RakeParams | None): RAKE-specific tuning (`min_word_length`, `max_words_per_phrase`). Default: None
 
 ---
 
@@ -533,9 +628,12 @@ Image extraction configuration.
 
 **Fields:**
 
-- `enabled` (bool): Enable image extraction from documents. Default: False
-- `min_width` (int): Minimum image width in pixels. Default: 100
-- `min_height` (int): Minimum image height in pixels. Default: 100
+- `extract_images` (bool): Enable image extraction from documents. Default: True
+- `target_dpi` (int): Target DPI for image normalization. Default: 300
+- `max_image_dimension` (int): Maximum width or height for extracted images. Default: 4096
+- `auto_adjust_dpi` (bool): Automatically adjust DPI based on image content. Default: True
+- `min_dpi` (int): Minimum DPI threshold. Default: 72
+- `max_dpi` (int): Maximum DPI threshold. Default: 600
 
 ---
 
@@ -545,8 +643,13 @@ Token reduction configuration for compressing extracted text.
 
 **Fields:**
 
-- `enabled` (bool): Enable token reduction. Default: False
-- `strategy` (str): Reduction strategy. Options: "whitespace", "stemming". Default: "whitespace"
+- `mode` (str): Token reduction mode. Options: `"off"`, `"light"`, `"moderate"`, `"aggressive"`, `"maximum"`. Default: `"off"`
+  - `"off"`: No token reduction
+  - `"light"`: Remove extra whitespace and redundant punctuation
+  - `"moderate"`: Also remove common filler words and some formatting
+  - `"aggressive"`: Also remove longer stopwords and collapse similar phrases
+  - `"maximum"`: Maximum reduction while preserving semantic content
+- `preserve_important_words` (bool): Preserve important words (capitalized, technical terms) even in aggressive reduction modes. Default: True
 
 ---
 
@@ -556,20 +659,25 @@ Post-processing configuration.
 
 **Fields:**
 
-- `enabled` (bool): Enable post-processing. Default: True
-- `processors` (list[str]): List of processor names to enable. Default: all registered processors
+- `enabled` (`bool`): Enable post-processors in the extraction pipeline. Default: True
+- `enabled_processors` (`list[str] | None`): Whitelist of processor names to run. If specified, only these processors are executed. None = run all enabled. Default: None
+- `disabled_processors` (`list[str] | None`): Blacklist of processor names to skip. If specified, these processors are not executed. None = none disabled. Default: None
 
 ---
 
 ### ImagePreprocessingConfig
 
-Image preprocessing configuration for OCR.
+Image preprocessing configuration for OCR (used with `TesseractConfig.preprocessing`).
 
 **Fields:**
 
 - `target_dpi` (int): Target DPI for image preprocessing. Default: 300
 - `auto_rotate` (bool): Auto-rotate images based on orientation. Default: True
+- `deskew` (bool): Correct skewed images. Default: True
 - `denoise` (bool): Apply denoising filter. Default: False
+- `contrast_enhance` (bool): Enhance contrast. Default: False
+- `binarization_method` (str): Binarization method (e.g., "otsu"). Default: "otsu"
+- `invert_colors` (bool): Invert colors (e.g., white text on black). Default: False
 
 ---
 
@@ -582,12 +690,23 @@ Result object returned by all extraction functions.
 **Type Definition:**
 
 ```python title="Python"
-class ExtractionResult(TypedDict):
+class ExtractionResult:
     content: str
     mime_type: str
     metadata: Metadata
-    tables: list[Table]
+    tables: list[ExtractedTable]
     detected_languages: list[str] | None
+    chunks: list[Chunk] | None
+    images: list[ExtractedImage] | None
+    pages: list[PageContent] | None
+    elements: list[Element] | None
+    djot_content: DjotContent | None
+    output_format: str | None
+    result_format: str | None
+    def get_page_count(self) -> int: ...
+    def get_chunk_count(self) -> int: ...
+    def get_detected_language(self) -> str | None: ...
+    def get_metadata_field(self, field_name: str) -> Any | None: ...
 ```
 
 **Fields:**
@@ -595,9 +714,22 @@ class ExtractionResult(TypedDict):
 - `content` (str): Extracted text content
 - `mime_type` (str): MIME type of the processed document
 - `metadata` (Metadata): Document metadata (format-specific fields)
-- `tables` (list[Table]): List of extracted tables
+- `tables` (list[ExtractedTable]): List of extracted tables
 - `detected_languages` (list[str] | None): List of detected language codes (ISO 639-1) if language detection is enabled
+- `chunks` (list[Chunk] | None): Text chunks when chunking is enabled via `ChunkingConfig`. Each chunk has `content` (str), `metadata` (ChunkMetadata), and optionally `embedding` (list[float] | None).
+- `images` (list[ExtractedImage] | None): Extracted images when image extraction is enabled
 - `pages` (list[PageContent] | None): Per-page extracted content when page extraction is enabled via `PageConfig.extract_pages = true`
+- `elements` (list[Element] | None): Semantic elements when `result_format="element_based"`
+- `djot_content` (DjotContent | None): Structured djot content when `output_format="djot"`
+- `output_format` (str | None): Requested output format (`"plain"`, `"markdown"`, `"djot"`, `"html"`)
+- `result_format` (str | None): Result layout (`"unified"` or `"element_based"`)
+
+**Methods:**
+
+- `get_page_count()` → int: Number of pages (from metadata when available)
+- `get_chunk_count()` → int: Number of chunks (0 if chunking disabled)
+- `get_detected_language()` → str | None: Primary detected language code
+- `get_metadata_field(field_name: str)` → Any | None: Get a metadata field by name
 
 **Example:**
 
@@ -620,6 +752,7 @@ if result.detected_languages:
 Per-page extracted content when page extraction is enabled via `PageConfig.extract_pages = true`.
 
 Each page contains:
+
 - Page number (1-indexed)
 - Text content for that page
 - Tables on that page
@@ -688,18 +821,21 @@ Strongly-typed metadata dictionary. Fields vary by document format.
 **Common Fields:**
 
 - `language` (str): Document language (ISO 639-1 code)
-- `date` (str): Document date (ISO 8601 format)
+- `created_at` (str): Creation date (ISO 8601 format)
+- `modified_at` (str): Modification date (ISO 8601 format)
+- `created_by` (str): Creator application
+- `modified_by` (str): Last modifier application
 - `subject` (str): Document subject
-- `format_type` (str): Format discriminator ("pdf", "excel", "email", etc.)
+- `format_type` (str): Format discriminator ("pdf", "excel", "email", "pptx", "archive", "image", "xml", "text", "html", "ocr")
 
 **PDF-Specific Fields** (when `format_type == "pdf"`):
 
 - `title` (str): PDF title
-- `author` (str): PDF author
+- `authors` (list[str]): PDF author(s)
 - `page_count` (int): Number of pages
-- `creation_date` (str): Creation date (ISO 8601)
-- `modification_date` (str): Modification date (ISO 8601)
-- `creator` (str): Creator application
+- `created_at` (str): Creation date (ISO 8601)
+- `modified_at` (str): Modification date (ISO 8601)
+- `created_by` (str): Creator application
 - `producer` (str): Producer application
 - `keywords` (str): PDF keywords
 - `subject` (str): PDF subject
@@ -727,7 +863,7 @@ metadata = result.metadata
 
 if metadata.get("format_type") == "pdf":
     print(f"Title: {metadata.get('title')}")
-    print(f"Author: {metadata.get('author')}")
+    print(f"Authors: {metadata.get('authors')}")
     print(f"Pages: {metadata.get('page_count')}")
 ```
 
@@ -735,14 +871,14 @@ See the Types Reference for complete metadata field documentation.
 
 ---
 
-### Table
+### ExtractedTable
 
-Extracted table structure.
+Extracted table structure. The API type is **`ExtractedTable`** (same shape as below).
 
 **Type Definition:**
 
 ```python title="Python"
-class Table(TypedDict):
+class ExtractedTable:
     cells: list[list[str]]
     markdown: str
     page_number: int
@@ -777,20 +913,22 @@ Metadata for a single text chunk.
 class ChunkMetadata(TypedDict, total=False):
     byte_start: int
     byte_end: int
-    char_count: int
+    chunk_index: int
+    total_chunks: int
     token_count: int | None
-    first_page: int | None
-    last_page: int | None
+    first_page: int
+    last_page: int
 ```
 
 **Fields:**
 
 - `byte_start` (int): UTF-8 byte offset in content (inclusive)
 - `byte_end` (int): UTF-8 byte offset in content (exclusive)
-- `char_count` (int): Number of characters in chunk
+- `chunk_index` (int): Zero-based index of this chunk in the document
+- `total_chunks` (int): Total number of chunks for the document
 - `token_count` (int | None): Estimated token count (if configured)
-- `first_page` (int | None): First page this chunk appears on (1-indexed, only when page boundaries available)
-- `last_page` (int | None): Last page this chunk appears on (1-indexed, only when page boundaries available)
+- `first_page` (int): First page this chunk appears on (1-indexed, only when page boundaries available)
+- `last_page` (int): Last page this chunk appears on (1-indexed, only when page boundaries available)
 
 **Page tracking:** When `PageStructure.boundaries` is available and chunking is enabled, `first_page` and `last_page` are automatically calculated based on byte offsets.
 
@@ -816,14 +954,10 @@ if result.chunks:
             else:
                 page_info = f" (pages {meta['first_page']}-{meta.get('last_page')})"
 
-        print(f"Chunk [{meta['byte_start']}:{meta['byte_end']}]: {len(chunk.text)} chars{page_info}")
+        print(f"Chunk [{meta['byte_start']}:{meta['byte_end']}]: {len(chunk.content)} chars{page_info}")
 ```
 
 ---
-
-### ExtractedTable
-
-Deprecated alias for `Table`. Use `Table` instead.
 
 ---
 
@@ -852,6 +986,8 @@ class PostProcessorProtocol:
         ...
 ```
 
+Optional lifecycle methods: `initialize()` (called when registered), `shutdown()` (called when unregistered).
+
 **Example:**
 
 ```python title="basic_extraction.py"
@@ -867,7 +1003,7 @@ class CustomProcessor:
 
     def process(self, result: ExtractionResult) -> ExtractionResult:
         # Add custom field to metadata
-        result["metadata"]["custom_field"] = "custom_value"
+        result.metadata["custom_field"] = "custom_value"
         return result
 
     def processing_stage(self) -> str:
@@ -906,6 +1042,14 @@ clear_post_processors()
 
 Create custom validators to validate extraction results.
 
+**ValidatorProtocol:** Implement:
+
+- `name() -> str`
+- `validate(result: ExtractionResult) -> None` (raise to fail)
+- Optional: `priority() -> int` (default 50, higher runs first)
+- Optional: `should_validate(result: ExtractionResult) -> bool` (default True)
+- Optional lifecycle: `initialize()`, `shutdown()`
+
 **Functions:**
 
 ```python title="custom_validator.py"
@@ -934,6 +1078,9 @@ All errors inherit from **`KreuzbergError`**. See [Error Handling Reference](err
   - `ParsingError` — Document parsing failure
   - `OCRError` — OCR processing failure
   - `MissingDependencyError` — Missing optional dependency
+  - `CacheError` — Cache read/write failure
+  - `ImageProcessingError` — Image processing failure
+  - `PluginError` — Plugin (post-processor, validator, OCR backend) failure
 
 **Example:**
 
@@ -959,7 +1106,22 @@ except KreuzbergError as e:
     print(f"Extraction failed: {e}")
 ```
 
+**Error inspection:**
+
+- `get_last_error_code()` → int | None
+- `get_error_details()` → dict (message, error_code, error_type, source_file, source_line, is_panic, etc.)
+- `classify_error(message: str)` → int
+- `error_code_name(code: int)` → str
+
 See [Error Handling Reference](errors.md) for detailed error documentation and best practices.
+
+---
+
+## Utilities
+
+- **`detect_mime_type(data: bytes | bytearray)`** → str: Detect MIME type from file bytes (e.g. for `extract_bytes_sync`).
+- **`detect_mime_type_from_path(path: str | Path)`** → str: Detect MIME type from file path (reads file).
+- **`get_extensions_for_mime(mime_type: str)`** → list[str]: Return file extensions associated with a MIME type.
 
 ---
 

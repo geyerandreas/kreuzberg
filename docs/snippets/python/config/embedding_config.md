@@ -3,7 +3,7 @@ from kreuzberg import ExtractionConfig, ChunkingConfig, EmbeddingConfig, Embeddi
 
 config = ExtractionConfig(
     chunking=ChunkingConfig(
-        max_characters=1000,
+        max_chars=1000,
         embedding=EmbeddingConfig(
             model=EmbeddingModelType.preset("all-mpnet-base-v2"),
             batch_size=16,

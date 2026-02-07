@@ -2,9 +2,7 @@
 from kreuzberg import extract_file_sync, ExtractionConfig
 
 # Configure element-based output
-config = ExtractionConfig(
-    output_format="element_based"
-)
+config = ExtractionConfig(result_format="element_based")
 
 # Extract document
 result = extract_file_sync("document.pdf", config=config)

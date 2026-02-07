@@ -9,7 +9,7 @@ from kreuzberg import (
 config: ExtractionConfig = ExtractionConfig(
     use_cache=True,
     ocr=OcrConfig(backend="tesseract", language="eng"),
-    chunking=ChunkingConfig(max_characters=1000, overlap=200),
+    chunking=ChunkingConfig(max_chars=1000, max_overlap=200),
 )
 
 result = extract_file_sync("document.pdf", config=config)

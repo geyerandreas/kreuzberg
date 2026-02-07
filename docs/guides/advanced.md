@@ -246,11 +246,13 @@ Detect languages in extracted text using the [`whatlang`](https://crates.io/crat
 ### Detection Modes
 
 **Single Language** (`detect_multiple: false`):
+
 - Detects dominant language only
 - Faster, single-pass detection
 - Best for monolingual documents
 
 **Multiple Languages** (`detect_multiple: true`):
+
 - Chunks text into 200-character segments
 - Detects language in each chunk
 - Returns languages sorted by frequency
@@ -301,15 +303,15 @@ Generate embeddings for vector databases, semantic search, and RAG systems using
 
 ### Available Presets
 
-| Preset | Model | Dimensions | Max Tokens | Use Case |
-|--------|-------|-----------|------------|----------|
-| **fast** | AllMiniLML6V2Q | 384 | 512 | Rapid prototyping, development |
-| **balanced** | BGEBaseENV15 | 768 | 1024 | Production RAG, general-purpose |
-| **quality** | BGELargeENV15 | 1024 | 2000 | Maximum accuracy, complex docs |
-| **multilingual** | MultilingualE5Base | 768 | 1024 | 100+ languages, international |
+| Preset           | Model              | Dimensions | Max Tokens | Use Case                        |
+| ---------------- | ------------------ | ---------- | ---------- | ------------------------------- |
+| **fast**         | AllMiniLML6V2Q     | 384        | 512        | Rapid prototyping, development  |
+| **balanced**     | BGEBaseENV15       | 768        | 1024       | Production RAG, general-purpose |
+| **quality**      | BGELargeENV15      | 1024       | 2000       | Maximum accuracy, complex docs  |
+| **multilingual** | MultilingualE5Base | 768        | 1024       | 100+ languages, international   |
 
 !!! note "Max Tokens vs. max_characters"
-    The "Max Tokens" values shown are the model's maximum token limits. These don't directly correspond to the `max_characters` setting in `ChunkingConfig`, which controls character-based chunking. The embedding model will process chunks up to its token limit.
+The "Max Tokens" values shown are the model's maximum token limits. These don't directly correspond to the `max_characters` setting in `ChunkingConfig`, which controls character-based chunking. The embedding model will process chunks up to its token limit.
 
 ### Configuration
 
@@ -377,11 +379,11 @@ Intelligently reduce token count while preserving meaning. Removes stopwords, re
 
 ### Reduction Levels
 
-| Level | Reduction | Features |
-|-------|-----------|----------|
-| **off** | 0% | No reduction, pass-through |
-| **moderate** | 15-25% | Stopwords + redundancy removal |
-| **aggressive** | 30-50% | Semantic clustering, importance scoring |
+| Level          | Reduction | Features                                |
+| -------------- | --------- | --------------------------------------- |
+| **off**        | 0%        | No reduction, pass-through              |
+| **moderate**   | 15-25%    | Stopwords + redundancy removal          |
+| **aggressive** | 30-50%    | Semantic clustering, importance scoring |
 
 ### Configuration
 
@@ -448,16 +450,18 @@ Intelligently reduce token count while preserving meaning. Removes stopwords, re
 Extract important keywords and phrases using YAKE or RAKE algorithms.
 
 !!! note "Feature Flag Required"
-    Keyword extraction requires the `keywords` feature flag enabled when building Kreuzberg.
+Keyword extraction requires the `keywords` feature flag enabled when building Kreuzberg.
 
 ### Available Algorithms
 
 **YAKE (Yet Another Keyword Extractor)**:
+
 - Statistical/unsupervised approach
 - Factors: term frequency, position, capitalization, context
 - Best for: General-purpose extraction
 
 **RAKE (Rapid Automatic Keyword Extraction)**:
+
 - Co-occurrence based
 - Analyzes word frequency and degree in phrases
 - Best for: Domain-specific terms, phrase extraction
@@ -528,13 +532,13 @@ Automatic text quality scoring that detects OCR artifacts, script content, navig
 
 ### Quality Factors
 
-| Factor | Weight | Detects |
-|--------|--------|---------|
-| OCR Artifacts | 30% | Scattered chars, repeated punctuation, malformed words |
-| Script Content | 20% | JavaScript, CSS, HTML tags |
-| Navigation Elements | 10% | Breadcrumbs, pagination, skip links |
-| Document Structure | 20% | Sentence/paragraph length, punctuation |
-| Metadata Quality | 10% | Title, author, subject presence |
+| Factor              | Weight | Detects                                                |
+| ------------------- | ------ | ------------------------------------------------------ |
+| OCR Artifacts       | 30%    | Scattered chars, repeated punctuation, malformed words |
+| Script Content      | 20%    | JavaScript, CSS, HTML tags                             |
+| Navigation Elements | 10%    | Breadcrumbs, pagination, skip links                    |
+| Document Structure  | 20%    | Sentence/paragraph length, punctuation                 |
+| Metadata Quality    | 10%    | Title, author, subject presence                        |
 
 ### Configuration
 
@@ -665,7 +669,7 @@ if result.chunks:
                 if chunk.metadata.first_page == chunk.metadata.last_page
                 else f"Pages {chunk.metadata.first_page}-{chunk.metadata.last_page}"
             )
-            print(f"Chunk: {chunk.text[:50]}... ({page_range})")
+            print(f"Chunk: {chunk.content[:50]}... ({page_range})")
 ```
 
 ### Page-Filtered Search
@@ -691,11 +695,11 @@ Include page context in embeddings for better retrieval:
 ```python title="Adding Page Context to Embeddings"
 for chunk in result.chunks:
     if chunk.metadata.first_page:
-        context = f"Page {chunk.metadata.first_page}: {chunk.text}"
+        context = f"Page {chunk.metadata.first_page}: {chunk.content}"
         embedding = embed(context)
         store_with_metadata(embedding, {
             "page": chunk.metadata.first_page,
-            "text": chunk.text
+            "text": chunk.content
         })
 ```
 

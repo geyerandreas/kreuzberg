@@ -11,8 +11,8 @@ from kreuzberg import (
 async def main() -> None:
     config: ExtractionConfig = ExtractionConfig(
         chunking=ChunkingConfig(
-            max_characters=512,
-            overlap=50,
+            max_chars=512,
+            max_overlap=50,
             embedding=EmbeddingConfig(
                 model=EmbeddingModelType.preset("balanced"), normalize=True
             ),
