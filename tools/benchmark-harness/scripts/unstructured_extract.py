@@ -19,7 +19,7 @@ def extract_sync(file_path: str, ocr_enabled: bool) -> dict:
     """Extract using Unstructured partition API."""
     strategy = "hi_res" if ocr_enabled else "fast"
     start = time.perf_counter()
-    elements = partition(filename=file_path, strategy=strategy)
+    elements = partition(filename=file_path, strategy=strategy, languages=["eng"])
     duration_ms = (time.perf_counter() - start) * 1000.0
 
     text = "\n\n".join(str(el) for el in elements)

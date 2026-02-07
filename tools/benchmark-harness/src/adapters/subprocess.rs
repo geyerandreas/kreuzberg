@@ -357,27 +357,36 @@ impl SubprocessAdapter {
 
         let write_elapsed = start.elapsed();
 
-        // Read one JSON line
+        // Read lines until we get a JSON response (starts with '{').
+        // Non-JSON lines (C library warnings, Python info messages) are skipped.
         let mut line = String::new();
-        let bytes_read = tokio::time::timeout(timeout, proc.stdout.read_line(&mut line))
-            .await
-            .map_err(|_| Error::Timeout(format!("Persistent process response exceeded {:?}", timeout)))?
-            .map_err(|e| Error::Benchmark(format!("Failed to read from persistent process: {}", e)))?;
+        let bytes_read = tokio::time::timeout(timeout, async {
+            loop {
+                line.clear();
+                let n = proc
+                    .stdout
+                    .read_line(&mut line)
+                    .await
+                    .map_err(|e| Error::Benchmark(format!("Failed to read from persistent process: {}", e)))?;
+                if n == 0 {
+                    return Err(Error::Benchmark(
+                        "Persistent process returned EOF (process may have crashed)".to_string(),
+                    ));
+                }
+                let trimmed = line.trim();
+                if trimmed.starts_with('{') {
+                    return Ok(n);
+                }
+                // Skip non-JSON noise (C library warnings, info messages)
+                if is_debug_enabled() {
+                    eprintln!("[persistent:{}] skipping non-JSON line: {}", self.name, trimmed);
+                }
+            }
+        })
+        .await
+        .map_err(|_| Error::Timeout(format!("Persistent process response exceeded {:?}", timeout)))??;
 
         let duration = start.elapsed();
-
-        if bytes_read == 0 {
-            return Err(Error::Benchmark(
-                "Persistent process returned empty response (EOF — process may have crashed)".to_string(),
-            ));
-        }
-
-        // Validate response is valid JSON before returning
-        if line.trim().is_empty() {
-            return Err(Error::Benchmark(
-                "Persistent process returned blank line (expected JSON)".to_string(),
-            ));
-        }
 
         if is_debug_enabled() {
             eprintln!(

@@ -1150,6 +1150,11 @@ jobs:
       - name: Restore benchmark binary permissions
         run: scripts/benchmarks/restore-binary-permissions.sh
 
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng libmagic-dev
+
       - name: Setup Python
         uses: ./.github/actions/setup-python-env
         with:
