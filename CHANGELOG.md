@@ -11,11 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-#### CLI
-- **`.yml` config files rejected by `--config` flag**: The CLI only accepted `.yaml` for YAML config files, rejecting the common `.yml` extension with a "must have .toml, .yaml, or .json extension" error. The config loader now accepts both `.yml` and `.yaml` (case-insensitive).
+#### MIME Type Detection
+- Fixed `.typ` files not recognized as Typst format; added `.typ` as an alias for `application/x-typst`.
+- Fixed `.djot` files not recognized; added `.djot` extension mapping to `text/x-djot`.
+- Fixed `application/gzip` rejected by MIME validation; added to `SUPPORTED_MIME_TYPES`.
 
-#### CI
-- **Fixture document paths broken after test_documents reorganization**: All 63 fixture JSON files under `fixtures/` still referenced old directory names (`pdfs/`, `pdfs_with_tables/`, `web/`, `documents/`, `legacy_office/`, `presentations/`, `spreadsheets/`, `data_formats/`, `office/`) after the test_documents directory was restructured into per-format directories (`pdf/`, `html/`, `docx/`, `doc/`, `ppt/`, `pptx/`, `xlsx/`, `xls/`, `json/`, `yaml/`). This caused all Deno E2E tests and PDFium system tests to fail with "No such file or directory" errors.
+#### Image Extraction
+- Fixed JPEG 2000 images (`.jp2`) not handled by ImageExtractor; added `image/jp2`, `image/jpx`, `image/jpm`, and `image/mj2` to supported types.
+
+#### Extraction
+- Fixed YAML files rejected with "Unsupported format: application/yaml"; now accepts all four YAML MIME type variants including the standard `application/yaml` (RFC 9512).
+
+#### CLI
+- Fixed `.yml` config files rejected by `--config` flag; now accepts both `.yml` and `.yaml`.
 
 ---
 
@@ -24,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 #### DOCX Extraction
-- **DOCX list items missing whitespace between text runs**: Fixed separate text runs (`<w:r>` elements) within the same paragraph being concatenated without spaces, causing words to merge together. Root cause: the XML parser used `trim_text(true)` which stripped whitespace from `<w:t>` text elements. Vendored the `docx-lite` parser into kreuzberg and fixed the parser to use `trim_text(false)`, preserving the original whitespace from the DOCX XML. (#359)
+- Fixed DOCX list items missing whitespace between text runs, causing words to merge together. (#359)
 
 ---
 
@@ -32,13 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-#### CI
-- **Deno E2E tests failing due to double-slash in document paths**: Fixed the E2E test generator producing `WORKSPACE_ROOT` with a trailing slash, causing `//test_documents/` paths that broke all Deno test file resolution.
-- **CLI `test_extract_with_chunking` test failure**: Fixed test passing `--chunk` without a required value (`true`/`false`), causing `test-system-pdfium` job to fail.
-- **Rust CI job timeouts**: Increased all Rust CI job timeouts from 90 to 180 minutes to accommodate the full test suite.
-
 #### Python Bindings
-- **CLI binary missing from all platform wheels**: Fixed the publish workflow not building the CLI binary before running maturin, causing the `kreuzberg-cli` executable to be absent from wheels on all platforms (Windows, macOS, Linux). The CI workflow had this step but the publish workflow did not. (#349)
+- Fixed CLI binary missing from all platform wheels in the publish workflow. (#349)
 
 ---
 
@@ -47,14 +50,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 #### MIME Type Detection
-- **DOCX/XLSX/PPTX files detected as ZIP via `detect_mime_type_from_bytes`**: Fixed Office Open XML files (DOCX, XLSX, PPTX) being incorrectly detected as `application/zip` when using bytes-based MIME detection. The function now inspects ZIP contents for Office format markers (`word/document.xml`, `xl/workbook.xml`, `ppt/presentation.xml`) to correctly identify these formats. (#350)
+- Fixed DOCX/XLSX/PPTX files incorrectly detected as `application/zip` when using bytes-based MIME detection. (#350)
 
 #### Java Bindings
-- **Format-specific metadata missing in `getMetadataMap()`**: Fixed `sheet_count`, `sheet_names`, and other format-specific metadata fields not being accessible via `ExtractionResult.getMetadataMap()`. The `ResultParser.buildMetadata()` method now properly propagates flattened format metadata (e.g., Excel, PPTX) to the `Metadata.additional` map.
-- **ClassCastException when deserializing nested generic collections**: Fixed `LinkedHashMap cannot be cast to PageStructure` and similar errors when deserializing JSON with nested `List<T>` fields. Added `@JsonDeserialize(contentAs = ...)` annotations to all model classes with generic list fields (`PageStructure`, `FormattedBlock`, `Footnote`, `Attributes`, `PageHierarchy`, `PageContent`, `DjotContent`) to preserve type information during Jackson deserialization. (#355)
+- Fixed format-specific metadata (e.g., `sheet_count`, `sheet_names`) missing from `getMetadataMap()`.
+- Fixed `ClassCastException` when deserializing nested generic collections in model classes. (#355)
 
 #### Python Bindings
-- **Windows CLI binary still missing from wheel**: Fixed CI workflow copying CLI binary with wrong filename (`kreuzberg.exe` instead of `kreuzberg-cli.exe`), causing the binary to be excluded from Windows wheels despite the v4.2.9 build.py fix. The CI now copies with the correct name to match pyproject.toml include paths. (#349)
+- Fixed Windows CLI binary still missing from wheel due to wrong filename in CI copy step. (#349)
 
 ---
 
@@ -63,15 +66,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 #### MCP Server
-- **Nested runtime panic in Docker/MCP context**: Fixed "Cannot start a runtime from within a runtime" panic when using `extract_file` tool via MCP server in Docker. The MCP extraction tools were calling sync wrappers which use `GLOBAL_RUNTIME.block_on()` from within the already-running Tokio runtime. Now always uses async extraction in MCP context. (#348)
-- **Removed unused `async` parameter from MCP tools**: The `async` parameter on `extract_file`, `extract_bytes`, and `batch_extract_files` MCP tools has been removed since MCP always runs in an async context.
+- Fixed "Cannot start a runtime from within a runtime" panic when using MCP server in Docker.
+- Removed unused `async` parameter from MCP tools.
 
 #### Python Bindings
-- **Windows CLI binary not found**: Fixed "embedded binary not found" error on Windows. The build script now correctly handles Windows `.exe` extension when copying the CLI binary into the wheel. (#349)
+- Fixed "embedded binary not found" error on Windows due to missing `.exe` extension handling. (#349)
 
 #### OCR Heuristic
-- **Pass actual page count to OCR fallback evaluator**: `evaluate_native_text_for_ocr` was called with `None` for page count, defaulting to 1. This inflated per-page averages for multi-page documents, causing scanned PDFs to skip OCR.
-- **Per-page OCR evaluation for mixed-content PDFs**: Added `evaluate_per_page_ocr` which evaluates each page independently using page boundaries. If any single page triggers OCR fallback, the entire document is OCR'd. Previously, good pages masked scanned pages in the aggregate evaluation.
+- Fixed OCR fallback evaluator receiving `None` for page count, causing scanned PDFs to incorrectly skip OCR.
+- Added per-page OCR evaluation so that mixed-content PDFs with some scanned pages are properly OCR'd.
 
 ---
 
@@ -80,24 +83,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 #### Python Bindings
-- **ChunkingConfig serde serialization**: Fixed `config_to_json()` and `config_get_field()` outputting `max_characters`/`overlap` instead of `max_chars`/`max_overlap` by using `serde(rename)` instead of `alias` for backwards-compatible serialization
+- Fixed `ChunkingConfig` serialization outputting wrong field names (`max_characters`/`overlap` instead of `max_chars`/`max_overlap`).
 
 #### Java Bindings
-- **ARM64 SIGBUS crash in `kreuzberg_get_error_details`**: Added `kreuzberg_get_error_details_ptr()` returning a heap-allocated pointer instead of struct-by-value, fixing ABI mismatch in Java Panama FFI on ARM64 architectures
-- **E2E test compilation errors**: Updated `E2EHelpers` to use `getMetadataMap()` and `getElementType().name()` matching current API
+- Fixed ARM64 SIGBUS crash in `kreuzberg_get_error_details` by returning a heap-allocated pointer instead of struct-by-value.
 
 #### Ruby Bindings
-- **`rb_sys` build dependency**: Moved `rb_sys` from development to runtime dependency in gemspec so bundler installs it before compiling the native extension, fixing `LoadError: cannot load such file -- rb_sys/mkmf` for end users
-- **Flaky concurrent extraction test**: Prevented `Tempfile` garbage collection in thread safety test by keeping references alive during concurrent extraction
+- Fixed `rb_sys` missing as runtime dependency, causing `LoadError` during native extension compilation.
 
 #### FFI
-- **Added `kreuzberg_free_error_details()`**: New function to properly free heap-allocated `CErrorDetails` structs and their internal string fields
-
-### Changed
-
-#### CI
-- **Rust test parallelization**: Removed `--test-threads=1` from unit test script, enabling parallel test execution across 80+ test files
-- **Rust CI timeout**: Reduced job timeout from 180 to 60 minutes
+- Added `kreuzberg_free_error_details()` to properly free heap-allocated `CErrorDetails` structs.
 
 ---
 
@@ -106,154 +101,65 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 #### API
-- **OpenAPI schema for `/extract` endpoint**: Implemented `utoipa::ToSchema` on all extraction result types (`ExtractionResult`, `Metadata`, `Chunk`, `ExtractedImage`, `Element`, `DjotContent`, `PageContent`, `Table`, and all nested types), enabling full OpenAPI documentation for the extraction endpoint
-- **Unified `ChunkingConfig`**: Merged internal chunking config into a single `ChunkingConfig` struct with canonical field names (`max_characters`, `overlap`) and serde aliases (`max_chars`, `max_overlap`) for backwards compatibility. Added `trim` and `chunker_type` fields. `ChunkerType` enum is no longer feature-gated behind `chunking`
+- Added OpenAPI schema for `/extract` endpoint with full type documentation.
+- Added unified `ChunkingConfig` with canonical field names and serde aliases for backwards compatibility.
 
 #### OCR
-- **`KREUZBERG_OCR_LANGUAGE="all"` support**: Setting the language to `"all"` or `"*"` automatically detects and uses all installed Tesseract languages from the tessdata directory, eliminating manual enumeration (#344)
+- Added `KREUZBERG_OCR_LANGUAGE="all"` support to auto-detect and use all installed Tesseract languages. (#344)
 
 ### Fixed
 
 #### Ruby Bindings
-- **Cow<'static, str> type conversions**: Fixed Magnus bindings to properly convert `Cow<'static, str>` fields (`mime_type`, `format`, `colorspace`) using `.as_ref()` instead of passing directly to FFI methods
-- **Vendor workspace `bytes` dependency**: Added `bytes` to the Ruby vendor workspace Cargo.toml via the vendoring script, fixing workspace dependency resolution failures
-- **Tempfile GC in batch test**: Kept `Tempfile` references alive in `batch_operations_spec.rb` to prevent garbage collection before `batch_extract_files_sync` reads them
+- Fixed `Cow<'static, str>` type conversions in Magnus bindings.
+- Fixed missing `bytes` workspace dependency in vendor Cargo.toml.
 
 #### Python Bindings
-- **Runtime `ExtractedImage` import**: Defined `ExtractedImage`, `Metadata`, `OutputFormat`, and `ResultFormat` as Python-level runtime types instead of importing from compiled Rust bindings (these are stub-only types, not `#[pyclass]` exports)
+- Fixed runtime `ExtractedImage` import; defined as Python-level runtime types instead of importing from compiled Rust bindings.
 
 #### C# Bindings
-- **Attributes deserialization on ARM64**: Added `AttributesDictionaryConverter` to handle both array-of-arrays (`[["k","v"]]`) and object (`{"k":"v"}`) JSON formats for `LinkMetadata.Attributes` and `HtmlImageMetadata.Attributes`
+- Fixed `Attributes` deserialization on ARM64 to handle both array-of-arrays and object JSON formats.
 
 #### Java Bindings
-- **Test timeout prevention**: Added `@Timeout(60)` to all concurrency and async test methods in `ConcurrencyTest` and `AsyncExtractionTest` to prevent CI hangs
-- **Surefire timeout reduction**: Reduced `forkedProcessTimeoutInSeconds` from 3600s to 600s for faster failure detection
-
-### Performance
-
-- **Cow<'static, str> for static string fields**: Converted `ExtractionResult.mime_type`, `ExtractedImage.format`, `ExtractedImage.colorspace`, `HierarchicalBlock.level`, `ArchiveMetadata.format`, `LibreOfficeConversionResult` fields, and `StructuredDataResult.format` from `String` to `Cow<'static, str>`, eliminating heap allocations for values that are always string literals
-- **RST parser allocation reduction**: Replaced `Vec<char>` collects with direct iterator usage, `to_lowercase()` with `eq_ignore_ascii_case()`, and removed intermediate `collect()` before `extend()`
-- **Idiomatic Cow usage in fictionbook extractor**: Replaced 16 instances of `from_utf8_lossy().to_string()` with `.into_owned()`
-- **Reduced unnecessary clones in email extractor**: Replaced `Option::clone().or_else(|| .clone())` with `as_ref().or().cloned()`
-- **Vec for small metadata maps**: Replaced `HashMap<String, String>` with `Vec<(String, String)>` for `LinkMetadata.attributes` and `ImageMetadataType.attributes` (typically <10 entries, faster iteration and lower overhead)
-- **Cow key interning for metadata**: Switched `Metadata.additional` from `HashMap<String, Value>` to `AHashMap<Cow<'static, str>, Value>`, avoiding allocation for static keys
-- **bytes::Bytes for binary data**: Replaced `Vec<u8>` with `bytes::Bytes` for `ExtractedImage.data`, enabling zero-copy cloning of large image buffers
-- **AHashMap for hot-path maps**: Replaced `HashMap` with `AHashMap` in metadata and extraction pipelines for faster hashing
-- **Reduced clone elimination**: Removed unnecessary `.clone()` calls in Cow return paths across extraction pipeline
-
-### Fixed
+- Fixed test timeouts causing CI hangs by adding `@Timeout(60)` to concurrency and async tests.
 
 #### Elixir Bindings
-- **Overhauled all struct types from audit against Rust source**: Exhaustive audit of every Elixir struct against the Rust core types to ensure field-level correctness
-  - `Metadata`: Replaced phantom fields (`author`, `page_count`, `created_date`, `creator`, `producer`, `trapped`, `file_size`, `version`, `encryption`) with correct Rust fields (`authors`, `pages`, `created_at`, `modified_at`, `created_by`, `modified_by`, `format`, `image_preprocessing`, `error`, `additional`); handles `#[serde(flatten)]` for `format` and `additional`
-  - `Table`: Stripped to Rust's 3 fields (`cells`, `markdown`, `page_number`); removed phantom `rows`, `columns`, `headers`, `html`, `bounds`
-  - `Image`: Replaced phantom fields (`mime_type`, `ocr_text`, `file_size`, `dpi`) with Rust `ExtractedImage` fields (`image_index`, `colorspace`, `bits_per_component`, `is_mask`, `description`, `ocr_result`); `ocr_result` recursively converts to `ExtractionResult` struct; handles `bytes::Bytes` u8 array → binary conversion
-  - `Chunk`: Removed phantom `token_count`, `start_position`, `confidence`; `metadata` now typed as `ChunkMetadata` struct
-  - `Page`: Renamed `number` → `page_number`; removed phantom `width`, `height`, `index`; added typed `hierarchy` field
-  - `ExtractionResult`: Added `to_map/1` with recursive serialization; added `elements` and `djot_content` fields; removed nonexistent `keywords` field
-- **Added new struct modules matching Rust types**:
-  - `ChunkMetadata` — byte_start, byte_end, token_count, chunk_index, total_chunks, first_page, last_page
-  - `Keyword` — text, score, algorithm, positions
-  - `PageHierarchy` + `HierarchicalBlock` — page hierarchy with heading-level blocks and bounding boxes
-  - `DjotContent`, `DjotFormattedBlock`, `DjotInlineElement`, `DjotAttributes`, `DjotImage`, `DjotLink`, `DjotFootnote` — full Djot document structure (8 modules)
-  - `PageStructure`, `PageBoundary`, `PageInfo` — page structure metadata
-  - `ErrorMetadata` — error_type, message
-  - `ImagePreprocessingMetadata` — 12 fields matching Rust (original_dimensions, target_dpi, scale_factor, etc.)
-- **Fixed all test files**: Updated 11 test files to match new struct field names (55 failures → 0)
+- Overhauled all struct types to match Rust source: fixed `Metadata`, `Table`, `Image`, `Chunk`, `Page`, `ExtractionResult` field names and types.
+- Added new struct modules matching Rust types: `ChunkMetadata`, `Keyword`, `PageHierarchy`, `DjotContent`, `PageStructure`, `ErrorMetadata`, `ImagePreprocessingMetadata`, and more.
 
 #### TypeScript Bindings
-- **Overhauled type definitions from audit against NAPI-RS Rust source**:
-  - Added proper `EmbeddingConfig` and `EmbeddingModelType` interfaces (replacing opaque `Record<string, unknown>`)
-  - Replaced deprecated `chunkSize`/`chunkOverlap` with `maxChars`/`maxOverlap` in `ChunkingConfig`
-  - Replaced phantom `FontConfig` with correct `HierarchyConfig` (kClusters, includeBbox, ocrCoverageThreshold)
-  - Removed phantom fields from `ExtractionResult` (embeddings, processingTime, outputFormat, resultFormat)
-  - Removed phantom fields from `ExtractionConfig` (quality, verbose, debug, timeout, retries)
-  - Fixed `FormattedBlock.children` from nullable to required array
-  - Fixed validation utilities to match actual config structure
+- Overhauled type definitions to match NAPI-RS Rust source; fixed `ChunkingConfig`, `ExtractionResult`, `ExtractionConfig`, and `FormattedBlock` fields.
 
 #### PHP Bindings
-- **Overhauled type definitions from audit against ext-php-rs Rust source**:
-  - `Keyword`: Added missing `algorithm` and `positions` fields
-  - `Metadata`: Removed phantom `producer`/`date` fields; added missing `modifiedBy`, `sheetCount`, `format`; fixed `pageCount` key mismatch (Rust sends camelCase)
-  - `ExtractionResult`: Removed phantom `embeddings`/`tesseract` fields not in Rust struct
-  - `FormattedBlock`: Changed `children` from nullable to required array (matches Rust `Vec`)
-  - Fixed mock data to match corrected types
+- Overhauled type definitions to match Rust source; fixed `Keyword`, `Metadata`, `ExtractionResult`, and `FormattedBlock` fields.
 
 #### Ruby Bindings
-- **Overhauled RBS type stubs** (`sig/kreuzberg.rbs`): Exhaustive audit against Ruby source and Rust Magnus bindings to ensure all types match exactly
-  - Added missing `Config::Hierarchy` class and `PDF.hierarchy` attribute
-  - Added missing `Config::KeywordYakeParams`, `Config::KeywordRakeParams` classes
-  - Added `Tesseract.options` and `HtmlOptions.options` attr_readers
-  - Added `Keywords` attr_readers and fixed parameter types to accept `String | Symbol`
-  - Fixed `Config::Extraction` to use `images` attr with `image_extraction` alias (matching Ruby source)
-  - Added missing `Extraction` methods: `discover`, `merge`, `merge!`, `[]`, `[]=`, `get_field`, `to_json`, format setters
-  - Added missing `Result` inner classes: `PageContent`, `HierarchicalBlock`, `PageHierarchy`, `ElementBoundingBox`, `ElementMetadataStruct`, `ElementStruct`
-  - Added `Result` attributes `pages` and `elements`, plus helper methods `page_count`, `chunk_count`, `detected_language`, `metadata_field`
-  - Added `DjotContent.metadata` lazy method declaration
-  - Added `extraction_result_hash.metadata` and `extraction_result_hash.pages` fields; added `page_content_hash` type
-  - Fixed `chunk_hash.chunk_index`/`total_chunks` from optional to required
-  - Fixed `image_hash.is_mask` from optional to required
-  - Fixed `register_ocr_backend` signature to include `name` parameter
-  - Replaced `_OcrBackend.extract_text` with `process_image` (matching actual protocol)
-  - Fixed `_classify_error_native` and `_get_error_details_native` return types to `Hash`
-  - Fixed `validate_mime_type` return type to `String`, `get_extensions_for_mime` to `Array[String]`
-  - Fixed extraction API methods to use keyword arguments (`path:`, `data:`, etc.)
-  - Added 30+ missing native method declarations (validation, config, MIME, result wrappers, plugin management)
-  - All private parsing/serialization methods now declared
-  - Steep type checker passes with zero errors
+- Overhauled RBS type stubs to match Ruby source and Rust Magnus bindings.
 
 #### Python Bindings
-- **Overhauled `_internal_bindings.pyi` type stubs**: Exhaustive audit against Rust source to ensure all types, fields, and optionality match exactly
-  - Changed `Chunk` from `TypedDict` to proper class (matches PyO3 `#[pyclass]`)
-  - Replaced bare `dict[str, Any]` with precise TypedDicts: `ChunkMetadata`, `ErrorDetails`, `HtmlConversionOptions`, `HtmlPreprocessingOptions`, `Attributes`, `HeaderMetadata`, `LinkMetadata`, `HtmlImageMetadata`, `StructuredData`, `PageBoundary`, `PageInfo`, `PageStructure`
-  - Fixed `PptxMetadata` fields (was title/author/description, now slide_count/slide_names)
-  - Fixed `PdfMetadata` fields (removed common Metadata fields that don't belong)
-  - Fixed `HtmlMetadata` structure (individual og_*/twitter_* fields → open_graph/twitter_card/meta_tags dicts)
-  - Fixed optionality on PDF, Email, Archive, HTML, and OCR metadata fields
-  - Added missing `metadata` field on `InlineElement`
-  - Added missing `output_format`/`result_format` on `ExtractionResult`
-  - Added missing `language` field in OCR metadata
-  - Removed orphaned `PageHierarchy`/`HierarchicalBlock` types and `PageContent.hierarchy` (never set in Python conversion)
-- **Removed duplicate `types.py`**: Deleted `kreuzberg/types.py` which contained 43 duplicate type definitions conflicting with `_internal_bindings.pyi`
-- **Consolidated duplicate test files**: Merged unique tests from `test_embeddings_advanced.py`, `test_images_extraction.py`, `test_tables_extraction.py` into their canonical counterparts and deleted the duplicates
+- Overhauled `_internal_bindings.pyi` type stubs to match Rust source; fixed `Chunk`, `PptxMetadata`, `PdfMetadata`, `HtmlMetadata`, and optionality on multiple fields.
+- Removed duplicate `types.py` containing 43 conflicting type definitions.
 
 #### Java Bindings
-- **Overhauled type definitions from audit against Rust source**: Exhaustive audit of every Java type against the Rust core to ensure field-level correctness
-  - `Metadata`: Removed phantom `date`/`formatType` fields; added `createdBy`, `modifiedBy`; removed `Success` from `ExtractionResult`
-  - `PptxMetadata`: Added `slideCount`, `slideWidth`, `slideHeight`; removed phantom `template`
-  - `PageInfo`: Changed `dimensions` from `Map<String, Double>` to `double[]` (matches Rust tuple serialization)
-  - `ImageMetadata`: Fixed `exif` to non-optional `Map<String, String>` (matches Rust `HashMap`)
-  - `LinkMetadata`/`ImageMetadataType`: Fixed `attributes` from `Map` to `List<List<String>>` (matches Rust `Vec<(String, String)>` serialization)
-  - Added missing enums: `OutputFormat`, `ElementType`, `PageUnitType`, `LinkType`, `ImageType`, `StructuredDataType`, `TextDirection`, `EmbeddingPreset`
-  - Added missing types: `DjotContent`, `FormattedBlock`, `InlineElement`, `DjotAttributes`, `DjotImage`, `DjotLink`, `Footnote`, `PageHierarchy`, `HierarchicalBlock`
-  - Updated all test files to match corrected types
+- Overhauled type definitions to match Rust source; fixed `Metadata`, `PptxMetadata`, `PageInfo`, `ImageMetadata`, `LinkMetadata`, and added missing enums and types.
 
 #### C# Bindings
-- **Overhauled type definitions from audit against Rust source**: Exhaustive audit of every C# type against the Rust core to ensure field-level correctness
-  - `Metadata`: Removed phantom `Success`/`Date` fields; added `CreatedBy`, `ModifiedBy`; restructured `FormatMetadata` as discriminated union
-  - `PptxMetadata`: Added `SlideCount`, `SlideWidth`, `SlideHeight`
-  - `PageBoundary`: Changed `ByteStart`/`ByteEnd` from `int` to `long` (matches Rust `usize` on 64-bit)
-  - `ImageMetadata`: Fixed `Exif` to non-nullable (matches Rust `HashMap`)
-  - Added missing types: `DjotContent`, `FormattedBlock`, `InlineElement`, `DjotAttributes`, `DjotImage`, `DjotLink`, `Footnote`, `PageHierarchy`, `HierarchicalBlock`
-  - Registered all new types in `JsonSerializerContext` for source-generated serialization
-  - Removed stale `Success`/`Date` references from `KreuzbergClient`
-- **Fixed keyword deserialization**: Properly discriminate between simple string keywords (document metadata) and extracted keyword objects (YAKE/RAKE with text/score/algorithm); added `ExtractedKeywords` property to `Metadata`
-- **Updated all test files**: Removed references to removed properties, fixed `BinarizationMode` → `BinarizationMethod`
+- Overhauled type definitions to match Rust source; fixed `Metadata`, `PptxMetadata`, `PageBoundary`, `ImageMetadata`, and added missing types.
+- Fixed keyword deserialization to discriminate between simple string keywords and extracted keyword objects.
 
 #### Go Bindings
-- **Overhauled type definitions from audit against Rust source**: Exhaustive audit of every Go type against the Rust core to ensure field-level correctness
-  - `Metadata`: Removed phantom `Date`/`FormatType` fields; added `CreatedBy`, `ModifiedBy`
-  - `PptxMetadata`: Added `SlideCount`, `SlideWidth`, `SlideHeight`; removed phantom `Template`
-  - `ImageMetadata`: Fixed `Exif` to non-pointer (matches non-optional Rust `HashMap`)
-  - `PageBoundary`: Changed `ByteStart`/`ByteEnd` from `int` to `int64` (matches Rust `usize`)
-  - `PageInfo`: Changed `Dimensions` from struct to `[]float64` (matches Rust tuple serialization)
-  - Added missing enums and types matching Rust core
-  - Updated all test files to match corrected types
-- **Consolidated config tests**: Renamed `config_comprehensive_test.go` → `config_test.go` and removed 5 duplicate FontConfig tests that overlapped with `font_config_test.go`
+- Overhauled type definitions to match Rust source; fixed `Metadata`, `PptxMetadata`, `ImageMetadata`, `PageBoundary`, `PageInfo`, and added missing enums and types.
 
 ### Changed
 
-- **Dependency update**: Bumped `html-to-markdown-rs` from 2.24.1 to 2.24.3
+- Bumped `html-to-markdown-rs` from 2.24.1 to 2.24.3.
+
+### Performance
+
+- Converted static string fields to `Cow<'static, str>` to eliminate heap allocations for string literals.
+- Reduced allocations in RST parser, fictionbook extractor, and email extractor.
+- Replaced `HashMap` with `Vec` for small metadata maps and `AHashMap` for hot-path maps.
+- Switched `Metadata.additional` keys to `Cow<'static, str>` for interning.
+- Replaced `Vec<u8>` with `bytes::Bytes` for `ExtractedImage.data`, enabling zero-copy cloning.
 
 ---
 
@@ -262,18 +168,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 #### Python Bindings
-- **Missing `output_format`/`result_format` on `ExtractionResult`**: Added `output_format` and `result_format` fields to the Python `ExtractionResult`, echoing the config values back on the result object
-- **Missing `elements` field on `ExtractionResult`**: Added conversion of Rust `Vec<Element>` to Python list, enabling element-based result format
-- **Missing `djot_content` field on `ExtractionResult`**: Added conversion of Rust `DjotContent` to Python via JSON serialization
-- **Chunks returned as dicts instead of objects**: Created proper `PyChunk` pyclass with attribute access (`chunk.content`), fixing `getattr` failures in e2e tests
-
-#### Benchmark Harness
-- **Unified output format**: Merged `consolidated.json` and `aggregated.json` into single `results.json` with schema v2.0.0
-- **Quality scoring**: Added F1 token-based quality scoring module with ground truth support and `extracted_text` capture from all adapters
-- **OCR coverage**: Added docling, unstructured, tika, mineru as OCR-capable frameworks
-- **Naming normalization**: Strip `-sync`/`-async` suffixes, normalize `kreuzberg-native` to `kreuzberg-rust`
-- **Safety fixes**: Eliminated unsafe `set_var` for OCR config, added NaN/Infinity sanitization, bounds checks in percentile calculations, framework name input validation, subprocess output contract validation
-- **Zero-duration throughput**: Fixed artificial throughput inflation when batch duration is zero
+- Fixed missing `output_format`/`result_format` fields on `ExtractionResult`.
+- Fixed missing `elements` and `djot_content` fields on `ExtractionResult`.
+- Fixed chunks returned as dicts instead of objects; created proper `PyChunk` class with attribute access.
 
 ---
 
@@ -282,42 +179,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 #### Python Bindings
-- **Missing `OutputFormat`/`ResultFormat` exports**: Added `OutputFormat` and `ResultFormat` StrEnum classes to the Python package, fixing e2e test `ImportError` when importing from `kreuzberg`
-- **`.pyi` stub alignment**: Added missing `elements` field to `ExtractionResult`, `Element`/`ElementMetadata`/`BoundingBox`/`ElementType` type stubs, `hierarchy` field to `PageContent`, and `PageHierarchy`/`HierarchicalBlock` types
-- **Python 3.10 compatibility**: `StrEnum` backport for Python 3.10 (native `StrEnum` is 3.11+)
+- Fixed missing `OutputFormat`/`ResultFormat` exports causing `ImportError`.
+- Fixed `.pyi` stub alignment for `ExtractionResult`, `Element`, and related types.
+- Fixed Python 3.10 compatibility for `StrEnum` (native `StrEnum` is 3.11+).
 
 #### PHP Bindings
-- **Config alignment with Rust core**: Updated `ImageExtractionConfig`, `PdfConfig`, `ImagePreprocessingConfig`, and `ExtractionConfig` to match Rust field names and defaults
-- **Removed phantom parameters**: Removed `extractTables`, `quality`, `grayscale`, `removeBackground`, `ocrFallback`, `startPage`, `endPage` and other non-existent config fields from tests
-- **Serialization test fixes**: Fixed default value assumptions (`useCache` defaults to `true`, `enableQualityProcessing` defaults to `true`)
-- **PHPStan compliance**: Fixed `array_filter` with always-true predicates on non-nullable types
+- Fixed config alignment with Rust core for `ImageExtractionConfig`, `PdfConfig`, `ImagePreprocessingConfig`, and `ExtractionConfig`.
+- Removed phantom parameters not present in Rust core.
 
 #### TypeScript/Node Bindings
-- **Missing `elements` field**: Added `JsElement`, `JsElementMetadata`, `JsBoundingBox` structs and `elements` field to `JsExtractionResult` in NAPI-RS bindings
-- **Serialization test fix**: Fixed `serialization.spec.ts` import path and changed from class instantiation to object literals (since `ExtractionConfig` is an interface)
+- Fixed missing `elements` field; added `JsElement`, `JsElementMetadata`, `JsBoundingBox` to NAPI-RS bindings.
 
 #### C# Bindings
-- **Enum serialization**: Use `JsonStringEnumMemberName` for .NET 9+ enum serialization
-- **Test exception alignment**: Aligned test exception types with Rust core behavior
+- Fixed enum serialization using `JsonStringEnumMemberName` for .NET 9+.
 
 #### Elixir Bindings
-- **Windows CI fix**: Fixed test failure and cleaned up warnings
-- **E2e generator**: Added Elixir backend to e2e-generator
+- Fixed test failures and cleaned up warnings on Windows.
 
 #### Node Bindings
-- **Bun runtime support**: Added Bun runtime support
+- Added Bun runtime support.
 
 ### Changed
 
-#### CI/Build
-- **Benchmark artifact size**: Reduced benchmark CI artifact from ~1.5GB (entire `target/release`) to only essential files (harness binary + FFI shared lib)
-- **Benchmark harness**: Enhanced extraction scripts with OCR, cache, and server mode; improved statistical correctness and test coverage
-
 #### All Bindings
-- **PageContent parity**: Achieved PageContent field parity across all language bindings
-
-#### E2e
-- **Bytes signatures**: Fixed bytes signatures and batch names in e2e-generator
+- Achieved `PageContent` field parity across all language bindings.
 
 ---
 
@@ -326,20 +211,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 #### TypeScript/Node Bindings
-- **Missing `elements` field**: Added `Element`, `ElementType`, `BoundingBox`, and `ElementMetadata` types to the TypeScript API surface, and `elements` field to `ExtractionResult`
-- **Batch function export name**: Fixed `batchExtractFile` (singular) reference in benchmark harness to `batchExtractFiles` (plural), matching the actual export
+- Fixed missing `elements` field; added `Element`, `ElementType`, `BoundingBox`, and `ElementMetadata` types.
 
 #### Rust Core
-- **Keyword config deserialization**: Added `#[serde(default)]` to `KeywordConfig` fields (`algorithm`, `max_keywords`, `min_score`, `ngram_range`) so partial configs deserialize without errors
+- Fixed `KeywordConfig` deserialization failing on partial configs by adding `#[serde(default)]`.
 
 #### C# Bindings
-- **Element serialization**: Added `JsonSerializable` attributes for `Element`, `ElementMetadata`, `BoundingBox`, and `List<Element>` to support `element_based` result format deserialization
-
-#### Go Bindings
-- **Removed deprecated `Success` field**: Cleaned up test references to non-existent `Success` field on `ExtractionResult`
+- Fixed `Element` serialization for `element_based` result format deserialization.
 
 #### Elixir Bindings
-- **Jason.Encoder**: Derived `Jason.Encoder` for `ExtractionConfig` struct
+- Derived `Jason.Encoder` for `ExtractionConfig` struct.
 
 ---
 
@@ -348,44 +229,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 #### API
-- **JSON array rejection**: API endpoints now properly reject JSON arrays in request bodies
-  - The `/embed`, `/chunk`, and other endpoints were incorrectly accepting arrays when only objects are valid
-  - Now returns 400 BAD_REQUEST with helpful error message for schema-violating requests
-  - Discovered via schemathesis API contract testing
+- Fixed JSON array rejection; `/embed`, `/chunk`, and other endpoints now properly reject arrays in request bodies with 400 status.
 
 #### CLI
-- **Full JSON output**: CLI `--format json` now serializes the complete `ExtractionResult` including chunks, embeddings, images, pages, and elements (previously omitted these fields)
+- Fixed `--format json` to serialize the complete `ExtractionResult` including chunks, embeddings, images, pages, and elements.
 
 #### MCP
-- **Output parity**: MCP tool responses now return full JSON-serialized `ExtractionResult`, matching API and CLI output 1:1 (previously used custom text formatting that omitted chunks, images, and other fields)
+- Fixed MCP tool responses to return full JSON-serialized `ExtractionResult`, matching API and CLI output.
 
 #### Elixir Bindings
-- **API parity**: Added `ExtractionConfig.new/0` and `new/1` constructors for consistent struct creation
-- **Chunk field alignment**: Changed `text` field to `content` for API parity with Rust core (from 445b9cd67)
+- Added `ExtractionConfig.new/0` and `new/1` constructors.
+- Changed `text` field to `content` on `Chunk` for API parity with Rust core.
 
 #### C# Bindings
-- **Error type fix**: File-not-found errors now throw `KreuzbergIOException` instead of `KreuzbergValidationException`
-  - Aligns with Rust error handling where file access issues are I/O errors
+- Fixed file-not-found errors to throw `KreuzbergIOException` instead of `KreuzbergValidationException`.
 
 #### WASM / Cloudflare Workers
-- **Edge environment WASM initialization**: Fixed `initWasm()` failing in Cloudflare Workers and Vercel Edge with "Invalid URL string" error
-  - Root cause: `import.meta.url` resolves to `file://` URLs in edge runtimes, which `fetch()` and dynamic `import()` cannot load
-  - Added `initWasm({ wasmModule })` option for explicit WASM module injection in edge environments
-  - Added fallback JS glue module import paths (string-based) for runtimes that cannot resolve `file://` URLs
-  - Added clear error message when edge environment detected without explicit `wasmModule`
-  - Exported `InitWasmOptions` type and `./kreuzberg_wasm_bg.wasm` subpath from `@kreuzberg/wasm`
+- Fixed `initWasm()` failing in Cloudflare Workers and Vercel Edge with "Invalid URL string" error; added `initWasm({ wasmModule })` option for explicit WASM module injection.
 
 #### Go Bindings
-- **Test alignment**: Removed references to deprecated `WithEmbedding()` API and `Chunking.Embedding` field
-- **Test fixes**: Updated config_comprehensive_test, config_result_test, embeddings_test, memory_safety_test
-- **Empty HTML test**: Fixed `TestMetadataEmptyHTML` false assertion requiring empty HTML to produce content
+- Removed references to deprecated `WithEmbedding()` API and `Chunking.Embedding` field.
 
 #### Java Bindings
-- **API parity**: Removed non-canonical `embedding` and `imagePreprocessing` top-level fields from `ExtractionConfig` (restores exact 16-field parity with Rust core)
-- **Default value alignment**: Fixed test assertions to expect `enableQualityProcessing=true` (matches Rust default)
+- Removed non-canonical `embedding` and `imagePreprocessing` top-level fields from `ExtractionConfig`.
 
-#### Ruby Bindings
-- **Rubocop compliance**: Fixed `Style/EmptyClassDefinition` offenses in api_proxy.rb, cli_proxy.rb, mcp_proxy.rb
+#### MCP
+- Fixed boolean merge logic bug causing configuration corruption when using `config` parameter.
 
 ---
 
@@ -393,362 +262,133 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-#### API Alignment - 1:1 Parity Across All Bindings
-- **Strict API parity enforcement**: All 9 language bindings now have exact 1:1 field parity with Rust core
-  - Verification script (`scripts/verify_api_parity.py`) now runs in STRICT mode, failing on ANY field differences
-  - Added to `ci-validate.yaml` workflow to prevent future API drift
-
 #### PHP Bindings
-- **ExtractionConfig alignment**: Removed 5 non-canonical fields and fixed defaults
-  - Removed: `embedding`, `extractImages`, `extractTables`, `preserveFormatting`, `outputEncoding`
-  - Fixed defaults: `useCache` → true, `enableQualityProcessing` → true, `maxConcurrentExtractions` → null
-  - Updated `ExtractionConfigBuilder` to match canonical API
-  - All 16 fields now match Rust canonical source exactly
+- Removed 5 non-canonical fields from `ExtractionConfig` and fixed defaults; all 16 fields now match Rust canonical source.
 
 #### Go Bindings
-- **ExtractionResult alignment**: Removed `Success` field (not in Rust canonical)
-- **PageInfo alignment**: Removed `Visible` and `ContentType` fields (not in Rust canonical)
-- Updated 14 test files to remove references to removed fields
+- Removed non-canonical `Success`, `Visible`, and `ContentType` fields from result types.
 
 #### Ruby Bindings
-- **Default value fix**: Changed `enable_quality_processing` default from `false` to `true` to match Rust
+- Fixed `enable_quality_processing` default from `false` to `true` to match Rust.
 
 #### Java Bindings
-- **Default value fix**: Changed `enableQualityProcessing` default from `false` to `true` to match Rust
+- Fixed `enableQualityProcessing` default from `false` to `true` to match Rust.
 
 #### TypeScript Bindings
-- **Type exports cleanup**: Removed non-existent type exports (`EmbeddingConfig`, `EmbeddingModelType`, `HierarchyConfig`, `ImagePreprocessingConfig`) from index.ts
+- Removed non-existent type exports (`EmbeddingConfig`, `HierarchyConfig`, etc.) from index.ts.
 
 ### Fixed
 
 #### Elixir Bindings
-- **Hex package compilation**: Fixed `force_build: true` causing production installs to fail ([#333](https://github.com/kreuzberg-dev/kreuzberg/issues/333))
-  - Changed to `force_build: Mix.env() in [:test, :dev]` to only build from source in development
-  - Production installs now correctly use precompiled NIF binaries from GitHub releases
-  - Hex package doesn't include `crates/kreuzberg/` path dependency required for source builds
-  - Fixes "Unable to update crates/kreuzberg: No such file or directory" error
+- Fixed `force_build: true` causing production installs to fail; now only builds from source in development. ([#333](https://github.com/kreuzberg-dev/kreuzberg/issues/333))
 
 #### Docker Images
-- **Tesseract OCR plugin initialization**: Fixed "OCR backend 'tesseract' not registered" error in published Docker images
-  - Removed hardcoded TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
-  - Added dynamic tessdata discovery checking multiple known paths (/usr/share/tesseract-ocr/*/tessdata, /usr/share/tesseract-ocr/tessdata, /usr/share/tessdata)
-  - Fixed permissions with chmod -R a+rx for non-root kreuzberg user
-  - Handles tesseract versions 4, 5, and alternative installations
-- **Embeddings plugin initialization**: Fixed "Failed to initialize embedding model: Failed to retrieve onnx/model.onnx" error
-  - Added HF_HOME=/app/.kreuzberg/huggingface environment variable
-  - Created persistent cache directory for Hugging Face models with proper kreuzberg user ownership
-  - Models now persist between container restarts via existing cache volume
+- Fixed "OCR backend 'tesseract' not registered" error by adding dynamic tessdata discovery for multiple tesseract versions.
+- Fixed "Failed to initialize embedding model" error by adding persistent Hugging Face model cache directory.
 
 #### API
-- **JSON error responses**: Added custom `JsonApi` extractor for consistent JSON error responses instead of plain text
-  - All JSON parsing errors now return proper JSON `ErrorResponse` with `error_type`, `message`, and `status_code`
-  - Content-Type header correctly set to `application/json` for all error responses
-- **OpenAPI schema improvements**: Enhanced schema validation constraints
-  - Added 422 response documentation with `ErrorResponse` body type
-  - Added `minimum`/`maximum` constraints for chunking config (max_characters >= 101, overlap 0-1999)
-  - Added `min_items` constraint for embed texts array
-- **Chunking validation**: Added validation that `overlap` must be less than `max_characters`
-  - Returns 400 Bad Request with descriptive error message for invalid configurations
-- **Embed validation**: Added validation that all text entries must be non-empty strings
-  - Returns 400 Bad Request for empty strings in texts array
-- **Default embedding model**: `EmbeddingConfig.model` now defaults to "balanced" preset when not specified
-
-#### CI/CD
-- **Schemathesis API contract testing**: Added schemathesis to Docker CI workflow
-  - Validates API against OpenAPI schema with 10 examples per endpoint
-  - Checks: not_a_server_error, status_code_conformance, content_type_conformance, response_schema_conformance, negative_data_rejection
+- Fixed JSON error responses to return proper JSON `ErrorResponse` instead of plain text.
+- Added validation constraints for chunking config and embed texts array.
+- Added validation that `overlap` must be less than `max_characters`.
+- `EmbeddingConfig.model` now defaults to "balanced" preset when not specified.
 
 #### Rust Core
-- **XLSX OOM with Excel Solver files**: Fixed out-of-memory issue when processing XLSX files with sparse data at extreme cell positions ([#331](https://github.com/kreuzberg-dev/kreuzberg/issues/331))
-  - Excel Solver add-in stores configuration in cells at extreme positions (XFD1048550-1048575 = column 16384, rows near 1M)
-  - Calamine's `Range::from_sparse()` was allocating memory for the entire bounding box (16384 columns × 1048575 rows = 17 billion cells) even though actual data was only ~26 cells
-  - Added streaming cell reader to detect pathological bounding boxes (>100M cells) before allocation
-  - For sparse sheets with extreme dimensions, generate list-format markdown directly from cell stream
-  - Normal sheets continue using the original fast path
-  - Test file: 6.8KB with 26 cells, declared dimension A1:XFD1048575
-  - Before: 100GB+ memory consumption, process killed
-  - After: 901 char output, completes instantly
+- Fixed XLSX out-of-memory with Excel Solver files that declare extreme cell dimensions. ([#331](https://github.com/kreuzberg-dev/kreuzberg/issues/331))
 
 ---
 
 ## [4.2.1] - 2026-01-27
 
-**Patch Release: API Parity Fixes and CI Reliability Improvements**
-
-This patch release fixes API validation issues, adds missing format aliases, and improves backward compatibility across all language bindings.
-
 ### Fixed
 
 #### Rust Core
-- **PPTX image page numbers**: Fixed reversed page numbers when extracting images from PPTX files ([#329](https://github.com/kreuzberg-dev/kreuzberg/issues/329))
-  - Images on slide 1 were incorrectly reported with `page_number=2` due to unsorted slide paths from presentation.xml.rels
-  - Now sorts slide paths after parsing to ensure correct ordering regardless of XML element order
-- **Plugin registry error logging**: Added comprehensive error logging for silent plugin failures ([#328](https://github.com/kreuzberg-dev/kreuzberg/issues/328))
-  - OCR registry now logs errors and warnings when plugins fail to initialize
-  - Extractor registry logs plugin load failures for troubleshooting
-  - PostProcessor registry tracks plugin status changes
-  - Validator registry records plugin validation errors
-  - New `startup_validation.rs` module provides plugin status verification
-  - Server startup logs all active plugins and their initialization status (fixes Kubernetes deployment visibility)
-- **Output format validation**: Extended `VALID_OUTPUT_FORMATS` to include all valid aliases (`plain`, `text`, `markdown`, `md`, `djot`, `html`)
-- **Error type consistency**: `validate_file_exists()` now returns `Io` error instead of `Validation` error for file-not-found cases
+- Fixed PPTX image page numbers being reversed due to unsorted slide paths. ([#329](https://github.com/kreuzberg-dev/kreuzberg/issues/329))
+- Added comprehensive error logging for silent plugin failures. ([#328](https://github.com/kreuzberg-dev/kreuzberg/issues/328))
+- Extended `VALID_OUTPUT_FORMATS` to include all valid aliases (`plain`, `text`, `markdown`, `md`, `djot`, `html`).
+- Fixed `validate_file_exists()` to return `Io` error instead of `Validation` error for file-not-found.
 
 #### Go Bindings
-- **Format constants**: Added `OutputFormatText` and `OutputFormatMd` as aliases for `plain` and `markdown`
-- **Documentation**: Fixed default format comment (default is `plain`, not `markdown`)
+- Added `OutputFormatText` and `OutputFormatMd` format constant aliases.
 
 #### Elixir Bindings
-- **Format validation**: Added `text` and `md` aliases to `validate_output_format` function
-- **Config validation**: Updated error messages to list all valid format options
+- Added `text` and `md` aliases to `validate_output_format`.
 
 #### Ruby Bindings
-- **CLI backward compatibility**: `extract` and `detect` methods now accept both positional and keyword arguments
-- **Config field naming**: Renamed `image_extraction` to `images` (canonical name) with backward-compatible alias
-- **Spec fixes**: Updated test expectations to match actual implementation behavior
+- Fixed `extract` and `detect` methods to accept both positional and keyword arguments.
+- Renamed `image_extraction` to `images` (canonical name) with backward-compatible alias.
 
 #### PHP Bindings
-- **Config field naming**: Renamed fields to canonical names (`images`, `pages`, `pdfOptions`, `postprocessor`, `tokenReduction`)
-- **API parity**: Added missing `postprocessor` and `tokenReduction` fields
+- Renamed fields to canonical names (`images`, `pages`, `pdfOptions`, `postprocessor`, `tokenReduction`).
+- Added missing `postprocessor` and `tokenReduction` fields.
 
 #### Java Bindings
-- **API parity**: Added `getImages()` and `images()` builder methods as aliases for `getImageExtraction()`
+- Added `getImages()` and `images()` builder methods as aliases for `getImageExtraction()`.
 
 #### WASM Bindings
-- **TypeScript types**: Added `outputFormat`, `resultFormat`, and `htmlOptions` to `ExtractionConfig` interface
-
-#### Python E2E Tests
-- **Case sensitivity**: Fixed tests to use lowercase format strings (`plain`, `unified`, `element_based`)
-- **API usage**: Updated to use module-level functions (`config_to_json`, `config_merge`) instead of instance methods
-
-#### CI/CD
-- **Go test app**: Fixed build by adding `-tags kreuzberg_dev` flag for FFI linking
-- **Go tests**: Fixed flawed pointer test that made incorrect assumptions about Go's memory model
-
-### Changed
-
-#### API Verification
-- **Parity script**: Improved `scripts/verify_api_parity.py` to correctly parse all language bindings
-  - TypeScript: Better handling of multi-line interfaces with JSDoc
-  - Python: Correct parsing of `.pyi` stub files
-  - Java: Extract field names from `toMap()` serialization
-  - C#: Extract `JsonPropertyName` attributes for canonical names
-  - WASM: Dedicated extractor for TypeScript type definitions
+- Added `outputFormat`, `resultFormat`, and `htmlOptions` to `ExtractionConfig` interface.
 
 ### Documentation
 
-- **Kubernetes deployment guide**: New comprehensive guide for deploying Kreuzberg in Kubernetes ([#328](https://github.com/kreuzberg-dev/kreuzberg/issues/328))
-  - Complete K8s architecture overview with StatefulSet, Service, and ConfigMap examples
-  - Health check configuration for plugin readiness and liveness probes
-  - Logging aggregation best practices for plugin status visibility
-  - Troubleshooting section for silent plugin failures in containerized environments
-  - Updated Docker guide with K8s deployment references
-  - Location: `docs/guides/kubernetes.md`
+- Added Kubernetes deployment guide with health check configuration and troubleshooting. ([#328](https://github.com/kreuzberg-dev/kreuzberg/issues/328))
 
 ---
 
 ## [4.2.0] - 2026-01-26
 
-**Major Release: Complete API Consistency Across All 10 Language Bindings**
-
-This release achieves 100% API parity across Rust, Python, TypeScript, Ruby, Java, Go, PHP, C#, Elixir, and WebAssembly bindings. Every `ExtractionConfig` field is now available in all languages with consistent naming conventions and type safety.
-
-📊 **Release Stats:**
-- 70 files changed
-- 11,839 lines added
-- 300+ new tests across all bindings
-- 4,500+ total tests passing
-- Complete backward compatibility for all SDK APIs
-
 ### Added
 
 #### MCP Interface
-- **Full `config` parameter support**: All `ExtractionConfig` options now available via MCP tools
-  - Enables complete configuration pass-through from AI agents to Rust core
-  - Standardizes parameter handling across all MCP tools
-  - Eliminates top-level parameter duplication in tool schemas
+- Full `config` parameter support on all MCP tools, enabling complete configuration pass-through from AI agents.
 
 #### CLI
-- **`--output-format` flag**: Canonical replacement for `--content-format` (markdown, djot, html, plain)
-  - `--content-format` continues to work for backward compatibility
-  - Takes precedence over environment variable `KREUZBERG_OUTPUT_FORMAT`
-
-- **`--result-format` flag**: Controls result structure (unified, element_based)
-  - Maps to `config.result_format` in API
-  - Enables AI agents to request semantic element extraction at command line
-
-- **`--config-json` flag**: Inline JSON configuration passed directly to extractor
-  - Base configuration object with all `ExtractionConfig` fields
-  - Overrides config file settings; CLI flags override inline JSON
-
-- **`--config-json-base64` flag**: Base64-encoded JSON configuration
-  - Enables clean passing of complex configurations through shell invocations
-  - Decoded and merged following precedence rules
+- Added `--output-format` flag (canonical replacement for `--content-format`).
+- Added `--result-format` flag for controlling result structure (unified, element_based).
+- Added `--config-json` flag for inline JSON configuration.
+- Added `--config-json-base64` flag for base64-encoded JSON configuration.
 
 #### API - All Language Bindings
-- **`outputFormat` / `output_format` field**: Enum with Plain, Markdown, Djot, HTML variants
-  - Available in: Python, TypeScript, Ruby, Go, Java, PHP, C#, Elixir
-  - Enables unified output format control across all bindings
-  - Defaults to Markdown for consistency
-
-- **`resultFormat` / `result_format` field**: Enum with Unified, ElementBased variants
-  - Available in: Python, TypeScript, Ruby, Go, Java, PHP, C#, Elixir
-  - Enables semantic element extraction control at API level
-  - Defaults to Unified for backward compatibility
+- Added `outputFormat` / `output_format` field (Plain, Markdown, Djot, HTML) to all bindings.
+- Added `resultFormat` / `result_format` field (Unified, ElementBased) to all bindings.
 
 #### Go Bindings
-- **`OutputFormat` and `ResultFormat` types**: With functional option constructors
-  - `WithOutputFormat(format)` and `WithResultFormat(format)` functional options
-  - Idiomatic Go enum pattern with string serialization
-  - Complete parity with other language bindings
+- Added `OutputFormat` and `ResultFormat` types with `WithOutputFormat()` and `WithResultFormat()` functional options.
 
 #### Java Bindings
-- **`outputFormat` and `resultFormat` in Builder pattern**: Full ExtractionConfig.Builder integration
-  - `builder.outputFormat(OutputFormat.MARKDOWN)` and `builder.resultFormat(ResultFormat.UNIFIED)`
-  - Proper enum types with serialization support
+- Added `outputFormat` and `resultFormat` to Builder pattern.
 
 #### PHP Bindings
-- **6 missing configuration fields added**:
-  - `useCache` - Enable/disable caching
-  - `enableQualityProcessing` - Enable quality processing
-  - `forceOcr` - Force OCR extraction
-  - `maxConcurrentExtractions` - Concurrency limit
-  - `resultFormat` - Result structure control
-  - `outputFormat` - Output format control
-  - All fields properly typed and documented
-
-#### Testing
-- **API consistency validator**: `scripts/verify_api_parity.py` tool
-  - Scans all 10 language bindings for API parity
-  - Validates all `ExtractionConfig` fields present in each binding
-  - Generates detailed parity matrix (10x40+ fields)
-  - Integrated into CI pipeline via `task verify:api-parity`
-  - Fails build if API drift detected
-
-- **CLI E2E test suite**: 583 lines of comprehensive CLI testing
-  - Tests all new flags: `--output-format`, `--result-format`, `--config-json`
-  - Configuration precedence validation
-  - Base64 config encoding/decoding tests
-  - Backward compatibility with deprecated flags
-
-- **300+ new tests**: Cross-language serialization and API consistency tests
-  - Python: Comprehensive ExtractionConfig serialization tests (307 lines)
-  - TypeScript: All OutputFormat and ResultFormat combinations (691 lines)
-  - Ruby: RBS type definition validation and batch operations (380 lines)
-  - Go: Functional option validation (245 lines)
-  - Java: Builder pattern validation (173 lines)
-  - PHP: Reflection-based field verification (272 lines)
-  - C#: Deprecation examples and config tests (207 lines)
-  - Elixir: Config extraction and serialization tests (194 lines)
-  - All bindings: Round-trip serialization tests
-
-#### Documentation
-- **Deprecation Guide**: `DEPRECATION_GUIDE.md` - comprehensive deprecation documentation
-  - All deprecated APIs with migration paths
-  - Code examples for all 10 language bindings
-  - Timeline for removal (v5.0.0)
-  - Automated deprecation warnings in SDKs
-
-- **API Consistency Guide**: `docs/API_CONSISTENCY.md` - canonical reference for all binding APIs
-  - Field-by-field mapping across all 10 languages
-  - Serialization format specifications
-  - Breaking change documentation
-  - Migration path for configuration updates
-
-- **Cross-Language Serialization Tests**: `tests/SERIALIZATION_TESTS.md` with test cases for all languages
-  - JSON configuration files with complex nested structures
-  - Expected output for each language binding
-  - Validation scripts for each ecosystem
+- Added 6 missing configuration fields: `useCache`, `enableQualityProcessing`, `forceOcr`, `maxConcurrentExtractions`, `resultFormat`, `outputFormat`.
 
 ### Changed
 
-#### API Parity
-- **All 10 language bindings now expose identical API surface**:
-  - Python, TypeScript, Ruby, Go, Java, PHP, C#, Elixir, WebAssembly, WASM
-  - Every field in `ExtractionConfig` available in all bindings
-  - Consistent naming conventions (snake_case for Python/Ruby/PHP/Go, camelCase for TypeScript/Java/C#)
-  - Type safety enforced in all languages
-
 #### Configuration Precedence
-- **CLI flag > inline JSON > config file > defaults**: Clear precedence hierarchy
-  - Example: `--output-format html` overrides `--config-json '{"outputFormat":"markdown"}'`
-  - Ensures predictable behavior in complex configuration scenarios
+- CLI flag > inline JSON > config file > defaults.
 
 #### MCP Schema Evolution
-- **Top-level parameters removed from MCP tools**: `enable_ocr` and `force_ocr` now under `config` object
-  - Simplifies schema complexity
-  - Single configuration object instead of scattered parameters
-  - MCP agents use updated schema immediately on next session
+- `enable_ocr` and `force_ocr` now under `config` object instead of top-level parameters.
 
 ### Fixed
 
-#### Language Bindings
-- **Ruby**: Fixed batch chunking operations
-  - Corrected batch processing logic to properly handle chunked inputs
-  - Added comprehensive batch operations test suite
-  - All batch tests now pass successfully
-
-#### CI/CD
-- **Elixir**: Fixed raise syntax in test exception modules
-  - Corrected `raise/2` calls to proper error tuple format
-  - All Elixir CI tests now pass successfully
-
-- **Ruby**: Resolved rubocop violations across codebase
-  - Fixed style and linting issues
-  - All Ruby CI checks now pass
-
-- **Go**: Fixed exit code 201 handling in tests on Windows/macOS
-  - Tests now properly handle platform-specific exit codes
-  - Windows and macOS CI tests stable
-
-- **Shellcheck**: Addressed SC2086 warnings in CI scripts
-  - Properly quoted variables in shell scripts
-  - Improved script robustness
+#### Ruby Bindings
+- Fixed batch chunking operations.
 
 #### MCP
-- **Config handling**: Fixed boolean merge logic bug
-  - Boolean values in nested config objects now merge correctly
-  - Prevents configuration corruption when using `config` parameter
+- Fixed boolean merge logic bug in nested config objects.
 
-#### Testing
-- **API consistency**: Resolved test failures and achieved 100% API parity verification
-  - All 10 language bindings pass consistency checks
-  - Contract and behavioral tests comprehensive
-
-### BREAKING CHANGES ⚠️
+### BREAKING CHANGES
 
 **MCP Interface Only (AI-only, no user impact)**
 
-The following breaking changes affect **MCP tools only**. Since MCP is used exclusively by AI agents and agents automatically query fresh schema on each invocation, there is zero impact on end users or downstream systems.
-
-- **Removed**: `enable_ocr` top-level parameter from `extract` and `extract_file` MCP tools
-  - **Migration**: Use `config.ocr.enable_ocr` instead
-  - Example before: `{"enable_ocr": true}`
-  - Example after: `{"config": {"ocr": {"enable_ocr": true}}}`
-
-- **Removed**: `force_ocr` top-level parameter from `extract` and `extract_file` MCP tools
-  - **Migration**: Use `config.force_ocr` instead
-  - Example before: `{"force_ocr": true}`
-  - Example after: `{"config": {"force_ocr": true}}`
-
-- **Deprecated**: All MCP tools now require `config` object parameter
-  - Old parameter names still accepted in v4.2 but log deprecation warnings
-  - Will be removed in v5.0
-  - **Rationale**: MCP interface is AI-only; AI agents automatically use new schema on next session; backward compatibility not needed
+- Removed `enable_ocr` and `force_ocr` top-level parameters from MCP tools; use `config.ocr.enable_ocr` and `config.force_ocr` instead.
+- MCP tools now require `config` object parameter; old names accepted in v4.2 with deprecation warnings.
 
 ### Deprecated
 
 #### CLI (backward compatible)
-
-- **`--content-format` flag**: Use `--output-format` instead
-  - Both flags work in v4.2.0; `--content-format` logs deprecation warning
-  - Removed in v5.0.0
-  - Rationale: Unified flag naming with `--result-format`
+- `--content-format` flag deprecated in favor of `--output-format`.
 
 #### Environment Variables (backward compatible)
-
-- **`KREUZBERG_CONTENT_FORMAT`**: Use `KREUZBERG_OUTPUT_FORMAT` instead
-  - Both environment variables work in v4.2.0
-  - Removed in v5.0.0
+- `KREUZBERG_CONTENT_FORMAT` deprecated in favor of `KREUZBERG_OUTPUT_FORMAT`.
 
 ---
 
@@ -756,27 +396,16 @@ The following breaking changes affect **MCP tools only**. Since MCP is used excl
 
 ### Added
 
-#### Language Bindings
-- **Ruby**: Ruby 4.0 support
-  - Updated gemspec to support Ruby 3.2.0 through 4.x
-  - Tested with Ruby 4.0.1: all tests pass with Magnus bindings
-  - No breaking changes required in binding code
+#### Ruby Bindings
+- Added Ruby 4.0 support (tested with Ruby 4.0.1).
 
 ### Fixed
 
-#### Language Bindings
-- **Ruby**: Fixed gem native extension build failure
-  - Vendor script now correctly updates native Cargo.toml paths to use vendored crates
-  - Fixed sed pattern matching (5 parent directories, not 6)
+#### Ruby Bindings
+- Fixed gem native extension build failure due to incorrect Cargo.toml path rewriting.
 
-- **Go**: Fixed Windows timeout in Go tests
-  - Removed `init()` function in helpers_test.go that caused FFI mutex deadlock on Windows
-  - Now uses lazy initialization via `sync.Once` pattern
-
-### Changed
-
-#### Dependencies
-- Updated dependencies across the project
+#### Go Bindings
+- Fixed Windows timeout caused by FFI mutex deadlock; now uses lazy initialization via `sync.Once`.
 
 ---
 
@@ -784,10 +413,10 @@ The following breaking changes affect **MCP tools only**. Since MCP is used excl
 
 ### Fixed
 
-#### PPTX/PPSX Extraction (GitHub Issue #321)
-- **PPTX extraction no longer fails on shapes without txBody**: Image placeholders and other shapes that don't contain text (e.g., `<p:ph type="pic"/>`) are now gracefully skipped instead of causing a "No txBody found" parsing error
-- **PPSX (PowerPoint Show) files now supported**: Added MIME type detection for `.ppsx` extension (`application/vnd.openxmlformats-officedocument.presentationml.slideshow`)
-- **PPTM (PowerPoint Macro-Enabled) files now supported**: Added MIME type detection for `.pptm` extension (`application/vnd.ms-powerpoint.presentation.macroEnabled.12`)
+#### PPTX/PPSX Extraction
+- Fixed PPTX extraction failing on shapes without text (e.g., image placeholders). (#321)
+- Added PPSX (PowerPoint Show) file support.
+- Added PPTM (PowerPoint Macro-Enabled) file support.
 
 ---
 
@@ -796,155 +425,28 @@ The following breaking changes affect **MCP tools only**. Since MCP is used excl
 ### Added
 
 #### API
-- **POST /chunk endpoint**: New text chunking endpoint for breaking text into smaller pieces
-  - Accepts JSON body with `text`, `chunker_type` (text/markdown), and optional `config`
-  - Returns chunks with byte offsets, indices, and metadata
-  - Configuration options: `max_characters` (default: 2000), `overlap` (default: 100), `trim` (default: true)
-  - Supports both text and markdown chunking strategies
-  - Case-insensitive chunker_type parameter
-  - Comprehensive error handling for invalid inputs
+- Added `POST /chunk` endpoint for text chunking with configurable `max_characters`, `overlap`, and `trim`.
 
 #### Core
-- **Djot markup format support**: New `.djot` file extraction with comprehensive Djot syntax support
-  - Full parser implementation with structured representation via `DjotContent` type
-  - Supports headings, paragraphs, lists (ordered, unordered, task, definition), tables, code blocks, emphasis, links, images, footnotes, math expressions
-  - YAML frontmatter extraction with metadata preservation
-  - Shared frontmatter utilities between Markdown and Djot extractors
-  - Feature-gated behind `djot` feature flag (enabled by default)
-  - 39 comprehensive tests covering Unicode, tables, roundtrip conversion, and edge cases
-
-- **Content output format configuration**: New `ContentFormat` enum for configurable text output formatting
-  - Converts extracted content from ANY file format to Plain, Markdown, Djot, or HTML
-  - Post-processing pipeline applies format transformation after extraction
-  - Configuration via `config.content_format` field in `ExtractionConfig` (defaults to `Plain`)
-  - CLI support with `--content-format` flag and `KREUZBERG_CONTENT_FORMAT` environment variable
-  - Independent from `result_format` (Unified vs ElementBased structure)
-
-- **Djot output format support for HTML and OCR**: HTML-to-Markdown and hOCR-to-Markdown conversions now support direct Djot output
-  - Threads `output_format` from `ExtractionConfig` through HTML converter (`convert_html_to_markdown`, `convert_html_to_markdown_with_metadata`)
-  - Threads `output_format` through hOCR converter (`convert_hocr_to_markdown`)
-  - OCR processor now accepts `ExtractionConfig` to properly propagate output format settings
-  - PPTX image OCR now respects output format configuration
-  - Added `output_format` field to `OcrConfig` struct for OCR-specific format control
-  - Double-conversion prevention: Pipeline checks `mime_type` to skip redundant conversions when content is already in target format
-  - HTML extractor sets correct `mime_type` ("text/djot" vs "text/markdown") based on output format
-  - 7 new tests for djot HTML/hOCR conversion and double-conversion prevention
-
-- **Element-based output format**: New `ResultFormat::ElementBased` option provides Unstructured.io-compatible semantic element extraction
-  - Extracts structured elements: titles, paragraphs, lists, tables, images, page breaks, headings, code blocks, block quotes, headers, footers
-  - Each element includes rich metadata: bounding boxes, page numbers, confidence scores, hierarchy information
-  - Transformation pipeline converts unified output to element-based format via `extraction::transform` module
-  - Added `Element`, `ElementType`, `ElementMetadata`, and `BoundingBox` types to core types module
-  - Supports PDF hierarchy detection for semantic heading levels
-  - Configuration via `config.result_format` field (defaults to `Unified`)
+- Added Djot markup format support (`.djot`) with full parser, structured representation, and YAML frontmatter extraction.
+- Added content output format configuration (`ContentFormat` enum: Plain, Markdown, Djot, HTML) with CLI `--content-format` flag.
+- Added Djot output format support for HTML and OCR conversions.
+- Added element-based output format (`ResultFormat::ElementBased`) providing Unstructured.io-compatible semantic element extraction.
 
 #### Language Bindings
-- **Python**: Enhanced output configuration with full type hints
-  - Content format support: `content_format` parameter accepting `"plain"`, `"markdown"`, `"djot"`, or `"html"`
-  - Element-based output: `result_format` parameter accepting `"unified"` or `"element_based"`
-  - `Element`, `ElementType`, `ElementMetadata`, `BoundingBox`, `DjotContent` types exported from `kreuzberg.types`
-  - Result includes `elements` field when using element-based format, `djot_content` when available
-  - Compatible with Unstructured.io API for migration
-
-- **TypeScript/Node.js**: Enhanced output configuration with strict TypeScript interfaces
-  - Content format support: `contentFormat: "plain" | "markdown" | "djot" | "html"` option
-  - Element-based output: `resultFormat: "unified" | "element_based"` option
-  - `Element`, `ElementType`, `ElementMetadata`, `BoundingBox`, `DjotContent` interfaces in `@kreuzberg/core`
-  - Result type includes optional `elements` array and `djotContent` field
-
-- **Ruby**: Element-based output with idiomatic Ruby types
-  - `Element`, `ElementType`, `ElementMetadata`, `BoundingBox` classes in `Kreuzberg::Types`
-  - Snake_case serialization for Ruby conventions
-  - `output_format: :unified` or `:element_based` symbol-based configuration
-
-- **PHP**: Element-based output with typed classes
-  - `Element`, `ElementType`, `ElementMetadata`, `BoundingBox` classes in `Kreuzberg\Types`
-  - `outputFormat` field in extraction config
-  - `$result->elements` array when using element-based format
-
-- **Go**: Element-based output with idiomatic Go structs
-  - `Element`, `ElementType`, `ElementMetadata`, `BoundingBox` types with JSON tags
-  - `OutputFormat` field in extraction config
-  - Result struct includes `Elements` slice
-
-- **Java**: Element-based output with builder pattern
-  - `Element`, `ElementType`, `ElementMetadata`, `BoundingBox` classes with builders
-  - `outputFormat` field in `ExtractionConfig`
-  - `ExtractionResult.getElements()` method
-
-- **C#**: Element-based output with nullable reference types
-  - `Element`, `ElementType`, `ElementMetadata`, `BoundingBox` classes
-  - `OutputFormat` property in extraction config
-  - `ExtractionResult.Elements` property
-
-- **Elixir**: Element-based output with pattern matching
-  - `Kreuzberg.Element` module with typespecs
-  - `:output_format` option in config accepting `:unified` or `:element_based`
-  - Result map includes `:elements` key with element list
-
-- **PHP**, **Go**, **Java**, **C#**, **Ruby**, **Elixir**, **WASM**: All language bindings updated with:
-  - Content format configuration support (`content_format` / `contentFormat` / equivalent)
-  - Result format configuration for element-based output (`result_format` / `resultFormat` / equivalent)
-  - `DjotContent` type bindings where applicable
-  - Dual format support: control both output structure (unified/element-based) and content formatting (plain/markdown/djot/html)
-
-#### Documentation
-- **Djot format documentation**: New format reference and usage examples
-  - Added `.djot` to supported formats table with MIME type `text/x-djot`
-  - CLI usage examples for `--content-format djot` flag
-  - Environment variable support documentation (`KREUZBERG_CONTENT_FORMAT`)
-  - Configuration reference updates for `content_format` field
-  - Format count updated from 56 to 57 supported formats
-- **Migration guides**: New documentation for Unstructured.io users
-  - `docs/migration/from-unstructured.md`: Step-by-step migration guide with code examples
-  - `docs/comparisons/kreuzberg-vs-unstructured.md`: Feature comparison and compatibility matrix
-  - Element-based output guide: `docs/guides/element-based-output.md` covering all 11 element types
-  - Type reference updates: Added Element, ElementType, ElementMetadata, BoundingBox, OutputFormat
-  - Code snippets for element-based extraction in all 10 languages
+- All bindings (Python, TypeScript, Ruby, PHP, Go, Java, C#, Elixir, WASM) updated with content format and result format configuration, plus `Element`, `ElementType`, `ElementMetadata`, `BoundingBox`, and `DjotContent` types.
 
 ### Changed
 
-#### Codebase
-- **Major refactoring for maintainability**: Split 22 large monolithic files into 110+ focused modules for improved code organization and maintainability
-  - Rust core: Reorganized into logical modules (extraction, validation, mime detection, etc.)
-  - Ruby bindings: Modularized into separate files for extraction, config, plugins, result conversion, etc.
-  - TypeScript test-utils: Split into focused modules for assertions, fixtures, paths, and config mapping
-  - Improved developer experience with clearer module boundaries and responsibilities
-  - No breaking changes to public APIs across all language bindings
+- Split 22 large monolithic files into 110+ focused modules for improved maintainability; no breaking changes to public APIs.
 
 ### Fixed
 
-#### CI/CD
-- **Ruby macOS builds**: Removed unused imports in Ruby FFI bindings that caused compilation failures with `-D warnings` flag
-  - Fixed 14 unused import warnings across error_handling, extraction, validation, plugins, config, result, and metadata modules
-  - Added `#[allow(dead_code)]` to unused helper functions in config module
-- **TypeScript tests on ARM64**: Fixed module resolution error for `@kreuzberg/test-utils/config-mapping`
-  - Corrected package.json exports to use `.js` (ESM) and `.cjs` (CommonJS) instead of `.mjs` files
-  - Fixed main and module field paths to match actual tsup build output
-- **Go Windows builds**: Disabled incompatible verbose linker flags that caused CGO compilation errors
-  - Removed `-Wl,-v` and `-Wl,--verbose` flags that trigger "invalid flag in go:cgo_ldflag" errors on Windows
-  - Added TODO comments for future investigation of Windows-specific CGO issues
-- **PHP Windows builds**: Added documentation for cargo fingerprint cache corruption issues
-  - Added TODO comments to track intermittent fingerprint file not found errors on Windows runners
-
-#### Documentation
-- **MkDocs build**: Fixed broken benchmark documentation links in `docs/concepts/performance.md`
-  - Commented out references to non-existent benchmark pages to fix strict mode build failures
-  - Build now passes with 667 pages generated successfully
-
 #### Python
-- **Type exports**: Fixed missing type exports in `kreuzberg.types.__all__`
-  - Added `Element`, `ElementMetadata`, `ElementType`, `BoundingBox` to exported types
-  - Added `HtmlImageMetadata` for HTML image metadata
-  - Total 32 public types now properly exported for IDE autocomplete and type checking
-  - Resolves import failures where types were defined but not accessible
+- Fixed missing type exports (`Element`, `ElementMetadata`, `ElementType`, `BoundingBox`, `HtmlImageMetadata`) in `kreuzberg.types.__all__`.
 
 #### Elixir
-- **DOCX keyword extraction**: Fixed `FunctionClauseError` when extracting DOCX files with keywords metadata ([#309](https://github.com/kreuzberg-dev/kreuzberg/issues/309))
-  - DOCX extractor now parses comma-separated keyword strings into `Vec<String>` and stores in typed `Metadata.keywords` field
-  - Added defensive string handling to `normalize_keywords/1` in Elixir binding
-  - Resolves crash when extracting DOCX files containing keywords in `cp:keywords` or `dc:subject` metadata fields
-  - Added comprehensive unit tests for keyword string parsing in both Rust and Elixir
+- Fixed `FunctionClauseError` when extracting DOCX files with keywords metadata. ([#309](https://github.com/kreuzberg-dev/kreuzberg/issues/309))
 
 ---
 
@@ -953,40 +455,18 @@ The following breaking changes affect **MCP tools only**. Since MCP is used excl
 ### Changed
 
 #### Docker
-- **Docker registry migration**: Migrated from Docker Hub to GitHub Container Registry
-  - New image location: `ghcr.io/kreuzberg-dev/kreuzberg` (was `goldziher/kreuzberg`)
-  - Core variant: `ghcr.io/kreuzberg-dev/kreuzberg:VERSION-core` or `:core`
-  - Full variant: `ghcr.io/kreuzberg-dev/kreuzberg:VERSION` or `:latest`
-  - Added OCI labels for better container metadata and repository linking
-  - Updated all documentation, examples, and test configurations
-  - Images remain publicly accessible and support linux/amd64 and linux/arm64
+- Migrated from Docker Hub to GitHub Container Registry (`ghcr.io/kreuzberg-dev/kreuzberg`).
 
 ### Fixed
 
-#### CI/CD
-- **Ruby CI cache cleanup**: Fixed Cargo fingerprint errors caused by stale rb_sys build artifacts
-  - Added cleanup of `packages/ruby/tmp/` directory in "Detect partial cache hit and clean stale fingerprints" step
-  - Prevents fingerprint mismatches when GitHub Actions restores partial Cargo cache
-  - Applied to both build-ruby-gem and test-ruby jobs
-
 #### C#
-- **HtmlConversionOptions serialization with no values**: Fixed JSON serialization to write empty object `{}` instead of `null` when HtmlConversionOptions has no values set
-  - Rust FFI expects an object type, not null value
-  - Changed `WriteNullValue()` to `WriteStartObject()` + `WriteEndObject()` for empty options
-  - Resolves "Runtime error: html_options must be an object" error on all HtmlToMarkdown calls with default options
+- Fixed `HtmlConversionOptions` serializing as `null` instead of `{}` when empty, causing Rust FFI errors.
 
 #### Python
-- **Type completions now working**: Fixed missing `_internal_bindings.pyi` type stub file in Python wheels ([#298](https://github.com/kreuzberg-dev/kreuzberg/issues/298))
-  - Added `.pyi` file to Maturin include configuration in `pyproject.toml`
-  - Removed redundant `MANIFEST.in` (Maturin uses `pyproject.toml` include list)
-  - IDEs and type checkers now have full type information for all Rust bindings
-  - Resolves "Type completions not working" error in PyCharm, VS Code, and mypy
+- Fixed missing `_internal_bindings.pyi` type stub file in Python wheels. ([#298](https://github.com/kreuzberg-dev/kreuzberg/issues/298))
 
 #### Homebrew
-- **Bottle checksum mismatches**: Fixed formula update script to download bottles from GitHub Release and compute checksums from actual uploaded files
-  - Formula checksums now match what users download, preventing "Bottle reports different checksum" errors
-  - Script downloads bottles from release instead of using local artifacts that may differ
-  - Ensures checksums are accurate even when bottles are re-uploaded with `--clobber` flag
+- Fixed bottle checksum mismatches by computing checksums from actual uploaded release files.
 
 ---
 
@@ -994,24 +474,11 @@ The following breaking changes affect **MCP tools only**. Since MCP is used excl
 
 ### Fixed
 
-#### Publish Workflow
-- **Cargo publish version requirements**: Added version specifications to path dependencies in `kreuzberg` and `kreuzberg-cli` crates to resolve crates.io publishing failures
-  - `kreuzberg-tesseract` now includes `version = "4.0"` alongside path dependency
-  - `kreuzberg` dependency in CLI now includes version requirement
-  - Resolves "all dependencies must have a version requirement specified when publishing" error
-
 #### Elixir
-- **Hex.pm publish checksums**: Fixed checksum file generation for precompiled NIFs during Hex.pm publishing
-  - Renamed checksum file to `checksum-Elixir.Kreuzberg.Native.exs` to match rustler_precompiled expectations
-  - Added `mix compile --force` step before checksum generation to create required metadata
-  - Updated `mix.exs` to reference correct checksum filename
-  - Resolves "precompiled NIF file does not exist in the checksum file" error during Hex.pm publish
+- Fixed checksum file generation for precompiled NIFs during Hex.pm publishing.
 
 #### PHP
-- **ext-php-rs class registration**: Fixed runtime panic by registering missing `ChunkMetadata` and `Keyword` classes
-  - Both classes are now properly registered in `get_module()` before their containing types
-  - Resolves "Attempted to retrieve class entry before it has been stored" panic
-  - Users can now access chunk metadata and keyword objects in PHP without errors
+- Fixed runtime panic from unregistered `ChunkMetadata` and `Keyword` classes in ext-php-rs.
 
 ---
 
@@ -1020,20 +487,12 @@ The following breaking changes affect **MCP tools only**. Since MCP is used excl
 ### Added
 
 #### Go Module
-- **Automated FFI library installer**: New install command automatically downloads the correct FFI library for your platform from GitHub releases ([#281](https://github.com/kreuzberg-dev/kreuzberg/issues/281))
-  - Run `go run github.com/kreuzberg-dev/kreuzberg/packages/go/v4/cmd/install@latest` to install
-  - Supports macOS ARM64, Linux x86_64/ARM64, and Windows x86_64
-  - Outputs platform-specific CGO flags needed to build
-  - Eliminates manual download and configuration steps
-  - Security hardened: semver validation, path traversal protection, decompression bomb prevention, HTTP timeout
+- Added automated FFI library installer that downloads the correct platform-specific library from GitHub releases. ([#281](https://github.com/kreuzberg-dev/kreuzberg/issues/281))
 
 ### Fixed
 
 #### Elixir
-- **Precompiled NIF checksums**: Fixed Hex package publishing to include actual SHA256 checksums instead of generator script
-  - Added `mix rustler_precompiled.download` step to CI before Hex publish
-  - Users can now install kreuzberg from Hex without compilation errors
-  - Fixes "precompiled NIF file does not exist in the checksum file" error
+- Fixed precompiled NIF checksums missing from Hex package.
 
 ---
 
@@ -1042,18 +501,7 @@ The following breaking changes affect **MCP tools only**. Since MCP is used excl
 ### Fixed
 
 #### Docker
-- **LibreOffice now accessible in full image**: Fixed `MissingDependencyError` when extracting legacy MS Office formats (.doc, .ppt) via REST API ([#288](https://github.com/kreuzberg-dev/kreuzberg/issues/288))
-  - Added symlinks `/usr/local/bin/soffice` and `/usr/local/bin/libreoffice` pointing to LibreOffice installation
-  - Added missing runtime dependencies: libssl3, libnss3, libnspr4, libdbus-1-3, libcups2
-
-#### CI/CD
-- **C# Windows CI**: Fixed JSON serialization for FFI - changed `JsonIgnoreCondition.WhenWritingNull` to `JsonIgnoreCondition.Never` to ensure Rust FFI receives all required fields
-- **Go CI**: Added FFI header file (`kreuzberg.h`) and pkg-config file to artifact uploads for cross-job availability
-- **PHP Windows CI**: Fixed path separator issue - replaced hardcoded `/` with `DIRECTORY_SEPARATOR` in 14 test files for Windows compatibility
-- **Cargo workspace**: Removed hardcoded version constraints from path dependencies in `kreuzberg-cli` and `kreuzberg` crates
-
-#### Elixir Publish Workflow
-- **Fixed native library paths**: Elixir NIF libraries are now correctly located in workspace root `target/` directory instead of local package target directory
+- Fixed `MissingDependencyError` when extracting legacy MS Office formats in Docker; added LibreOffice symlinks and missing runtime dependencies. ([#288](https://github.com/kreuzberg-dev/kreuzberg/issues/288))
 
 ---
 
@@ -1062,32 +510,18 @@ The following breaking changes affect **MCP tools only**. Since MCP is used excl
 ### Added
 
 #### HTML Configuration Support
-- **Full `html_options` configuration**: The `html_options` field in `ExtractionConfig` is now fully configurable from config files (TOML/YAML/JSON) and all language bindings ([#282](https://github.com/kreuzberg-dev/kreuzberg/issues/282))
-  - Upgraded `html-to-markdown-rs` to v2.21.1 with serde support
-  - Configure heading styles, code block styles, list formatting, text wrapping, and more
-  - Replaces v3's `HTMLToMarkdownConfig` with more comprehensive options
-  - See migration guide for available options and examples
+- Full `html_options` configuration now available from config files and all language bindings. ([#282](https://github.com/kreuzberg-dev/kreuzberg/issues/282))
 
 ### Fixed
 
 #### Go Module
-- **Fixed header include path for external users**: `plugins_test_helpers.go` now uses the bundled header at `internal/ffi/kreuzberg.h` instead of a relative path to the monorepo ([#280](https://github.com/kreuzberg-dev/kreuzberg/issues/280))
-  - Users installing via `go get` no longer get compilation errors about missing header files
+- Fixed header include path so `go get` users no longer get compilation errors about missing headers. ([#280](https://github.com/kreuzberg-dev/kreuzberg/issues/280))
 
 #### C# SDK
-- **Keyword extraction deserialization**: Fixed `JsonException` when using keyword extraction - keywords are now properly deserialized as `ExtractedKeyword` objects with `Text`, `Score`, `Algorithm`, and `Positions` properties instead of expecting plain strings ([#285](https://github.com/kreuzberg-dev/kreuzberg/issues/285))
-  - Added `ExtractedKeyword` class to `Models.cs`
-  - Updated `Serialization.cs` to handle keyword objects from YAKE/RAKE algorithms
-
-#### Documentation
-- **Rust OCR code examples**: Fixed incorrect `Some(...)` wrapper in OcrConfig examples - `backend` and `language` fields are plain `String` types, not `Option<String>` ([#284](https://github.com/kreuzberg-dev/kreuzberg/issues/284))
-  - Updated all Rust doc snippets in `docs/snippets/rust/` to use correct types
-
-#### Tests
-- **Flaky concurrent interning test**: Marked `test_concurrent_interning` as `#[ignore]` to prevent intermittent CI failures
+- Fixed `JsonException` when using keyword extraction; keywords now properly deserialized as `ExtractedKeyword` objects. ([#285](https://github.com/kreuzberg-dev/kreuzberg/issues/285))
 
 #### Distribution
-- **Homebrew tap visibility**: Made `kreuzberg-dev/homebrew-tap` repository public to enable `brew install kreuzberg-dev/tap/kreuzberg` ([#283](https://github.com/kreuzberg-dev/kreuzberg/issues/283))
+- Made Homebrew tap repository public to enable `brew install kreuzberg-dev/tap/kreuzberg`. ([#283](https://github.com/kreuzberg-dev/kreuzberg/issues/283))
 
 ---
 
@@ -1095,18 +529,11 @@ The following breaking changes affect **MCP tools only**. Since MCP is used excl
 
 ### Fixed
 
-#### Go Module Installation
-- **Fixed Go module tag format**: Go modules now install correctly with `go get github.com/kreuzberg-dev/kreuzberg/packages/go/v4@v4.0.2` ([#264](https://github.com/kreuzberg-dev/kreuzberg/issues/264))
-  - Changed tag format from `packages/go/v4/v4.x.x` to `packages/go/v4.x.x` to match Go module path requirements
-  - Updated `scripts/publish/go/tag-and-push-go-module.sh` to use correct format for future releases
+#### Go Module
+- Fixed Go module tag format so `go get` works correctly. ([#264](https://github.com/kreuzberg-dev/kreuzberg/issues/264))
 
-#### CI Stability
-- **Go CI Windows builds**: Made `choco install pkgconfiglite` step non-blocking since MSYS2 provides pkg-config as fallback
-- **Rust tooling cache**: Extended cargo-llvm-cov cache clearing to all platforms (not just Windows) to prevent corrupted binary issues on ARM64 Linux
-- **Bumped cache key version**: Invalidated potentially corrupted cargo-llvm-cov caches (v3 → v4)
-
-#### Elixir Publish Workflow
-- **Fixed macOS native library extension**: Elixir NIF packaging now correctly uses `.dylib` extension on macOS instead of `.so`
+#### Elixir
+- Fixed macOS native library extension (`.dylib` instead of `.so`).
 
 ---
 
@@ -1114,26 +541,20 @@ The following breaking changes affect **MCP tools only**. Since MCP is used excl
 
 ### Fixed
 
-#### Elixir Precompiled Binaries
-- **NIF binaries now uploaded to GitHub releases**: Fixed publish workflow that incorrectly skipped building and uploading Elixir NIF binaries when hex.pm package already existed ([#279](https://github.com/kreuzberg-dev/kreuzberg/issues/279))
-- The `elixir-natives` and `upload-elixir-release` jobs no longer depend on hex.pm package status, ensuring precompiled binaries are always available for `rustler_precompiled`
+#### Elixir
+- Fixed NIF binaries not uploaded to GitHub releases, breaking `rustler_precompiled`. ([#279](https://github.com/kreuzberg-dev/kreuzberg/issues/279))
 
-#### PyPI Source Distribution
-- **sdist includes all workspace crates**: Fixed issue where `kreuzberg-tesseract` was missing from PyPI source distributions, causing builds from source to fail ([#277](https://github.com/kreuzberg-dev/kreuzberg/issues/277))
-- Changed `kreuzberg-tesseract` from published crate dependency to path dependency so maturin automatically includes it in sdist
+#### Python
+- Fixed `kreuzberg-tesseract` missing from PyPI source distributions, causing builds from source to fail. ([#277](https://github.com/kreuzberg-dev/kreuzberg/issues/277))
 
 #### Homebrew
-- **Bottle publishing workflow**: Fixed workflow to publish releases from draft state, ensuring bottles are downloadable from public URLs
-- Added `--draft=false` flag to release creation and finalization script
+- Fixed bottle publishing workflow to publish releases from draft state.
 
-#### Test Apps & Bindings
-- **Java tests**: Fixed test document path (was `../../kreuzberg/test_documents`, now `../../../test_documents`) and exception type expectation
-- **Ruby API signatures**: Updated RBS type definitions to match keyword argument signatures (`path:` instead of positional `path`)
-- **Browser WASM types**: Fixed Svelte 5 variable naming conventions and removed call to non-existent `detectMimeType()` API
+#### Ruby
+- Updated RBS type definitions to match keyword argument signatures.
 
-#### Build & Lint
-- **Python build security**: Added `filter='data'` to `tarfile.extractall()` for secure extraction
-- **Python type annotations**: Fixed mypy errors in build.py
+#### WASM
+- Fixed Svelte 5 variable naming and removed call to non-existent `detectMimeType()` API.
 
 ---
 
@@ -1141,43 +562,19 @@ The following breaking changes affect **MCP tools only**. Since MCP is used excl
 
 ### Highlights
 
-This is the first stable release of Kreuzberg v4, a complete rewrite of the document intelligence library with a Rust core and polyglot bindings for Python, TypeScript, Ruby, PHP, Java, Go, C#, Elixir, and WebAssembly.
+First stable release of Kreuzberg v4, a complete rewrite with a Rust core and polyglot bindings for Python, TypeScript, Ruby, PHP, Java, Go, C#, Elixir, and WebAssembly.
 
 ### Added
 
 #### FFI & Language Bindings
-- **Python FFI Error Handling**: `get_last_error_code()` and `get_last_panic_context()` now properly call kreuzberg-ffi panic shield instead of returning stubs
-- **PHP Custom Extractor Support**: Metadata and tables from custom PHP extractors now flow through to extraction results via new `php_zval_to_json_value()` and `php_array_to_table()` helpers
-- **Dynamic Tesseract Language Discovery**: OCR backend now queries Tesseract installation for available languages instead of using hardcoded list, with lazy caching via `OnceLock` and fallback to default language set
-
-#### CI/CD
-- **ARM64 npm Indexing**: Enabled npm indexing wait step for linux-arm64-gnu packages in publish workflow
-
-### Fixed
-
-#### Test Alignment
-- **PHP Batch Error Handling**: Aligned PHP tests with other language bindings - batch operations now return error results in metadata instead of throwing exceptions (matching Ruby, TypeScript, Python behavior)
-- **PHP Embedding Tests**: Made embedding tests skip gracefully when ONNX runtime unavailable on ARM platforms
-- **PHP Image Extraction Tests**: Made image extraction tests skip when pdfium unavailable
-- **TypeScript OCR Tests**: Made OCR configuration tests skip gracefully when Tesseract initialization fails on Windows
+- Python FFI error handling via `get_last_error_code()` and `get_last_panic_context()`.
+- PHP custom extractor support with metadata and tables flowing through to results.
+- Dynamic Tesseract language discovery from installation.
 
 ### Removed
 
 #### Legacy Support
-- **V3 Code Removal**: Completely removed v3 legacy Python package and infrastructure
-  - Deleted `/v3/` directory containing standalone v3.22.0 LTS package
-  - Removed `.github/workflows/publish-v3.yaml` workflow
-  - Removed v3 documentation build scripts and tasks
-  - Cleaned up workspace configuration references
-  - V3 users should migrate to v4 using the [migration guide](https://docs.kreuzberg.dev/migration/v3-to-v4/)
-  - V3 package remains available on PyPI for legacy installations
-
-### Fixed
-
-#### CI/Build
-- **WASM TypeScript Typecheck**: Fixed TypeScript typecheck failing in CI when WASM module not yet built by using dynamic imports
-- **Go Windows CI**: Added Windows platform support for Go task commands using PowerShell equivalents
-- **Documentation Build**: Removed benchmark visualizer from docs deployment (temporarily disabled)
+- Completely removed v3 legacy Python package and infrastructure. V3 users should migrate to v4 using the [migration guide](https://docs.kreuzberg.dev/migration/v3-to-v4/).
 
 ---
 
@@ -1186,13 +583,7 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 ### Added
 
 #### Documentation
-- **Platform Support Documentation**: Added comprehensive platform support sections to all READMEs
-  - Main README now includes platform support table showing Linux x86_64, Linux aarch64, macOS ARM64, and Windows x64 coverage for all language bindings
-  - Python, Node.js, TypeScript, Ruby, Elixir, Go, Java, C#, and PHP READMEs now document precompiled binary availability
-  - Installation guide includes architecture support section highlighting aarch64 availability
-  - CONTRIBUTING.md includes new cross-architecture testing section explaining ubuntu-24.04-arm CI runners
-  - All documentation correctly reflects macOS support is Apple Silicon only (no Intel)
-  - Corrected Ruby platform documentation (no Windows support currently)
+- Added comprehensive platform support documentation to all READMEs.
 
 ---
 
@@ -1201,58 +592,23 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 ### Added
 
 #### API Server
-- **Embedding Endpoint**: Added new `POST /embed` endpoint for generating embeddings from text without document extraction ([#266](https://github.com/Anthropic/kreuzberg/issues/266))
-  - Accepts JSON body with `texts` array and optional `config` (embedding model, batch size, cache directory)
-  - Returns embeddings with model info, dimensions, and embedding count
-  - Supports all embedding presets (fast, balanced, quality, multilingual)
-  - Includes comprehensive test coverage and Docker integration tests
-- **Server Configuration**: Added comprehensive `ServerConfig` type for API server settings
-  - File-based configuration (TOML/YAML/JSON) for host, port, CORS origins, and upload limits
-  - Environment variable overrides for all server settings (KREUZBERG_HOST, KREUZBERG_PORT, KREUZBERG_CORS_ORIGINS, etc.)
-  - Configuration precedence: CLI args > Environment variables > Config file > Defaults
-  - Separate server config examples (server.toml/yaml/json)
+- Added `POST /embed` endpoint for generating embeddings from text. ([#266](https://github.com/Anthropic/kreuzberg/issues/266))
+- Added `ServerConfig` type for file-based server configuration (TOML/YAML/JSON) with environment variable overrides.
 
 #### Observability
-- **OpenTelemetry**: Added tracing instrumentation to all API endpoints (`api.extract`, `api.embed`, `api.health`, `api.info`, `api.cache_stats`, `api.cache_clear`)
-  - Tracks request counts, model usage, and file counts
-  - Compatible with OpenTelemetry collectors and distributed tracing systems
+- Added OpenTelemetry tracing instrumentation to all API endpoints.
 
 ### Fixed
 
 #### API Server & CLI
-- **CLI ServerConfig Integration**: Fixed CLI to properly use ServerConfig from config files
-  - CLI now respects CORS origins from configuration files (previously ignored)
-  - CLI now respects upload size limits from configuration files (previously re-parsed from env only)
-  - Added new `serve_with_server_config()` function for proper config handling
-- **Clippy Warnings**: Fixed manual ceiling division by using stdlib `div_ceil()` method
-- **Integration Tests**: Added `#[cfg(feature = "api")]` gate to prevent import errors when api feature disabled
-- **Linting**: Resolved all clippy `field_reassign_with_default` warnings in test code
-- **ShellCheck**: Fixed all shell script warnings in Docker test script (variable declarations, quoting)
-
-#### Docker & CI
-- **Docker Test Script**: Fixed critical infinite recursion bug in `get_image_name()` function
-- **Docker Entrypoint**: Fixed wrong binary path in custom config test (/app/kreuzberg → /usr/local/bin/kreuzberg)
-- **Docker Command**: Added missing 'serve' subcommand to custom config test
-- **CI Artifact Upload**: Made test results artifact upload conditional on file existence
+- Fixed CLI to properly use ServerConfig from config files (CORS origins, upload size limits).
 
 #### Configuration Examples
-- **Server Section**: Removed misplaced `[server]` section from extraction config examples
-- **Keyword Params**: Fixed YAKE/RAKE parameter examples to match actual source code
-  - YAKE: Only `window_size` parameter exists (removed non-existent deduplication fields)
-  - RAKE: Only `min_word_length` and `max_words_per_phrase` exist (removed non-existent stopwords/delimiters)
-- **Security**: Changed default host from `0.0.0.0` to `127.0.0.1` for safer defaults
-
-#### Documentation
-- **ServerConfig**: Removed incorrect `show_download_progress` field from ServerConfig example (belongs to EmbeddingConfig)
-- **PdfConfig**: Added missing `hierarchy` field to PdfConfig documentation table
-- **TypeScript Snippets**: Converted all WASM snippets from JavaScript to TypeScript with proper type annotations
-- **Go Installation**: Updated README with correct `go get` instructions for monorepo structure ([#264](https://github.com/kreuzberg-dev/kreuzberg/issues/264))
-  - Clarified that `@latest` doesn't work due to Go module discovery limitations
-  - Added explicit version tag examples and version discovery command
-  - Recommended automated installer script as primary installation method
+- Fixed YAKE/RAKE parameter examples to match actual source code.
+- Changed default host from `0.0.0.0` to `127.0.0.1` for safer defaults.
 
 #### PHP
-- **Table Extraction**: Fixed `extract_tables` config flag to properly filter table results
+- Fixed `extract_tables` config flag to properly filter table results.
 
 ---
 
@@ -1260,8 +616,7 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Fixed
 
-#### Publishing & Distribution
-- **WASM npm Package**: Fixed module initialization failure caused by incorrect import paths in minified output - updated copy-pkg.js script to handle multi-line import statements generated by tsup
+- Fixed WASM npm package initialization failure caused by incorrect import paths in minified output.
 
 ---
 
@@ -1269,25 +624,10 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Fixed
 
-#### Publishing & Distribution
-- **Node.js macOS Bindings**: Re-enabled macOS ARM64 builds in publish workflow (fixes npm package installation on macOS)
-- **WASM npm Package**: Fixed missing WASM binaries by removing .gitignore from dist/pkg directory during build
-- **Elixir hex.pm**: Removed private organization configuration and added version validation to enable public publishing
-- **Homebrew Bottles**: Fixed bottle upload pattern from double-dash to single-dash to match build filename format
-
-#### CI/CD
-- **PHP CI**: Fixed core extension loading by removing -n flag from test commands
-- **Ruby Windows CI**: Added bindgen blocklists for intrinsic headers to resolve GCC/Clang conflicts
-- **Node.js macOS CI**: Increased test timeout from 30s to 60s for embedding tests
-- **Elixir CI**: Fixed try-catch-rescue clause ordering in async operations tests
-- **C# Windows CI**: Skipped flaky timing-based concurrent test
-- **Docker Build**: Added kreuzberg_rustler to sed exclusion list in Dockerfile
-- **Benchmark Harness**: Fixed execute permissions on downloaded artifacts
-- **Rust Linting**: Resolved Rust 2024 edition compatibility with pre-commit hooks
-- **PHP PIE Builds**: Fixed macOS linker flags and Windows sha256sum command compatibility
-
-#### Version Management
-- **Elixir Validation**: Added packages/elixir/mix.exs to version consistency validation script
+- Fixed Node.js macOS ARM64 builds missing from publish workflow.
+- Fixed WASM npm package missing WASM binaries.
+- Fixed Elixir hex.pm publishing with correct public configuration.
+- Fixed Homebrew bottle upload pattern.
 
 ---
 
@@ -1295,36 +635,12 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Fixed
 
-#### CI/CD
-- **PHP macOS CI**: Added dynamic lookup linker flags to test-php job to resolve undefined symbol errors
-- **PHP Fingerprint Cache**: Removed macOS-only condition from cargo cache cleanup to prevent fingerprint conflicts on all platforms
-- **Go Binding**: Added comprehensive chunking config validation (negative values, excessive sizes, overlap constraints)
-- **Go Binding**: Removed overly strict empty data validation to allow empty strings
-- **Go Error Tests**: Corrected error path test expectations for batch operations
-- **Ruby Windows Build**: Changed to PowerShell and added explicit C:\t directory cleanup to resolve path mismatches
-- **C# E2E Tests**: Fixed inverted logic in legacy Office format skip detection (KREUZBERG_SKIP_LEGACY_OFFICE)
-- **Python CI**: Corrected binary name from kreuzberg-cli to kreuzberg to match Cargo.toml configuration
-- **Elixir Tests**: Fixed image assertion logic to correctly handle nil results
-- **Elixir Tests**: Changed table struct lookups from string keys to atom keys (:cells, :rows, :headers)
-- **Elixir Tests**: Added timeout handling to async operations test with 100ms fast-fail
-
-#### Benchmarks
-- **sccache Resilience**: Added DNS error detection and automatic fallback to direct compilation
-- **Pandoc Timeout**: Added 60-second timeout to prevent indefinite hangs during extraction
-- **Workflow Optimization**: Removed 60 unnecessary steps from 12 third-party framework jobs (saves 48-72 minutes per run, 12GB bandwidth)
-- **Artifact Management**: Split benchmark harness binary (5MB) from full target directory (500MB) for faster downloads
-
-#### Publish Workflow
-- **NuGet Artifacts**: Upgraded upload-artifact action from v6 to v7 to match download version
-- **Job Cleanup**: Removed redundant upload-csharp-release job (C# toolchain only requires NuGet.org publication)
-
-#### Language Bindings
-- **Java FFI**: Use Arena.global() for thread-safe C string reads across all FFI functions
-- **Ruby Safety**: Removed unnecessary unsafe blocks and fixed type conversions for safer code
+- Added comprehensive chunking config validation to Go binding (negative values, excessive sizes, overlap constraints).
+- Fixed Java FFI to use `Arena.global()` for thread-safe C string reads.
 
 ### Changed
 
-- **C# Target Framework**: Updated all projects and documentation to .NET 10.0
+- Updated C# target framework to .NET 10.0.
 
 ---
 
@@ -1332,17 +648,10 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Fixed
 
-- **Go Windows CI**: Added explicit CGO directives to bypass pkg-config on Windows
-- **Ruby Windows Build**: Added Windows platform handling in build.rs, enabled embeddings feature on Windows GNU
-- **Node Windows Tests**: Fixed symlink resolution using realpathSync for Windows compatibility
-- **C# Tests**: Fixed null reference warnings in config tests
-- **WASM CI**: Fixed artifact download path to include pkg/ subdirectory
-- **Homebrew Formula**: Fixed bottle naming convention, added source sha256 fetching
-- **PHP PIE Build**: Corrected task name and extension filename
-- **C# NuGet Upload**: Added proper conditional check for artifact existence
-- **Python CI**: Fixed test failures and compatibility issues
-- **Elixir CI**: Fixed build and compilation warnings
-- **WASM Deno**: Fixed type definitions and Ruby Windows build
+- Fixed Go Windows CGO directives to bypass pkg-config.
+- Fixed Ruby Windows build with proper platform handling and embeddings feature.
+- Fixed Node Windows tests with proper symlink resolution.
+- Fixed Homebrew formula bottle naming and source sha256 fetching.
 
 ---
 
@@ -1351,91 +660,18 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 ### Added
 
 #### Java
-- **EmbeddingConfig class**: New type-safe configuration class with builder pattern for embedding generation
-  - 7 configurable fields: model, normalize, batchSize, dimensions, useCache, showDownloadProgress, cacheDir
-  - Comprehensive test suite with 27 test methods (321 lines)
-  - Full integration with ExtractionConfig
-  - toMap/fromMap serialization support
+- Added `EmbeddingConfig` class with builder pattern for embedding generation.
 
 #### C#
-- **EmbeddingConfig sealed class**: Type-safe replacement for Dictionary-based embedding configuration
-  - 5 properties with init-only accessors
-  - JSON serialization with snake_case mapping
-  - Comprehensive test suite with 50 test methods
-  - Updated ChunkingConfig to use EmbeddingConfig instead of Dictionary<string, object?>
+- Added `EmbeddingConfig` sealed class as type-safe replacement for Dictionary-based configuration.
 
 #### Node.js (NAPI-RS)
-- **Worker Thread Pool APIs**: Complete concurrent extraction system
-  - `createWorkerPool(size?)`: Create worker pool with configurable size
-  - `getWorkerPoolStats(pool)`: Monitor pool utilization
-  - `extractFileInWorker(pool, ...)`: Extract single file in worker thread
-  - `batchExtractFilesInWorker(pool, ...)`: Extract multiple files concurrently
-  - `closeWorkerPool(pool)`: Graceful pool shutdown
-  - 17 test methods (468 lines) covering all APIs
-  - Auto-generated TypeScript type definitions via NAPI-RS
-
-#### Test Coverage
-- **Node.js**: 54 new tests (batch operations, worker pool, 15 config types)
-- **WASM**: 122 new tests (batch operations, embeddings, keywords, tables, 8 config suites)
-- **TypeScript**: 62 new tests (async operations, batch, 19 config types)
-- **Java**: 27 new EmbeddingConfig tests, 13 new config type tests
-- **C#**: 50 new EmbeddingConfig tests, 14 new config type tests
-- **Python**: 14 new config type tests, batch operations, embeddings advanced tests
-- **Ruby**: 14 new config type tests, async operations, batch operations
-- **Go**: Comprehensive config tests, mutex safety tests
-- **Total**: 200+ new tests across all bindings
-
-#### Documentation
-- **README Template System**: Template-based generation for all binding READMEs
-  - Created `scripts/readme_templates/` with Jinja2 templates
-  - Created `scripts/readme_config.yaml` for language-specific configurations
-  - Added snippet system in `docs/snippets/` for code examples
-  - Template partials for badges, installation, features, quick start
-- **Worker Pool Documentation**: Complete examples and best practices
-  - Code snippet: `docs/snippets/typescript/advanced/worker_pool.md`
-  - Performance benefits and usage patterns documented
-- **Config Discovery Documentation**: Automatic config file loading examples
-  - Code snippet: `docs/snippets/typescript/config/config_discovery.md`
-- **NAPI-RS Implementation Details**: Technical documentation for Node.js binding
-  - Template partial: `scripts/readme_templates/partials/napi_implementation.md.jinja`
-  - Threading model, memory management, performance characteristics
+- Added Worker Thread Pool APIs: `createWorkerPool`, `extractFileInWorker`, `batchExtractFilesInWorker`, `closeWorkerPool`.
 
 ### Fixed
 
-- **Page Marker Bug**: Fixed page markers to include page 1 (previously only inserted for page > 1)
-  - Modified `crates/kreuzberg/src/pdf/text.rs:292` to fix insertion logic
-  - Fixed C# default marker format in `packages/csharp/Kreuzberg/Serialization.cs:109`
-  - Fixed C# config serialization in `packages/csharp/Kreuzberg/KreuzbergClient.cs:1274`
-  - Added comprehensive test suite: `crates/kreuzberg/tests/page_markers.rs` (13 tests)
-
-- **Go Concurrency Crashes**: Fixed segfaults and SIGTRAP errors in concurrent operations
-  - Added `ffiMutex sync.Mutex` in `packages/go/v4/binding.go` for thread-safe FFI calls
-  - PDFium is not thread-safe; all FFI calls now protected by mutex
-  - Verified with `-race` flag: zero race conditions
-  - All 410 tests now pass consistently without crashes
-
-### Changed
-
-- **Code Formatting**: Standardized formatting across all 10 language bindings
-  - Rust: Applied `rustfmt` to all crates
-  - Java: Applied Spotless (Google Java Format)
-  - C#: Applied `dotnet format`
-  - PHP: Applied PHP CS Fixer
-  - Shell: Applied `shfmt` formatting
-  - All pre-commit hooks now passing
-
-- **README Updates**: Regenerated all binding READMEs from templates
-  - Node.js: Added worker pool section, LibreOffice notes, NAPI-RS details
-  - TypeScript: Updated with all new config types
-  - All bindings: Consistent structure and formatting
-
-### Performance
-
-- **Node.js Worker Pools**:
-  - Parallel document processing across CPU cores
-  - Configurable pool size (defaults to CPU count)
-  - Queue management for efficient task distribution
-  - Prevents thread exhaustion with bounded concurrency
+- Fixed page markers to include page 1 (previously only inserted for page > 1).
+- Fixed Go concurrency crashes (segfaults/SIGTRAP) by adding mutex for thread-safe FFI calls.
 
 ---
 
@@ -1443,67 +679,18 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Added
 
-- **PHP bindings** - New PHP extension with comprehensive FFI bindings
-  - PHP E2E test suite - Generated 65 comprehensive E2E tests from fixtures
-  - Email extraction tests
-  - HTML processing tests
-  - Image extraction tests
-  - OCR functionality tests (5 scenarios)
-  - Office document tests (16 formats)
-  - PDF extraction tests (16 scenarios)
-  - Plugin API tests (14 API functions)
-  - Smoke tests (7 formats)
-  - Structured data tests (JSON/YAML)
-  - XML extraction tests
-- **Root composer.json** - Added composer.json at repository root for
-  Packagist publishing
-- **HTML metadata extraction** - Rich structured metadata from HTML
-  documents
-  - Headers extraction with hierarchy (level, text, id, depth,
-    html_offset)
-  - Links extraction with type classification (anchor, internal,
-    external, email, phone)
-  - Images extraction with dimensions and type detection (data-uri,
-    inline-svg, external, relative)
-  - Structured data extraction (JSON-LD, Microdata, RDFa)
-  - New fields: `language`, `text_direction`, `meta_tags`
+- PHP bindings with comprehensive FFI bindings and E2E test suite.
+- Root `composer.json` for Packagist publishing.
+- HTML metadata extraction: headers, links, images, structured data (JSON-LD, Microdata, RDFa), `language`, `text_direction`, `meta_tags`.
 
 ### Fixed
 
-- **C# target framework** - Changed from net10.0 (preview) to net8.0 LTS
-  - .NET 10 preview caused NuGet restore hangs
-  - .NET 8 is latest stable LTS version with FFM API support
-- **Homebrew check timeout** - Added timeouts to prevent 55+ minute hangs
-  - Job timeout: 5 minutes
-  - Step timeout: 3 minutes
-  - Command timeout: 120 seconds
-- **Documentation** - Standardized all README badges and removed
-  AI-generated content
-  - Consistent blue badge colors across all language bindings
-  - Added Packagist badge to PHP README
-  - Removed emojis and marketing language
-  - Converted all relative links to absolute GitHub URLs
-- **Ruby vendor script** - Added missing workspace dependency inlining
-  for `lzma-rust2` and `parking_lot`
+- Fixed C# target framework from net10.0 (preview) to net8.0 LTS.
+- Fixed Ruby vendor script missing workspace dependency inlining for `lzma-rust2` and `parking_lot`.
 
 ### Changed
 
-- **Version sync** - Updated scripts/sync_versions.py to include root
-  composer.json
-- **BREAKING: HTML metadata structure** - Replaced YAML frontmatter
-  parsing with single-pass metadata extraction
-  - **keywords**: Changed from `Option<String>` (comma-separated) to
-    `Vec<String>` (array)
-  - **canonical**: Renamed to `canonical_url` for clarity
-  - **Open Graph fields**: Consolidated `og_*` fields into
-    `open_graph: BTreeMap<String, String>`
-  - **Twitter Card fields**: Consolidated `twitter_*` fields into
-    `twitter_card: BTreeMap<String, String>`
-  - **New structured types**: `headers: Vec<HeaderMetadata>`,
-    `links: Vec<LinkMetadata>`, `images: Vec<ImageMetadataType>`,
-    `structured_data: Vec<StructuredData>`
-  - **Migration guide**: See `docs/migration/v4.0-html-metadata.md`
-    for upgrade instructions
+- **BREAKING: HTML metadata structure** - Replaced YAML frontmatter parsing with single-pass metadata extraction. See `docs/migration/v4.0-html-metadata.md`.
 
 ---
 
@@ -1511,38 +698,20 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Fixed
 
-- **PDF initialization race conditions** - Resolved segfaults, JVM crashes, and concurrency errors across all language bindings
-  - Fixed Pdfium singleton initialization pattern that caused test failures
-  - Rust E2E tests: Fixed segfaults by returning Pdfium instance from bind_pdfium()
-  - Java tests: Removed incompatible JVM flags (`-XX:-ClassUnloading`) causing crashes on macOS ARM64 with Java 25 FFI
-  - C# tests: Fixed concurrency errors (improved from 0/29 to 17/29 passing tests)
-  - Go tests: Applied consistent error message formatting to all PDF error paths
-- **Test app infrastructure** - Fixed published package validation test apps
-  - Go: Removed invalid local path replace directive from go.mod
-  - Ruby: Added proper gem installation step before running tests
-  - Rust: Added workspace exclusion to prevent cargo workspace errors
-- **EPUB metadata extraction** - Fixed incorrect field mapping (created_at → subject) in EPUB parser
+- Fixed PDF initialization race conditions causing segfaults and concurrency errors across all language bindings.
+- Fixed EPUB metadata extraction with incorrect field mapping (created_at mapped to subject).
 
 ### Added
 
-- **CLI test app** - Comprehensive test suite for validating kreuzberg-cli published to crates.io
-  - Installation verification from crates.io
-  - Extraction tests (PDF, DOCX, XLSX with JSON/markdown output)
-  - HTTP API server tests (health endpoint, POST /extract)
-  - MCP server tests (startup and responsiveness)
-
-### Changed
-
-- **CI workflows** - All language CI workflows now only run on pull requests to main
-  - Removed push event triggers from all ci-* workflows
-  - Preserved workflow_dispatch triggers where needed
-  - Reduced unnecessary CI runs while maintaining PR quality checks
+- CLI test app for validating kreuzberg-cli published to crates.io.
 
 ---
 
 ## [4.0.0-rc.20] - 2025-12-25
 
-- **Font configuration API** - Configurable font provider with custom directory support and automatic path expansion
+### Added
+
+- Font configuration API with configurable font provider, custom directory support, and automatic path expansion.
 
 ---
 
@@ -1550,50 +719,37 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Added
 
-- **Homebrew bottle support** - Pre-built macOS bottles for faster installation
-- **Environment variable configuration** - `KREUZBERG_MAX_REQUEST_BODY_BYTES` and `KREUZBERG_MAX_MULTIPART_FIELD_BYTES` for API size limits
-- **Config file caching** - Improved performance for TOML/YAML/JSON config file loading
+- Homebrew bottle support for faster macOS installation.
+- Environment variable configuration for API size limits (`KREUZBERG_MAX_REQUEST_BODY_BYTES`, `KREUZBERG_MAX_MULTIPART_FIELD_BYTES`).
+- Config file caching for TOML/YAML/JSON loading.
 
 ### Fixed
 
-- **Large file uploads** (issue #248) - Files larger than 2MB are now accepted (configurable up to 100MB)
-- **Browser package Vite compatibility** (issue #249) - Fixed missing `pdfium.js` in dist bundle
-- **Node.js missing binaries** (issue #241) - Fixed resolution in Docker and pnpm monorepo environments
-- **Ruby gem native extension build** - Simplified build system with proper linker path resolution
-- **Java E2E test compatibility** - Regenerated tests for Java 25
-- **Docker ONNX Runtime** - Pinned to version 1.23 for compatibility
-- **Font provider thread safety** - Fixed race condition and graceful lock poisoning handling
-- **Custom font path validation** - Added security hardening with symlink resolution and canonicalization
+- Fixed large file uploads rejected above 2MB; now configurable up to 100MB. (#248)
+- Fixed browser package Vite compatibility with missing `pdfium.js`. (#249)
+- Fixed Node.js missing binaries in Docker and pnpm monorepo environments. (#241)
+- Fixed Ruby gem native extension build with proper linker path resolution.
+- Fixed font provider thread safety race condition.
+- Added custom font path validation with symlink resolution and canonicalization.
 
 ### Changed
 
-- **BREAKING**: Custom font provider now enabled by default (set `enabled = false` to disable)
-- **Default API size limit** - Increased to 100MB (configurable via `KREUZBERG_MAX_UPLOAD_SIZE_MB`)
-- **TypeScript serialization** - Replaced MessagePack + Base64 with direct JSON serialization
-- **PDF dependency** - Temporarily using `kreuzberg-pdfium-render` fork while awaiting upstream PR merge
+- **BREAKING**: Custom font provider now enabled by default.
+- Default API size limit increased to 100MB.
+- TypeScript serialization replaced MessagePack + Base64 with direct JSON.
 
 ### Performance
 
-- 15-25% overall execution improvement, 30-45% memory reduction
-- String allocation optimization (-2.57% CPU, -0.81% memory)
-- Memory pool improvements (35-50% reduction: 60-135 MB → 30-80 MB)
-- Post-processing pipeline optimizations (10-17% CPU improvement)
-- TypeScript thread pool dynamically sized by CPU count
+- 15-25% overall execution improvement, 30-45% memory reduction.
+- Memory pool improvements (35-50% reduction).
 
 ### Removed
 
-- **Legacy code cleanup** - Removed deprecated backward compatibility
-  - TypeScript: `KREUZBERG_LEGACY_SERIALIZATION` environment variable
-  - Go: 7 legacy error codes
-  - Ruby: `Ocr = OCR` alias
-  - Rust: Deprecated `Metadata.date` field (replaced by `created_at` - see Migration Guide)
-  - Cargo: 3 legacy feature aliases
+- Removed deprecated backward compatibility: TypeScript `KREUZBERG_LEGACY_SERIALIZATION`, Go legacy error codes, Ruby `Ocr = OCR` alias, Rust `Metadata.date` field, Cargo legacy feature aliases.
 
 ### Security
 
-- Custom font directories validated with canonicalization
-- Symlinks resolved to prevent path traversal attacks
-- All custom paths validated before use
+- Custom font directories validated with canonicalization and symlink resolution.
 
 ---
 
@@ -1601,9 +757,9 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Fixed
 
-- **Ruby gem packaging** - Fixed missing kreuzberg-ffi crate in vendored dependencies
-- **Ruby gem macOS** - Fixed linker errors during gem build and installation
-- **Python wheels macOS** - Fixed ImportError from hardcoded dylib paths
+- Fixed Ruby gem missing kreuzberg-ffi crate in vendored dependencies.
+- Fixed Ruby gem macOS linker errors.
+- Fixed Python wheels macOS ImportError from hardcoded dylib paths.
 
 ---
 
@@ -1611,17 +767,17 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Added
 
-- **Docker ARM64 support** - Multi-architecture Docker images now support linux/arm64
+- Docker ARM64 support with multi-architecture images.
 
 ### Fixed
 
-- **Python wheels macOS** - Fixed ImportError when installing from wheel
-- **Ruby gems macOS** - Fixed linker errors during gem installation
-- **TypeScript plugin registration** - Fixed TypeError with JavaScript-style plugins
+- Fixed Python wheels macOS ImportError.
+- Fixed Ruby gems macOS linker errors.
+- Fixed TypeScript plugin registration TypeError with JavaScript-style plugins.
 
 ### Performance
 
-- **Go bindings** - Improved ConfigMerge performance with native field copying
+- Improved Go ConfigMerge performance with native field copying.
 
 ---
 
@@ -1629,21 +785,19 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Added
 
-- **Batch processing APIs** - 4-6x throughput improvement for high-volume document extraction
+- Batch processing APIs with 4-6x throughput improvement for high-volume extraction.
 
 ### Fixed
 
-- **Python IDE support** - Type stub files (`.pyi`) now included in wheel distributions
-- **Java Maven compatibility** - Fixed CI builds with Maven 4.0.0-rc-4+ support
-- **Go Windows linking** - Resolved duplicate linker flags causing compilation failures
-- **Ruby gem compilation** - Fixed missing link search paths on Linux and Windows
-- **Ruby gem publishing** - Fixed artifact corruption during publication process
+- Fixed Python IDE support; type stub files now included in wheel distributions.
+- Fixed Go Windows linking with duplicate linker flags.
+- Fixed Ruby gem compilation with missing link search paths.
+- Fixed Ruby gem publishing with artifact corruption.
 
 ### Performance
 
-- **Batch operations** - 2-3x batch throughput gains with FFI streaming
-- **C# optimizations** - JSON serialization with source generation
-- **TypeScript/Node.js** - Config validation and batch operation integration
+- 2-3x batch throughput gains with FFI streaming.
+- C# JSON serialization with source generation.
 
 ---
 
@@ -1651,23 +805,18 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Fixed
 
-- **Node.js Windows publishing** - Windows x64 platform packages now publish correctly to npm
+- Fixed Node.js Windows x64 platform packages not publishing to npm.
 
 ---
 
 ## [4.0.0-rc.14] - 2025-12-20
 
-### Added
-
-- **Comprehensive test suites** - End-to-end tests for all language bindings
-
 ### Fixed
 
-- **C# NuGet publishing** - Switched to direct API key authentication
-- **LibreOffice in Docker** - Updated to version 25.8.4
-- **Python IDE type hints** - Type stub files now included in wheels
-- **Ruby gem compilation** - Fixed Rust crate vendoring
-- **Python ExtractionResult** - Fixed missing `pages` field in IDE autocomplete
+- Fixed LibreOffice in Docker (updated to version 25.8.4).
+- Fixed Python IDE type hints; type stub files now included in wheels.
+- Fixed Ruby gem compilation with Rust crate vendoring.
+- Fixed Python `ExtractionResult` missing `pages` field in IDE autocomplete.
 
 ---
 
@@ -1675,10 +824,10 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Fixed
 
-- **PDF bundled feature flag** - Corrected flag to `bundled-pdfium`
-- **Go Windows linking** - Fixed missing system libraries
-- **Ruby gem packaging** - Added missing TOML dependency
-- **WASM distribution** - Added compiled binaries for proper NPM publishing
+- Fixed PDF `bundled` feature flag (corrected to `bundled-pdfium`).
+- Fixed Go Windows linking with missing system libraries.
+- Fixed Ruby gem packaging with missing TOML dependency.
+- Fixed WASM distribution with compiled binaries for npm publishing.
 
 ---
 
@@ -1686,10 +835,10 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Fixed
 
-- **Python wheels PDFium bundling** - Corrected conditional compilation feature flag
-- **C# bindings** - Fixed MSBuild target for CI-downloaded native assets
-- **Ruby bindings** - Added missing `unsafe` keyword for Rust 2024 edition
-- **Docker** - Corrected ONNX Runtime package name for Debian Trixie
+- Fixed Python wheels PDFium bundling with correct feature flag.
+- Fixed C# MSBuild target for native assets.
+- Fixed Ruby bindings `unsafe` keyword for Rust 2024 edition.
+- Fixed Docker ONNX Runtime package name for Debian Trixie.
 
 ---
 
@@ -1697,11 +846,11 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Fixed
 
-- **PDFium bundling** - Now correctly included in all language bindings
-- **C# native libraries** - Build target properly copies platform-specific libraries
-- **Ruby gem publishing** - Fixed validation errors from double-compression
-- **Go Windows linking** - Removed duplicate CGO linker flags
-- **WASM** - Added PDF extraction support for browser and Node.js
+- Fixed PDFium bundling now correctly included in all language bindings.
+- Fixed C# native libraries build target for platform-specific copies.
+- Fixed Ruby gem publishing with double-compression validation errors.
+- Fixed Go Windows linking with duplicate CGO linker flags.
+- Added WASM PDF extraction support for browser and Node.js.
 
 ---
 
@@ -1709,18 +858,15 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Breaking Changes
 
-- **PDFium feature names** - `pdf-static` → `static-pdfium`, `pdf-bundled` → `bundled-pdfium`, `pdf-system` → `system-pdfium`
-- **Default PDFium linking** - `pdf` feature now defaults to `bundled-pdfium`
-- **Go module path** - Moved to `github.com/kreuzberg-dev/kreuzberg/packages/go/v4` (update imports and run `go mod tidy`)
+- PDFium feature names changed: `pdf-static` -> `static-pdfium`, `pdf-bundled` -> `bundled-pdfium`, `pdf-system` -> `system-pdfium`.
+- Default PDFium linking changed to `bundled-pdfium`.
+- Go module path moved to `github.com/kreuzberg-dev/kreuzberg/packages/go/v4`.
 
 ### Fixed
 
-- **Windows CLI** - Now includes bundled PDFium runtime
-- **WASM** - PDFium support for native targets
-- **Go bindings** - Added `ExtractFileWithContext()` and batch variants
-- **TypeScript** - Replaced `any` types with proper definitions
-- **Ruby bindings** - Complete YARD documentation
-- **C# bindings** - Complete XML documentation
+- Fixed Windows CLI to include bundled PDFium runtime.
+- Added Go `ExtractFileWithContext()` and batch variants.
+- Replaced TypeScript `any` types with proper definitions.
 
 ---
 
@@ -1728,15 +874,15 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Added
 
-- **`PDFIUM_STATIC_LIB_PATH` environment variable** - Enables custom static PDFium paths for Docker builds
+- `PDFIUM_STATIC_LIB_PATH` environment variable for custom static PDFium paths in Docker builds.
 
 ### Fixed
 
-- **Python** - Wheels now include typing metadata (`.pyi` stubs) for IDE support
-- **Java** - Maven packages now bundle platform-specific native libraries
-- **Node** - npm platform packages now contain compiled `.node` binaries
-- **WASM** - Node.js runtime no longer crashes with `self is not defined`
-- **PDFium static linking** - Fixed to correctly search for `libpdfium.a`
+- Fixed Python wheels to include typing metadata (`.pyi` stubs).
+- Fixed Java Maven packages to bundle platform-specific native libraries.
+- Fixed Node npm platform packages to contain compiled `.node` binaries.
+- Fixed WASM Node.js runtime crash with `self is not defined`.
+- Fixed PDFium static linking to correctly search for `libpdfium.a`.
 
 ---
 
@@ -1744,14 +890,14 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Added
 
-- **MCP HTTP Stream transport** - HTTP Stream transport for MCP server with SSE support
+- MCP HTTP Stream transport with SSE support.
 
 ### Fixed
 
-- **Go bindings** - Fixed CGO library path configuration for Linux and macOS
-- **Python wheels** - Now built with correct manylinux compatibility
-- **Ruby gems** - Removed embedding model cache from distribution
-- **Maven Central** - Updated publishing to use modern Sonatype Central API
+- Fixed Go CGO library path configuration for Linux and macOS.
+- Fixed Python wheels manylinux compatibility.
+- Fixed Ruby gems to remove embedding model cache from distribution.
+- Fixed Maven Central publishing to use modern Sonatype Central API.
 
 ---
 
@@ -1759,24 +905,20 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Added
 
-- **Configurable PDFium linking** - `pdf-static`, `pdf-bundled`, `pdf-system` Cargo features
-- **WebAssembly bindings** - Full TypeScript API with sync/async extraction for browser, Cloudflare Workers, Deno
-- **RTF extractor improvements** - Structured table extraction and metadata support
-- **Page tracking redesign** - Byte-accurate page boundaries and per-page metadata
+- Configurable PDFium linking: `pdf-static`, `pdf-bundled`, `pdf-system` Cargo features.
+- WebAssembly bindings with full TypeScript API for browser, Cloudflare Workers, and Deno.
+- RTF extractor improvements with structured table extraction and metadata support.
+- Page tracking redesign with byte-accurate page boundaries and per-page metadata.
 
 ### Changed
 
-- **BREAKING**: `ChunkMetadata` field renames (#226)
-  - `char_start` → `byte_start`
-  - `char_end` → `byte_end`
-  - See migration guide for details
+- **BREAKING**: `ChunkMetadata` fields renamed: `char_start` -> `byte_start`, `char_end` -> `byte_end`. (#226)
 
 ### Fixed
 
-- **Ruby gem corruption** - Excluded embedding model cache from distribution
-- **Java FFM SIGSEGV** - Fixed struct alignment on macOS ARM64
-- **C# compilation errors** - Fixed variable shadowing
-- **Python CI timeouts** - Marked slow office document tests for proper test selection
+- Fixed Ruby gem corruption from embedding model cache in distribution.
+- Fixed Java FFM SIGSEGV from struct alignment on macOS ARM64.
+- Fixed C# variable shadowing compilation errors.
 
 ---
 
@@ -1784,16 +926,15 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Added
 
-- **`core` feature** - Lightweight FFI build without ONNX Runtime (enables Windows MinGW compatibility)
+- `core` feature for lightweight FFI build without ONNX Runtime.
 
 ### Fixed
 
-- **ODT table extraction** - Fixed duplicate content extraction
-- **ODT metadata extraction** - Enhanced to match Office Open XML capabilities
-- **Go Windows MinGW builds** - Disabled embeddings feature for Windows compatibility
-- **Ruby rb-sys conflict** - Removed vendoring, now uses crates.io version
-- **Python text extraction metadata** - Fixed missing `format_type` field
-- **C# E2E tests** - Fixed OCR tests with empty content
+- Fixed ODT table extraction with duplicate content.
+- Fixed ODT metadata extraction to match Office Open XML capabilities.
+- Fixed Go Windows MinGW builds by disabling embeddings feature.
+- Fixed Ruby rb-sys conflict by removing vendoring.
+- Fixed Python text extraction missing `format_type` metadata field.
 
 ---
 
@@ -1801,15 +942,13 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Breaking Changes
 
-- **Removed all Pandoc dependencies** - Native Rust extractors now handle all 12 previously Pandoc-supported formats
-  - LaTeX, EPUB, BibTeX, Typst, Jupyter, FictionBook, DocBook, JATS, OPML, Org-mode, reStructuredText, RTF
-  - Benefits: No system dependencies, smaller Docker images, pure Rust codebase
+- Removed all Pandoc dependencies; native Rust extractors now handle all 12 previously Pandoc-supported formats (LaTeX, EPUB, BibTeX, Typst, Jupyter, FictionBook, DocBook, JATS, OPML, Org-mode, reStructuredText, RTF).
 
 ### Fixed
 
-- **macOS CLI binary** - Fixed missing libpdfium.dylib at runtime
-- **Windows Go builds** - Fixed GNU toolchain detection issues
-- **Ruby Bundler 4.0** - Fixed gem installation failures
+- Fixed macOS CLI binary missing libpdfium.dylib at runtime.
+- Fixed Windows Go builds with GNU toolchain detection.
+- Fixed Ruby Bundler 4.0 gem installation failures.
 
 ---
 
@@ -1817,9 +956,8 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Fixed
 
-- **Publishing workflow** - Fixed crates.io and Maven Central authentication
-- **Language bindings** - Resolved test failures across Ruby, Java, C#, and Node
-- **ONNX Runtime** - Fixed mutex errors and deadlocks
+- Fixed crates.io and Maven Central publishing authentication.
+- Fixed ONNX Runtime mutex errors and deadlocks.
 
 ---
 
@@ -1827,8 +965,8 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Fixed
 
-- **NuGet publishing** - Switched to API key authentication
-- **CLI binary packages** - Included libpdfium shared library
+- Fixed NuGet publishing authentication.
+- Fixed CLI binary packages to include libpdfium shared library.
 
 ---
 
@@ -1836,20 +974,18 @@ This is the first stable release of Kreuzberg v4, a complete rewrite of the docu
 
 ### Breaking Changes
 
-- **TypeScript/Node.js package** - Renamed from `kreuzberg` to `@kreuzberg/node` (scoped package)
-- **TypeScript migration** - Replace `import { ... } from 'kreuzberg'` with `import { ... } from '@kreuzberg/node'`
+- TypeScript/Node.js package renamed from `kreuzberg` to `@kreuzberg/node`.
 
 ### Added
 
-- **C#/.NET bindings** - Complete C# bindings using .NET 9+ FFM API
-- **MkDocs documentation site** - Multi-language examples and API reference
+- C#/.NET bindings using .NET 9+ FFM API.
+- MkDocs documentation site with multi-language examples and API reference.
 
 ### Fixed
 
-- **Tesseract OCR** - Corrected API call ordering
-- **Go Windows CGO linking** - Fixed MinGW compatibility
-- **Python async tests** - Fixed pytest-asyncio configuration
-- **Embeddings model cache** - Added lock poisoning recovery
+- Fixed Tesseract OCR API call ordering.
+- Fixed Go Windows CGO MinGW linking.
+- Fixed embeddings model cache lock poisoning recovery.
 
 ---
 
@@ -1861,44 +997,37 @@ Complete architectural rewrite from Python-only to Rust-core with polyglot bindi
 
 ### Architecture
 
-- **Rust core** - All extraction logic implemented in Rust for performance
-- **Polyglot bindings** - Python (PyO3), TypeScript/Node.js (NAPI-RS), Ruby (Magnus), Java (FFM API), Go (CGO)
-- **10-50x performance improvements** - Streaming parsers for multi-GB files with constant memory
+- Rust core with all extraction logic for performance.
+- Polyglot bindings: Python (PyO3), TypeScript/Node.js (NAPI-RS), Ruby (Magnus), Java (FFM API), Go (CGO).
+- 10-50x performance improvements with streaming parsers for multi-GB files.
 
 ### Added
 
-- **Plugin system** - PostProcessor, Validator, Custom OCR, Custom Document Extractors
-- **Language detection** - Automatic multi-language detection
-- **RAG & embeddings** - Automatic embedding generation with 4 presets (fast/balanced/quality/multilingual)
-- **Image extraction** - Native extraction from PDFs and PowerPoint with metadata
-- **Stopwords system** - 64 language support, compile-time embedded
-- **Comprehensive metadata** - Format-specific extraction for PDF, Office, Email, Images, XML, HTML
-- **MCP server** - Model Context Protocol integration for Claude
-- **Docker support** - Multi-variant images with OCR backends
-- **CLI improvements** - Rust-based CLI with better performance
+- Plugin system: PostProcessor, Validator, Custom OCR, Custom Document Extractors.
+- Language detection with automatic multi-language support.
+- RAG and embeddings with 4 presets (fast/balanced/quality/multilingual).
+- Image extraction from PDFs and PowerPoint with metadata.
+- Stopwords system for 64 languages.
+- Comprehensive format-specific metadata for PDF, Office, Email, Images, XML, HTML.
+- MCP server for Claude integration.
+- Docker support with multi-variant images and OCR backends.
 
 ### Changed
 
-- **Async-first API** - Primary extraction functions are async (sync variants have `_sync` suffix)
-- **Strongly-typed config** - All configuration uses typed structs/classes
-- **Strongly-typed metadata** - Format-specific TypedDict/struct metadata
-- **New API** - `extract()` → `extract_file()`, added `extract_bytes()`, `batch_extract_files()`
+- Async-first API; sync variants have `_sync` suffix.
+- Strongly-typed config and metadata.
+- New API: `extract()` -> `extract_file()`, added `extract_bytes()`, `batch_extract_files()`.
 
 ### Removed
 
-- **Pure-Python API** - No longer available
-- **Pandoc** - Native Rust extractors for all formats
-- **GMFT** - Vision-based table extraction (replaced with Tesseract-based)
-- **spaCy entity extraction** - Use external NER with postprocessors
-- **KeyBERT** - Use external keyword extraction with postprocessors
-- **Document classification** - Use external classifiers with postprocessors
+- Pure-Python API, Pandoc dependency, GMFT, spaCy entity extraction, KeyBERT, document classification.
 
 ### Breaking Changes
 
-- Python 3.10+, Node.js 18+, Rust 1.75+ required
-- Binary wheels only (no pure-Python installation)
-- TypeScript/Node.js package renamed to `@kreuzberg/node`
-- `char_start`/`char_end` → `byte_start`/`byte_end`
+- Python 3.10+, Node.js 18+, Rust 1.75+ required.
+- Binary wheels only.
+- TypeScript/Node.js package renamed to `@kreuzberg/node`.
+- `char_start`/`char_end` -> `byte_start`/`byte_end`.
 
 See [Migration Guide](https://docs.kreuzberg.dev/migration/v3-to-v4/) for details.
 
@@ -1907,97 +1036,35 @@ See [Migration Guide](https://docs.kreuzberg.dev/migration/v3-to-v4/) for detail
 ## [3.22.0] - 2025-11-27
 
 ### Fixed
-- Always attempt EasyOCR import before raising `MissingDependencyError` to improve error handling
-- Hardened HTML regexes for script/style stripping to prevent edge cases
-
-### Added
-- Test coverage for EasyOCR import path edge cases
-
-### Changed
-- Updated v3 dependencies to current versions
+- Fixed EasyOCR import error handling.
+- Hardened HTML regexes for script/style stripping.
 
 ---
 
 ## [3.21.0] - 2025-11-05
 
-### Major Release: Kreuzberg v4 Migration
-
-This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, polyglot bindings (Python/TypeScript/Ruby/Java/Go), and enhanced architecture. v3 remains available for legacy projects.
-
 ### Added
 
-#### Core (Rust)
-- Complete Rust core library with comprehensive document extraction pipeline
-- Plugin system architecture for extensible extractors, OCR backends, postprocessors, and validators
-- PDF extraction and rendering with advanced table detection
-- Format extraction for Office documents (DOCX, XLSX, PPTX), HTML, XML, and plain text
-- OCR subsystem with pluggable backend support (Tesseract, EasyOCR, PaddleOCR)
-- Image processing utilities with EXIF extraction and format conversion
-- Text processing with token reduction, chunking, keyword extraction, and language detection
-- Stopwords utilities for 50+ languages
-- Cache system with in-memory and persistent storage
-- Embeddings support via FastEmbed
-- MCP (Model Context Protocol) server integration
-- CLI binary for command-line document extraction
-
-#### Language Bindings
-- **Python**: PyO3 FFI bindings with Python-idiomatic API and async support
-- **TypeScript/Node.js**: NAPI-RS bindings with full type definitions
-- **Ruby**: Magnus FFI bindings with RBS type definitions
-- **Java**: Java 25 Foreign Function & Memory API (FFM/Panama) bindings
-- **Go**: CGO bindings with Go 1.25+ support
-- **C#**: FFI bindings (baseline implementation)
-
-#### API Server & MCP
-- REST API server for document extraction
-- MCP server for Claude integration
-- Comprehensive configuration system with builder patterns
-
-#### Testing & Infrastructure
-- 95%+ test coverage across all components
-- End-to-end test suites for all language bindings (auto-generated from fixtures)
-- Comprehensive Rust test suite with unit/integration/doc tests
-- Multi-language CI/CD with GitHub Actions
-- Docker builds for containerized deployment
-- Benchmark harness for performance analysis
-
-#### Documentation
-- New documentation site: https://docs.kreuzberg.dev
-- Language-specific guides for all 6+ bindings
-- Plugin development documentation
-- API reference with code examples
-- Architecture documentation
-- Migration guide from v3 to v4
+- Complete Rust core library with document extraction pipeline, plugin system, PDF/Office/HTML/XML extraction, OCR subsystem, image processing, text processing, cache, embeddings, MCP server, and CLI.
+- Language bindings: Python (PyO3), TypeScript (NAPI-RS), Ruby (Magnus), Java (FFM API), Go (CGO), C# (FFI).
+- REST API server and MCP server for Claude integration.
 
 ### Changed
 
-- Architecture restructured around Rust core with thin language-specific wrappers
-- Build system upgraded to Rust Edition 2024 with Cargo workspace
-- Dependency management via Cargo, npm/pnpm, PyPI, Maven, and Go modules
-- Task automation via Taskfile.yaml
-- Enhanced error handling with typed exceptions across all languages
-- Configuration system redesigned for consistency across languages
+- Architecture restructured around Rust core with thin language-specific wrappers.
+- Build system upgraded to Rust Edition 2024 with Cargo workspace.
 
 ### Removed
 
-- Old v3 codebase superseded by v4 (v3 remains available in separate branch)
-- Legacy Python implementation details replaced by PyO3 bindings
-- Previous Node.js implementation replaced by NAPI-RS
+- Old v3 codebase superseded by v4.
 
 ### Security
 
-- All dependencies audited for vulnerabilities
-- Sandboxed subprocess execution (LibreOffice, Tesseract)
-- Input validation on all user-provided data
-- Memory safety via Rust
+- All dependencies audited, sandboxed subprocess execution, input validation, memory safety via Rust.
 
 ### Performance
 
-- Streaming PDF extraction for memory efficiency
-- Zero-copy patterns throughout Rust core
-- SIMD optimizations where applicable
-- ONNX Runtime for embeddings
-- Async-first design for I/O operations
+- Streaming PDF extraction, zero-copy patterns, SIMD optimizations, ONNX Runtime for embeddings, async-first design.
 
 ---
 
@@ -2005,29 +1072,15 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Fixed
 
-- Surface missing optional dependency errors in GMFT extractor
-- Stabilize aggregation data loading in benchmarks
-- Make Docker E2E API checks resilient to transient failures
-
-### Changed
-
-- Make comparative benchmarks manual-only to reduce resource consumption
-
-### Dependencies
-
-- Updated dependencies to latest versions
+- Fixed missing optional dependency errors in GMFT extractor.
 
 ---
 
 ## [3.20.1] - 2025-10-11
 
-### Fixed
-
-- Correct publish docker workflow include path
-
 ### Changed
 
-- Optimize sdist size by excluding unnecessary files
+- Optimized sdist size by excluding unnecessary files.
 
 ---
 
@@ -2035,29 +1088,11 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Python 3.14 support
+- Python 3.14 support.
 
 ### Changed
 
-- Migrate HTML extractor to html-to-markdown v2 for improved compatibility and performance
-
-### Fixed
-
-- Comparative benchmarks: fix frozen dataclass mutation and aggregation workflow
-- CI improvements and coverage adjustments
-- Add pytest-benchmark to dev dependencies for benchmark workflow
-
-### Dependencies
-
-- Bump astral-sh/setup-uv from 6 to 7
-- Bump peter-evans/dockerhub-description from 4 to 5
-- Bump actions/download-artifact from 4 to 5
-- Bump actions/setup-python from 5 to 6
-- Bump actions/checkout from 4 to 5
-
-### Documentation
-
-- Document Python 3.14 support limitations
+- Migrated HTML extractor to html-to-markdown v2.
 
 ---
 
@@ -2065,25 +1100,8 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Fixed
 
-- Replace mocked Tesseract test with real file-based test
-- Remove Rust build step from kreuzberg benchmarks workflow
-- Resolve prek and mypy issues in comparative-benchmarks
-- Add ruff config to comparative-benchmarks to allow benchmark patterns
-- Ensure Windows Tesseract 5.5.0 HOCR output compatibility
-- Properly type TypedDict configs with type narrowing and cast
-
-### Changed
-
-- Optimize extractor configurations for fair comparison in benchmarks
-- Complete comparative-benchmarks workspace with visualization and docs generation
-
-### Dependencies
-
-- Updated dependencies to latest versions
-
-### Testing
-
-- Add regression test for Issue #149 Windows Tesseract HOCR compatibility
+- Fixed Windows Tesseract 5.5.0 HOCR output compatibility.
+- Fixed TypedDict configs with type narrowing and cast.
 
 ---
 
@@ -2091,44 +1109,14 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Enforce critical system error policy with context-aware exception handling
-- Implement systematic exception handling audit across all modules
-- Add German language pack support for Windows CI
+- Context-aware exception handling with critical system error policy.
 
 ### Fixed
 
-- Align sync/async OCR pipelines and fix Tesseract PSM enum handling
-- Remove magic library dependency completely
-- Prevent magic import crashes in Windows tests
-- Properly mock magic import in CLI tests
-- Correct asyncio.gather result assertion in profiler test
-- Resolve benchmark test failures and naming cleanup
-- Add Windows-safe fallbacks for CLI progress and magic
-- Make OCR test less brittle for character recognition
-- Eliminate all Rich Console instantiations at import time
-- Prevent Windows access violation in benchmarks CLI
-- Update OCR test assertion to match actual error message format
-- Handle ValidationError gracefully in batch processing contexts
-- Correct test fixture file paths and remove hardcoded paths
-- Ensure coverage job only runs when all tests pass
-
-### Changed
-
-- Remove verbose AI-pattern naming from components
-- Enable coverage job for branches and update changelog
-
-### Dependencies
-
-- Add missing needs declaration to python-tests job in workflows
-
-### Documentation
-
-- Align documentation with v4-dev improvements
-- Improve error handling policy documentation
-
-### Performance
-
-- Parallelize comparative benchmarks with 6-hour timeout
+- Aligned sync/async OCR pipelines and fixed Tesseract PSM enum handling.
+- Removed magic library dependency.
+- Added Windows-safe fallbacks for CLI progress.
+- Fixed ValidationError handling in batch processing.
 
 ---
 
@@ -2136,39 +1124,17 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Make API server configuration configurable via environment variables
-- Improve spaCy model auto-download with uv fallback
-- Add regression tests for German image PDF extraction (issue #149)
+- API server configuration via environment variables.
+- Auto-download missing spaCy models for entity extraction.
+- Regression tests for German image PDF extraction. (#149)
 
 ### Changed
 
-- Use uv to install prek for latest version
-- Replace pre-commit commands with Prek in Taskfile.yml
-- Update pre-commit instructions to use Prek
-- Update html-to-markdown to latest version
-- Auto-download missing spaCy models for entity extraction
-- Fix HOCR parsing issues
+- Updated html-to-markdown to latest version.
 
 ### Fixed
 
-- Resolve mypy type checking issues
-- Prevent DeepSource upload when tests fail
-- Make DeepSource upload optional when DEEPSOURCE_DSN is missing
-- Prevent coverage-pr from running when test-pr fails
-
-### Dependencies
-
-- Remove pre-commit dependency from dev requirements
-- Updated dependencies to latest versions
-
-### CI/CD
-
-- Use prek instead of pre-commit in validation workflow
-
-### Documentation
-
-- Update contributing guide to use prek instead of pre-commit
-- Update uv.lock to reflect dependency changes and remove upload-time attributes
+- Fixed HOCR parsing issues.
 
 ---
 
@@ -2176,26 +1142,11 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Add token reduction for text optimization
-- Add concurrency settings to cancel in-progress workflow runs
-- Optimize token reduction and update dependencies
-- Optimize token reduction performance and add streaming support
+- Token reduction for text optimization with streaming support.
 
 ### Fixed
 
-- Resolve excessive markdown escaping in OCR output (fixes #133)
-- Remove invalid table extraction tests for non-existent functions
-- Ensure comprehensive test coverage in CI
-- Resolve Windows path compatibility and improve test coverage
-- Critical issues from second review of token reduction
-
-### Changed
-
-- Complete token reduction implementation overhaul
-
-### Testing
-
-- Improve coverage and add pragma no cover annotations
+- Fixed excessive markdown escaping in OCR output. (#133)
 
 ---
 
@@ -2203,36 +1154,13 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Enhance JSON extraction with schema analysis and custom field detection
-- Add internal streaming optimization for html-to-markdown conversions
-- Comprehensive test coverage improvements
+- Enhanced JSON extraction with schema analysis and custom field detection.
 
 ### Fixed
 
-- Export HTMLToMarkdownConfig in public API
-- Resolve EasyOCR module-level variable issues and adjust coverage requirement
-- Resolve mypy type errors and test failures
-- Add xfail markers to chunking, ML-dependent, cache, and language detection tests
-- Add xfail markers for EasyOCR device validation tests
-- Resolve CI test failures with targeted fixes
-- Add missing Any import for type annotations
-- Update docker e2e workflow to use correct test filename
-- Prevent docker_e2e.py from being discovered by pytest
-- Resolve Windows-specific path issues in tests
-
-### Changed
-
-- Remove coverage fail_under threshold completely
-- Remove unnecessary xfail markers
-
-### Dependencies
-
-- Bump actions/download-artifact from 4 to 5
-
-### Testing
-
-- Add comprehensive tests for API configuration caching
-- Increase test coverage to meet CI requirements
+- Fixed `HTMLToMarkdownConfig` not exported in public API.
+- Fixed EasyOCR module-level variable issues.
+- Fixed Windows-specific path issues.
 
 ---
 
@@ -2240,33 +1168,12 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Add comprehensive image extraction support
-- Add polars DataFrame and PIL Image serialization for API responses
-- Improve test coverage across core modules
+- Comprehensive image extraction support.
+- Polars DataFrame and PIL Image serialization for API responses.
 
 ### Fixed
 
-- Resolve mypy type errors in CI
-- Remove unused flame_config parameter from profile_benchmark
-- Resolve CI formatting issues by ignoring generated AGENTS.md
-- Resolve pre-commit formatting issues and ruff violations
-- Resolve all test failures and achieve full test suite compliance
-- Add polars DataFrame and PIL Image serialization for API responses
-- Resolve TypeError unhashable type dict in API config merging
-- Address linting and type issues from PR #130 review
-
-### Changed
-
-- Apply ruff formatting across the codebase
-
-### Documentation
-
-- Add comprehensive image extraction documentation
-- Update documentation to use ImageOCRConfig instead of deprecated fields
-
-### Cleanup
-
-- Remove INTERFACE_PARITY.md causing mdformat issues
+- Fixed TypeError with unhashable dict in API config merging.
 
 ---
 
@@ -2274,20 +1181,12 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Comprehensive DPI configuration system for OCR processing with fine-grained control over resolution settings
+- DPI configuration system for OCR processing.
 
 ### Changed
 
-- Enhanced API with 1GB upload limit and comprehensive OpenAPI documentation
-- Completed pandas to polars migration across entire codebase for improved performance and memory efficiency
-
-### Fixed
-
-- Improved lcov coverage combining robustness in CI pipeline
-- DPI configuration tests moved to proper test directory for correct CI coverage calculation
-- Pre-commit formatting issues resolved
-- PDF content handling differences between CI and local tests
-- PaddleOCR test isolation and fixture path corrections
+- Enhanced API with 1GB upload limit and comprehensive OpenAPI documentation.
+- Completed pandas to polars migration.
 
 ---
 
@@ -2295,35 +1194,19 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Runtime configuration API with query parameters and header support for flexible request handling
-- Comprehensive runtime configuration documentation with practical examples
-- OCR caching system for EasyOCR and PaddleOCR backends to improve performance
+- Runtime configuration API with query parameters and header support.
+- OCR caching system for EasyOCR and PaddleOCR backends.
 
 ### Changed
 
-- Replaced pandas with polars for table extraction (significant performance improvement)
-- Consolidated benchmarks CLI into unified interface with improved structure
-- Converted all class-based tests to function-based tests for consistency
-- Restructured benchmarks package layout for better organization
-- Removed all module-level docstrings from Python files for cleaner codebase
+- Replaced pandas with polars for table extraction.
 
 ### Fixed
 
-- MyPy errors and type annotations throughout codebase
-- Tesseract TSV output format and table extraction implementation
-- UTF-8 encoding handling across document processing pipeline
-- Config loading with proper error handling and validation
-- HTML-to-Markdown configuration now externalized for flexibility
-- All ruff and mypy linting errors resolved
-- Test failures in CI environment
-- Regression in PDF extraction and XLS file handling
-- Subprocess error analysis for CalledProcessError handling
-- Empty DataFrames in GMFT table extraction (pandas.errors.EmptyDataError prevention)
-
-### Performance
-
-- Optimized PDF processing and HTML conversion performance
-- Improved TSV integration test quality with concrete assertions
+- Fixed Tesseract TSV output format and table extraction.
+- Fixed UTF-8 encoding handling across document processing.
+- Fixed HTML-to-Markdown configuration externalization.
+- Fixed regression in PDF extraction and XLS file handling.
 
 ---
 
@@ -2331,35 +1214,15 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Docker E2E testing infrastructure with multi-image matrix strategy
-- Multilingual OCR support to Docker images with flexible backend selection
-- Docker documentation with clarity on image contents, sizes, and OCR backend selection
+- Multilingual OCR support in Docker images with flexible backend selection.
 
 ### Changed
 
-- Simplified Docker images to base and core variants (removed intermediate images)
-- Docker strategy updated to 2-image approach for optimized distribution
-- Docker E2E tests aligned with CI patterns using matrix strategy for parallel execution
-- Improved Docker workflow with manual trigger options for flexibility
+- Simplified Docker images to base and core variants.
 
 ### Fixed
 
-- Docker image naming conventions (kreuzberg-core:latest)
-- Boolean condition syntax in Docker workflow
-- Docker permissions and documentation accuracy
-- Docker E2E test failure detection (ensures proper test exit code propagation)
-- Docker workflow disk space management and optimization
-- Grep exit code handling in Docker test workflows
-- Naming conflict in CLI config command
-- grep exit code failures in shell scripts
-- EasyOCR test image selection (use text-containing image instead of flower)
-- Test fixture image file naming for clarity
-
-### Infrastructure
-
-- Enhanced disk space cleanup in Docker E2E workflow
-- Improved Docker workflow disk space management
-- Updated test-docker-builds.yml for new image naming scheme
+- Fixed naming conflict in CLI config command.
 
 ---
 
@@ -2367,65 +1230,23 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Fixed
 
-- EasyOCR device-related parameters removed from readtext() calls
-- Numpy import optimization: only import numpy inside process_image_sync rather than at module level to improve startup time
-- Table attribute access in documentation
-- Pre-commit formatting for table documentation
-
-### Infrastructure
-
-- Updated uv.lock after version bump
-- AI-rulez pre-commit hooks compatibility with Go setup in CI workflow
-- Temporary ai-rulez hooks disabled to unblock CI
-- Reverted to ai-ruyles v1.4.3 with Go setup for CI stability
-- Dependency updates including amannn/action-semantic-pull-request v5→v6 and actions/checkout v4→v5
+- Fixed EasyOCR device-related parameters passed to readtext() calls.
+- Optimized numpy import to only load inside `process_image_sync` for faster startup.
 
 ---
 
 ## [3.11.0] - 2025-08-01
 
-### Added
-
-- Comprehensive tests for Tesseract OCR backend with edge case coverage
-- Comprehensive tests for API module with full functionality coverage
-- Comprehensive tests for config and image extractor modules
-- Comprehensive Click-based tests for CLI module with proper command testing
-- Comprehensive tests for structured data extractor module
-- Comprehensive tests for extraction and document classification modules
-- Comprehensive tests for pandoc extractor module
-- Comprehensive tests for email extractor module
-- Comprehensive tests for _config.py module
-- Comprehensive tests for _utils._errors module with error handling validation
-- Comprehensive tests for spreadsheet metadata extraction
-- Retry mechanisms for CI test reliability to handle transient failures
-
 ### Changed
 
-- Implemented Python 3.10+ syntax optimizations (match/case, union types where applicable)
-- Merged comprehensive test files with regular test files for consolidated coverage
-- Optimized pragma no cover usage to reduce false negatives
-- Converted test classes to functional tests for better pytest compatibility
-- Updated coverage requirements documentation from 95% to 85%
+- Implemented Python 3.10+ syntax optimizations.
 
 ### Fixed
 
-- Linting issues in merged comprehensive test files
-- Image extractor async delegation tests
-- CI test failures with improved retry mechanisms
-- Timezone assertion in spreadsheet metadata test
-- MyPy errors in test files and config calls
-- ExceptionGroup import errors for Python 3.10+ compatibility
-- Syntax errors in test files
-- Bug in _parse_date_string with proper test mocks
-- Pre-commit formatting issues
-- DeepSource coverage reporting with restructured CI workflow
-
-### Infrastructure
-
-- Updated uv.lock to revision 3 to fix CI validation issues
-- Fixed CI workflow structure for improved DeepSource coverage reporting
-- Coverage upload now only triggers on push events (not pull requests)
-- Version bump to 3.10.1 with lock file updates
+- Fixed image extractor async delegation.
+- Fixed timezone assertion in spreadsheet metadata.
+- Fixed ExceptionGroup import for Python 3.10+ compatibility.
+- Fixed `_parse_date_string` bug.
 
 ---
 
@@ -2433,11 +1254,7 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- PDF password support through new crypto extra feature
-
-### Documentation
-
-- Updated quick start section to use available configuration options
+- PDF password support through new crypto extra feature.
 
 ---
 
@@ -2445,7 +1262,7 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Initial release of v3.9.0 series with foundational features
+- Initial release of v3.9.0 series.
 
 ---
 
@@ -2453,7 +1270,7 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Foundation for v3.8.0 release
+- Foundation for v3.8.0 release.
 
 ---
 
@@ -2461,19 +1278,12 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- MCP server for AI integration enabling Claude integration with document extraction capabilities
-- MCP server configuration and optional dependencies support
+- MCP server for AI integration enabling Claude integration with document extraction.
 
 ### Fixed
 
-- Chunk parameters adjusted to prevent overlap validation errors
-- MCP server linting issues resolved
-- HTML test compatibility with html-to-markdown v1.6.0 behavior
-
-### Changed
-
-- MCP server tests converted to function-based format
-- MCP server configuration documentation clarified
+- Fixed chunk parameters to prevent overlap validation errors.
+- Fixed HTML test compatibility with html-to-markdown v1.6.0.
 
 ---
 
@@ -2481,20 +1291,15 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Language detection functionality integrated into extraction pipeline
+- Language detection integrated into extraction pipeline.
 
 ### Fixed
 
-- Entity extraction migration from gliner to spaCy completed
-- Docker workflow reliability improved with updated ai-rulez configuration
-- Optional imports refactored to use classes for better type handling
-- Validation and post-process logic abstracted into helper functions for sync and async paths
+- Completed entity extraction migration from gliner to spaCy.
 
 ### Changed
 
-- spaCy now used for entity extraction replacing gliner
-- Optional imports moved inside functions for proper error handling
-- Entity and keyword extraction validation/post-processing refactored
+- spaCy now used for entity extraction replacing gliner.
 
 ---
 
@@ -2502,29 +1307,17 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Language detection functionality with configurable backends
-- Performance optimization guidelines and documentation
-- Full synchronous support for PaddleOCR and EasyOCR backends
-- Docker documentation and Python 3.10+ compatibility
-- Benchmarks submodule integration
+- Language detection with configurable backends.
+- Full synchronous support for PaddleOCR and EasyOCR backends.
 
 ### Fixed
 
-- Flaky OCR tests marked as xfail in CI environments
-- Typing errors resolved across codebase
-- Chunking default configuration reverted to stable settings
-- PaddleOCR sync implementation updated to correct v3.x API format
-- Python 3.9 support dropped and version bumped to v3.4.2
-- Docker workflow version detection and dependencies fixed
-- Docs workflow configuration and Docker manual dispatch enabled
-- CI documentation dependencies resolved
+- Fixed chunking default configuration.
+- Fixed PaddleOCR sync implementation for v3.x API.
 
 ### Changed
 
-- Default configurations optimized for modern document extraction
-- Tesseract OCR configuration optimized based on benchmark analysis
-- Documentation link moved to top of README
-- Python 3.10+ now required (3.9 support dropped)
+- Python 3.10+ now required (3.9 support dropped).
 
 ---
 
@@ -2532,27 +1325,13 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- API support with Litestar framework for web-based document extraction
-- API tests aligned with best practices
-- EasyOCR and GMFT Docker build variants
-- Docker support with comprehensive CI integration
-- API and Docker documentation
+- API support with Litestar framework for web-based document extraction.
+- EasyOCR and GMFT Docker build variants.
 
 ### Fixed
 
-- 'all' extra dependency configuration simplified
-- Docker workflow extras configuration corrected
-- Race condition in GMFT caching tests resolved
-- Race condition in Tesseract caching tests resolved
-- Docker Hub repository configuration fixed
-- CLI integration test using tmp_path fixture for isolation
-- gmft module mypy type errors resolved
-
-### Changed
-
-- Docker module migrated to api module with Litestar framework
-- Docker workflow matrix simplified
-- Performance documentation enhanced with competitive benchmarks
+- Fixed race condition in GMFT caching.
+- Fixed race condition in Tesseract caching.
 
 ---
 
@@ -2560,40 +1339,20 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Isolated process wrapper for GMFT table extraction
-- Comprehensive statistical benchmarks proving msgpack superiority
-- Comprehensive CLI support with Click framework
-- Comprehensive benchmarking suite for sync vs async performance
-- Pure synchronous extractors without anyio dependencies
-- Document-level caching with simplified concurrency handling
-- Per-file locks and parallel batch processing for sync performance
-- Python version matrix CI testing (3.9-3.13)
-- Thread lock for pypdfium2 to prevent macOS segfaults
+- Isolated process wrapper for GMFT table extraction.
+- CLI support with Click framework.
+- Pure synchronous extractors without anyio dependencies.
+- Document-level caching with per-file locks and parallel batch processing.
+- Thread lock for pypdfium2 to prevent macOS segfaults.
 
 ### Fixed
 
-- All remaining mypy and pydoclint issues ensuring CI passes
-- Python 3.13 mock compatibility issues in process pool tests
-- ExceptionGroup compatibility in sync tests
-- GMFT config updated and test failures resolved
-- All Windows-specific test failures in multiprocessing and utils modules
-- Windows compatibility issues resolved
-- Test coverage improvements from 76% to 83%
-- Rust formatting issues with edition 2024 let-chain syntax
-- File existence validation added to extraction functions
-- Python linting issues (ruff complexity, mypy type parameters) resolved
-- All clippy warnings resolved
-- C# generated file formatting fixed
+- Fixed Windows-specific multiprocessing and utils failures.
+- Fixed file existence validation in extraction functions.
 
 ### Changed
 
-- msgspec JSON replaced with msgpack for 5x faster cache serialization
-- Caching migrated from msgspec JSON to msgpack for improved performance
-- Async performance optimized with semaphore-based concurrency control
-- Sync performance optimized with per-file locks and parallel batch processing
-- Code formatting cleanup and non-essential comments removed
-- Benchmark workflows removed from CI
-- Python version cache key updated to include full version
+- Replaced msgspec JSON with msgpack for 5x faster cache serialization.
 
 ---
 
@@ -2601,21 +1360,13 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- GPU acceleration support for enhanced OCR and ML operations
+- GPU acceleration support for OCR and ML operations.
 
 ### Fixed
 
-- EasyOCR byte string issues resolved
-- Pandoc version issues fixed
-- PaddleOCR configuration updated for optimal performance
-- Multiple language support added to EasyOCR
-
-### Changed
-
-- playa-pdf pinned to version 0.4.3 for stability
-- PaddleOCR configuration optimized
-- Dependencies updated to latest compatible versions
-- Pandoc version string resolution improved
+- Fixed EasyOCR byte string issues.
+- Fixed Pandoc version issues.
+- Added multiple language support to EasyOCR.
 
 ---
 
@@ -2623,19 +1374,11 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- GMFT (Give Me Formatted Tables) support for vision-based table extraction
-
-### Fixed
-
-- Bundling issue corrected
-- Wrong link in README fixed
-- Dependencies updated and GMFT testing issues resolved
+- GMFT (Give Me Formatted Tables) support for vision-based table extraction.
 
 ### Changed
 
-- Image extraction now non-optional in results
-- Test imports and structure updated
-- Concurrency test added for validation
+- Image extraction now non-optional in results.
 
 ---
 
@@ -2643,27 +1386,21 @@ This release introduces **Kreuzberg v4**, a complete rewrite with Rust core, pol
 
 ### Added
 
-- Chunking functionality for document segmentation
-- Extractor registry for managing format-specific extractors
-- Hooks system for pre/post-processing
-- OCR backend abstraction with EasyOCR and PaddleOCR support
-- OCR configuration system
-- Multiple language support in OCR backends
-- Comprehensive documentation
+- Chunking functionality for document segmentation.
+- Extractor registry for managing format-specific extractors.
+- Hooks system for pre/post-processing.
+- OCR backend abstraction with EasyOCR and PaddleOCR support.
+- Multiple language support in OCR backends.
 
 ### Fixed
 
-- Pre-commit hooks configuration
-- Windows error message handling
-- PaddleOCR integration issues
-- Dependencies updated to stable versions
+- Fixed Windows error message handling.
+- Fixed PaddleOCR integration issues.
 
 ### Changed
 
-- Structure refactored for improved organization
-- Metadata extraction approach updated
-- OCR integration with configurable backends
-- Documentation added and improved
+- Refactored structure for improved organization.
+- OCR integration with configurable backends.
 
 ---
 
