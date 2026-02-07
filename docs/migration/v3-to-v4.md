@@ -87,6 +87,7 @@ $env:ORT_DYLIB_PATH = "C:\custom\path\to\onnxruntime.dll"
 Embeddings now work on Windows MSVC builds. This was previously unavailable due to the bundled binary approach.
 
 **Requirements:**
+
 - Visual Studio 2019 or later
 - ONNX Runtime installed via Scoop or manual download
 - MSVC toolchain for Rust builds
@@ -96,6 +97,7 @@ Embeddings now work on Windows MSVC builds. This was previously unavailable due 
 Windows MinGW builds (used by Go bindings) still **do not support embeddings** because ONNX Runtime only provides MSVC-compatible libraries.
 
 **Workaround for Go on Windows:**
+
 - Use Windows MSVC Rust toolchain with MSVC Go compiler (experimental)
 - Or build Go bindings without embeddings feature
 
@@ -205,6 +207,7 @@ go get github.com/kreuzberg-dev/kreuzberg/packages/go/v4@v3.22.0
 ```
 
 Report issues at [GitHub Issues](https://github.com/kreuzberg-dev/kreuzberg/issues) with:
+
 - Platform and version (OS, architecture)
 - ONNX Runtime installation method
 - Full error message and stack trace
@@ -440,24 +443,24 @@ TypeScript support is brand new in v4:
 
 ```typescript title="TypeScript"
 import {
-    extractFile,
-    extractFileSync,
-    ExtractionConfig,
-    OcrConfig,
-} from '@kreuzberg/node';
+  extractFile,
+  extractFileSync,
+  ExtractionConfig,
+  OcrConfig,
+} from "@kreuzberg/node";
 
-const result = await extractFile('document.pdf');
+const result = await extractFile("document.pdf");
 
-const result2 = extractFileSync('document.pdf');
+const result2 = extractFileSync("document.pdf");
 
 const config = new ExtractionConfig({
-    ocr: new OcrConfig({
-        backend: 'tesseract',
-        language: 'eng',
-    }),
+  ocr: new OcrConfig({
+    backend: "tesseract",
+    language: "eng",
+  }),
 });
 
-const result3 = await extractFile('document.pdf', null, config);
+const result3 = await extractFile("document.pdf", null, config);
 ```
 
 ### Rust API (New in v4)
@@ -502,16 +505,16 @@ register_document_extractor(CustomExtractor())
 #### TypeScript
 
 ```typescript title="TypeScript"
-import { registerPostProcessor, PostProcessorProtocol } from '@kreuzberg/node';
+import { registerPostProcessor, PostProcessorProtocol } from "@kreuzberg/node";
 
 class CustomProcessor implements PostProcessorProtocol {
-    name(): string {
-        return 'custom';
-    }
+  name(): string {
+    return "custom";
+  }
 
-    process(result: ExtractionResult): ExtractionResult {
-        return result;
-    }
+  process(result: ExtractionResult): ExtractionResult {
+    return result;
+  }
 }
 
 registerPostProcessor(new CustomProcessor());
@@ -774,6 +777,7 @@ The `date` field was inconsistently used across different document formats. The 
 #### Migration Guide
 
 **Rust:**
+
 ```rust title="Rust"
 // Before (v3/early v4)
 if let Some(date) = metadata.date {
@@ -790,6 +794,7 @@ if let Some(modified_at) = metadata.modified_at {
 ```
 
 **Python:**
+
 ```python title="Python"
 # Before (v3/early v4)
 date = result.metadata.get("date")
@@ -807,22 +812,24 @@ if modified_at:
 ```
 
 **TypeScript:**
+
 ```typescript title="TypeScript"
 // Before (v3/early v4)
 if (metadata.date) {
-    console.log("Date:", metadata.date);
+  console.log("Date:", metadata.date);
 }
 
 // After (v4.0.0+)
 if (metadata.createdAt) {
-    console.log("Created:", metadata.createdAt);
+  console.log("Created:", metadata.createdAt);
 }
 if (metadata.modifiedAt) {
-    console.log("Modified:", metadata.modifiedAt);
+  console.log("Modified:", metadata.modifiedAt);
 }
 ```
 
 **Java:**
+
 ```java title="Java"
 // Before (v3/early v4)
 metadata.date().ifPresent(date ->
@@ -839,6 +846,7 @@ metadata.modifiedAt().ifPresent(modified ->
 ```
 
 **Go:**
+
 ```go title="Go"
 // Before (v3/early v4)
 if metadata.Date != nil {
@@ -855,6 +863,7 @@ if metadata.ModifiedAt != nil {
 ```
 
 **Ruby:**
+
 ```ruby title="Ruby"
 # Before (v3/early v4)
 if result.metadata["date"]
@@ -871,6 +880,7 @@ end
 ```
 
 **C#:**
+
 ```csharp title="C#"
 // Before (v3/early v4)
 if (metadata.Date != null)
@@ -987,12 +997,14 @@ class PageConfig:
 ##### Rust
 
 **Before (v3):**
+
 ```rust title="Rust"
 // v3 - Character indices (no longer available)
 // Not directly comparable as v3 had different architecture
 ```
 
 **After (v4):**
+
 ```rust title="Rust"
 use kreuzberg::{extract_file_sync, ExtractionConfig, PageConfig};
 
@@ -1027,6 +1039,7 @@ for page in &result.pages {
 ##### Python
 
 **Before (v3):**
+
 ```python title="Python"
 # v3 - Used char_start/char_end (now removed)
 result = extract_file("document.pdf")
@@ -1036,6 +1049,7 @@ for chunk in result.chunks:
 ```
 
 **After (v4):**
+
 ```python title="Python"
 from kreuzberg import extract_file, ExtractionConfig, PageConfig
 
@@ -1073,6 +1087,7 @@ for page in result.pages:
 ##### TypeScript
 
 **Before (v3):**
+
 ```typescript title="TypeScript"
 // v3 - Character indices
 const result = await extractFile("document.pdf");
@@ -1080,52 +1095,53 @@ const result = await extractFile("document.pdf");
 ```
 
 **After (v4):**
+
 ```typescript title="TypeScript"
-import {
-    extractFile,
-    ExtractionConfig,
-    PageConfig,
-} from '@kreuzberg/node';
+import { extractFile, ExtractionConfig, PageConfig } from "@kreuzberg/node";
 
 const config = new ExtractionConfig({
-    pages: new PageConfig({
-        extractPages: true,
-        insertPageMarkers: false,
-        markerFormat: "\n\n<!-- PAGE {page_num} -->\n\n",
-    }),
+  pages: new PageConfig({
+    extractPages: true,
+    insertPageMarkers: false,
+    markerFormat: "\n\n<!-- PAGE {page_num} -->\n\n",
+  }),
 });
 
 const result = await extractFile("document.pdf", null, config);
 
 // Access byte offsets and page tracking
 for (const chunk of result.chunks) {
-    const byteStart = chunk.metadata.byteStart;    // UTF-8 byte offset
-    const byteEnd = chunk.metadata.byteEnd;
+  const byteStart = chunk.metadata.byteStart; // UTF-8 byte offset
+  const byteEnd = chunk.metadata.byteEnd;
 
-    // Extract chunk text
-    const chunkText = result.content.substring(byteStart, byteEnd);
+  // Extract chunk text
+  const chunkText = result.content.substring(byteStart, byteEnd);
 
-    // Check page range
-    if (chunk.metadata.firstPage !== null) {
-        console.log(`Chunk spans pages ${chunk.metadata.firstPage} to ${chunk.metadata.lastPage}`);
-    }
+  // Check page range
+  if (chunk.metadata.firstPage !== null) {
+    console.log(
+      `Chunk spans pages ${chunk.metadata.firstPage} to ${chunk.metadata.lastPage}`,
+    );
+  }
 }
 
 // Extract per-page content
 for (const page of result.pages) {
-    console.log(`Page ${page.pageNumber}: ${page.content.length} characters`);
+  console.log(`Page ${page.pageNumber}: ${page.content.length} characters`);
 }
 ```
 
 ##### Java
 
 **Before (v3):**
+
 ```java title="Java"
 // v3 - Character-based tracking
 // Not directly comparable as v3 used different architecture
 ```
 
 **After (v4):**
+
 ```java title="Java"
 import com.kreuzberg.*;
 
@@ -1164,12 +1180,14 @@ for (PageContent page : result.getPages()) {
 ##### Go
 
 **Before (v3):**
+
 ```go title="Go"
 // v3 - Character indices
 // Not directly comparable
 ```
 
 **After (v4):**
+
 ```go title="Go"
 package main
 
@@ -1219,6 +1237,7 @@ func main() {
 ##### Ruby
 
 **After (v4):**
+
 ```ruby title="Ruby"
 require 'kreuzberg'
 
@@ -1255,6 +1274,7 @@ end
 ##### C#
 
 **After (v4):**
+
 ```csharp title="C#"
 using Kreuzberg;
 
@@ -1295,14 +1315,14 @@ foreach (var page in result.Pages)
 
 #### Impact Summary
 
-| Item | v3 | v4 | Impact |
-|------|----|----|--------|
-| **Offset Type** | Character indices (ambiguous) | UTF-8 byte positions | Code must use byte offsets; more correct for embeddings |
-| **Field Names** | `char_start`, `char_end` | `byte_start`, `byte_end` | Search and replace in code |
-| **Page Tracking** | Not available | Always available when boundaries exist | Access `first_page`, `last_page` in metadata |
-| **Per-Page Content** | Not available | `ExtractionResult.pages` array | New `PageContent` structures |
-| **Page Config** | N/A | New `PageConfig` struct | Optional; enable with extraction config |
-| **Boundary Tracking** | N/A | `PageStructure.boundaries` | Maps byte ranges to page numbers |
+| Item                  | v3                            | v4                                     | Impact                                                  |
+| --------------------- | ----------------------------- | -------------------------------------- | ------------------------------------------------------- |
+| **Offset Type**       | Character indices (ambiguous) | UTF-8 byte positions                   | Code must use byte offsets; more correct for embeddings |
+| **Field Names**       | `char_start`, `char_end`      | `byte_start`, `byte_end`               | Search and replace in code                              |
+| **Page Tracking**     | Not available                 | Always available when boundaries exist | Access `first_page`, `last_page` in metadata            |
+| **Per-Page Content**  | Not available                 | `ExtractionResult.pages` array         | New `PageContent` structures                            |
+| **Page Config**       | N/A                           | New `PageConfig` struct                | Optional; enable with extraction config                 |
+| **Boundary Tracking** | N/A                           | `PageStructure.boundaries`             | Maps byte ranges to page numbers                        |
 
 #### Migration Checklist
 
@@ -1368,15 +1388,16 @@ KreuzbergError (base)
 
 ### Function Names
 
-| v3 | v4 |
-|----|----|
-| `batch_extract()` | `batch_extract_files()` |
+| v3                | v4                       |
+| ----------------- | ------------------------ |
+| `batch_extract()` | `batch_extract_files()`  |
 | `extract_bytes()` | `extract_bytes()` (same) |
-| `extract_file()` | `extract_file()` (same) |
+| `extract_file()`  | `extract_file()` (same)  |
 
 ### Removed Features
 
 #### GMFT (Give Me Formatted Tables)
+
 v3's vision-based table extraction using TATR models. Replaced with Tesseract OCR table detection:
 
 ```python title="Python"
@@ -1390,6 +1411,7 @@ result = extract_file("doc.pdf", config=config)
 ```
 
 #### Entity Extraction, Keyword Extraction, Document Classification
+
 Removed. Use external libraries (spaCy, KeyBERT, etc.) with postprocessors if needed.
 
 #### HTMLToMarkdownConfig Replaced with html_options
@@ -1415,6 +1437,7 @@ v3 provided `HTMLToMarkdownConfig` for customizing HTML-to-Markdown conversion.
 - And many more...
 
 **Migration:**
+
 ```python title="Python"
 # v3 with HTMLToMarkdownConfig
 from kreuzberg import ExtractionConfig, HTMLToMarkdownConfig
@@ -1447,6 +1470,7 @@ config = ExtractionConfig()  # Uses sensible defaults
 ```
 
 **Rust example:**
+
 ```rust title="Rust"
 use kreuzberg::{ExtractionConfig, extract_file_sync};
 use html_to_markdown_rs::{ConversionOptions, HeadingStyle, CodeBlockStyle};
@@ -1465,6 +1489,7 @@ let result = extract_file_sync("document.html", None, &config)?;
 ```
 
 #### Other
+
 - **ExtractorRegistry**: Custom extractors must be Rust plugins
 - **JSONExtractionConfig**: Now uses defaults
 - **ImageOCRConfig**: Replaced by `ImageExtractionConfig`
@@ -1695,33 +1720,43 @@ for page in result.pages:
 #### TypeScript
 
 ```typescript title="TypeScript"
-import { extractFile, ExtractionConfig, PageConfig, PdfConfig, HierarchyDetectionConfig } from '@kreuzberg/node';
+import {
+  extractFile,
+  ExtractionConfig,
+  PageConfig,
+  PdfConfig,
+  HierarchyDetectionConfig,
+} from "@kreuzberg/node";
 
 const config = new ExtractionConfig({
-    pages: new PageConfig({ extractPages: true }),
-    pdfOptions: new PdfConfig({
-        hierarchyDetection: new HierarchyDetectionConfig({ enabled: true })
-    })
+  pages: new PageConfig({ extractPages: true }),
+  pdfOptions: new PdfConfig({
+    hierarchyDetection: new HierarchyDetectionConfig({ enabled: true }),
+  }),
 });
 
 const result = await extractFile("document.pdf", null, config);
 
 // Access hierarchy blocks for each page
 for (const page of result.pages) {
-    console.log(`Page ${page.pageNumber}:`);
+  console.log(`Page ${page.pageNumber}:`);
 
-    if (page.hierarchy) {
-        for (const block of page.hierarchy.blocks) {
-            const indent = "  ".repeat(block.level - 1);
-            console.log(`${indent}[${block.blockType}] ${block.text.substring(0, 50)}`);
-            console.log(`${indent}  Level: ${block.level}, Confidence: ${block.confidence.toFixed(2)}`);
+  if (page.hierarchy) {
+    for (const block of page.hierarchy.blocks) {
+      const indent = "  ".repeat(block.level - 1);
+      console.log(
+        `${indent}[${block.blockType}] ${block.text.substring(0, 50)}`,
+      );
+      console.log(
+        `${indent}  Level: ${block.level}, Confidence: ${block.confidence.toFixed(2)}`,
+      );
 
-            if (block.parentIndex !== null) {
-                const parent = page.hierarchy.blocks[block.parentIndex];
-                console.log(`${indent}  Parent: ${parent.text.substring(0, 30)}`);
-            }
-        }
+      if (block.parentIndex !== null) {
+        const parent = page.hierarchy.blocks[block.parentIndex];
+        console.log(`${indent}  Parent: ${parent.text.substring(0, 30)}`);
+      }
     }
+  }
 }
 ```
 
@@ -1859,7 +1894,7 @@ def enrich_chunks_with_hierarchy(result):
                 for block in page.hierarchy.blocks:
                     if block.byte_start <= chunk.metadata.byte_start < block.byte_end:
                         enriched_chunks.append({
-                            "content": chunk.text,
+                            "content": chunk.content,
                             "hierarchy_context": {
                                 "section": block.text,
                                 "level": block.level,

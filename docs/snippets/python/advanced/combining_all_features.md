@@ -16,8 +16,8 @@ async def main() -> None:
         language_detection=LanguageDetectionConfig(enabled=True),
         token_reduction=TokenReductionConfig(mode="moderate"),
         chunking=ChunkingConfig(
-            max_characters=512,
-            overlap=50,
+            max_chars=512,
+            max_overlap=50,
             embedding=EmbeddingConfig(
                 model=EmbeddingModelType.preset("balanced"), normalize=True
             ),
