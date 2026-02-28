@@ -130,6 +130,8 @@ impl Fixture {
                     | "ebooklib"
                     | "striprtf"
                     | "pyxlsb"
+                    | "olefile"
+                    | "striprtf"
             ) {
                 return Err(Error::InvalidFixture {
                     path: fixture_path.to_path_buf(),

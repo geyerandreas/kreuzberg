@@ -1,7 +1,7 @@
 Subject: Example MIME Email
 From: sender@example.com
 To: recipient@example.com
-Date: 2024-10-01T12:34:56-05:00
+Date: Tue, 01 Oct 2024 12:34:56 -0500
 This is the text/plain part.
 
 Did you know that the first email was sent by Ray Tomlinson in 1971? He used the "@" symbol to separate the user's name from the computer name, a practice that is still in use today.

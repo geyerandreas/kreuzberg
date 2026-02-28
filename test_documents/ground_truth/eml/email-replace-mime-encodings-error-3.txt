@@ -1,7 +1,7 @@
 Subject: AWS Online Conference | Last chance to register for Innovate - Every Application Edition
 From: "'Amazon Web Services' via Engineering" <email@domain.com>
 To: email@domain.com
-Date: 2022-10-03T06:59:28+00:00
+Date: Mon, 03 Oct 2022 06:59:28 +0000
 To view this email as a web page, go to the following address: https://pages.awscloud.com/index.php/email/emailWebview?mkt_tok=MTEyLVRaTS03NjYAAAGHO5WGucrIInUvrc6e2TfIL2Jc8d5h2-yU7iJAu3xSqSpPb2oaN38tyvB0EckTb27W0E8ice84Ru3zs6VIW_LHwp29P8IOwQv10hsRNtLQP60pgY4tyFG0&md_id=790895&tkn_set=7goOJ6CUdWJcoW5StqjPcfC9yFy5GOzR18oLYomQsKJXsTccH4%2B5RQ%3D%3D
 
 Learn how the cloud is accelerating innovation in businesses of all sizes

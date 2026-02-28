@@ -49,8 +49,8 @@ fn test_ocr_markdown_inlines_table_into_content() {
     }
 
     let file_path = get_test_file_path("images/simple_table.png");
-    let result = extract_file_sync(&file_path, None, &ocr_markdown_config())
-        .expect("Should extract table image with OCR");
+    let result =
+        extract_file_sync(&file_path, None, &ocr_markdown_config()).expect("Should extract table image with OCR");
 
     assert_non_empty_content(&result);
 
@@ -75,11 +75,11 @@ fn test_ocr_markdown_differs_from_plain_when_tables_found() {
 
     let file_path = get_test_file_path("images/simple_table.png");
 
-    let plain_result = extract_file_sync(&file_path, None, &ocr_plain_config())
-        .expect("Should extract with plain output");
+    let plain_result =
+        extract_file_sync(&file_path, None, &ocr_plain_config()).expect("Should extract with plain output");
 
-    let md_result = extract_file_sync(&file_path, None, &ocr_markdown_config())
-        .expect("Should extract with markdown output");
+    let md_result =
+        extract_file_sync(&file_path, None, &ocr_markdown_config()).expect("Should extract with markdown output");
 
     // Both should have content
     assert_non_empty_content(&plain_result);
@@ -88,7 +88,8 @@ fn test_ocr_markdown_differs_from_plain_when_tables_found() {
     // If tables were detected in the markdown result, content should differ from plain
     if !md_result.tables.is_empty() {
         assert_ne!(
-            plain_result.content, md_result.content,
+            plain_result.content,
+            md_result.content,
             "Markdown content should differ from plain when tables are detected.\n\
              Tables: {}\nPlain len: {}\nMarkdown len: {}",
             md_result.tables.len(),
@@ -106,8 +107,8 @@ fn test_ocr_table_has_bounding_box() {
     }
 
     let file_path = get_test_file_path("images/simple_table.png");
-    let result = extract_file_sync(&file_path, None, &ocr_markdown_config())
-        .expect("Should extract table image with OCR");
+    let result =
+        extract_file_sync(&file_path, None, &ocr_markdown_config()).expect("Should extract table image with OCR");
 
     for (idx, table) in result.tables.iter().enumerate() {
         assert!(
@@ -135,8 +136,8 @@ fn test_issue_421_balance_sheet_markdown() {
     }
 
     let file_path = get_test_file_path("images/balance_sheet_1.png");
-    let result = extract_file_sync(&file_path, None, &ocr_markdown_config())
-        .expect("Should extract balance sheet image");
+    let result =
+        extract_file_sync(&file_path, None, &ocr_markdown_config()).expect("Should extract balance sheet image");
 
     assert_non_empty_content(&result);
 
@@ -153,10 +154,7 @@ fn test_issue_421_balance_sheet_markdown() {
 
         // Bounding box should be populated
         for table in &result.tables {
-            assert!(
-                table.bounding_box.is_some(),
-                "OCR table should have bounding_box"
-            );
+            assert!(table.bounding_box.is_some(), "OCR table should have bounding_box");
         }
     }
 }
@@ -169,8 +167,8 @@ fn test_issue_421_financial_table_markdown() {
     }
 
     let file_path = get_test_file_path("images/financial_table_1.png");
-    let result = extract_file_sync(&file_path, None, &ocr_markdown_config())
-        .expect("Should extract financial table image");
+    let result =
+        extract_file_sync(&file_path, None, &ocr_markdown_config()).expect("Should extract financial table image");
 
     assert_non_empty_content(&result);
 
@@ -195,8 +193,8 @@ fn test_ocr_markdown_sets_output_format_metadata() {
     }
 
     let file_path = get_test_file_path("images/simple_table.png");
-    let result = extract_file_sync(&file_path, None, &ocr_markdown_config())
-        .expect("Should extract table image with OCR");
+    let result =
+        extract_file_sync(&file_path, None, &ocr_markdown_config()).expect("Should extract table image with OCR");
 
     // output_format should be set to "markdown" by the pipeline
     assert_eq!(
@@ -231,7 +229,11 @@ fn diagnostic_print_ocr_table_content() {
         eprintln!("FILE: {file}");
         eprintln!("Tables: plain={} md={}", plain.tables.len(), md.tables.len());
         eprintln!("Content identical: {}", plain.content == md.content);
-        eprintln!("Content len: {} (plain) / {} (md)", plain.content.len(), md.content.len());
+        eprintln!(
+            "Content len: {} (plain) / {} (md)",
+            plain.content.len(),
+            md.content.len()
+        );
 
         for (i, t) in md.tables.iter().enumerate() {
             eprintln!(
@@ -257,8 +259,8 @@ fn test_inlined_table_matches_structured_table() {
     }
 
     let file_path = get_test_file_path("images/simple_table.png");
-    let result = extract_file_sync(&file_path, None, &ocr_markdown_config())
-        .expect("Should extract table image with OCR");
+    let result =
+        extract_file_sync(&file_path, None, &ocr_markdown_config()).expect("Should extract table image with OCR");
 
     for table in &result.tables {
         let table_md = table.markdown.trim();

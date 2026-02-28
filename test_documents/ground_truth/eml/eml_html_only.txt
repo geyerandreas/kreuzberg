@@ -1,7 +1,7 @@
 Subject: HTML Only Email
 From: html-sender@example.com
 To: html-recipient@example.com
-Date: 2024-05-10T16:45:00+00:00
+Date: Fri, 10 May 2024 16:45:00 +0000
 Welcome to Our Service
 This email contains only HTML content.
 It includes:

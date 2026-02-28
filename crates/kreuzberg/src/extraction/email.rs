@@ -43,11 +43,11 @@ fn html_tag_regex() -> &'static Regex {
 }
 
 fn script_regex() -> &'static Regex {
-    SCRIPT_RE.get_or_init(|| Regex::new(r"(?i)<script[^>]*>.*?</script>").unwrap())
+    SCRIPT_RE.get_or_init(|| Regex::new(r"(?is)<script[^>]*>.*?</script>").unwrap())
 }
 
 fn style_regex() -> &'static Regex {
-    STYLE_RE.get_or_init(|| Regex::new(r"(?i)<style[^>]*>.*?</style>").unwrap())
+    STYLE_RE.get_or_init(|| Regex::new(r"(?is)<style[^>]*>.*?</style>").unwrap())
 }
 
 fn whitespace_regex() -> &'static Regex {
@@ -166,16 +166,23 @@ pub fn parse_eml_content(data: &[u8]) -> Result<EmailExtractionResult> {
         })
         .unwrap_or_else(Vec::new);
 
-    let date = message
-        .header("Date")
-        .and_then(|hv| {
-            if let mail_parser::HeaderValue::Text(s) = hv {
-                Some(s.trim().to_string())
-            } else {
-                None
-            }
-        })
-        .or_else(|| message.date().map(|d| d.to_rfc3339()));
+    // Extract date: prefer the raw Date header text (preserves original format),
+    // falling back to mail_parser's parsed DateTime → RFC 3339.
+    // mail_parser parses standard RFC 2822 dates into HeaderValue::DateTime,
+    // losing the original string. For non-standard dates (ISO 8601, invalid strings),
+    // it may produce garbled output. We extract the raw header from the email bytes.
+    let date = extract_raw_date_header(&data)
+        .or_else(|| {
+            message.date().and_then(|d| {
+                let rfc3339 = d.to_rfc3339();
+                // Reject obviously garbled dates (year 2000, month 0)
+                if rfc3339.starts_with("2000-00") || rfc3339.starts_with("0000-") {
+                    None
+                } else {
+                    Some(rfc3339)
+                }
+            })
+        });
 
     let message_id = message.message_id().map(|id| id.to_string());
 
@@ -336,25 +343,25 @@ fn extract_msg_from_cfb<F: std::io::Read + std::io::Seek>(
         Some(name) if !name.is_empty() => format!("\"{}\" <{}>", name, email),
         _ => email.clone(),
     });
-    let display_to = read_msg_string_prop(comp, "", 0x0E04); // PR_DISPLAY_TO
-    let display_cc = read_msg_string_prop(comp, "", 0x0E03); // PR_DISPLAY_CC
-    let display_bcc = read_msg_string_prop(comp, "", 0x0E02); // PR_DISPLAY_BCC
     let body = read_msg_string_prop(comp, "", 0x1000); // PR_BODY
     let html_body = read_msg_string_prop(comp, "", 0x1013); // PR_BODY_HTML
     let message_id = read_msg_string_prop(comp, "", 0x1035) // PR_INTERNET_MESSAGE_ID
         .filter(|s| !s.is_empty());
-    let headers = read_msg_string_prop(comp, "", 0x007D); // PR_TRANSPORT_MESSAGE_HEADERS
 
-    // Parse date from transport headers (e.g. "Date: Mon, 1 Jan 2024 …").
-    let date = headers.as_ref().and_then(|h| {
-        h.lines()
-            .find(|line| line.starts_with("Date:"))
-            .map(|line| line.trim_start_matches("Date:").trim().to_string())
-    });
+    // --- date: prefer PR_CLIENT_SUBMIT_TIME, fall back to transport headers ---
+    let date = read_msg_filetime_prop(comp, "", 0x0039) // PR_CLIENT_SUBMIT_TIME
+        .or_else(|| read_msg_filetime_prop(comp, "", 0x0E06)) // PR_MESSAGE_DELIVERY_TIME
+        .or_else(|| {
+            let headers = read_msg_string_prop(comp, "", 0x007D); // PR_TRANSPORT_MESSAGE_HEADERS
+            headers.as_ref().and_then(|h| {
+                h.lines()
+                    .find(|line| line.starts_with("Date:"))
+                    .map(|line| line.trim_start_matches("Date:").trim().to_string())
+            })
+        });
 
-    let to_emails = split_display_addresses(&display_to);
-    let cc_emails = split_display_addresses(&display_cc);
-    let bcc_emails = split_display_addresses(&display_bcc);
+    // --- recipients: read from substorages for full email addresses -----------
+    let (to_emails, cc_emails, bcc_emails) = read_msg_recipients(comp);
 
     let plain_text = body.filter(|s| !s.is_empty());
     let html_content = html_body.filter(|s| !s.is_empty());
@@ -488,15 +495,196 @@ fn decode_utf16le_bytes(data: &[u8]) -> String {
     String::from_utf16_lossy(&u16s).trim_end_matches('\0').to_string()
 }
 
-/// Split semicolon/comma-separated display addresses into individual strings.
-fn split_display_addresses(display: &Option<String>) -> Vec<String> {
-    display
-        .as_deref()
-        .unwrap_or("")
-        .split([';', ','])
-        .map(|s| s.trim().to_string())
-        .filter(|s| !s.is_empty())
-        .collect()
+/// Read a PT_SYSTIME (FILETIME) property from the __properties_version1.0 stream
+/// and convert it to an ISO 8601 date string.
+///
+/// FILETIME is a 64-bit value representing 100-nanosecond intervals since 1601-01-01.
+fn read_msg_filetime_prop<F: std::io::Read + std::io::Seek>(
+    comp: &mut cfb::CompoundFile<F>,
+    base: &str,
+    prop_id: u16,
+) -> Option<String> {
+    use std::io::Read;
+
+    let props_path = format!("{base}/__properties_version1.0");
+    let mut stream = comp.open_stream(&props_path).ok()?;
+    let mut buf = Vec::new();
+    stream.read_to_end(&mut buf).ok()?;
+
+    // Message-level properties have a 32-byte header; recipient/attachment have 8-byte.
+    let header_size: usize = if base.is_empty() { 32 } else { 8 };
+    let mut offset = header_size;
+
+    while offset + 16 <= buf.len() {
+        // MAPI property entry: prop_type (2) + prop_id (2) + flags (4) + value (8)
+        let ptype = u16::from_le_bytes([buf[offset], buf[offset + 1]]);
+        let pid = u16::from_le_bytes([buf[offset + 2], buf[offset + 3]]);
+
+        if pid == prop_id && ptype == 0x0040 {
+            // PT_SYSTIME
+            let filetime = u64::from_le_bytes(
+                buf[offset + 8..offset + 16].try_into().ok()?,
+            );
+            return filetime_to_iso8601(filetime);
+        }
+        offset += 16;
+    }
+    None
+}
+
+/// Convert a Windows FILETIME (100-ns intervals since 1601-01-01) to ISO 8601.
+fn filetime_to_iso8601(filetime: u64) -> Option<String> {
+    // Epoch offset: difference between 1601-01-01 and 1970-01-01 in 100-ns intervals
+    const EPOCH_DIFF: u64 = 116_444_736_000_000_000;
+    if filetime < EPOCH_DIFF {
+        return None;
+    }
+    let hundred_ns = filetime - EPOCH_DIFF;
+    let secs = (hundred_ns / 10_000_000) as i64;
+    let nanos = ((hundred_ns % 10_000_000) * 100) as u32;
+
+    // Format manually to avoid pulling in chrono
+    let days_since_epoch = secs / 86400;
+    let time_of_day = secs % 86400;
+    let (hour, min, sec) = (time_of_day / 3600, (time_of_day % 3600) / 60, time_of_day % 60);
+
+    // Civil date calculation from days since 1970-01-01 (algorithm from Howard Hinnant)
+    let z = days_since_epoch + 719468;
+    let era = (if z >= 0 { z } else { z - 146096 }) / 146097;
+    let doe = z - era * 146097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+
+    if nanos == 0 {
+        Some(format!("{y:04}-{m:02}-{d:02}T{hour:02}:{min:02}:{sec:02}+00:00"))
+    } else {
+        // Include sub-second precision
+        let frac = nanos / 1_000_000; // milliseconds
+        Some(format!("{y:04}-{m:02}-{d:02}T{hour:02}:{min:02}:{sec:02}.{frac:03}+00:00"))
+    }
+}
+
+/// Read recipients from MSG __recip_version1.0_#XXXXXXXX substorages.
+///
+/// Returns (to, cc, bcc) vectors. Each entry is formatted as `"Name" <email>` or just `email`.
+fn read_msg_recipients<F: std::io::Read + std::io::Seek>(
+    comp: &mut cfb::CompoundFile<F>,
+) -> (Vec<String>, Vec<String>, Vec<String>) {
+    // Collect recipient storage paths
+    let recip_paths: Vec<String> = comp
+        .walk()
+        .filter(|e| e.is_storage() && e.name().starts_with("__recip_version1.0_"))
+        .map(|e| e.path().to_string_lossy().into_owned())
+        .collect();
+
+    let mut to_emails = Vec::new();
+    let mut cc_emails = Vec::new();
+    let mut bcc_emails = Vec::new();
+
+    for path in &recip_paths {
+        let display_name = read_msg_string_prop(comp, path, 0x3001); // PR_DISPLAY_NAME
+        let email_addr = read_msg_string_prop(comp, path, 0x39FE) // PR_SMTP_ADDRESS
+            .or_else(|| read_msg_string_prop(comp, path, 0x3003)) // PR_EMAIL_ADDRESS
+            .filter(|s| !s.is_empty());
+
+        let formatted = match (&display_name, &email_addr) {
+            (Some(name), Some(email)) if !name.is_empty() && name != email => {
+                format!("\"{}\" <{}>", name, email)
+            }
+            (_, Some(email)) => email.clone(),
+            (Some(name), None) if !name.is_empty() => name.clone(),
+            _ => continue,
+        };
+
+        // Read PR_RECIPIENT_TYPE from properties stream
+        let recip_type = read_msg_recip_type(comp, path);
+        match recip_type {
+            1 => to_emails.push(formatted),  // MAPI_TO
+            2 => cc_emails.push(formatted),  // MAPI_CC
+            3 => bcc_emails.push(formatted), // MAPI_BCC
+            _ => to_emails.push(formatted),  // Default to To
+        }
+    }
+
+    (to_emails, cc_emails, bcc_emails)
+}
+
+/// Read PR_RECIPIENT_TYPE (0x0C15) from a recipient's __properties_version1.0 stream.
+/// Returns 1 (To), 2 (CC), 3 (BCC), or 0 if not found.
+fn read_msg_recip_type<F: std::io::Read + std::io::Seek>(
+    comp: &mut cfb::CompoundFile<F>,
+    base: &str,
+) -> u32 {
+    use std::io::Read;
+
+    let props_path = format!("{base}/__properties_version1.0");
+    let mut stream = match comp.open_stream(&props_path) {
+        Ok(s) => s,
+        Err(_) => return 0,
+    };
+    let mut buf = Vec::new();
+    if stream.read_to_end(&mut buf).is_err() {
+        return 0;
+    }
+
+    // Recipient properties have 8-byte header
+    let mut offset = 8;
+    while offset + 16 <= buf.len() {
+        // MAPI property entry: prop_type (2) + prop_id (2) + flags (4) + value (8)
+        let ptype = u16::from_le_bytes([buf[offset], buf[offset + 1]]);
+        let pid = u16::from_le_bytes([buf[offset + 2], buf[offset + 3]]);
+
+        if pid == 0x0C15 && ptype == 0x0003 {
+            // PT_LONG
+            return u32::from_le_bytes([
+                buf[offset + 8],
+                buf[offset + 9],
+                buf[offset + 10],
+                buf[offset + 11],
+            ]);
+        }
+        offset += 16;
+    }
+    0
+}
+
+/// Extract the raw Date header value from email bytes.
+///
+/// Scans for `Date:` in the header section (before the blank line that separates
+/// headers from body) and returns the raw value, handling continuation lines.
+fn extract_raw_date_header(data: &[u8]) -> Option<String> {
+    let text = std::str::from_utf8(data).ok()?;
+
+    // Find the end of headers (blank line)
+    let header_end = text
+        .find("\r\n\r\n")
+        .or_else(|| text.find("\n\n"))
+        .unwrap_or(text.len().min(8192)); // Cap scan to 8KB
+
+    let headers = &text[..header_end];
+
+    // Find Date: header (case-insensitive start, then exact field name)
+    let mut date_value = None;
+    for line in headers.lines() {
+        if let Some(val) = line.strip_prefix("Date:").or_else(|| line.strip_prefix("date:")) {
+            date_value = Some(val.trim().to_string());
+        } else if date_value.is_some() && (line.starts_with(' ') || line.starts_with('\t')) {
+            // Continuation line (folded header)
+            if let Some(ref mut dv) = date_value {
+                dv.push(' ');
+                dv.push_str(line.trim());
+            }
+        } else if date_value.is_some() {
+            break; // Next header field
+        }
+    }
+
+    date_value.filter(|s| !s.is_empty())
 }
 
 /// Extract email content from either .eml or .msg format
@@ -545,17 +733,8 @@ pub fn build_email_text_output(result: &EmailExtractionResult) -> String {
 
     text_parts.push(result.cleaned_text.clone());
 
-    if !result.attachments.is_empty() {
-        let mut attachment_names = Vec::with_capacity(result.attachments.len().min(20));
-        for att in &result.attachments {
-            if let Some(name) = att.name.as_ref().or(att.filename.as_ref()) {
-                attachment_names.push(name.clone());
-            }
-        }
-        if !attachment_names.is_empty() {
-            text_parts.push(format!("Attachments: {}", attachment_names.join(", ")));
-        }
-    }
+    // Attachment names are stored in metadata but not included in the text output.
+    // This keeps the text output focused on message content.
 
     text_parts.join("\n")
 }
@@ -790,7 +969,9 @@ mod tests {
         };
 
         let output = build_email_text_output(&result);
-        assert!(output.contains("Attachments: file.txt"));
+        // Attachment names are stored in metadata, not in text output
+        assert!(!output.contains("Attachments:"));
+        assert!(output.contains("Hello World"));
     }
 
     #[test]

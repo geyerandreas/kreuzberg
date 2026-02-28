@@ -1,7 +1,7 @@
 Subject: Simple Plain Text Email
 From: test@example.com
 To: recipient@example.com
-Date: 2024-01-01T12:00:00+00:00
+Date: Mon, 01 Jan 2024 12:00:00 +0000
 This is a simple plain text email without any attachments.
 
 It contains multiple lines of text.

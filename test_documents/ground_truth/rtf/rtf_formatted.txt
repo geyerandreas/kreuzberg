@@ -1,17 +1,9 @@
-This is a test of FORMATTING. This is hidden: .
-
+This is a test of formatting.  This is hidden: secret.
 Small Caps
-
 bold
-
 italics
-
 bold and italics
-
 underlined
-
 strikeout
-
 xsuperscript
-
 xsubscript

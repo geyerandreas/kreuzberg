@@ -1,7 +1,7 @@
 Subject: [GitHub] Subscribed to 63 nf-core repositories
 From: "GitHub" <email@domain.com>
 To: email@domain.com
-Date: 2022-10-10T05:14:09-07:00
+Date: Mon, 10 Oct 2022 05:14:09 -0700
 Hey there, we’re just writing to let you know that you’ve automatically started watching several repositories on GitHub.
 
 You’ll receive notifications for all issues, pull requests, and comments that happen inside the repository. If you would like to stop watching any of these repositories, you can manage your settings here:

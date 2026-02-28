@@ -1,7 +1,7 @@
 Subject: Someone has joined your meeting - Someone: 45 Minute Meeting
 From: "Zoom" <email@domain.com>
 To: email@domain.com
-Date: 2022-10-28T08:59:12+00:00
+Date: Fri, 28 Oct 2022 08:59:12 +0000
 Hi Someone ,
 Someone has joined your meeting:
 Topic
