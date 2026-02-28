@@ -6,6 +6,7 @@ This script reads the version from Cargo.toml [workspace.package] and updates:
 - Python pyproject.toml files
 - Ruby version.rb file
 - Elixir mix.exs file
+- R DESCRIPTION file
 - Cargo.toml files with hardcoded versions (not using workspace)
 """
 
@@ -407,6 +408,34 @@ def update_mix_exs_testapp(file_path: Path, version: str) -> Tuple[bool, str, st
     return False, old_version, version
 
 
+def update_r_description(file_path: Path, version: str) -> Tuple[bool, str, str]:
+    """
+    Update an R DESCRIPTION file's Version field.
+
+    Returns: (changed, old_version, new_version)
+    """
+    content = file_path.read_text()
+    match = re.search(r'^Version:\s*(.+)$', content, re.MULTILINE)
+    old_version = match.group(1).strip() if match else "NOT FOUND"
+
+    if old_version == version:
+        return False, old_version, version
+
+    new_content = re.sub(
+        r'^(Version:\s*).+$',
+        rf'\g<1>{version}',
+        content,
+        count=1,
+        flags=re.MULTILINE
+    )
+
+    if new_content != content:
+        file_path.write_text(new_content)
+        return True, old_version, version
+
+    return False, old_version, version
+
+
 def main():
     repo_root = get_repo_root()
 
@@ -463,6 +492,17 @@ def main():
     if elixir_mix.exists():
         changed, old_ver, new_ver = update_mix_exs(elixir_mix, version)
         rel_path = elixir_mix.relative_to(repo_root)
+
+        if changed:
+            print(f"✓ {rel_path}: {old_ver} → {new_ver}")
+            updated_files.append(str(rel_path))
+        else:
+            unchanged_files.append(str(rel_path))
+
+    r_description = repo_root / "packages/r/DESCRIPTION"
+    if r_description.exists():
+        changed, old_ver, new_ver = update_r_description(r_description, version)
+        rel_path = r_description.relative_to(repo_root)
 
         if changed:
             print(f"✓ {rel_path}: {old_ver} → {new_ver}")

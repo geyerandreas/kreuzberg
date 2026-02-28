@@ -17,6 +17,7 @@ categories = ["development-tools::ffi", "text-processing"]
 crate-type = ["cdylib", "staticlib", "rlib"]
 
 [features]
+default = []
 embeddings = []
 rayon = ["dep:rayon"]
 pdf = []

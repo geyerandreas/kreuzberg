@@ -54,7 +54,7 @@ COPY crates/kreuzberg-paddle-ocr/ crates/kreuzberg-paddle-ocr/
 COPY crates/kreuzberg-pdfium-render/ crates/kreuzberg-pdfium-render/
 
 # Remove workspace members that aren't included
-RUN sed -i '/kreuzberg-py/d; /kreuzberg_rb/d; /kreuzberg-node/d; /kreuzberg-ffi/d; /kreuzberg-php/d; /kreuzberg_rustler/d; /"crates\/kreuzberg-wasm"/d; /^\[profile\.release\.package\.kreuzberg-wasm\]$/,$d; /benchmark-harness/d; /e2e-generator/d; /e2e\/rust/d' Cargo.toml
+RUN sed -i '/kreuzberg-py/d; /kreuzberg_rb/d; /kreuzberg-node/d; /kreuzberg-ffi/d; /kreuzberg-php/d; /kreuzberg_rustler/d; /"crates\/kreuzberg-wasm"/d; /^\[profile\.release\.package\.kreuzberg-wasm\]$/,$d; /benchmark-harness/d; /e2e-generator/d; /snippet-runner/d; /e2e\/rust/d' Cargo.toml
 
 # Remove the linker-facing libstdc++.so symlink so that -lstdc++ resolves
 # only to libstdc++.a (static). Keep the runtime .so.6 for proc-macros.
