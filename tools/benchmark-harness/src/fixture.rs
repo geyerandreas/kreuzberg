@@ -131,7 +131,6 @@ impl Fixture {
                     | "striprtf"
                     | "pyxlsb"
                     | "olefile"
-                    | "striprtf"
             ) {
                 return Err(Error::InvalidFixture {
                     path: fixture_path.to_path_buf(),
@@ -179,7 +178,7 @@ impl Fixture {
         // Infer from file type - images always need OCR
         matches!(
             self.file_type.to_lowercase().as_str(),
-            "jpg" | "jpeg" | "png" | "gif" | "bmp" | "tiff" | "webp"
+            "jpg" | "jpeg" | "png" | "gif" | "bmp" | "tiff" | "tif" | "webp" | "jp2" | "jpx" | "jpm" | "mj2"
         )
     }
 }

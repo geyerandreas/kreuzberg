@@ -1,53 +1,29 @@
-This is a word document and this is an inline equation: A = πr2 .
-If instead, I want an equation by line, I can do this:
+This is a word document and this is an inline equation: A=πr2. If instead, I want an equation by line, I can do this:
 
-$$\begin{array}{r}
-a^{2} + b^{2} = c^{2}\  \times \ 23
-\end{array}$$
+a2+b2=c2 × 23
 
 And that is an equation by itself. Cheers!
 
 This is another equation:
 
-$$\begin{array}{r}
-f(x) = a_{0} + \sum_{n = 1}^{\infty}\left( a_{n}\cos\frac{n\pi x}{L} +
-b_{n}\sin\frac{n\pi x}{L} \right)
-\end{array}$$
+fx=a0+n=1∞ancosnπxL+bnsinnπxL
 
-This is text. This is text. This is text. This is text. This is text.
-This is text. This is text. This is text. This is text. This is text.
-This is text. This is text. This is text. This is text. This is text.
-This is text. This is text. This is text. This is text. This is text.
-This is text. This is text. This is text. This is text. This is text.
-This is text. This is text. This is text. This is text. This is text.
-This is text.
+This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text.
 
-This is a word document and this is an inline equation: A = πr2 .
-If instead, I want an equation by line, I can do this:
+This is a word document and this is an inline equation: A=πr2. If instead, I want an equation by line, I can do this:
 
-$$(x + a)^{n} = \sum_{k =
-0}^{n}{\binom{n}{k}x^{k}a^{n - k}}$$
+x+an=k=0nnkxkan-k
 
 And that is an equation by itself. Cheers!
 
 This is another equation:
 
-$$(1 + x)^{n} = 1 + \frac{nx}{1!} +
-\frac{n(n - 1)x^{2}}{2!} + \ldots$$
+1+xn=1+nx1!+nn-1x22!+…
 
-This is text. This is text. This is text. This is text. This is text.
-This is text. This is text. This is text. This is text. This is text.
-This is text. This is text. This is text. This is text. This is text.
-This is text. This is text. This is text. This is text. This is text.
-This is text. This is text. This is text. This is text. This is text.
-This is text. This is text. This is text. This is text. This is text.
-This is text.
+This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text. This is text.
 
-This is a word document and this is an inline equation: A = πr2 .
-If instead, I want an equation by line, I can do this:
+This is a word document and this is an inline equation: A=πr2. If instead, I want an equation by line, I can do this:
 
-$$e^{x} = 1 + \frac{x}{1!} +
-\frac{x^{2}}{2!} + \frac{x^{3}}{3!} + \ldots,\ \  - \infty < x <
-\infty$$
+ex=1+x1!+x22!+x33!+…, -∞x∞
 
 And that is an equation by itself. Cheers!

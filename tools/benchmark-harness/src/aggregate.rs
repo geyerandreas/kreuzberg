@@ -311,18 +311,21 @@ fn aggregate_by_ocr_status(
     // OCR status grouping:
     // - OcrStatus::Used → "with_ocr" group
     // - OcrStatus::NotUsed → "no_ocr" group
-    // - OcrStatus::Unknown → "no_ocr" group (fallback; unknown is conservatively treated as non-OCR)
-    let no_ocr: Vec<&BenchmarkResult> = results
-        .iter()
-        .filter(|r| r.ocr_status != OcrStatus::Used)
-        .copied()
-        .collect();
+    // - OcrStatus::Unknown → infer from file type: image formats → "with_ocr", others → "no_ocr"
+    let is_ocr_result = |r: &&BenchmarkResult| -> bool {
+        match r.ocr_status {
+            OcrStatus::Used => true,
+            OcrStatus::NotUsed => false,
+            OcrStatus::Unknown => matches!(
+                r.file_extension.to_lowercase().as_str(),
+                "jpg" | "jpeg" | "png" | "gif" | "bmp" | "tiff" | "tif" | "webp" | "jp2" | "jpx" | "jpm" | "mj2"
+            ),
+        }
+    };
 
-    let with_ocr: Vec<&BenchmarkResult> = results
-        .iter()
-        .filter(|r| r.ocr_status == OcrStatus::Used)
-        .copied()
-        .collect();
+    let no_ocr: Vec<&BenchmarkResult> = results.iter().filter(|r| !is_ocr_result(r)).copied().collect();
+
+    let with_ocr: Vec<&BenchmarkResult> = results.iter().filter(|r| is_ocr_result(r)).copied().collect();
 
     let no_ocr_stats = if !no_ocr.is_empty() {
         Some(calculate_percentiles(&no_ocr))

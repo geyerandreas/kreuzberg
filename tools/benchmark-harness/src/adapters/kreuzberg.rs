@@ -85,6 +85,7 @@ fn get_kreuzberg_supported_formats() -> Vec<String> {
         "latex",
         "typst",
         "typ",
+        "fb2",
         // Other
         "svg",
         "djot",
@@ -546,6 +547,9 @@ fn get_kreuzberg_wasm_supported_formats() -> Vec<String> {
         "tif",
         "webp",
         "jp2",
+        "jpx",
+        "jpm",
+        "mj2",
         // Academic/Publishing
         "epub",
         "bib",
