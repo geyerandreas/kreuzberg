@@ -249,6 +249,7 @@ Main extraction configuration controlling all aspects of document processing.
 | `output_format`              | `OutputFormat`             | `Plain`                | Output format for extracted text content (Plain, Markdown, Djot, Html, Structured)                                                                                                               |
 | `html_options`               | `ConversionOptions`        | `None`                 | HTML to Markdown conversion options (heading styles, list formatting, code block styles). Only available with `html` feature.                                                                    |
 | `security_limits`            | `SecurityLimits?`          | `None` (uses defaults) | Archive security thresholds: max archive size (500MB), compression ratio (100:1), file count (10K), nesting depth, content size, XML depth, table cells. Only available with `archives` feature. |
+| `layout`                     | `LayoutDetectionConfig?`   | `None`                 | Layout detection configuration for document structure analysis. Only available with `layout-detection` feature.                                                                                   |
 | `include_document_structure` | `bool`                     | `false`                | Enable structured document model output. When true, the `document` field on ExtractionResult is populated with a tree-based representation of document content.                                  |
 
 ### Result Format vs Output Format
@@ -3110,6 +3111,96 @@ Configuration for reducing token count in extracted text, useful for optimizing 
 
 ---
 
+## LayoutDetectionConfig
+
+Configuration for ONNX-based document layout detection. Analyzes PDF pages to identify structural regions such as tables, figures, headers, and text blocks.
+
+**Feature Gate**: Requires the `layout-detection` Cargo feature. Layout detection is only available when this feature is enabled.
+
+**Environment Variable**: `KREUZBERG_LAYOUT_PRESET` - Set the model preset via environment (`fast` or `accurate`). When set, layout detection is automatically enabled if not already configured.
+
+### Fields
+
+| Field                  | Type       | Default  | Description                                                                                   |
+| ---------------------- | ---------- | -------- | --------------------------------------------------------------------------------------------- |
+| `preset`               | `str`      | `"fast"` | Model preset: `"fast"` (YOLO DocLayNet, 11 classes) or `"accurate"` (RT-DETR, 17 classes)     |
+| `confidence_threshold` | `float?`   | `None`   | Confidence threshold override (0.0-1.0). If None, uses the model's built-in default threshold |
+| `apply_heuristics`     | `bool`     | `true`   | Apply postprocessing heuristics (containment filtering, deduplication)                         |
+
+### Model Presets
+
+| Preset       | Model          | Classes | Input Size | Characteristics                        |
+| ------------ | -------------- | ------- | ---------- | -------------------------------------- |
+| `"fast"`     | YOLO DocLayNet | 11      | 640x640    | Lower latency, good accuracy           |
+| `"accurate"` | RT-DETR v2     | 17      | 640x640    | Higher accuracy, NMS-free, more classes |
+
+### Configuration Examples
+
+=== "Python"
+
+    ```python title="layout_detection_config.py"
+    from kreuzberg import ExtractionConfig, LayoutDetectionConfig
+
+    config = ExtractionConfig(
+        layout=LayoutDetectionConfig(
+            preset="accurate",
+            confidence_threshold=0.5,
+            apply_heuristics=True,
+        )
+    )
+    ```
+
+=== "TypeScript"
+
+    ```typescript title="layout_detection_config.ts"
+    import { extract } from "kreuzberg";
+
+    const result = await extract("document.pdf", {
+      layout: {
+        preset: "accurate",
+        confidenceThreshold: 0.5,
+        applyHeuristics: true,
+      },
+    });
+    ```
+
+=== "Rust"
+
+    ```rust title="layout_detection_config.rs"
+    use kreuzberg::core::{ExtractionConfig, LayoutDetectionConfig};
+
+    let config = ExtractionConfig {
+        layout: Some(LayoutDetectionConfig {
+            preset: "accurate".to_string(),
+            confidence_threshold: Some(0.5),
+            apply_heuristics: true,
+        }),
+        ..Default::default()
+    };
+    ```
+
+### Configuration File Examples
+
+=== "TOML"
+
+    ```toml title="kreuzberg.toml"
+    [layout]
+    preset = "accurate"
+    confidence_threshold = 0.5
+    apply_heuristics = true
+    ```
+
+=== "YAML"
+
+    ```yaml title="kreuzberg.yaml"
+    layout:
+      preset: accurate
+      confidence_threshold: 0.5
+      apply_heuristics: true
+    ```
+
+---
+
 ## Configuration File Examples
 
 ### TOML Format
@@ -3158,6 +3249,9 @@ detect_multiple = false
 [token_reduction]
 mode = "moderate"
 preserve_important_words = true
+
+[layout]
+preset = "fast"
 
 [postprocessor]
 enabled = true
@@ -3211,6 +3305,9 @@ token_reduction:
   mode: moderate
   preserve_important_words: true
 
+layout:
+  preset: fast
+
 postprocessor:
   enabled: true
 ```
@@ -3261,6 +3358,9 @@ postprocessor:
   "token_reduction": {
     "mode": "moderate",
     "preserve_important_words": true
+  },
+  "layout": {
+    "preset": "fast"
   },
   "postprocessor": {
     "enabled": true

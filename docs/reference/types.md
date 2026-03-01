@@ -2371,6 +2371,7 @@ pub struct ExtractionConfig {
     pub language_detection: Option<LanguageDetectionConfig>,
     pub keywords: Option<KeywordConfig>,
     pub postprocessor: Option<PostProcessorConfig>,
+    pub layout: Option<LayoutDetectionConfig>,
     pub max_concurrent_extractions: Option<usize>,
 }
 ```
@@ -2391,6 +2392,7 @@ class ExtractionConfig:
     language_detection: LanguageDetectionConfig | None = None
     keywords: KeywordConfig | None = None
     postprocessor: PostProcessorConfig | None = None
+    layout: LayoutDetectionConfig | None = None
     max_concurrent_extractions: int | None = None
 ```
 
@@ -2409,6 +2411,7 @@ export interface ExtractionConfig {
   languageDetection?: LanguageDetectionConfig;
   keywords?: KeywordConfig;
   postprocessor?: PostProcessorConfig;
+  layout?: LayoutDetectionConfig;
   maxConcurrentExtractions?: number;
 }
 ```
@@ -2428,6 +2431,7 @@ public record ExtractionConfig(
     Optional<LanguageDetectionConfig> languageDetection,
     Optional<KeywordConfig> keywords,
     Optional<PostProcessorConfig> postprocessor,
+    Optional<LayoutDetectionConfig> layout,
     Optional<Integer> maxConcurrentExtractions
 ) {}
 ```
@@ -2447,6 +2451,7 @@ type ExtractionConfig struct {
     LanguageDetection           *LanguageDetectionConfig
     Keywords                    *KeywordConfig
     PostProcessor               *PostProcessorConfig
+    Layout                      *LayoutDetectionConfig
     MaxConcurrentExtractions    *int
 }
 ```
@@ -3460,6 +3465,70 @@ type PostProcessorConfig struct {
     Enabled            *bool    `json:"enabled,omitempty"`
     EnabledProcessors  []string `json:"enabled_processors,omitempty"`
     DisabledProcessors []string `json:"disabled_processors,omitempty"`
+}
+```
+
+### LayoutDetectionConfig
+
+Layout detection configuration for ONNX-based document structure analysis. Controls model selection, confidence thresholds, and postprocessing heuristics. Requires the `layout-detection` feature.
+
+#### Rust
+
+```rust title="layout_detection_config.rs"
+pub struct LayoutDetectionConfig {
+    pub preset: String,
+    pub confidence_threshold: Option<f32>,
+    pub apply_heuristics: bool,
+}
+```
+
+#### Python
+
+```python title="layout_detection_config.py"
+@dataclass
+class LayoutDetectionConfig:
+    preset: str = "fast"
+    confidence_threshold: float | None = None
+    apply_heuristics: bool = True
+```
+
+#### TypeScript
+
+```typescript title="layout_detection_config.ts"
+export interface LayoutDetectionConfig {
+  preset?: string;
+  confidenceThreshold?: number;
+  applyHeuristics?: boolean;
+}
+```
+
+#### Ruby
+
+```ruby title="layout_detection_config.rb"
+class Kreuzberg::Config::LayoutDetectionConfig
+    attr_accessor :preset, :confidence_threshold, :apply_heuristics
+end
+```
+
+#### Java
+
+```java title="LayoutDetectionConfig.java"
+public final class LayoutDetectionConfig {
+    private final String preset;
+    private final Float confidenceThreshold;
+    private final boolean applyHeuristics;
+
+    public static Builder builder() { }
+}
+```
+
+#### Go
+
+```go title="layout_detection_config.go"
+type LayoutDetectionConfig struct {
+    Preset              string   `json:"preset,omitempty"`
+    ConfidenceThreshold *float32 `json:"confidence_threshold,omitempty"`
+    ApplyHeuristics     *bool    `json:"apply_heuristics,omitempty"`
 }
 ```
 

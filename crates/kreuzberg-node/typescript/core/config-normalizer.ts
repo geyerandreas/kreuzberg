@@ -17,6 +17,7 @@ import type {
 	ImageExtractionConfig,
 	KeywordConfig,
 	LanguageDetectionConfig,
+	LayoutDetectionConfig,
 	OcrConfig,
 	PageExtractionConfig,
 	PdfConfig,
@@ -381,9 +382,27 @@ function normalizeExtractionConfig(config: ExtractionConfig | null): NativeExtra
 	const htmlOptions = normalizeHtmlOptions(config.htmlOptions);
 	setIfDefined(normalized, "htmlOptions", htmlOptions);
 
+	const layout = normalizeLayoutDetectionConfig(config.layout);
+	setIfDefined(normalized, "layout", layout);
+
 	setIfDefined(normalized, "outputFormat", config.outputFormat);
 	setIfDefined(normalized, "resultFormat", config.resultFormat);
 
+	return normalized;
+}
+
+/**
+ * Normalize layout detection configuration.
+ */
+function normalizeLayoutDetectionConfig(config?: LayoutDetectionConfig): NativeExtractionConfig | undefined {
+	if (!config) {
+		return undefined;
+	}
+
+	const normalized: NativeExtractionConfig = {};
+	setIfDefined(normalized, "preset", config.preset);
+	setIfDefined(normalized, "confidenceThreshold", config.confidenceThreshold);
+	setIfDefined(normalized, "applyHeuristics", config.applyHeuristics);
 	return normalized;
 }
 
@@ -403,6 +422,7 @@ export {
 	normalizeHtmlPreprocessing,
 	normalizeHtmlOptions,
 	normalizeKeywordConfig,
+	normalizeLayoutDetectionConfig,
 	normalizePageConfig,
 	setIfDefined,
 };

@@ -177,6 +177,7 @@ nav:
       - Document Structure: guides/document-structure.md
       - PDF Hierarchy: guides/pdf-hierarchy.md
       - Keyword Extraction: guides/keywords.md
+      - Layout Detection: guides/layout-detection.md
       - Advanced Features: guides/advanced.md
       - Docker Deployment: guides/docker.md
       - Kubernetes Deployment: guides/kubernetes.md

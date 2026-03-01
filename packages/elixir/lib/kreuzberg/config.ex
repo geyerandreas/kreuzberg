@@ -36,6 +36,7 @@ defmodule Kreuzberg.ExtractionConfig do
     * `:keywords` - Keyword extraction configuration
     * `:pdf_options` - PDF-specific options (requires pdf feature to be enabled)
     * `:html_options` - HTML to Markdown conversion options (quality, format, preprocessing options)
+    * `:layout` - Layout detection configuration (preset, confidence_threshold, apply_heuristics)
     * `:max_concurrent_extractions` - Maximum concurrent extractions in batch operations (positive integer or nil)
 
   ## Default Values
@@ -111,6 +112,7 @@ defmodule Kreuzberg.ExtractionConfig do
         "keywords" => nil,
         "pdf_options" => nil,
         "html_options" => nil,
+        "layout" => nil,
         "max_concurrent_extractions" => nil,
         "include_document_structure" => false,
         "use_cache" => true,
@@ -124,6 +126,10 @@ defmodule Kreuzberg.ExtractionConfig do
   @type config_map :: %{String.t() => any()}
 
   @type nested_config :: config_map | nil
+
+  @type layout_config ::
+          %{preset: String.t(), confidence_threshold: float() | nil, apply_heuristics: boolean()}
+          | nil
 
   @type output_format :: String.t()
 
@@ -141,6 +147,7 @@ defmodule Kreuzberg.ExtractionConfig do
           pdf_options: nested_config,
           max_concurrent_extractions: non_neg_integer() | nil,
           html_options: config_map | nil,
+          layout: layout_config,
           security_limits: nested_config,
           use_cache: boolean(),
           enable_quality_processing: boolean(),
@@ -163,6 +170,7 @@ defmodule Kreuzberg.ExtractionConfig do
     :pdf_options,
     :max_concurrent_extractions,
     :html_options,
+    :layout,
     :security_limits,
     use_cache: true,
     enable_quality_processing: true,
@@ -256,6 +264,7 @@ defmodule Kreuzberg.ExtractionConfig do
     * `"pdf_options"` - PDF-specific options (map or nil)
     * `"max_concurrent_extractions"` - Maximum concurrent extractions (positive integer or nil)
     * `"html_options"` - HTML to Markdown conversion options (map or nil)
+    * `"layout"` - Layout detection configuration (map or nil)
     * `"include_document_structure"` - Include document structure in extraction (boolean)
     * `"use_cache"` - Enable caching (boolean)
     * `"enable_quality_processing"` - Enable quality processing (boolean)
@@ -278,6 +287,7 @@ defmodule Kreuzberg.ExtractionConfig do
         "keywords" => nil,
         "pdf_options" => nil,
         "html_options" => nil,
+        "layout" => nil,
         "max_concurrent_extractions" => nil,
         "include_document_structure" => false,
         "use_cache" => true,
@@ -300,6 +310,7 @@ defmodule Kreuzberg.ExtractionConfig do
         "keywords" => nil,
         "pdf_options" => nil,
         "html_options" => nil,
+        "layout" => nil,
         "max_concurrent_extractions" => nil,
         "use_cache" => true,
         "enable_quality_processing" => true,
@@ -335,6 +346,7 @@ defmodule Kreuzberg.ExtractionConfig do
       "pdf_options" => normalize_nested_config(config.pdf_options),
       "max_concurrent_extractions" => config.max_concurrent_extractions,
       "html_options" => normalize_nested_config(config.html_options),
+      "layout" => normalize_layout_config(config.layout),
       "use_cache" => config.use_cache,
       "enable_quality_processing" => config.enable_quality_processing,
       "force_ocr" => config.force_ocr,
@@ -434,6 +446,35 @@ defmodule Kreuzberg.ExtractionConfig do
   defp normalize_keywords_config(other), do: other
 
   @doc false
+  defp normalize_layout_config(nil), do: nil
+
+  @doc false
+  defp normalize_layout_config(layout_config) when is_map(layout_config) do
+    normalized = normalize_map_keys(layout_config)
+
+    # Add default preset if not present ("fast" is the default)
+    normalized =
+      if Map.has_key?(normalized, "preset") do
+        normalized
+      else
+        Map.put(normalized, "preset", "fast")
+      end
+
+    # Add default apply_heuristics if not present
+    normalized =
+      if Map.has_key?(normalized, "apply_heuristics") do
+        normalized
+      else
+        Map.put(normalized, "apply_heuristics", true)
+      end
+
+    normalized
+  end
+
+  @doc false
+  defp normalize_layout_config(other), do: other
+
+  @doc false
   defp normalize_format_value(value) when is_binary(value) do
     String.downcase(value)
   end
@@ -512,7 +553,9 @@ defmodule Kreuzberg.ExtractionConfig do
          :ok <- validate_nested_field(config.keywords, "keywords"),
          :ok <- validate_nested_field(config.pdf_options, "pdf_options"),
          :ok <- validate_max_concurrent_extractions(config.max_concurrent_extractions),
-         :ok <- validate_nested_field(config.html_options, "html_options") do
+         :ok <- validate_nested_field(config.html_options, "html_options"),
+         :ok <- validate_nested_field(config.layout, "layout"),
+         :ok <- validate_layout_config(config.layout) do
       {:ok, config}
     end
   end
@@ -637,6 +680,7 @@ defmodule Kreuzberg.ExtractionConfig do
       pdf_options: Map.get(map, "pdf_options"),
       max_concurrent_extractions: Map.get(map, "max_concurrent_extractions"),
       html_options: Map.get(map, "html_options"),
+      layout: Map.get(map, "layout"),
       use_cache: Map.get(map, "use_cache", true),
       enable_quality_processing: Map.get(map, "enable_quality_processing", true),
       force_ocr: Map.get(map, "force_ocr", false),
@@ -853,6 +897,82 @@ defmodule Kreuzberg.ExtractionConfig do
 
       value ->
         {:error, "Field 'dpi' must be a positive integer, got: #{type_name(value)}"}
+    end
+  end
+
+  @doc false
+  defp validate_layout_config(nil), do: :ok
+
+  @doc false
+  defp validate_layout_config(config) when is_map(config) do
+    with :ok <- validate_layout_preset(config),
+         :ok <- validate_layout_confidence_threshold(config),
+         :ok <- validate_layout_apply_heuristics(config) do
+      :ok
+    end
+  end
+
+  @doc false
+  defp validate_layout_preset(config) do
+    preset = Map.get(config, "preset") || Map.get(config, :preset)
+
+    case preset do
+      nil ->
+        :ok
+
+      value when is_binary(value) ->
+        case String.downcase(value) do
+          "fast" -> :ok
+          "accurate" -> :ok
+          _invalid -> {:error, "Field 'layout.preset' must be one of: fast, accurate, got: #{value}"}
+        end
+
+      value ->
+        {:error, "Field 'layout.preset' must be a string, got: #{type_name(value)}"}
+    end
+  end
+
+  @doc false
+  defp validate_layout_confidence_threshold(config) do
+    threshold =
+      case Map.fetch(config, "confidence_threshold") do
+        {:ok, value} -> value
+        :error -> Map.get(config, :confidence_threshold)
+      end
+
+    case threshold do
+      nil ->
+        :ok
+
+      value when is_number(value) and value >= 0.0 and value <= 1.0 ->
+        :ok
+
+      value when is_number(value) ->
+        {:error, "Field 'layout.confidence_threshold' must be between 0.0 and 1.0, got: #{value}"}
+
+      value ->
+        {:error,
+         "Field 'layout.confidence_threshold' must be a number between 0.0 and 1.0, got: #{type_name(value)}"}
+    end
+  end
+
+  @doc false
+  defp validate_layout_apply_heuristics(config) do
+    apply_heuristics =
+      case Map.fetch(config, "apply_heuristics") do
+        {:ok, value} -> value
+        :error -> Map.get(config, :apply_heuristics)
+      end
+
+    case apply_heuristics do
+      nil ->
+        :ok
+
+      value when is_boolean(value) ->
+        :ok
+
+      value ->
+        {:error, "Field 'layout.apply_heuristics' must be a boolean, got: #{type_name(value)}"}
     end
   end
 end

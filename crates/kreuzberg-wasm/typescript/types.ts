@@ -177,6 +177,21 @@ export interface HtmlConversionOptions {
 }
 
 /**
+ * Layout detection configuration for PDF extraction.
+ *
+ * Controls layout detection using ONNX-based document layout models (YOLO or RT-DETR).
+ * Requires the `layout-detection` feature to be compiled.
+ */
+export interface LayoutDetectionConfig {
+	/** Model preset: "fast" (YOLO, 11 classes) or "accurate" (RT-DETR, 17 classes). Default: "fast". */
+	preset?: string;
+	/** Override the model's default confidence threshold for detections. Default: null (use model default). */
+	confidence_threshold?: number;
+	/** Apply postprocessing heuristics to improve detection quality. Default: true. */
+	apply_heuristics?: boolean;
+}
+
+/**
  * Configuration for document extraction
  */
 export interface ExtractionConfig {
@@ -234,6 +249,8 @@ export interface ExtractionConfig {
 	 * of nodes representing the document tree structure with semantic content types.
 	 */
 	includeDocumentStructure?: boolean;
+	/** Layout detection configuration for detecting document structure in PDFs. */
+	layout?: LayoutDetectionConfig;
 }
 
 /**

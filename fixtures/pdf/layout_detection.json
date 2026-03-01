@@ -1,0 +1,29 @@
+{
+	"id": "pdf_layout_detection",
+	"category": "pdf",
+	"description": "PDF extraction with layout detection enabled should produce content from a document with mixed structure.",
+	"tags": ["pdf", "layout", "config"],
+	"document": {
+		"path": "pdf/docling.pdf",
+		"media_type": "application/pdf"
+	},
+	"extraction": {
+		"method": "sync",
+		"input_type": "file",
+		"config": {
+			"layout": {
+				"preset": "fast"
+			},
+			"output_format": "markdown"
+		}
+	},
+	"assertions": {
+		"expected_mime": "application/pdf",
+		"content_not_empty": true,
+		"min_content_length": 100
+	},
+	"skip": {
+		"requires_feature": ["layout-detection"],
+		"notes": "Requires layout-detection feature with ONNX Runtime"
+	}
+}

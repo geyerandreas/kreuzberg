@@ -1046,6 +1046,30 @@ int32_t kreuzberg_config_builder_set_language_detection(struct ConfigBuilder *bu
                                                         const char *ld_json);
 
 /**
+ * Set layout detection configuration from JSON.
+ *
+ * # Arguments
+ *
+ * * `builder` - Non-null pointer to ConfigBuilder
+ * * `layout_json` - JSON string like `{"preset": "fast", "apply_heuristics": true}`
+ *
+ * # Returns
+ *
+ * 0 on success, -1 on error (check kreuzberg_last_error)
+ *
+ * # Safety
+ *
+ * This function is meant to be called from C/FFI code. The caller must ensure:
+ * - `builder` must be a valid, non-null pointer previously returned by `kreuzberg_config_builder_new`
+ * - The pointer must be properly aligned and point to a valid ConfigBuilder instance
+ * - `layout_json` must be a valid, non-null pointer to a null-terminated UTF-8 string
+ * - The string pointer must remain valid for the duration of the function call
+ */
+KREUZBERG_EXPORT
+int32_t kreuzberg_config_builder_set_layout(struct ConfigBuilder *builder,
+                                            const char *layout_json);
+
+/**
  * Build the final ExtractionConfig and consume the builder.
  *
  * After calling this function, the builder pointer is invalid and must not be used.

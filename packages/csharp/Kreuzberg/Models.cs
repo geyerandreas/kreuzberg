@@ -2055,6 +2055,13 @@ public sealed class ExtractionConfig
     [JsonPropertyName("include_document_structure")]
     public bool IncludeDocumentStructure { get; init; }
 
+    /// <summary>
+    /// Layout detection configuration for document page analysis.
+    /// If null, layout detection is disabled.
+    /// </summary>
+    [JsonPropertyName("layout")]
+    public LayoutDetectionConfig? Layout { get; init; }
+
 }
 
 /// <summary>
@@ -3481,4 +3488,35 @@ public sealed class DocumentTextAnnotation
     /// </summary>
     [JsonPropertyName("title")]
     public string? Title { get; set; }
+}
+
+/// <summary>
+/// Configuration for ONNX-based document layout detection.
+///
+/// Controls the layout analysis model preset, confidence filtering,
+/// and optional heuristic post-processing for page-level layout detection.
+/// </summary>
+public sealed class LayoutDetectionConfig
+{
+    /// <summary>
+    /// Model preset controlling accuracy vs speed trade-off.
+    /// Supported values: "fast", "accurate".
+    /// Default: "fast"
+    /// </summary>
+    [JsonPropertyName("preset")]
+    public string? Preset { get; init; }
+
+    /// <summary>
+    /// Minimum confidence threshold for detected layout regions (0.0-1.0).
+    /// Regions below this threshold are discarded.
+    /// </summary>
+    [JsonPropertyName("confidence_threshold")]
+    public double? ConfidenceThreshold { get; init; }
+
+    /// <summary>
+    /// Whether to apply heuristic post-processing to refine layout regions.
+    /// Default: true
+    /// </summary>
+    [JsonPropertyName("apply_heuristics")]
+    public bool? ApplyHeuristics { get; init; }
 }

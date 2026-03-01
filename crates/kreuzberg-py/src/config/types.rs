@@ -57,7 +57,8 @@ impl ExtractionConfig {
         pages=None,
         result_format=None,
         output_format=None,
-        include_document_structure=None
+        include_document_structure=None,
+        layout=None
     ))]
     #[allow(clippy::too_many_arguments)]
     fn new(
@@ -78,6 +79,7 @@ impl ExtractionConfig {
         result_format: Option<String>,
         output_format: Option<String>,
         include_document_structure: Option<bool>,
+        layout: Option<LayoutDetectionConfig>,
     ) -> PyResult<Self> {
         let (html_options_inner, html_options_dict) = parse_html_options_dict(html_options)?;
         Ok(Self {
@@ -129,7 +131,7 @@ impl ExtractionConfig {
                     kreuzberg::core::config::formats::OutputFormat::Plain
                 },
                 security_limits: None,
-                layout: None,
+                layout: layout.map(Into::into),
             },
             html_options_dict,
         })
@@ -326,6 +328,16 @@ impl ExtractionConfig {
             "structured" | "json" => kreuzberg::core::config::formats::OutputFormat::Structured,
             _ => kreuzberg::core::config::formats::OutputFormat::Plain, // Default on invalid
         };
+    }
+
+    #[getter]
+    fn layout(&self) -> Option<LayoutDetectionConfig> {
+        self.inner.layout.clone().map(Into::into)
+    }
+
+    #[setter]
+    fn set_layout(&mut self, value: Option<LayoutDetectionConfig>) {
+        self.inner.layout = value.map(Into::into);
     }
 
     fn __repr__(&self) -> String {
@@ -1172,6 +1184,89 @@ impl PostProcessorConfig {
             "PostProcessorConfig(enabled={}, enabled_processors={:?}, disabled_processors={:?})",
             self.inner.enabled, self.inner.enabled_processors, self.inner.disabled_processors
         )
+    }
+}
+
+/// Layout detection configuration.
+///
+/// Controls layout detection behavior for PDF extraction using ONNX-based
+/// document layout models (YOLO or RT-DETR).
+///
+/// Example:
+///     >>> from kreuzberg import LayoutDetectionConfig
+///     >>> config = LayoutDetectionConfig(preset="fast", apply_heuristics=True)
+#[pyclass(name = "LayoutDetectionConfig", module = "kreuzberg")]
+#[derive(Clone)]
+pub struct LayoutDetectionConfig {
+    pub inner: kreuzberg::core::config::layout::LayoutDetectionConfig,
+}
+
+#[pymethods]
+impl LayoutDetectionConfig {
+    #[new]
+    #[pyo3(signature = (preset=None, confidence_threshold=None, apply_heuristics=None))]
+    fn new(preset: Option<String>, confidence_threshold: Option<f32>, apply_heuristics: Option<bool>) -> Self {
+        Self {
+            inner: kreuzberg::core::config::layout::LayoutDetectionConfig {
+                preset: preset.unwrap_or_else(|| "fast".to_string()),
+                confidence_threshold,
+                apply_heuristics: apply_heuristics.unwrap_or(true),
+            },
+        }
+    }
+
+    #[getter]
+    fn preset(&self) -> String {
+        self.inner.preset.clone()
+    }
+
+    #[setter]
+    fn set_preset(&mut self, value: String) {
+        self.inner.preset = value;
+    }
+
+    #[getter]
+    fn confidence_threshold(&self) -> Option<f32> {
+        self.inner.confidence_threshold
+    }
+
+    #[setter]
+    fn set_confidence_threshold(&mut self, value: Option<f32>) {
+        self.inner.confidence_threshold = value;
+    }
+
+    #[getter]
+    fn apply_heuristics(&self) -> bool {
+        self.inner.apply_heuristics
+    }
+
+    #[setter]
+    fn set_apply_heuristics(&mut self, value: bool) {
+        self.inner.apply_heuristics = value;
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "LayoutDetectionConfig(preset='{}', confidence_threshold={}, apply_heuristics={})",
+            self.inner.preset,
+            self.inner
+                .confidence_threshold
+                .map(|v| v.to_string())
+                .unwrap_or_else(|| "None".to_string()),
+            self.inner.apply_heuristics
+        )
+    }
+}
+
+impl From<LayoutDetectionConfig> for kreuzberg::core::config::layout::LayoutDetectionConfig {
+    fn from(config: LayoutDetectionConfig) -> Self {
+        config.inner
+    }
+}
+
+impl From<kreuzberg::core::config::layout::LayoutDetectionConfig> for LayoutDetectionConfig {
+    fn from(config: kreuzberg::core::config::layout::LayoutDetectionConfig) -> Self {
+        Self { inner: config }
     }
 }
 
