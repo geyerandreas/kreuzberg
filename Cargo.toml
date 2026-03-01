@@ -14,6 +14,7 @@ members = [
     "tools/benchmark-harness",
     "tools/e2e-generator",
     "tools/snippet-runner",
+    "tools/pdf-oxide-comparison",
     "e2e/rust",
 ]
 exclude = ["tests/test_apps/rust", "tests/test_apps/elixir"]

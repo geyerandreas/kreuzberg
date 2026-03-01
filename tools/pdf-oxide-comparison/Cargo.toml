@@ -1,0 +1,12 @@
+[package]
+name = "pdf-oxide-comparison"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[dependencies]
+kreuzberg = { path = "../../crates/kreuzberg", features = ["pdf", "bundled-pdfium"] }
+pdf_oxide = "0.3"
+clap = { workspace = true }
+anyhow = { workspace = true }
