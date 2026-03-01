@@ -9,7 +9,11 @@ TARGET_DIR = C:/tmp/kr
 RUST_TARGET = x86_64-pc-windows-gnu
 LIBDIR = $(TARGET_DIR)/$(RUST_TARGET)/release
 STATLIB = $(LIBDIR)/libkreuzberg_r.a
-PKG_LIBS = -L$(LIBDIR) -lkreuzberg_r -lstdc++ -lws2_32 -ladvapi32 -luserenv -lbcrypt -lntdll -luser32 -lgdi32 -lshell32 @ADDITIONAL_PKG_LIBS@
+# --exclude-all-symbols prevents MinGW from auto-exporting every symbol.
+# Without it, the combined symbol count from kreuzberg + tesseract + leptonica
+# exceeds the PE ordinal limit (65535), causing "export ordinal too large".
+# R's extendr macros use __declspec(dllexport) on the entry points it needs.
+PKG_LIBS = -L$(LIBDIR) -lkreuzberg_r -lstdc++ -lws2_32 -ladvapi32 -luserenv -lbcrypt -lntdll -luser32 -lgdi32 -lshell32 -Wl,--exclude-all-symbols @ADDITIONAL_PKG_LIBS@
 
 all: C_clean
 

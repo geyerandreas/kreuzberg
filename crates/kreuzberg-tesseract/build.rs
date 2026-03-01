@@ -831,11 +831,16 @@ mod build_tesseract {
 
         println!("cargo:warning=Applying tesseract WASM patch from {:?}", patch_file);
 
+        // Normalize paths to forward slashes for cross-platform compatibility.
+        // On Windows, backslash paths cause git apply and patch to fail.
+        let dir_str = normalize_cmake_path(tesseract_dir);
+        let patch_str = normalize_cmake_path(&patch_file);
+
         // Try git apply first
         let result = std::process::Command::new("git")
-            .args(["apply", "--directory"])
-            .arg(tesseract_dir)
-            .arg(&patch_file)
+            .args(["apply", "--ignore-whitespace", "--directory"])
+            .arg(&dir_str)
+            .arg(&patch_str)
             .output();
 
         match result {
@@ -847,9 +852,9 @@ mod build_tesseract {
                 // Try patch command
                 let result = std::process::Command::new("patch")
                     .args(["-p1", "-d"])
-                    .arg(tesseract_dir)
+                    .arg(&dir_str)
                     .arg("-i")
-                    .arg(&patch_file)
+                    .arg(&patch_str)
                     .output();
 
                 match result {
@@ -858,7 +863,11 @@ mod build_tesseract {
                     }
                     Ok(output) => {
                         let stderr = String::from_utf8_lossy(&output.stderr);
-                        panic!("Failed to apply tesseract WASM patch: {}", stderr);
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        panic!(
+                            "Failed to apply tesseract WASM patch:\nstderr: {}\nstdout: {}",
+                            stderr, stdout
+                        );
                     }
                     Err(e) => {
                         panic!("Failed to run patch command: {}. Install git or patch utility.", e);

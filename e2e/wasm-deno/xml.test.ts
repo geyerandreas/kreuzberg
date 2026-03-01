@@ -4,12 +4,21 @@
 // Tests for xml fixtures. Run with: deno test --allow-read
 
 import type { ExtractionResult } from "./helpers.ts";
-import { assertions, buildConfig, extractBytes, initWasm, resolveDocument, shouldSkipFixture } from "./helpers.ts";
+import {
+	assertions,
+	buildConfig,
+	enableOcr,
+	extractBytes,
+	initWasm,
+	resolveDocument,
+	shouldSkipFixture,
+} from "./helpers.ts";
 
-// Initialize WASM module once at module load time
+// Initialize WASM module and enable OCR once at module load time
 await initWasm();
+await enableOcr();
 
-Deno.test("xml_plant_catalog", { permissions: { read: true } }, async () => {
+Deno.test("xml_plant_catalog", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {

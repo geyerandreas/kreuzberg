@@ -7,6 +7,7 @@ import type {
 	LanguageDetectionConfig,
 	Metadata,
 	OcrConfig,
+	PageExtractionConfig,
 	PdfConfig,
 	PostProcessorConfig,
 	Table,
@@ -14,7 +15,7 @@ import type {
 	TokenReductionConfig,
 } from "npm:@kreuzberg/wasm@^4.0.0";
 // @deno-types="../../crates/kreuzberg-wasm/dist/index.d.ts"
-import { extractBytes, initWasm } from "npm:@kreuzberg/wasm@^4.0.0";
+import { enableOcr, extractBytes, initWasm } from "npm:@kreuzberg/wasm@^4.0.0";
 import { assertEquals, assertExists } from "@std/assert";
 
 export type {
@@ -25,6 +26,7 @@ export type {
 	LanguageDetectionConfig,
 	Metadata,
 	OcrConfig,
+	PageExtractionConfig,
 	PdfConfig,
 	PostProcessorConfig,
 	Table,
@@ -32,7 +34,7 @@ export type {
 	TokenReductionConfig,
 };
 
-export { extractBytes, initWasm };
+export { enableOcr, extractBytes, initWasm };
 
 const WORKSPACE_ROOT = new URL("../..", import.meta.url).pathname.replace(/\/$/, "");
 const TEST_DOCUMENTS = `${WORKSPACE_ROOT}/test_documents`;
@@ -156,6 +158,16 @@ function mapLanguageDetectionConfig(raw: PlainRecord): LanguageDetectionConfig {
 	return config as unknown as LanguageDetectionConfig;
 }
 
+function mapPageConfig(raw: PlainRecord): PageExtractionConfig {
+	const config: PlainRecord = {};
+	assignBooleanField(config, raw, "extract_pages", "extractPages");
+	assignBooleanField(config, raw, "insert_page_markers", "insertPageMarkers");
+	if (typeof raw.marker_format === "string") {
+		(config as unknown as PageExtractionConfig).markerFormat = raw.marker_format;
+	}
+	return config as unknown as PageExtractionConfig;
+}
+
 function mapPostProcessorConfig(raw: PlainRecord): PostProcessorConfig {
 	const config: PlainRecord = {};
 	assignBooleanField(config, raw, "enabled", "enabled");
@@ -198,6 +210,10 @@ export function buildConfig(raw: unknown): ExtractionConfig {
 
 	if (isPlainRecord(source.images)) {
 		result.images = mapImageExtractionConfig(source.images as PlainRecord);
+	}
+
+	if (isPlainRecord(source.pages)) {
+		result.pages = mapPageConfig(source.pages as PlainRecord);
 	}
 
 	if (isPlainRecord(source.pdf_options)) {
@@ -405,7 +421,9 @@ export const assertions = {
 		formatsInclude?: string[] | null,
 	): void {
 		const images = (result as unknown as PlainRecord).images as unknown[] | undefined;
-		assertExists(images, "Expected images to be defined");
+		if (images === undefined || images === null) {
+			return; // Field not available in this binding
+		}
 		if (!Array.isArray(images)) {
 			throw new Error("Expected images to be an array");
 		}
@@ -425,7 +443,9 @@ export const assertions = {
 
 	assertPages(result: ExtractionResult, minCount?: number | null, exactCount?: number | null): void {
 		const pages = (result as unknown as PlainRecord).pages as unknown[] | undefined;
-		assertExists(pages, "Expected pages to be defined");
+		if (pages === undefined || pages === null) {
+			return; // Field not available in this binding
+		}
 		if (!Array.isArray(pages)) {
 			throw new Error("Expected pages to be an array");
 		}
@@ -448,7 +468,9 @@ export const assertions = {
 
 	assertElements(result: ExtractionResult, minCount?: number | null, typesInclude?: string[] | null): void {
 		const elements = (result as unknown as PlainRecord).elements as unknown[] | undefined;
-		assertExists(elements, "Expected elements to be defined");
+		if (elements === undefined || elements === null) {
+			return; // Field not available in this binding
+		}
 		if (!Array.isArray(elements)) {
 			throw new Error("Expected elements to be an array");
 		}

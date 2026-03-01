@@ -4,12 +4,21 @@
 // Tests for token_reduction fixtures. Run with: deno test --allow-read
 
 import type { ExtractionResult } from "./helpers.ts";
-import { assertions, buildConfig, extractBytes, initWasm, resolveDocument, shouldSkipFixture } from "./helpers.ts";
+import {
+	assertions,
+	buildConfig,
+	enableOcr,
+	extractBytes,
+	initWasm,
+	resolveDocument,
+	shouldSkipFixture,
+} from "./helpers.ts";
 
-// Initialize WASM module once at module load time
+// Initialize WASM module and enable OCR once at module load time
 await initWasm();
+await enableOcr();
 
-Deno.test("token_reduction_aggressive", { permissions: { read: true } }, async () => {
+Deno.test("token_reduction_aggressive", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ token_reduction: { mode: "aggressive" } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -30,7 +39,7 @@ Deno.test("token_reduction_aggressive", { permissions: { read: true } }, async (
 	assertions.assertContentNotEmpty(result);
 });
 
-Deno.test("token_reduction_basic", { permissions: { read: true } }, async () => {
+Deno.test("token_reduction_basic", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ token_reduction: { mode: "moderate" } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -51,7 +60,7 @@ Deno.test("token_reduction_basic", { permissions: { read: true } }, async () => 
 	assertions.assertContentNotEmpty(result);
 });
 
-Deno.test("token_reduction_light", { permissions: { read: true } }, async () => {
+Deno.test("token_reduction_light", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ token_reduction: { mode: "light" } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -72,7 +81,7 @@ Deno.test("token_reduction_light", { permissions: { read: true } }, async () => 
 	assertions.assertContentNotEmpty(result);
 });
 
-Deno.test("token_reduction_with_chunking", { permissions: { read: true } }, async () => {
+Deno.test("token_reduction_with_chunking", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ chunking: { max_chars: 500, max_overlap: 50 }, token_reduction: { mode: "moderate" } });
 	let result: ExtractionResult | null = null;
 	try {

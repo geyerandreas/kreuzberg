@@ -4,12 +4,21 @@
 // Tests for embeddings fixtures. Run with: deno test --allow-read
 
 import type { ExtractionResult } from "./helpers.ts";
-import { assertions, buildConfig, extractBytes, initWasm, resolveDocument, shouldSkipFixture } from "./helpers.ts";
+import {
+	assertions,
+	buildConfig,
+	enableOcr,
+	extractBytes,
+	initWasm,
+	resolveDocument,
+	shouldSkipFixture,
+} from "./helpers.ts";
 
-// Initialize WASM module once at module load time
+// Initialize WASM module and enable OCR once at module load time
 await initWasm();
+await enableOcr();
 
-Deno.test("embedding_disabled", { permissions: { read: true } }, async () => {
+Deno.test("embedding_disabled", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ chunking: { max_chars: 500, max_overlap: 50 } });
 	let result: ExtractionResult | null = null;
 	try {

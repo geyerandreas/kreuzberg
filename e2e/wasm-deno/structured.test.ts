@@ -4,12 +4,21 @@
 // Tests for structured fixtures. Run with: deno test --allow-read
 
 import type { ExtractionResult } from "./helpers.ts";
-import { assertions, buildConfig, extractBytes, initWasm, resolveDocument, shouldSkipFixture } from "./helpers.ts";
+import {
+	assertions,
+	buildConfig,
+	enableOcr,
+	extractBytes,
+	initWasm,
+	resolveDocument,
+	shouldSkipFixture,
+} from "./helpers.ts";
 
-// Initialize WASM module once at module load time
+// Initialize WASM module and enable OCR once at module load time
 await initWasm();
+await enableOcr();
 
-Deno.test("structured_csv_basic", { permissions: { read: true } }, async () => {
+Deno.test("structured_csv_basic", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -29,7 +38,7 @@ Deno.test("structured_csv_basic", { permissions: { read: true } }, async () => {
 	assertions.assertMinContentLength(result, 20);
 });
 
-Deno.test("structured_json_basic", { permissions: { read: true } }, async () => {
+Deno.test("structured_json_basic", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -50,7 +59,7 @@ Deno.test("structured_json_basic", { permissions: { read: true } }, async () => 
 	assertions.assertContentContainsAny(result, ["Sample Document", "Test Author"]);
 });
 
-Deno.test("structured_json_simple", { permissions: { read: true } }, async () => {
+Deno.test("structured_json_simple", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -71,7 +80,7 @@ Deno.test("structured_json_simple", { permissions: { read: true } }, async () =>
 	assertions.assertContentContainsAny(result, ["{", "name"]);
 });
 
-Deno.test("structured_toml_basic", { permissions: { read: true } }, async () => {
+Deno.test("structured_toml_basic", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -91,7 +100,7 @@ Deno.test("structured_toml_basic", { permissions: { read: true } }, async () => 
 	assertions.assertMinContentLength(result, 10);
 });
 
-Deno.test("structured_yaml_basic", { permissions: { read: true } }, async () => {
+Deno.test("structured_yaml_basic", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -111,7 +120,7 @@ Deno.test("structured_yaml_basic", { permissions: { read: true } }, async () => 
 	assertions.assertMinContentLength(result, 10);
 });
 
-Deno.test("structured_yaml_simple", { permissions: { read: true } }, async () => {
+Deno.test("structured_yaml_simple", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {

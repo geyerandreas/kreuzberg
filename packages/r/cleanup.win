@@ -1,2 +1,2 @@
-@echo off
-del src\Makevars.win 2>NUL
+#!/usr/bin/env sh
+rm -f src/Makevars.win

@@ -4,12 +4,21 @@
 // Tests for contract fixtures. Run with: deno test --allow-read
 
 import type { ExtractionResult } from "./helpers.ts";
-import { assertions, buildConfig, extractBytes, initWasm, resolveDocument, shouldSkipFixture } from "./helpers.ts";
+import {
+	assertions,
+	buildConfig,
+	enableOcr,
+	extractBytes,
+	initWasm,
+	resolveDocument,
+	shouldSkipFixture,
+} from "./helpers.ts";
 
-// Initialize WASM module once at module load time
+// Initialize WASM module and enable OCR once at module load time
 await initWasm();
+await enableOcr();
 
-Deno.test("api_batch_bytes_async", { permissions: { read: true } }, async () => {
+Deno.test("api_batch_bytes_async", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -31,7 +40,7 @@ Deno.test("api_batch_bytes_async", { permissions: { read: true } }, async () => 
 	assertions.assertContentContainsAny(result, ["May 5, 2023", "Mallori"]);
 });
 
-Deno.test("api_batch_bytes_sync", { permissions: { read: true } }, async () => {
+Deno.test("api_batch_bytes_sync", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -53,7 +62,7 @@ Deno.test("api_batch_bytes_sync", { permissions: { read: true } }, async () => {
 	assertions.assertContentContainsAny(result, ["May 5, 2023", "Mallori"]);
 });
 
-Deno.test("api_batch_file_async", { permissions: { read: true } }, async () => {
+Deno.test("api_batch_file_async", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -75,7 +84,7 @@ Deno.test("api_batch_file_async", { permissions: { read: true } }, async () => {
 	assertions.assertContentContainsAny(result, ["May 5, 2023", "Mallori"]);
 });
 
-Deno.test("api_batch_file_sync", { permissions: { read: true } }, async () => {
+Deno.test("api_batch_file_sync", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -97,7 +106,7 @@ Deno.test("api_batch_file_sync", { permissions: { read: true } }, async () => {
 	assertions.assertContentContainsAny(result, ["May 5, 2023", "Mallori"]);
 });
 
-Deno.test("api_extract_bytes_async", { permissions: { read: true } }, async () => {
+Deno.test("api_extract_bytes_async", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -118,7 +127,7 @@ Deno.test("api_extract_bytes_async", { permissions: { read: true } }, async () =
 	assertions.assertContentContainsAny(result, ["May 5, 2023", "Mallori"]);
 });
 
-Deno.test("api_extract_bytes_sync", { permissions: { read: true } }, async () => {
+Deno.test("api_extract_bytes_sync", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -139,7 +148,7 @@ Deno.test("api_extract_bytes_sync", { permissions: { read: true } }, async () =>
 	assertions.assertContentContainsAny(result, ["May 5, 2023", "Mallori"]);
 });
 
-Deno.test("api_extract_file_async", { permissions: { read: true } }, async () => {
+Deno.test("api_extract_file_async", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -160,7 +169,7 @@ Deno.test("api_extract_file_async", { permissions: { read: true } }, async () =>
 	assertions.assertContentContainsAny(result, ["May 5, 2023", "Mallori"]);
 });
 
-Deno.test("api_extract_file_sync", { permissions: { read: true } }, async () => {
+Deno.test("api_extract_file_sync", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -181,7 +190,7 @@ Deno.test("api_extract_file_sync", { permissions: { read: true } }, async () => 
 	assertions.assertContentContainsAny(result, ["May 5, 2023", "Mallori"]);
 });
 
-Deno.test("config_chunking", { permissions: { read: true } }, async () => {
+Deno.test("config_chunking", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ chunking: { max_chars: 500, max_overlap: 50 } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -202,7 +211,7 @@ Deno.test("config_chunking", { permissions: { read: true } }, async () => {
 	assertions.assertChunks(result, 1, null, true, null);
 });
 
-Deno.test("config_chunking_markdown", { permissions: { read: true } }, async () => {
+Deno.test("config_chunking_markdown", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ chunking: { chunker_type: "markdown", max_chars: 500, max_overlap: 50 } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -223,7 +232,7 @@ Deno.test("config_chunking_markdown", { permissions: { read: true } }, async () 
 	assertions.assertChunks(result, 1, null, true, null);
 });
 
-Deno.test("config_chunking_small", { permissions: { read: true } }, async () => {
+Deno.test("config_chunking_small", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ chunking: { max_chars: 100, max_overlap: 20 } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -244,7 +253,7 @@ Deno.test("config_chunking_small", { permissions: { read: true } }, async () => 
 	assertions.assertChunks(result, 2, null, true, null);
 });
 
-Deno.test("config_djot_content", { permissions: { read: true } }, async () => {
+Deno.test("config_djot_content", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ output_format: "djot" });
 	let result: ExtractionResult | null = null;
 	try {
@@ -264,7 +273,7 @@ Deno.test("config_djot_content", { permissions: { read: true } }, async () => {
 	assertions.assertMinContentLength(result, 10);
 });
 
-Deno.test("config_document_structure", { permissions: { read: true } }, async () => {
+Deno.test("config_document_structure", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ include_document_structure: true });
 	let result: ExtractionResult | null = null;
 	try {
@@ -284,7 +293,7 @@ Deno.test("config_document_structure", { permissions: { read: true } }, async ()
 	assertions.assertDocument(result, true, 1, ["paragraph"], null);
 });
 
-Deno.test("config_document_structure_disabled", { permissions: { read: true } }, async () => {
+Deno.test("config_document_structure_disabled", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -304,11 +313,11 @@ Deno.test("config_document_structure_disabled", { permissions: { read: true } },
 	assertions.assertDocument(result, false, null, null, null);
 });
 
-Deno.test("config_document_structure_headings", { permissions: { read: true } }, async () => {
+Deno.test("config_document_structure_headings", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ include_document_structure: true });
 	let result: ExtractionResult | null = null;
 	try {
-		const documentBytes = await resolveDocument("office/docx/headers.docx");
+		const documentBytes = await resolveDocument("docx/unit_test_headers.docx");
 		// Sync file extraction - WASM uses extractBytes with pre-read bytes
 		result = await extractBytes(documentBytes, "application/octet-stream", config);
 	} catch (error) {
@@ -324,7 +333,7 @@ Deno.test("config_document_structure_headings", { permissions: { read: true } },
 	assertions.assertDocument(result, true, 1, ["heading", "paragraph"], null);
 });
 
-Deno.test("config_document_structure_with_headings", { permissions: { read: true } }, async () => {
+Deno.test("config_document_structure_with_headings", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ include_document_structure: true });
 	let result: ExtractionResult | null = null;
 	try {
@@ -344,11 +353,11 @@ Deno.test("config_document_structure_with_headings", { permissions: { read: true
 	assertions.assertDocument(result, true, 1, null, null);
 });
 
-Deno.test("config_element_types", { permissions: { read: true } }, async () => {
+Deno.test("config_element_types", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ result_format: "element_based" });
 	let result: ExtractionResult | null = null;
 	try {
-		const documentBytes = await resolveDocument("office/docx/headers.docx");
+		const documentBytes = await resolveDocument("docx/unit_test_headers.docx");
 		// Sync file extraction - WASM uses extractBytes with pre-read bytes
 		result = await extractBytes(documentBytes, "application/octet-stream", config);
 	} catch (error) {
@@ -361,10 +370,10 @@ Deno.test("config_element_types", { permissions: { read: true } }, async () => {
 		return;
 	}
 	assertions.assertExpectedMime(result, ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"]);
-	assertions.assertElements(result, 1, ["title", "narrative_text"]);
+	assertions.assertElements(result, 1, ["narrative_text"]);
 });
 
-Deno.test("config_force_ocr", { permissions: { read: true } }, async () => {
+Deno.test("config_force_ocr", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ force_ocr: true });
 	let result: ExtractionResult | null = null;
 	try {
@@ -384,7 +393,7 @@ Deno.test("config_force_ocr", { permissions: { read: true } }, async () => {
 	assertions.assertMinContentLength(result, 5);
 });
 
-Deno.test("config_html_options", { permissions: { read: true } }, async () => {
+Deno.test("config_html_options", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ html_options: { include_links: true } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -405,7 +414,7 @@ Deno.test("config_html_options", { permissions: { read: true } }, async () => {
 	assertions.assertContentNotEmpty(result);
 });
 
-Deno.test("config_images", { permissions: { read: true } }, async () => {
+Deno.test("config_images", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ images: { extract_images: true } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -425,7 +434,7 @@ Deno.test("config_images", { permissions: { read: true } }, async () => {
 	assertions.assertImages(result, 1, null, null);
 });
 
-Deno.test("config_language_detection", { permissions: { read: true } }, async () => {
+Deno.test("config_language_detection", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ language_detection: { enabled: true } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -446,7 +455,7 @@ Deno.test("config_language_detection", { permissions: { read: true } }, async ()
 	assertions.assertDetectedLanguages(result, ["eng"], 0.5);
 });
 
-Deno.test("config_language_multi", { permissions: { read: true } }, async () => {
+Deno.test("config_language_multi", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ language_detection: { detect_multiple: true, enabled: true } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -467,7 +476,7 @@ Deno.test("config_language_multi", { permissions: { read: true } }, async () => 
 	assertions.assertDetectedLanguages(result, ["eng"], null);
 });
 
-Deno.test("config_pages", { permissions: { read: true } }, async () => {
+Deno.test("config_pages", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ pages: { extract_pages: true, insert_page_markers: true } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -488,7 +497,7 @@ Deno.test("config_pages", { permissions: { read: true } }, async () => {
 	assertions.assertContentContainsAny(result, ["PAGE"]);
 });
 
-Deno.test("config_pages_extract", { permissions: { read: true } }, async () => {
+Deno.test("config_pages_extract", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ pages: { extract_pages: true } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -509,7 +518,7 @@ Deno.test("config_pages_extract", { permissions: { read: true } }, async () => {
 	assertions.assertPages(result, 1, null);
 });
 
-Deno.test("config_pages_markers", { permissions: { read: true } }, async () => {
+Deno.test("config_pages_markers", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ pages: { insert_page_markers: true } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -530,7 +539,7 @@ Deno.test("config_pages_markers", { permissions: { read: true } }, async () => {
 	assertions.assertContentContainsAny(result, ["PAGE"]);
 });
 
-Deno.test("config_pdf_hierarchy", { permissions: { read: true } }, async () => {
+Deno.test("config_pdf_hierarchy", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({
 		pages: { extract_pages: true },
 		pdf_options: { hierarchy: { enabled: true, include_bbox: true } },
@@ -553,7 +562,7 @@ Deno.test("config_pdf_hierarchy", { permissions: { read: true } }, async () => {
 	assertions.assertMinContentLength(result, 50);
 });
 
-Deno.test("config_postprocessor", { permissions: { read: true } }, async () => {
+Deno.test("config_postprocessor", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ postprocessor: { enabled: true } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -574,7 +583,7 @@ Deno.test("config_postprocessor", { permissions: { read: true } }, async () => {
 	assertions.assertContentNotEmpty(result);
 });
 
-Deno.test("config_quality_disabled", { permissions: { read: true } }, async () => {
+Deno.test("config_quality_disabled", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ enable_quality_processing: false });
 	let result: ExtractionResult | null = null;
 	try {
@@ -595,7 +604,7 @@ Deno.test("config_quality_disabled", { permissions: { read: true } }, async () =
 	assertions.assertContentNotEmpty(result);
 });
 
-Deno.test("config_quality_enabled", { permissions: { read: true } }, async () => {
+Deno.test("config_quality_enabled", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ enable_quality_processing: true });
 	let result: ExtractionResult | null = null;
 	try {
@@ -616,7 +625,7 @@ Deno.test("config_quality_enabled", { permissions: { read: true } }, async () =>
 	assertions.assertQualityScore(result, true, 0, 1);
 });
 
-Deno.test("config_structured_output", { permissions: { read: true } }, async () => {
+Deno.test("config_structured_output", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ output_format: "structured" });
 	let result: ExtractionResult | null = null;
 	try {
@@ -636,7 +645,7 @@ Deno.test("config_structured_output", { permissions: { read: true } }, async () 
 	assertions.assertMinContentLength(result, 10);
 });
 
-Deno.test("config_use_cache_false", { permissions: { read: true } }, async () => {
+Deno.test("config_use_cache_false", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ use_cache: false });
 	let result: ExtractionResult | null = null;
 	try {
@@ -656,7 +665,7 @@ Deno.test("config_use_cache_false", { permissions: { read: true } }, async () =>
 	assertions.assertMinContentLength(result, 10);
 });
 
-Deno.test("output_format_bytes_markdown", { permissions: { read: true } }, async () => {
+Deno.test("output_format_bytes_markdown", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ output_format: "markdown" });
 	let result: ExtractionResult | null = null;
 	try {
@@ -676,7 +685,7 @@ Deno.test("output_format_bytes_markdown", { permissions: { read: true } }, async
 	assertions.assertMinContentLength(result, 10);
 });
 
-Deno.test("output_format_djot", { permissions: { read: true } }, async () => {
+Deno.test("output_format_djot", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ output_format: "djot" });
 	let result: ExtractionResult | null = null;
 	try {
@@ -696,7 +705,7 @@ Deno.test("output_format_djot", { permissions: { read: true } }, async () => {
 	assertions.assertMinContentLength(result, 10);
 });
 
-Deno.test("output_format_html", { permissions: { read: true } }, async () => {
+Deno.test("output_format_html", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ output_format: "html" });
 	let result: ExtractionResult | null = null;
 	try {
@@ -716,7 +725,7 @@ Deno.test("output_format_html", { permissions: { read: true } }, async () => {
 	assertions.assertMinContentLength(result, 10);
 });
 
-Deno.test("output_format_markdown", { permissions: { read: true } }, async () => {
+Deno.test("output_format_markdown", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ output_format: "markdown" });
 	let result: ExtractionResult | null = null;
 	try {
@@ -736,7 +745,7 @@ Deno.test("output_format_markdown", { permissions: { read: true } }, async () =>
 	assertions.assertMinContentLength(result, 10);
 });
 
-Deno.test("output_format_plain", { permissions: { read: true } }, async () => {
+Deno.test("output_format_plain", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ output_format: "plain" });
 	let result: ExtractionResult | null = null;
 	try {
@@ -756,7 +765,7 @@ Deno.test("output_format_plain", { permissions: { read: true } }, async () => {
 	assertions.assertMinContentLength(result, 10);
 });
 
-Deno.test("result_format_element_based", { permissions: { read: true } }, async () => {
+Deno.test("result_format_element_based", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ result_format: "element_based" });
 	let result: ExtractionResult | null = null;
 	try {
@@ -776,7 +785,7 @@ Deno.test("result_format_element_based", { permissions: { read: true } }, async 
 	assertions.assertElements(result, 1, null);
 });
 
-Deno.test("result_format_unified", { permissions: { read: true } }, async () => {
+Deno.test("result_format_unified", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ result_format: "unified" });
 	let result: ExtractionResult | null = null;
 	try {

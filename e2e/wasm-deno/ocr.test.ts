@@ -4,12 +4,21 @@
 // Tests for ocr fixtures. Run with: deno test --allow-read
 
 import type { ExtractionResult } from "./helpers.ts";
-import { assertions, buildConfig, extractBytes, initWasm, resolveDocument, shouldSkipFixture } from "./helpers.ts";
+import {
+	assertions,
+	buildConfig,
+	enableOcr,
+	extractBytes,
+	initWasm,
+	resolveDocument,
+	shouldSkipFixture,
+} from "./helpers.ts";
 
-// Initialize WASM module once at module load time
+// Initialize WASM module and enable OCR once at module load time
 await initWasm();
+await enableOcr();
 
-Deno.test("ocr_image_hello_world", { permissions: { read: true } }, async () => {
+Deno.test("ocr_image_hello_world", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ force_ocr: true, ocr: { backend: "tesseract", language: "eng" } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -37,7 +46,7 @@ Deno.test("ocr_image_hello_world", { permissions: { read: true } }, async () => 
 	assertions.assertContentContainsAny(result, ["hello", "world"]);
 });
 
-Deno.test("ocr_image_no_text", { permissions: { read: true } }, async () => {
+Deno.test("ocr_image_no_text", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ force_ocr: true, ocr: { backend: "tesseract", language: "eng" } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -57,7 +66,7 @@ Deno.test("ocr_image_no_text", { permissions: { read: true } }, async () => {
 	assertions.assertMaxContentLength(result, 200);
 });
 
-Deno.test("ocr_pdf_image_only_german", { permissions: { read: true } }, async () => {
+Deno.test("ocr_pdf_image_only_german", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ force_ocr: true, ocr: { backend: "tesseract", language: "deu" } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -85,7 +94,7 @@ Deno.test("ocr_pdf_image_only_german", { permissions: { read: true } }, async ()
 	assertions.assertMetadataExpectation(result, "format_type", { eq: "pdf" });
 });
 
-Deno.test("ocr_pdf_rotated_90", { permissions: { read: true } }, async () => {
+Deno.test("ocr_pdf_rotated_90", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ force_ocr: true, ocr: { backend: "tesseract", language: "eng" } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -107,7 +116,7 @@ Deno.test("ocr_pdf_rotated_90", { permissions: { read: true } }, async () => {
 	assertions.assertMinContentLength(result, 10);
 });
 
-Deno.test("ocr_pdf_tesseract", { permissions: { read: true } }, async () => {
+Deno.test("ocr_pdf_tesseract", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ force_ocr: true, ocr: { backend: "tesseract", language: "eng" } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -130,7 +139,7 @@ Deno.test("ocr_pdf_tesseract", { permissions: { read: true } }, async () => {
 	assertions.assertContentContainsAny(result, ["Docling", "Markdown", "JSON"]);
 });
 
-Deno.test("ocr_tesseract_elements", { permissions: { read: true } }, async () => {
+Deno.test("ocr_tesseract_elements", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({
 		force_ocr: true,
 		ocr: { backend: "tesseract", element_config: { include_elements: true }, language: "eng" },
@@ -154,7 +163,7 @@ Deno.test("ocr_tesseract_elements", { permissions: { read: true } }, async () =>
 	assertions.assertOcrElements(result, true, true, true, null);
 });
 
-Deno.test("ocr_tesseract_language_german", { permissions: { read: true } }, async () => {
+Deno.test("ocr_tesseract_language_german", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ force_ocr: true, ocr: { backend: "tesseract", language: "deu" } });
 	let result: ExtractionResult | null = null;
 	try {

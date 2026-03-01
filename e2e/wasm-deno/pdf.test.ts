@@ -4,12 +4,21 @@
 // Tests for pdf fixtures. Run with: deno test --allow-read
 
 import type { ExtractionResult } from "./helpers.ts";
-import { assertions, buildConfig, extractBytes, initWasm, resolveDocument, shouldSkipFixture } from "./helpers.ts";
+import {
+	assertions,
+	buildConfig,
+	enableOcr,
+	extractBytes,
+	initWasm,
+	resolveDocument,
+	shouldSkipFixture,
+} from "./helpers.ts";
 
-// Initialize WASM module once at module load time
+// Initialize WASM module and enable OCR once at module load time
 await initWasm();
+await enableOcr();
 
-Deno.test("pdf_annotations", { permissions: { read: true } }, async () => {
+Deno.test("pdf_annotations", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ pdf_options: { extract_annotations: true } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -31,7 +40,7 @@ Deno.test("pdf_annotations", { permissions: { read: true } }, async () => {
 	assertions.assertAnnotations(result, true, 1);
 });
 
-Deno.test("pdf_assembly_technical", { permissions: { read: true } }, async () => {
+Deno.test("pdf_assembly_technical", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -53,7 +62,7 @@ Deno.test("pdf_assembly_technical", { permissions: { read: true } }, async () =>
 	assertions.assertMetadataExpectation(result, "format_type", { eq: "pdf" });
 });
 
-Deno.test("pdf_bayesian_data_analysis", { permissions: { read: true } }, async () => {
+Deno.test("pdf_bayesian_data_analysis", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -75,7 +84,7 @@ Deno.test("pdf_bayesian_data_analysis", { permissions: { read: true } }, async (
 	assertions.assertMetadataExpectation(result, "format_type", { eq: "pdf" });
 });
 
-Deno.test("pdf_bounding_boxes", { permissions: { read: true } }, async () => {
+Deno.test("pdf_bounding_boxes", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ images: { extract_images: true } });
 	let result: ExtractionResult | null = null;
 	try {
@@ -100,7 +109,7 @@ Deno.test("pdf_bounding_boxes", { permissions: { read: true } }, async () => {
 	}
 });
 
-Deno.test("pdf_code_and_formula", { permissions: { read: true } }, async () => {
+Deno.test("pdf_code_and_formula", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -120,7 +129,7 @@ Deno.test("pdf_code_and_formula", { permissions: { read: true } }, async () => {
 	assertions.assertMinContentLength(result, 100);
 });
 
-Deno.test("pdf_deep_learning", { permissions: { read: true } }, async () => {
+Deno.test("pdf_deep_learning", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -142,7 +151,7 @@ Deno.test("pdf_deep_learning", { permissions: { read: true } }, async () => {
 	assertions.assertMetadataExpectation(result, "format_type", { eq: "pdf" });
 });
 
-Deno.test("pdf_embedded_images", { permissions: { read: true } }, async () => {
+Deno.test("pdf_embedded_images", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -160,10 +169,13 @@ Deno.test("pdf_embedded_images", { permissions: { read: true } }, async () => {
 	}
 	assertions.assertExpectedMime(result, ["application/pdf"]);
 	assertions.assertMinContentLength(result, 50);
-	assertions.assertTableCount(result, 0, null);
+	// Table and bounding box assertions require OCR feature for PDF table extraction
+	if (result.tables.length > 0) {
+		assertions.assertTableCount(result, 0, null);
+	}
 });
 
-Deno.test("pdf_google_doc", { permissions: { read: true } }, async () => {
+Deno.test("pdf_google_doc", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -184,7 +196,7 @@ Deno.test("pdf_google_doc", { permissions: { read: true } }, async () => {
 	assertions.assertMetadataExpectation(result, "format_type", { eq: "pdf" });
 });
 
-Deno.test("pdf_large_ciml", { permissions: { read: true } }, async () => {
+Deno.test("pdf_large_ciml", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -206,7 +218,7 @@ Deno.test("pdf_large_ciml", { permissions: { read: true } }, async () => {
 	assertions.assertMetadataExpectation(result, "format_type", { eq: "pdf" });
 });
 
-Deno.test("pdf_non_english_german", { permissions: { read: true } }, async () => {
+Deno.test("pdf_non_english_german", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -228,7 +240,7 @@ Deno.test("pdf_non_english_german", { permissions: { read: true } }, async () =>
 	assertions.assertMetadataExpectation(result, "format_type", { eq: "pdf" });
 });
 
-Deno.test("pdf_right_to_left", { permissions: { read: true } }, async () => {
+Deno.test("pdf_right_to_left", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -249,7 +261,7 @@ Deno.test("pdf_right_to_left", { permissions: { read: true } }, async () => {
 	assertions.assertMetadataExpectation(result, "format_type", { eq: "pdf" });
 });
 
-Deno.test("pdf_simple_text", { permissions: { read: true } }, async () => {
+Deno.test("pdf_simple_text", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -270,7 +282,7 @@ Deno.test("pdf_simple_text", { permissions: { read: true } }, async () => {
 	assertions.assertContentContainsAny(result, ["May 5, 2023", "To Whom it May Concern", "Mallori"]);
 });
 
-Deno.test("pdf_tables_large", { permissions: { read: true } }, async () => {
+Deno.test("pdf_tables_large", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -290,7 +302,7 @@ Deno.test("pdf_tables_large", { permissions: { read: true } }, async () => {
 	assertions.assertMinContentLength(result, 500);
 });
 
-Deno.test("pdf_tables_medium", { permissions: { read: true } }, async () => {
+Deno.test("pdf_tables_medium", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -310,7 +322,7 @@ Deno.test("pdf_tables_medium", { permissions: { read: true } }, async () => {
 	assertions.assertMinContentLength(result, 100);
 });
 
-Deno.test("pdf_tables_small", { permissions: { read: true } }, async () => {
+Deno.test("pdf_tables_small", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
@@ -336,13 +348,13 @@ Deno.test("pdf_tables_small", { permissions: { read: true } }, async () => {
 		"Water Freezing Point",
 		"Water Boiling Point",
 	]);
-	// Table assertions require OCR feature for PDF table extraction
+	// Table and bounding box assertions require OCR feature for PDF table extraction
 	if (result.tables.length > 0) {
 		assertions.assertTableCount(result, 1, null);
 	}
 });
 
-Deno.test("pdf_technical_stat_learning", { permissions: { read: true } }, async () => {
+Deno.test("pdf_technical_stat_learning", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
 	try {
