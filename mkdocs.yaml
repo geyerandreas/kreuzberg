@@ -174,6 +174,9 @@ nav:
       - Configuration: guides/configuration.md
       - OCR: guides/ocr.md
       - Element-Based Output: guides/element-based-output.md
+      - Document Structure: guides/document-structure.md
+      - PDF Hierarchy: guides/pdf-hierarchy.md
+      - Keyword Extraction: guides/keywords.md
       - Advanced Features: guides/advanced.md
       - Docker Deployment: guides/docker.md
       - Kubernetes Deployment: guides/kubernetes.md
@@ -196,6 +199,8 @@ nav:
       - R: reference/api-r.md
       - Elixir: reference/api-elixir.md
       - Configuration: reference/configuration.md
+      - Environment Variables: reference/environment-variables.md
+      - File Size Limits: reference/file-size-limits.md
       - Format Support: reference/formats.md
       - Types: reference/types.md
       - Errors: reference/errors.md
