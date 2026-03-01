@@ -128,6 +128,12 @@ language = "en"
 # min_word_length = 1        # Minimum word length to consider (default: 1)
 # max_words_per_phrase = 3   # Maximum words in a keyword phrase (default: 3)
 
+# Layout detection (requires layout-detection feature)
+# [layout]
+# preset = "fast"          # Options: fast (YOLO), accurate (RT-DETR)
+# apply_heuristics = true  # Post-processing heuristics for better results
+# confidence_threshold = 0.35  # Optional: override model default threshold
+
 [token_reduction]
 mode = "off"
 

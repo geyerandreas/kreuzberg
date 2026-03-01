@@ -129,6 +129,7 @@ impl ExtractionConfig {
                     kreuzberg::core::config::formats::OutputFormat::Plain
                 },
                 security_limits: None,
+                layout: None,
             },
             html_options_dict,
         })

@@ -275,9 +275,8 @@ impl YoloModel {
         }
 
         let mut detections = Vec::new();
-        for i in 0..num_anchors {
+        for (i, &(gx, gy, s)) in grids.iter().enumerate() {
             let offset = i * cols;
-            let (gx, gy, s) = grids[i];
 
             // Decode box: (raw + grid) * stride for xy, exp(raw) * stride for wh
             let cx = (data[offset] + gx) * s;

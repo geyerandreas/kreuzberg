@@ -10,4 +10,6 @@ pub enum LayoutError {
     SessionNotInitialized,
     #[error("Invalid model output: {0}")]
     InvalidOutput(String),
+    #[error("Model download failed: {0}")]
+    ModelDownload(String),
 }

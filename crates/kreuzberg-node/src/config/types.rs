@@ -1034,6 +1034,7 @@ impl TryFrom<JsExtractionConfig> for ExtractionConfig {
                 .unwrap_or_default(),
             include_document_structure: val.include_document_structure.unwrap_or(false),
             security_limits: None,
+            layout: None,
         })
     }
 }

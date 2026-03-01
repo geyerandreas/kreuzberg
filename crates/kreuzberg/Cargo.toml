@@ -74,6 +74,8 @@ paddle-ocr = [
     "tokio-runtime",
     "ocr",
 ]
+# Layout detection via ONNX Runtime (YOLO + RT-DETR)
+layout-detection = ["dep:kreuzberg-layout", "dep:image", "tokio-runtime"]
 language-detection = ["dep:whatlang"]
 chunking = ["dep:text-splitter"]
 embeddings = ["dep:fastembed", "dep:reqwest", "chunking", "tokio-runtime"]
@@ -115,6 +117,7 @@ full = [
     "archives",
     "ocr",
     "paddle-ocr",
+    "layout-detection",
     "language-detection",
     "chunking",
     "embeddings",
@@ -125,7 +128,22 @@ full = [
     "mcp",
     "otel",
 ]
-server = ["pdf", "excel", "html", "ocr", "paddle-ocr", "chunking", "api", "mcp"]
+server = ["pdf", "excel", "html", "ocr", "paddle-ocr", "layout-detection", "chunking", "api", "mcp"]
+cli = [
+    "pdf",
+    "excel",
+    "office",
+    "email",
+    "html",
+    "xml",
+    "ocr",
+    "paddle-ocr",
+    "layout-detection",
+    "language-detection",
+    "chunking",
+    "quality",
+    "mdx",
+]
 
 [build-dependencies]
 tracing = { workspace = true }
@@ -249,6 +267,8 @@ image = { workspace = true, default-features = false, features = ["png"] }
 pprof = { version = "0.15.0", features = ["flamegraph"], optional = true }
 # PaddleOCR via ONNX Runtime - not available on WASM (vendored from paddle-ocr-rs)
 kreuzberg-paddle-ocr = { path = "../kreuzberg-paddle-ocr", version = "4.3", optional = true }
+# Layout detection via ONNX Runtime - not available on WASM
+kreuzberg-layout = { path = "../kreuzberg-layout", version = "4.4", optional = true }
 # Use rustls on non-Windows platforms (Linux, macOS)
 # Blocking feature needed for model downloads
 reqwest = { workspace = true, default-features = false, features = [
@@ -269,6 +289,8 @@ ureq = { version = "3.2", default-features = false, features = ["rustls", "json"
 [target.'cfg(all(target_os = "windows", not(target_arch = "wasm32")))'.dependencies]
 # PaddleOCR via ONNX Runtime - not available on WASM (vendored from paddle-ocr-rs)
 kreuzberg-paddle-ocr = { path = "../kreuzberg-paddle-ocr", version = "4.3", optional = true }
+# Layout detection via ONNX Runtime - not available on WASM
+kreuzberg-layout = { path = "../kreuzberg-layout", version = "4.4", optional = true }
 # Blocking feature needed for model downloads
 reqwest = { workspace = true, default-features = false, features = [
     "json",

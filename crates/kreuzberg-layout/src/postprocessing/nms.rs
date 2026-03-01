@@ -5,7 +5,7 @@ use crate::types::LayoutDetection;
 /// Sorts detections by confidence (descending), then iteratively removes
 /// detections that have IoU > `iou_threshold` with any higher-confidence detection.
 ///
-/// This is required for YOLO and Detectron2 models. RT-DETR is NMS-free.
+/// This is required for YOLO models. RT-DETR is NMS-free.
 pub fn greedy_nms(detections: &mut Vec<LayoutDetection>, iou_threshold: f32) {
     detections.sort_by(|a, b| {
         b.confidence

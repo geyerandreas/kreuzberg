@@ -7,7 +7,7 @@ members = [
     "crates/kreuzberg-tesseract",
     "crates/kreuzberg-paddle-ocr",
     "crates/kreuzberg-pdfium-render",
-    "crates/kreuzberg-docling-layout",
+    "crates/kreuzberg-layout",
     "crates/kreuzberg-cli",
     "crates/kreuzberg-node",
     "crates/kreuzberg-wasm",
@@ -26,6 +26,7 @@ kreuzberg = { path = "crates/kreuzberg" }
 kreuzberg-tesseract = { path = "crates/kreuzberg-tesseract" }
 kreuzberg-paddle-ocr = { path = "crates/kreuzberg-paddle-ocr" }
 kreuzberg-pdfium-render = { path = "crates/kreuzberg-pdfium-render" }
+kreuzberg-layout = { path = "crates/kreuzberg-layout" }
 
 [workspace.package]
 version = "4.4.1"

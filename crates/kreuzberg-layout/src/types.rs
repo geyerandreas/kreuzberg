@@ -72,10 +72,11 @@ impl fmt::Display for BBox {
     }
 }
 
-/// The 17 document layout classes detected by Docling models.
+/// The 17 canonical document layout classes.
 ///
-/// Models with fewer classes (DocLayNet: 11, PubLayNet: 5) map to the
-/// closest equivalent in this canonical set.
+/// All model backends (RT-DETR, YOLO, etc.) map their native class IDs
+/// to this shared set. Models with fewer classes (DocLayNet: 11, PubLayNet: 5)
+/// map to the closest equivalent.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LayoutClass {
     Caption,

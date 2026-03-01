@@ -1,19 +1,18 @@
 [package]
-name = "kreuzberg-docling-layout"
+name = "kreuzberg-layout"
 version.workspace = true
 edition = "2024"
 rust-version.workspace = true
 authors.workspace = true
-description = "Docling layout detection via ONNX Runtime for Kreuzberg"
+description = "Document layout detection via ONNX Runtime for Kreuzberg"
 license.workspace = true
 repository.workspace = true
 homepage = "https://kreuzberg.dev"
-keywords = ["layout", "detection", "onnx", "document", "docling"]
+keywords = ["layout", "detection", "onnx", "document", "yolo"]
 categories = ["computer-vision", "text-processing"]
-exclude = ["tests/*"]
 
 [lib]
-name = "kreuzberg_docling_layout"
+name = "kreuzberg_layout"
 crate-type = ["lib"]
 
 [dependencies]
@@ -22,9 +21,11 @@ image = { workspace = true, features = ["png", "jpeg"] }
 ndarray = "0.17"
 num_cpus = { workspace = true }
 ort = { version = "2.0.0-rc.11", default-features = false, features = ["ndarray"] }
-
-[dev-dependencies]
-hf-hub = "0.4"
+serde = { workspace = true }
+tracing = { workspace = true }
+hf-hub = { version = "0.5", default-features = false, features = ["ureq"] }
+sha2 = "0.10"
+hex = { workspace = true }
 
 [features]
 default = ["load-dynamic"]
