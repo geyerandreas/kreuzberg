@@ -2352,16 +2352,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "629d8f3bbeda9d148036d6b0de0a3ab947abd08ce90626327fc3547a49d59d97"
 dependencies = [
  "dirs",
+ "futures",
  "http",
  "indicatif 0.17.11",
  "libc",
  "log",
  "native-tls",
+ "num_cpus",
  "rand 0.9.2",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
+ "tokio",
  "ureq 2.12.1",
  "windows-sys 0.60.2",
 ]
@@ -3181,6 +3184,18 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "ureq 3.2.0",
+]
+
+[[package]]
+name = "kreuzberg-docling-layout"
+version = "4.4.1"
+dependencies = [
+ "hf-hub 0.4.3",
+ "image",
+ "ndarray",
+ "num_cpus",
+ "ort",
+ "thiserror 2.0.18",
 ]
 
 [[package]]

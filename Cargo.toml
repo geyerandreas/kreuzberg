@@ -7,6 +7,7 @@ members = [
     "crates/kreuzberg-tesseract",
     "crates/kreuzberg-paddle-ocr",
     "crates/kreuzberg-pdfium-render",
+    "crates/kreuzberg-docling-layout",
     "crates/kreuzberg-cli",
     "crates/kreuzberg-node",
     "crates/kreuzberg-wasm",
