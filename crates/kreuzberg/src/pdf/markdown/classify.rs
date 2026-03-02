@@ -189,6 +189,52 @@ fn starts_with_section_number(text: &str) -> bool {
     false
 }
 
+/// Demote unnumbered H2 headings to H3 when they appear between numbered H2 sections.
+///
+/// In documents with numbered sections (e.g., "1 INTRODUCTION", "5 EXPERIMENTS"),
+/// unnumbered headings between consecutive numbered H2s are typically sub-sections.
+/// For example, "Baselines for Object Detection" between "5 EXPERIMENTS" and
+/// "6 CONCLUSION" should be H3, not H2.
+///
+/// Only applies when the document has at least 3 numbered H2 headings, indicating
+/// a consistent numbering scheme.
+pub(super) fn demote_unnumbered_subsections(all_pages: &mut [Vec<PdfParagraph>]) {
+    // Collect all H2 headings with their position and numbered status
+    let mut h2_info: Vec<(usize, usize, bool)> = Vec::new(); // (page_idx, para_idx, is_numbered)
+    for (page_idx, page) in all_pages.iter().enumerate() {
+        for (para_idx, para) in page.iter().enumerate() {
+            if para.heading_level == Some(2) {
+                let text = paragraph_plain_text(para);
+                h2_info.push((page_idx, para_idx, starts_with_section_number(&text)));
+            }
+        }
+    }
+
+    let numbered_count = h2_info.iter().filter(|(_, _, numbered)| *numbered).count();
+    if numbered_count < 3 {
+        return; // Not enough numbered sections to establish a pattern
+    }
+
+    // Find ranges: between consecutive numbered H2s, demote unnumbered H2s to H3
+    let numbered_positions: Vec<usize> = h2_info
+        .iter()
+        .enumerate()
+        .filter(|(_, (_, _, numbered))| *numbered)
+        .map(|(idx, _)| idx)
+        .collect();
+
+    for window in numbered_positions.windows(2) {
+        let start = window[0];
+        let end = window[1];
+        // Demote unnumbered H2s between these two numbered H2s
+        for &(page_idx, para_idx, is_numbered) in &h2_info[start + 1..end] {
+            if !is_numbered {
+                all_pages[page_idx][para_idx].heading_level = Some(3);
+            }
+        }
+    }
+}
+
 /// Extract plain text from a paragraph.
 fn paragraph_plain_text(para: &PdfParagraph) -> String {
     para.lines

@@ -9,7 +9,7 @@ use super::bridge::{
     ImagePosition, apply_ligature_repairs, build_ligature_repair_map, extracted_blocks_to_paragraphs,
     filter_sidebar_blocks, objects_to_page_data, repair_contextual_ligatures, text_has_ligature_corruption,
 };
-use super::classify::{classify_paragraphs, refine_heading_hierarchy};
+use super::classify::{classify_paragraphs, demote_unnumbered_subsections, refine_heading_hierarchy};
 use super::columns::split_segments_into_columns;
 use super::constants::{
     FULL_LINE_FRACTION, MIN_FONT_SIZE, MIN_HEADING_FONT_GAP, MIN_HEADING_FONT_RATIO, PAGE_BOTTOM_MARGIN_FRACTION,
@@ -426,6 +426,7 @@ pub fn render_document_as_markdown_with_tables(
     // Refine heading hierarchy across the document: merge split titles and
     // demote numbered section headings when a title H1 is detected.
     refine_heading_hierarchy(&mut all_page_paragraphs);
+    demote_unnumbered_subsections(&mut all_page_paragraphs);
 
     let total_paragraphs: usize = all_page_paragraphs.iter().map(|p| p.len()).sum();
     tracing::debug!(
