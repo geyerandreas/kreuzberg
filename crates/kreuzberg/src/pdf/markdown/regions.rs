@@ -199,23 +199,143 @@ fn assign_segments_to_regions<'a>(
 
 /// Sort regions in reading order: top-to-bottom, left-to-right within same row.
 ///
-/// Two regions whose vertical centers are within `REGION_SAME_ROW_FRACTION`
-/// of `page_height` are considered same-row and sorted left-to-right.
+/// First detects if the page has a multi-column layout by analyzing horizontal
+/// gaps between region bounding boxes. If columns are detected, processes each
+/// column top-to-bottom (left column first, then right column). Otherwise
+/// falls back to simple Y-ordering with same-row left-to-right sorting.
 fn order_regions_reading_order(regions: &mut [LayoutRegion], page_height: f32) {
-    let y_tolerance = page_height * REGION_SAME_ROW_FRACTION;
+    if let Some(split_x) = detect_region_column_split(regions) {
+        // Column-aware ordering: left column first, then right
+        regions.sort_by(|a, b| {
+            let a_cx = (a.hint.left + a.hint.right) / 2.0;
+            let b_cx = (b.hint.left + b.hint.right) / 2.0;
+            let a_col = if a_cx < split_x { 0u8 } else { 1 };
+            let b_col = if b_cx < split_x { 0u8 } else { 1 };
 
-    regions.sort_by(|a, b| {
-        let a_cy = (a.hint.top + a.hint.bottom) / 2.0;
-        let b_cy = (b.hint.top + b.hint.bottom) / 2.0;
+            if a_col != b_col {
+                return a_col.cmp(&b_col);
+            }
 
-        // If vertical centers are close, they're in the same row → sort left-to-right
-        if (a_cy - b_cy).abs() < y_tolerance {
-            a.hint.left.total_cmp(&b.hint.left)
-        } else {
-            // Higher Y = top of page in PDF coords → comes first in reading order
+            // Same column: higher Y = top of page → comes first
+            let a_cy = (a.hint.top + a.hint.bottom) / 2.0;
+            let b_cy = (b.hint.top + b.hint.bottom) / 2.0;
             b_cy.total_cmp(&a_cy)
+        });
+    } else {
+        let y_tolerance = page_height * REGION_SAME_ROW_FRACTION;
+
+        regions.sort_by(|a, b| {
+            let a_cy = (a.hint.top + a.hint.bottom) / 2.0;
+            let b_cy = (b.hint.top + b.hint.bottom) / 2.0;
+
+            // If vertical centers are close, they're in the same row → sort left-to-right
+            if (a_cy - b_cy).abs() < y_tolerance {
+                a.hint.left.total_cmp(&b.hint.left)
+            } else {
+                // Higher Y = top of page in PDF coords → comes first in reading order
+                b_cy.total_cmp(&a_cy)
+            }
+        });
+    }
+}
+
+/// Minimum absolute gap (in points) between region columns.
+const MIN_REGION_COLUMN_GAP: f32 = 5.0;
+
+/// Minimum vertical extent (fraction) that each column must span.
+const MIN_COLUMN_VERTICAL_FRACTION: f32 = 0.3;
+
+/// Detect if layout regions form two distinct columns.
+///
+/// Returns the x-position to split at, or None if no column layout detected.
+/// Only considers content regions (excludes PageHeader/PageFooter).
+fn detect_region_column_split(regions: &[LayoutRegion]) -> Option<f32> {
+    if regions.len() < 4 {
+        return None;
+    }
+
+    // Collect horizontal edges of content regions
+    let mut edges: Vec<(f32, f32)> = regions
+        .iter()
+        .filter(|r| !matches!(r.hint.class, LayoutHintClass::PageHeader | LayoutHintClass::PageFooter))
+        .map(|r| (r.hint.left, r.hint.right))
+        .collect();
+
+    if edges.len() < 4 {
+        return None;
+    }
+
+    edges.sort_by(|a, b| a.0.total_cmp(&b.0));
+
+    // Find the largest horizontal gap
+    let mut max_right = f32::MIN;
+    let mut best_gap = 0.0_f32;
+    let mut best_split: Option<f32> = None;
+
+    for &(left, right) in &edges {
+        if max_right > f32::MIN {
+            let gap = left - max_right;
+            if gap > best_gap {
+                best_gap = gap;
+                best_split = Some((max_right + left) / 2.0);
+            }
         }
-    });
+        max_right = max_right.max(right);
+    }
+
+    if best_gap < MIN_REGION_COLUMN_GAP {
+        return None;
+    }
+
+    let split_x = best_split?;
+
+    // Validate: both sides have at least 2 content regions
+    let left_count = regions
+        .iter()
+        .filter(|r| (r.hint.left + r.hint.right) / 2.0 < split_x)
+        .count();
+    let right_count = regions
+        .iter()
+        .filter(|r| (r.hint.left + r.hint.right) / 2.0 >= split_x)
+        .count();
+
+    if left_count < 2 || right_count < 2 {
+        return None;
+    }
+
+    // Validate: both columns span a significant portion of vertical extent
+    let y_min = regions.iter().map(|r| r.hint.bottom).fold(f32::MAX, f32::min);
+    let y_max = regions.iter().map(|r| r.hint.top).fold(f32::MIN, f32::max);
+    let y_span = y_max - y_min;
+
+    if y_span < 1.0 {
+        return None;
+    }
+
+    let left_y_span = {
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for r in regions.iter().filter(|r| (r.hint.left + r.hint.right) / 2.0 < split_x) {
+            lo = lo.min(r.hint.bottom);
+            hi = hi.max(r.hint.top);
+        }
+        hi - lo
+    };
+    let right_y_span = {
+        let mut lo = f32::MAX;
+        let mut hi = f32::MIN;
+        for r in regions.iter().filter(|r| (r.hint.left + r.hint.right) / 2.0 >= split_x) {
+            lo = lo.min(r.hint.bottom);
+            hi = hi.max(r.hint.top);
+        }
+        hi - lo
+    };
+
+    if left_y_span < y_span * MIN_COLUMN_VERTICAL_FRACTION || right_y_span < y_span * MIN_COLUMN_VERTICAL_FRACTION {
+        return None;
+    }
+
+    Some(split_x)
 }
 
 /// Apply a layout region's class to all paragraphs assembled from it.
