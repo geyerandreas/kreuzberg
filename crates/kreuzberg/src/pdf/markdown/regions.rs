@@ -377,6 +377,12 @@ fn apply_heading_region(
             .flat_map(|l| l.segments.iter())
             .map(|s| s.text.split_whitespace().count())
             .sum();
+        // Guard: very short bold text (1-2 words) at body font size in a SectionHeader
+        // region is almost always a figure label (e.g., "Untightened nut", "Nut case"),
+        // not a real heading. Real 2-word headings use a larger font size.
+        if word_count <= 2 && body_font_size > 0.0 && para.dominant_font_size <= body_font_size + 0.5 {
+            continue;
+        }
         let is_italic = !para.lines.is_empty() && para.lines.iter().all(|l| l.segments.iter().all(|s| s.is_italic));
         if (para.is_bold || is_italic) && !para.is_list_item && word_count <= MAX_BOLD_HEADING_WORD_COUNT {
             // Apply same guards as the main heading assignment path

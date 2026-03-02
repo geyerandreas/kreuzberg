@@ -7,6 +7,12 @@ use super::types::PdfParagraph;
 /// Classify paragraphs as headings or body using the global heading map and bold heuristic.
 pub(super) fn classify_paragraphs(paragraphs: &mut [PdfParagraph], heading_map: &[(f32, Option<u8>)]) {
     let gap_info = precompute_gap_info(heading_map);
+    // Body font size = centroid of the cluster with no heading level
+    let body_font_size = heading_map
+        .iter()
+        .find(|(_, level)| level.is_none())
+        .map(|(centroid, _)| *centroid)
+        .unwrap_or(0.0);
     for para in paragraphs.iter_mut() {
         let word_count: usize = para
             .lines
@@ -27,8 +33,6 @@ pub(super) fn classify_paragraphs(paragraphs: &mut [PdfParagraph], heading_map: 
 
         // Pass 2: bold or italic short paragraphs → section headings (H2).
         // Some documents use italic instead of bold for section titles.
-        // Guard: reject paragraphs ending with period (captions, sentences)
-        // or colon (introductory text).
         let is_italic = !para.lines.is_empty() && para.lines.iter().all(|l| l.segments.iter().all(|s| s.is_italic));
         if (para.is_bold || is_italic) && !para.is_list_item && word_count <= MAX_BOLD_HEADING_WORD_COUNT {
             let text: String = para
@@ -46,7 +50,12 @@ pub(super) fn classify_paragraphs(paragraphs: &mut [PdfParagraph], heading_map: 
             } else {
                 true
             };
-            if italic_ok && !t.ends_with('.') && !t.ends_with(':') && !looks_like_figure_label(t) {
+            // Guard: very short text (1-2 words) at body font size is typically a
+            // figure label (e.g., "Untightened nut"), not a real heading.
+            let too_short_at_body =
+                word_count <= 2 && body_font_size > 0.0 && para.dominant_font_size <= body_font_size + 0.5;
+            if italic_ok && !too_short_at_body && !t.ends_with('.') && !t.ends_with(':') && !looks_like_figure_label(t)
+            {
                 para.heading_level = Some(2);
             }
         }
