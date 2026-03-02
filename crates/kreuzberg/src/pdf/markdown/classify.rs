@@ -1,6 +1,7 @@
 //! Heading classification for paragraphs using font-size clustering.
 
 use super::constants::{MAX_BOLD_HEADING_WORD_COUNT, MAX_HEADING_DISTANCE_MULTIPLIER, MAX_HEADING_WORD_COUNT};
+use super::regions::looks_like_figure_label;
 use super::types::PdfParagraph;
 
 /// Classify paragraphs as headings or body using the global heading map and bold heuristic.
@@ -24,9 +25,30 @@ pub(super) fn classify_paragraphs(paragraphs: &mut [PdfParagraph], heading_map: 
             continue;
         }
 
-        // Pass 2: bold short paragraphs → section headings (H2)
-        if para.is_bold && !para.is_list_item && word_count <= MAX_BOLD_HEADING_WORD_COUNT {
-            para.heading_level = Some(2);
+        // Pass 2: bold or italic short paragraphs → section headings (H2).
+        // Some documents use italic instead of bold for section titles.
+        // Guard: reject paragraphs ending with period (captions, sentences)
+        // or colon (introductory text).
+        let is_italic = !para.lines.is_empty() && para.lines.iter().all(|l| l.segments.iter().all(|s| s.is_italic));
+        if (para.is_bold || is_italic) && !para.is_list_item && word_count <= MAX_BOLD_HEADING_WORD_COUNT {
+            let text: String = para
+                .lines
+                .iter()
+                .flat_map(|l| l.segments.iter())
+                .map(|s| s.text.as_str())
+                .collect::<Vec<_>>()
+                .join(" ");
+            let t = text.trim();
+            // Italic-only paragraphs need extra guards: academic papers use italic
+            // for author names, affiliations, emails which shouldn't be headings.
+            let italic_ok = if is_italic && !para.is_bold {
+                !t.contains('@') && !t.contains(',') && t.chars().next().is_some_and(|c| c.is_ascii_uppercase())
+            } else {
+                true
+            };
+            if italic_ok && !t.ends_with('.') && !t.ends_with(':') && !looks_like_figure_label(t) {
+                para.heading_level = Some(2);
+            }
         }
 
         // Pass 3: code blocks should never be headings

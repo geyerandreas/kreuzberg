@@ -298,6 +298,18 @@ fn apply_heading_region(
             continue; // Introductory body text
         }
 
+        // Guard: headings don't end with a period. Captions, taglines, and
+        // figure descriptions do (e.g., "Figure 7-26. Self-locking nuts.",
+        // "Looking back on 175 years of looking forward.").
+        if trimmed.ends_with('.') {
+            continue;
+        }
+
+        // Guard: figure/diagram labels (single-letter sequences, repetitive words)
+        if looks_like_figure_label(trimmed) {
+            continue;
+        }
+
         // Combine layout model class with font-size clustering and text analysis.
         // The heading_map (from font-size clustering) may know the correct level
         // when the model mislabels a title as SectionHeader. The text-based
@@ -357,17 +369,61 @@ fn apply_heading_region(
         if para.heading_level.is_some() {
             continue;
         }
-        // Bold short paragraph heuristic (same as classify.rs Pass 2)
+        // Bold or italic short paragraph heuristic (extends classify.rs Pass 2).
+        // Some documents use italic instead of bold for section titles.
         let word_count: usize = para
             .lines
             .iter()
             .flat_map(|l| l.segments.iter())
             .map(|s| s.text.split_whitespace().count())
             .sum();
-        if para.is_bold && !para.is_list_item && word_count <= MAX_BOLD_HEADING_WORD_COUNT {
-            para.heading_level = Some(2);
+        let is_italic = !para.lines.is_empty() && para.lines.iter().all(|l| l.segments.iter().all(|s| s.is_italic));
+        if (para.is_bold || is_italic) && !para.is_list_item && word_count <= MAX_BOLD_HEADING_WORD_COUNT {
+            // Apply same guards as the main heading assignment path
+            let text: String = para
+                .lines
+                .iter()
+                .flat_map(|l| l.segments.iter())
+                .map(|s| s.text.as_str())
+                .collect::<Vec<_>>()
+                .join(" ");
+            let t = text.trim();
+            // Extra guards for italic-only (not bold): filter affiliations/emails
+            let italic_ok = if is_italic && !para.is_bold {
+                !t.contains('@') && !t.contains(',') && t.chars().next().is_some_and(|c| c.is_ascii_uppercase())
+            } else {
+                true
+            };
+            if italic_ok && !t.ends_with('.') && !t.ends_with(':') && !looks_like_figure_label(t) {
+                para.heading_level = Some(2);
+            }
         }
     }
+}
+
+/// Check if text looks like a figure/diagram label rather than a real heading.
+///
+/// Catches concatenated figure labels (e.g., "Tightened nut Flexloc nut
+/// Fiber locknut Elastic stop nut") and pure single-letter sequences ("A B C").
+pub(super) fn looks_like_figure_label(text: &str) -> bool {
+    let words: Vec<&str> = text.split_whitespace().collect();
+
+    // All single-character words (3+): "A B C", "D E F"
+    if words.len() >= 3 && words.iter().all(|w| w.len() <= 1) {
+        return true;
+    }
+
+    // Concatenated labels: same word appears 3+ times (e.g., "nut" in figure parts)
+    if words.len() >= 5 {
+        for w in &words {
+            let lw = w.to_ascii_lowercase();
+            if words.iter().filter(|x| x.to_ascii_lowercase() == lw).count() >= 3 {
+                return true;
+            }
+        }
+    }
+
+    false
 }
 
 /// Merge continuation paragraphs, respecting layout class boundaries.
