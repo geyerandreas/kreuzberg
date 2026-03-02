@@ -183,6 +183,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         }
     }
 

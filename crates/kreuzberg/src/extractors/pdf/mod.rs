@@ -27,6 +27,61 @@ use extraction::extract_all_from_document;
 use ocr::extract_with_ocr;
 use pages::assign_tables_and_images_to_pages;
 
+/// Run layout detection on PDF bytes and return per-page layout hints.
+///
+/// Returns `None` when layout detection is not configured or fails.
+/// Failures are logged as warnings but do not propagate — extraction
+/// continues without layout hints (graceful degradation).
+#[cfg(all(feature = "pdf", feature = "layout-detection"))]
+fn run_layout_detection(
+    content: &[u8],
+    config: &ExtractionConfig,
+) -> Option<Vec<Vec<crate::pdf::markdown::types::LayoutHint>>> {
+    let layout_config = config.layout.as_ref()?;
+
+    // Skip layout detection when force_ocr is set — OCR results produce
+    // their own markdown via hOCR, so layout hints would be unused.
+    if config.force_ocr {
+        tracing::debug!("Layout detection skipped: force_ocr is enabled");
+        return None;
+    }
+
+    // Only run for output formats that use the markdown pipeline.
+    let needs_structured = matches!(
+        config.output_format,
+        OutputFormat::Markdown | OutputFormat::Djot | OutputFormat::Html
+    );
+    if !needs_structured {
+        tracing::debug!("Layout detection skipped: output format does not use markdown pipeline");
+        return None;
+    }
+
+    let mut engine = match crate::layout_detection::create_engine(layout_config) {
+        Ok(e) => e,
+        Err(e) => {
+            tracing::warn!("Layout engine init failed, continuing without: {}", e);
+            return None;
+        }
+    };
+
+    match crate::pdf::layout_runner::detect_layout_for_document(content, &mut engine) {
+        Ok((results, timing)) => {
+            tracing::info!(
+                total_ms = timing.total_ms,
+                avg_inference_ms = timing.avg_inference_ms(),
+                page_count = results.len(),
+                total_detections = results.iter().map(|r| r.regions.len()).sum::<usize>(),
+                "Layout detection completed"
+            );
+            Some(extraction::convert_results_to_hints(&results))
+        }
+        Err(e) => {
+            tracing::warn!("Layout detection failed, continuing without: {}", e);
+            None
+        }
+    }
+}
+
 /// PDF document extractor using pypdfium2 and playa-pdf.
 pub struct PdfExtractor;
 
@@ -121,10 +176,18 @@ impl DocumentExtractor for PdfExtractor {
                     }
                 })?;
 
-                extract_all_from_document(&document, config)?
+                extract_all_from_document(&document, config, None)?
             }
             #[cfg(all(not(target_arch = "wasm32"), feature = "tokio-runtime"))]
             {
+                // Run layout detection on the derotated bytes (shared by all tokio paths).
+                // Layout hints are plain data (Vec/f32/enum), so they are Send and can
+                // be moved into spawn_blocking if needed.
+                #[cfg(feature = "layout-detection")]
+                let layout_hints = run_layout_detection(content, config);
+                #[cfg(not(feature = "layout-detection"))]
+                let layout_hints: Option<Vec<Vec<crate::pdf::markdown::types::LayoutHint>>> = None;
+
                 if crate::core::batch_mode::is_batch_mode() {
                     let content_owned = content.to_vec();
                     let span = tracing::Span::current();
@@ -156,7 +219,7 @@ impl DocumentExtractor for PdfExtractor {
                             pre_rendered_markdown,
                             has_font_encoding_issues,
                             pdf_annotations,
-                        ) = extract_all_from_document(&document, &config_owned)
+                        ) = extract_all_from_document(&document, &config_owned, layout_hints.as_deref())
                             .map_err(|e| PdfError::ExtractionFailed(e.to_string()))?;
 
                         if let Some(page_cfg) = config_owned.pages.as_ref()
@@ -200,11 +263,16 @@ impl DocumentExtractor for PdfExtractor {
                         }
                     })?;
 
-                    extract_all_from_document(&document, config)?
+                    extract_all_from_document(&document, config, layout_hints.as_deref())?
                 }
             }
             #[cfg(all(not(target_arch = "wasm32"), not(feature = "tokio-runtime")))]
             {
+                #[cfg(feature = "layout-detection")]
+                let layout_hints = run_layout_detection(content, config);
+                #[cfg(not(feature = "layout-detection"))]
+                let layout_hints: Option<Vec<Vec<crate::pdf::markdown::types::LayoutHint>>> = None;
+
                 let pdfium =
                     crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")?;
 
@@ -217,7 +285,7 @@ impl DocumentExtractor for PdfExtractor {
                     }
                 })?;
 
-                extract_all_from_document(&document, config)?
+                extract_all_from_document(&document, config, layout_hints.as_deref())?
             }
         };
 

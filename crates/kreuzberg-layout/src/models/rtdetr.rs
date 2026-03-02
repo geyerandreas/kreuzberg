@@ -39,14 +39,21 @@ impl RtDetrModel {
     }
 
     /// Run inference and extract detections from raw outputs.
+    ///
+    /// Uses aspect-preserving letterbox preprocessing (Lanczos3) to avoid
+    /// distorting the page geometry. The model sees a properly proportioned
+    /// image, which produces more accurate bounding box coordinates.
     fn run_inference(&mut self, img: &RgbImage, threshold: f32) -> Result<Vec<LayoutDetection>, LayoutError> {
         let orig_width = img.width();
         let orig_height = img.height();
 
-        let input_tensor = preprocessing::preprocess_imagenet(img, INPUT_SIZE);
+        // Letterbox preprocessing: resize preserving aspect ratio, pad to 640×640.
+        let (input_tensor, scale, pad_x, pad_y) = preprocessing::preprocess_imagenet_letterbox(img, INPUT_SIZE);
         let images_tensor = Tensor::from_array(input_tensor)?;
 
-        let sizes = Array::from_shape_vec((1, 2), vec![orig_height as i64, orig_width as i64])
+        // Tell the model the "original" size is 640×640 (the letterboxed size).
+        // The model maps output boxes to this coordinate space; we un-letterbox below.
+        let sizes = Array::from_shape_vec((1, 2), vec![INPUT_SIZE as i64, INPUT_SIZE as i64])
             .map_err(|e| LayoutError::InvalidOutput(format!("Failed to create sizes tensor: {e}")))?;
         let sizes_tensor = Tensor::from_array(sizes)?;
 
@@ -96,6 +103,11 @@ impl RtDetrModel {
             box_shape[0]
         };
 
+        // Un-letterbox: map from padded 640×640 space → original image coordinates.
+        let inv_scale = 1.0 / scale;
+        let pad_x_f = pad_x as f32;
+        let pad_y_f = pad_y as f32;
+
         let mut detections = Vec::new();
         for i in 0..num_detections {
             let score = scores[i];
@@ -109,11 +121,11 @@ impl RtDetrModel {
                 None => continue,
             };
 
-            // RT-DETR outputs boxes in original image coordinates directly.
-            let x1 = boxes[i * 4];
-            let y1 = boxes[i * 4 + 1];
-            let x2 = boxes[i * 4 + 2];
-            let y2 = boxes[i * 4 + 3];
+            // Boxes are in 640×640 letterboxed coordinates. Remove padding and rescale.
+            let x1 = ((boxes[i * 4] - pad_x_f) * inv_scale).clamp(0.0, orig_width as f32);
+            let y1 = ((boxes[i * 4 + 1] - pad_y_f) * inv_scale).clamp(0.0, orig_height as f32);
+            let x2 = ((boxes[i * 4 + 2] - pad_x_f) * inv_scale).clamp(0.0, orig_width as f32);
+            let y2 = ((boxes[i * 4 + 3] - pad_y_f) * inv_scale).clamp(0.0, orig_height as f32);
 
             detections.push(LayoutDetection::new(class, score, BBox::new(x1, y1, x2, y2)));
         }

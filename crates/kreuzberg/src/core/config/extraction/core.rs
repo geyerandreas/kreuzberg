@@ -127,8 +127,11 @@ pub struct ExtractionConfig {
 
     /// Layout detection configuration (None = layout detection disabled).
     ///
-    /// When set, PDF pages are analyzed for document structure (tables, figures,
-    /// headers, etc.) using YOLO or RT-DETR models via ONNX Runtime.
+    /// When set, PDF pages and images are analyzed for document structure
+    /// (headings, code, formulas, tables, figures, etc.) using RT-DETR models
+    /// via ONNX Runtime. For PDFs, layout hints override paragraph classification
+    /// in the markdown pipeline. For images, per-region OCR is performed with
+    /// markdown formatting based on detected layout classes.
     /// Requires the `layout-detection` feature.
     #[cfg(feature = "layout-detection")]
     #[serde(default)]

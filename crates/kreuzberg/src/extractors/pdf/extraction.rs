@@ -51,6 +51,7 @@ pub(crate) type PdfExtractionPhaseResult = (
 pub(crate) fn extract_all_from_document(
     document: &PdfDocument,
     config: &ExtractionConfig,
+    layout_hints: Option<&[Vec<crate::pdf::markdown::types::LayoutHint>]>,
 ) -> Result<PdfExtractionPhaseResult> {
     let (native_text, boundaries, page_contents, pdf_metadata) =
         crate::pdf::text::extract_text_and_metadata_from_pdf_document(document, Some(config))?;
@@ -104,6 +105,7 @@ pub(crate) fn extract_all_from_document(
             top_margin,
             bottom_margin,
             page_marker_format,
+            layout_hints,
         ) {
             Ok((md, has_encoding_issues)) if !md.trim().is_empty() => {
                 tracing::debug!(
@@ -147,6 +149,51 @@ pub(crate) fn extract_all_from_document(
         has_font_encoding_issues,
         annotations,
     ))
+}
+
+/// Convert layout detection results to per-page layout hints for the markdown pipeline.
+///
+/// Maps `LayoutClass` (from kreuzberg-layout) to `LayoutHintClass` (feature-gate-free
+/// types in the markdown module) and flattens per-page regions into hint vectors.
+#[cfg(all(feature = "pdf", feature = "layout-detection"))]
+pub(crate) fn convert_results_to_hints(
+    results: &[crate::pdf::layout_runner::PageLayoutResult],
+) -> Vec<Vec<crate::pdf::markdown::types::LayoutHint>> {
+    use crate::layout_detection::LayoutClass;
+    use crate::pdf::markdown::types::{LayoutHint, LayoutHintClass};
+
+    results
+        .iter()
+        .map(|page| {
+            page.regions
+                .iter()
+                .map(|region| {
+                    let class = match region.class {
+                        LayoutClass::Title => LayoutHintClass::Title,
+                        LayoutClass::SectionHeader => LayoutHintClass::SectionHeader,
+                        LayoutClass::Code => LayoutHintClass::Code,
+                        LayoutClass::Formula => LayoutHintClass::Formula,
+                        LayoutClass::ListItem => LayoutHintClass::ListItem,
+                        LayoutClass::Caption => LayoutHintClass::Caption,
+                        LayoutClass::PageHeader => LayoutHintClass::PageHeader,
+                        LayoutClass::PageFooter => LayoutHintClass::PageFooter,
+                        LayoutClass::Table => LayoutHintClass::Table,
+                        LayoutClass::Picture => LayoutHintClass::Picture,
+                        LayoutClass::Text => LayoutHintClass::Text,
+                        _ => LayoutHintClass::Other,
+                    };
+                    LayoutHint {
+                        class,
+                        confidence: region.confidence,
+                        left: region.bbox.left,
+                        bottom: region.bbox.bottom,
+                        right: region.bbox.right,
+                        top: region.bbox.top,
+                    }
+                })
+                .collect()
+        })
+        .collect()
 }
 
 /// Check whether words on a page exhibit column alignment consistent with a table.

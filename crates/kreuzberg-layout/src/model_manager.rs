@@ -1,41 +1,30 @@
 //! Model downloading and caching for layout detection.
 //!
-//! Downloads ONNX models from `Kreuzberg/layout-models` on HuggingFace Hub
-//! and caches them locally.
+//! Downloads ONNX models from HuggingFace Hub and caches them locally.
+//! Each model may come from a different HuggingFace repository.
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::error::LayoutError;
 
-/// HuggingFace repository containing layout detection ONNX models.
-const HF_REPO_ID: &str = "Kreuzberg/layout-models";
-
 /// Model definition for a layout model.
 #[derive(Debug, Clone)]
 struct ModelDefinition {
     model_type: &'static str,
+    hf_repo_id: &'static str,
     remote_filename: &'static str,
     local_filename: &'static str,
     sha256_checksum: &'static str,
 }
 
-const MODELS: &[ModelDefinition] = &[
-    ModelDefinition {
-        model_type: "yolo",
-        remote_filename: "yolov10-doclaynet.onnx",
-        local_filename: "model.onnx",
-        // TODO: fill after uploading models to HuggingFace
-        sha256_checksum: "",
-    },
-    ModelDefinition {
-        model_type: "rtdetr",
-        remote_filename: "rtdetr-v2-docling.onnx",
-        local_filename: "model.onnx",
-        // TODO: fill after uploading models to HuggingFace
-        sha256_checksum: "",
-    },
-];
+const MODELS: &[ModelDefinition] = &[ModelDefinition {
+    model_type: "rtdetr",
+    hf_repo_id: "docling-project/docling-layout-heron-onnx",
+    remote_filename: "model.onnx",
+    local_filename: "model.onnx",
+    sha256_checksum: "",
+}];
 
 /// Manages layout model downloading, caching, and path resolution.
 #[derive(Debug, Clone)]
@@ -64,12 +53,7 @@ impl LayoutModelManager {
             .join("layout")
     }
 
-    /// Ensure the YOLO model exists locally, downloading if needed.
-    pub fn ensure_yolo_model(&self) -> Result<PathBuf, LayoutError> {
-        self.ensure_model("yolo")
-    }
-
-    /// Ensure the RT-DETR model exists locally, downloading if needed.
+    /// Ensure the RT-DETR model (Docling Heron) exists locally, downloading if needed.
     pub fn ensure_rtdetr_model(&self) -> Result<PathBuf, LayoutError> {
         self.ensure_model("rtdetr")
     }
@@ -88,12 +72,16 @@ impl LayoutModelManager {
             return Ok(model_file);
         }
 
-        tracing::info!(model_type, "Downloading layout model from HuggingFace...");
+        tracing::info!(
+            model_type,
+            repo = definition.hf_repo_id,
+            "Downloading layout model from HuggingFace..."
+        );
         fs::create_dir_all(&model_dir).map_err(|e| {
             LayoutError::ModelDownload(format!("Failed to create cache dir {}: {e}", model_dir.display()))
         })?;
 
-        let cached_path = self.hf_download(definition.remote_filename)?;
+        let cached_path = Self::hf_download(definition.hf_repo_id, definition.remote_filename)?;
 
         if !definition.sha256_checksum.is_empty() {
             Self::verify_checksum(&cached_path, definition.sha256_checksum, model_type)?;
@@ -107,17 +95,17 @@ impl LayoutModelManager {
         Ok(model_file)
     }
 
-    fn hf_download(&self, remote_filename: &str) -> Result<PathBuf, LayoutError> {
-        tracing::info!(repo = HF_REPO_ID, filename = remote_filename, "Downloading via hf-hub");
+    fn hf_download(repo_id: &str, remote_filename: &str) -> Result<PathBuf, LayoutError> {
+        tracing::info!(repo = repo_id, filename = remote_filename, "Downloading via hf-hub");
 
         let api = hf_hub::api::sync::ApiBuilder::new()
             .with_progress(true)
             .build()
             .map_err(|e| LayoutError::ModelDownload(format!("Failed to initialize HF Hub API: {e}")))?;
 
-        let repo = api.model(HF_REPO_ID.to_string());
+        let repo = api.model(repo_id.to_string());
         let cached_path = repo.get(remote_filename).map_err(|e| {
-            LayoutError::ModelDownload(format!("Failed to download '{remote_filename}' from {HF_REPO_ID}: {e}"))
+            LayoutError::ModelDownload(format!("Failed to download '{remote_filename}' from {repo_id}: {e}"))
         })?;
 
         Ok(cached_path)
@@ -144,11 +132,6 @@ impl LayoutModelManager {
 
         tracing::debug!(label, "Checksum verified");
         Ok(())
-    }
-
-    /// Check if the YOLO model is cached.
-    pub fn is_yolo_cached(&self) -> bool {
-        self.cache_dir.join("yolo").join("model.onnx").exists()
     }
 
     /// Check if the RT-DETR model is cached.

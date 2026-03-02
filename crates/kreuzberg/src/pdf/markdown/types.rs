@@ -21,4 +21,41 @@ pub(super) struct PdfParagraph {
     pub is_bold: bool,
     pub is_list_item: bool,
     pub is_code_block: bool,
+    pub is_formula: bool,
+    pub is_page_furniture: bool,
+    pub layout_class: Option<LayoutHintClass>,
+}
+
+/// Simplified layout class for the markdown pipeline.
+///
+/// Decoupled from `kreuzberg_layout::LayoutClass` so the markdown module
+/// compiles without the `layout-detection` feature.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum LayoutHintClass {
+    Title,
+    SectionHeader,
+    Code,
+    Formula,
+    ListItem,
+    Caption,
+    PageHeader,
+    PageFooter,
+    Table,
+    Picture,
+    Text,
+    Other,
+}
+
+/// A layout hint for paragraph classification.
+///
+/// Contains a simplified layout class with confidence and bounding box
+/// in PDF coordinate space (points, y=0 at bottom of page).
+#[derive(Debug, Clone)]
+pub(crate) struct LayoutHint {
+    pub class: LayoutHintClass,
+    pub confidence: f32,
+    pub left: f32,
+    pub bottom: f32,
+    pub right: f32,
+    pub top: f32,
 }

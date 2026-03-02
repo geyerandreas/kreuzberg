@@ -23,15 +23,16 @@ use crate::types::DetectionResult;
 ///
 /// Used by language bindings (Python, Node.js, etc.) for simple configuration.
 /// Rust users who need fine-grained control should use [`LayoutEngineConfig`] instead.
+///
+/// Currently both presets use the Docling Heron RT-DETR v2 model (17 document
+/// layout classes). Additional model backends may be added in future releases.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum LayoutPreset {
-    /// Fast detection using YOLO (DocLayNet, 11 classes).
-    /// Lower latency, slightly lower accuracy.
+    /// Fast detection. Currently uses RT-DETR v2 (Docling Heron).
     #[default]
     Fast,
-    /// Accurate detection using RT-DETR v2 (17 classes).
-    /// Higher accuracy, higher latency. NMS-free.
+    /// Accurate detection using RT-DETR v2 (Docling Heron, 17 classes, NMS-free).
     Accurate,
 }
 
@@ -50,7 +51,7 @@ impl FromStr for LayoutPreset {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "fast" | "yolo" => Ok(LayoutPreset::Fast),
-            "accurate" | "rtdetr" | "rt-detr" => Ok(LayoutPreset::Accurate),
+            "accurate" | "rtdetr" | "rt-detr" | "heron" => Ok(LayoutPreset::Accurate),
             _ => Err(format!("Invalid layout preset: '{s}'. Valid presets: fast, accurate")),
         }
     }
@@ -102,8 +103,9 @@ impl LayoutEngineConfig {
     /// Create a config from a preset.
     pub fn from_preset(preset: LayoutPreset) -> Self {
         let backend = match preset {
-            LayoutPreset::Fast => ModelBackend::YoloDocLayNet,
-            LayoutPreset::Accurate => ModelBackend::RtDetr,
+            // Both presets currently use RT-DETR (Docling Heron).
+            // A dedicated fast model may be added in future releases.
+            LayoutPreset::Fast | LayoutPreset::Accurate => ModelBackend::RtDetr,
         };
         Self {
             backend,
@@ -134,18 +136,15 @@ impl LayoutEngine {
 
     /// Create a layout engine from a full config.
     pub fn from_config(config: LayoutEngineConfig) -> Result<Self, LayoutError> {
+        crate::ort_discovery::ensure_ort_available();
+
         let model: Box<dyn LayoutModel> = match &config.backend {
             ModelBackend::YoloDocLayNet => {
-                let manager = LayoutModelManager::new(config.cache_dir.clone());
-                let model_path = manager.ensure_yolo_model()?;
-                let path_str = model_path.to_string_lossy();
-                Box::new(YoloModel::from_file(
-                    &path_str,
-                    YoloVariant::DocLayNet,
-                    640,
-                    640,
-                    "YOLO-DocLayNet",
-                )?)
+                return Err(LayoutError::ModelDownload(
+                    "YOLO DocLayNet model is not available for automatic download. \
+                     Use ModelBackend::Custom with a local YOLO ONNX file instead."
+                        .to_string(),
+                ));
             }
             ModelBackend::RtDetr => {
                 let manager = LayoutModelManager::new(config.cache_dir.clone());

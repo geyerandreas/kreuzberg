@@ -60,6 +60,10 @@ pub struct GroundTruth {
     /// Path to ground truth text file
     pub text_file: PathBuf,
 
+    /// Path to ground truth markdown file for structural quality scoring (optional)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub markdown_file: Option<PathBuf>,
+
     /// Source of the ground truth ("pdf_text_layer", "markdown_file", "manual")
     pub source: String,
 }
@@ -152,6 +156,27 @@ impl Fixture {
                         ),
                     });
                 }
+
+                // Validate markdown ground truth file if specified
+                if let Some(ref md_file) = gt.markdown_file {
+                    if md_file.is_absolute() {
+                        return Err(Error::InvalidFixture {
+                            path: fixture_path.to_path_buf(),
+                            reason: "ground_truth.markdown_file must be relative".to_string(),
+                        });
+                    }
+                    let md_path = fixture_dir.join(md_file);
+                    if !md_path.exists() {
+                        return Err(Error::InvalidFixture {
+                            path: fixture_path.to_path_buf(),
+                            reason: format!(
+                                "ground truth markdown file not found: {} (resolved to {})",
+                                md_file.display(),
+                                md_path.display()
+                            ),
+                        });
+                    }
+                }
             }
         }
 
@@ -166,6 +191,13 @@ impl Fixture {
     /// Resolve ground truth path relative to fixture file
     pub fn resolve_ground_truth_path(&self, fixture_dir: &Path) -> Option<PathBuf> {
         self.ground_truth.as_ref().map(|gt| fixture_dir.join(&gt.text_file))
+    }
+
+    /// Resolve ground truth markdown path relative to fixture file
+    pub fn resolve_ground_truth_markdown_path(&self, fixture_dir: &Path) -> Option<PathBuf> {
+        self.ground_truth
+            .as_ref()
+            .and_then(|gt| gt.markdown_file.as_ref().map(|mf| fixture_dir.join(mf)))
     }
 
     /// Determine if this fixture requires OCR based on file type and metadata
@@ -721,6 +753,7 @@ mod tests {
             metadata: HashMap::new(),
             ground_truth: Some(GroundTruth {
                 text_file: PathBuf::from("nonexistent_ground_truth.txt"),
+                markdown_file: None,
                 source: "manual".to_string(),
             }),
         };
@@ -755,6 +788,7 @@ mod tests {
             metadata: HashMap::new(),
             ground_truth: Some(GroundTruth {
                 text_file: PathBuf::from("ground_truth.txt"),
+                markdown_file: None,
                 source: "manual".to_string(),
             }),
         };
@@ -793,6 +827,7 @@ mod tests {
             metadata: HashMap::new(),
             ground_truth: Some(GroundTruth {
                 text_file: PathBuf::from("nonexistent.txt"),
+                markdown_file: None,
                 source: "manual".to_string(),
             }),
         };

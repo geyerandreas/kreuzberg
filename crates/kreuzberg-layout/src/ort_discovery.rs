@@ -1,20 +1,14 @@
 //! ONNX Runtime library auto-discovery.
 //!
-//! Delegates to the shared implementation in `kreuzberg-layout` when the
-//! `layout-detection` feature is enabled. Otherwise falls back to a local
-//! implementation with the same logic.
+//! Scans common installation paths and sets `ORT_DYLIB_PATH` so the `ort` crate
+//! can find `libonnxruntime` via `dlopen`. Called once at init time.
+
+use std::sync::Once;
+
+static ORT_INIT: Once = Once::new();
 
 /// Ensure ONNX Runtime is discoverable. Safe to call multiple times (no-op after first).
-#[cfg(feature = "layout-detection")]
 pub fn ensure_ort_available() {
-    kreuzberg_layout::ort_discovery::ensure_ort_available();
-}
-
-#[cfg(not(feature = "layout-detection"))]
-pub fn ensure_ort_available() {
-    use std::sync::Once;
-    static ORT_INIT: Once = Once::new();
-
     ORT_INIT.call_once(|| {
         if let Err(msg) = try_discover_ort() {
             tracing::warn!("ONNX Runtime not found: {msg}");
@@ -22,7 +16,6 @@ pub fn ensure_ort_available() {
     });
 }
 
-#[cfg(not(feature = "layout-detection"))]
 fn try_discover_ort() -> Result<(), &'static str> {
     // Already set and valid?
     if let Ok(path) = std::env::var("ORT_DYLIB_PATH")
@@ -48,7 +41,7 @@ fn try_discover_ort() -> Result<(), &'static str> {
     Err("ONNX Runtime library not found in common installation paths")
 }
 
-#[cfg(all(not(feature = "layout-detection"), target_os = "macos"))]
+#[cfg(target_os = "macos")]
 fn platform_candidates() -> &'static [&'static str] {
     &[
         "/opt/homebrew/lib/libonnxruntime.dylib",
@@ -56,7 +49,7 @@ fn platform_candidates() -> &'static [&'static str] {
     ]
 }
 
-#[cfg(all(not(feature = "layout-detection"), target_os = "linux"))]
+#[cfg(target_os = "linux")]
 fn platform_candidates() -> &'static [&'static str] {
     &[
         "/usr/lib/libonnxruntime.so",
@@ -66,7 +59,7 @@ fn platform_candidates() -> &'static [&'static str] {
     ]
 }
 
-#[cfg(all(not(feature = "layout-detection"), target_os = "windows"))]
+#[cfg(target_os = "windows")]
 fn platform_candidates() -> &'static [&'static str] {
     &[
         "C:\\Program Files\\onnxruntime\\bin\\onnxruntime.dll",
@@ -74,10 +67,7 @@ fn platform_candidates() -> &'static [&'static str] {
     ]
 }
 
-#[cfg(all(
-    not(feature = "layout-detection"),
-    not(any(target_os = "macos", target_os = "linux", target_os = "windows"))
-))]
+#[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
 fn platform_candidates() -> &'static [&'static str] {
     &[]
 }

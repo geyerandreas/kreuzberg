@@ -211,6 +211,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         }
     }
 
@@ -329,6 +332,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         }];
         // 3 segments × 6 words = 18 words > MAX_HEADING_WORD_COUNT
         let heading_map = vec![(18.0, Some(1)), (12.0, None)];

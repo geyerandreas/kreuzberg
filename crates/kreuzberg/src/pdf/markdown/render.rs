@@ -26,6 +26,11 @@ pub(super) fn render_paragraph_to_output(para: &PdfParagraph, output: &mut Strin
             output.push('\n');
         }
         output.push_str("```");
+    } else if para.is_formula {
+        let text = join_line_texts(&para.lines);
+        output.push_str("$$\n");
+        output.push_str(&text);
+        output.push_str("\n$$");
     } else if para.is_list_item {
         let text = render_paragraph_with_inline_markup(para);
         let normalized = normalize_list_prefix(&text);
@@ -240,6 +245,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -255,6 +263,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -273,6 +284,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -288,6 +302,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -303,6 +320,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -322,6 +342,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -347,6 +370,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -367,6 +393,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -386,6 +415,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);

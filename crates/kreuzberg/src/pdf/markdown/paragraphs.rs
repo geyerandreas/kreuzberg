@@ -107,6 +107,9 @@ fn finalize_paragraph(lines: Vec<PdfLine>) -> PdfParagraph {
         is_bold: bold_count >= majority,
         is_list_item,
         is_code_block,
+        is_formula: false,
+        is_page_furniture: false,
+        layout_class: None,
         lines,
     }
 }

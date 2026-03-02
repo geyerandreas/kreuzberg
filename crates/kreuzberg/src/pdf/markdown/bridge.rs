@@ -215,6 +215,9 @@ fn convert_blocks(blocks: &[ExtractedBlock], body_font_size: f32, paragraphs: &m
             is_bold: block.is_bold,
             is_list_item,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         });
     }
 }

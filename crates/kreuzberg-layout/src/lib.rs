@@ -4,6 +4,8 @@ pub mod engine;
 pub mod error;
 mod model_manager;
 pub mod models;
+#[allow(unsafe_code)]
+pub mod ort_discovery;
 pub mod postprocessing;
 pub mod preprocessing;
 pub mod session;

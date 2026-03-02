@@ -18,7 +18,7 @@ use super::constants::{
 use super::lines::{is_cjk_char, segments_to_lines};
 use super::paragraphs::{lines_to_paragraphs, merge_continuation_paragraphs};
 use super::render::inject_image_placeholders;
-use super::types::PdfParagraph;
+use super::types::{LayoutHint, PdfParagraph};
 
 /// Render a PDF document as markdown, with tables interleaved at their positions.
 ///
@@ -30,6 +30,7 @@ pub fn render_document_as_markdown_with_tables(
     top_margin: Option<f32>,
     bottom_margin: Option<f32>,
     page_marker_format: Option<&str>,
+    layout_hints: Option<&[Vec<LayoutHint>]>,
 ) -> Result<(String, bool)> {
     let pages = document.pages();
     let page_count = pages.len();
@@ -37,11 +38,24 @@ pub fn render_document_as_markdown_with_tables(
 
     let mut has_font_encoding_issues = false;
 
+    // When layout hints are provided, force heuristic extraction for ALL pages.
+    // Structure tree paragraphs have no positional data (x=0, y=0, width=0, height=0),
+    // which prevents spatial matching with layout detection bounding boxes.
+    // Heuristic extraction gives segments with real positions from pdfium's text layer,
+    // enabling accurate containment-based matching with ML layout regions.
+    let force_heuristic = layout_hints.is_some();
+
     // Stage 0: Try structure tree extraction for each page.
     let mut struct_tree_results: Vec<Option<Vec<PdfParagraph>>> = Vec::with_capacity(page_count as usize);
     let mut heuristic_pages: Vec<usize> = Vec::new();
 
     for i in 0..page_count {
+        if force_heuristic {
+            struct_tree_results.push(None);
+            heuristic_pages.push(i as usize);
+            continue;
+        }
+
         let page = pages.get(i).map_err(|e| {
             crate::pdf::error::PdfError::TextExtractionFailed(format!("Failed to get page {}: {:?}", i, e))
         })?;
@@ -286,6 +300,15 @@ pub fn render_document_as_markdown_with_tables(
         assign_heading_levels_smart(&clusters, MIN_HEADING_FONT_RATIO, MIN_HEADING_FONT_GAP)
     };
 
+    // Compute the document-level body text font size from the heading map.
+    // This is the centroid of the cluster NOT classified as a heading.
+    // Used by layout detection to distinguish section headers (larger font)
+    // from bold sub-headings at body text size.
+    let doc_body_font_size: Option<f32> = heading_map
+        .iter()
+        .find(|(_, level)| level.is_none())
+        .map(|(size, _)| *size);
+
     // Stage 3: Per-page structured extraction.
     let mut all_page_paragraphs: Vec<Vec<PdfParagraph>> = Vec::with_capacity(page_count as usize);
     for i in 0..page_count as usize {
@@ -299,6 +322,11 @@ pub fn render_document_as_markdown_with_tables(
                 );
                 classify_paragraphs(&mut paragraphs, &heading_map);
                 merge_continuation_paragraphs(&mut paragraphs);
+            }
+            // Apply layout detection overrides when available.
+            if let Some(hints) = layout_hints.and_then(|h| h.get(i)) {
+                super::layout_classify::apply_layout_overrides(&mut paragraphs, hints, 0.5, 0.2);
+                paragraphs.retain(|p| !p.is_page_furniture);
             }
             all_page_paragraphs.push(paragraphs);
         } else {
@@ -317,6 +345,14 @@ pub fn render_document_as_markdown_with_tables(
                 all_paragraphs
             };
             classify_paragraphs(&mut paragraphs, &heading_map);
+            // Apply line-level layout matching BEFORE merging so that
+            // section headers get split out of multi-line paragraphs and
+            // assigned heading_level, preventing them from being merged
+            // with following body text paragraphs.
+            if let Some(hints) = layout_hints.and_then(|h| h.get(i)) {
+                super::layout_classify::split_and_classify_with_layout(&mut paragraphs, hints, 0.5, doc_body_font_size);
+                paragraphs.retain(|p| !p.is_page_furniture);
+            }
             merge_continuation_paragraphs(&mut paragraphs);
             // Apply contextual ligature repair to heuristic pages where
             // chars_to_segments didn't catch encoding issues (pdfium
@@ -681,6 +717,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         }
     }
 
@@ -852,6 +891,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         }
     }
 

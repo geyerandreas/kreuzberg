@@ -1,0 +1,458 @@
+//! Layout detection runner for PDF documents.
+//!
+//! Renders PDF pages to images, runs layout detection via [`LayoutEngine`],
+//! and maps pixel-space bounding boxes to PDF coordinate space (points).
+
+use std::time::Instant;
+
+use crate::layout_detection::{DetectionResult, LayoutClass, LayoutEngine};
+use crate::pdf::error::Result;
+
+/// Bounding box in PDF coordinate space (points, y=0 at bottom of page).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PdfLayoutBBox {
+    pub left: f32,
+    pub bottom: f32,
+    pub right: f32,
+    pub top: f32,
+}
+
+impl PdfLayoutBBox {
+    pub fn width(&self) -> f32 {
+        (self.right - self.left).max(0.0)
+    }
+
+    pub fn height(&self) -> f32 {
+        (self.top - self.bottom).max(0.0)
+    }
+}
+
+/// A detected layout region mapped to PDF coordinate space.
+#[derive(Debug, Clone)]
+pub struct PageLayoutRegion {
+    pub class: LayoutClass,
+    pub confidence: f32,
+    pub bbox: PdfLayoutBBox,
+}
+
+/// Layout detection results for a single page.
+#[derive(Debug, Clone)]
+pub struct PageLayoutResult {
+    pub page_index: usize,
+    pub regions: Vec<PageLayoutRegion>,
+    pub page_width_pts: f32,
+    pub page_height_pts: f32,
+}
+
+/// Timing breakdown for a single page.
+#[derive(Debug, Clone)]
+pub struct PageTiming {
+    pub render_ms: f64,
+    pub inference_ms: f64,
+    pub mapping_ms: f64,
+}
+
+/// Timing breakdown for the entire layout detection run.
+#[derive(Debug, Clone)]
+pub struct LayoutTimingReport {
+    pub total_ms: f64,
+    pub per_page: Vec<PageTiming>,
+}
+
+impl LayoutTimingReport {
+    pub fn avg_render_ms(&self) -> f64 {
+        if self.per_page.is_empty() {
+            return 0.0;
+        }
+        self.per_page.iter().map(|p| p.render_ms).sum::<f64>() / self.per_page.len() as f64
+    }
+
+    pub fn avg_inference_ms(&self) -> f64 {
+        if self.per_page.is_empty() {
+            return 0.0;
+        }
+        self.per_page.iter().map(|p| p.inference_ms).sum::<f64>() / self.per_page.len() as f64
+    }
+
+    pub fn total_inference_ms(&self) -> f64 {
+        self.per_page.iter().map(|p| p.inference_ms).sum()
+    }
+
+    pub fn total_render_ms(&self) -> f64 {
+        self.per_page.iter().map(|p| p.render_ms).sum()
+    }
+}
+
+/// Convert a pixel-space bounding box to PDF coordinate space.
+///
+/// Pixel coordinates: (x1, y1) top-left, (x2, y2) bottom-right, y increases downward.
+/// PDF coordinates: (left, bottom, right, top), y=0 at bottom of page, y increases upward.
+fn pixel_to_pdf_bbox(
+    pixel: &crate::layout_detection::BBox,
+    img_width: u32,
+    img_height: u32,
+    page_width_pts: f32,
+    page_height_pts: f32,
+) -> PdfLayoutBBox {
+    let sx = page_width_pts / img_width as f32;
+    let sy = page_height_pts / img_height as f32;
+    PdfLayoutBBox {
+        left: pixel.x1 * sx,
+        right: pixel.x2 * sx,
+        // Pixel y1 (top) maps to PDF top (higher y value)
+        top: page_height_pts - (pixel.y1 * sy),
+        // Pixel y2 (bottom) maps to PDF bottom (lower y value)
+        bottom: page_height_pts - (pixel.y2 * sy),
+    }
+}
+
+/// Convert a [`DetectionResult`] to [`PageLayoutResult`] with PDF coordinates.
+fn detection_to_page_result(
+    page_index: usize,
+    detection: &DetectionResult,
+    page_width_pts: f32,
+    page_height_pts: f32,
+) -> PageLayoutResult {
+    let regions = detection
+        .detections
+        .iter()
+        .map(|det| PageLayoutRegion {
+            class: det.class,
+            confidence: det.confidence,
+            bbox: pixel_to_pdf_bbox(
+                &det.bbox,
+                detection.page_width,
+                detection.page_height,
+                page_width_pts,
+                page_height_pts,
+            ),
+        })
+        .collect();
+
+    PageLayoutResult {
+        page_index,
+        regions,
+        page_width_pts,
+        page_height_pts,
+    }
+}
+
+/// Run layout detection on all pages of a PDF document.
+///
+/// Renders each page to an image at 72 DPI and runs the layout engine.
+/// Returns per-page layout results and a timing breakdown.
+///
+/// Uses a single pdfium session for both rendering and dimension extraction
+/// to avoid deadlocking on the global `PDFIUM_OPERATION_LOCK` mutex.
+#[tracing::instrument(skip_all, fields(page_count))]
+pub fn detect_layout_for_document(
+    pdf_bytes: &[u8],
+    engine: &mut LayoutEngine,
+) -> Result<(Vec<PageLayoutResult>, LayoutTimingReport)> {
+    let total_start = Instant::now();
+
+    // Render pages and extract dimensions in a single pdfium session.
+    // This avoids deadlocking on the global PDFIUM_OPERATION_LOCK mutex,
+    // since pdfium is not reentrant.
+    let (images, page_dimensions) = render_and_get_dimensions(pdf_bytes)?;
+    let page_count = images.len();
+    tracing::Span::current().record("page_count", page_count);
+
+    let mut results = Vec::with_capacity(page_count);
+    let mut timings = Vec::with_capacity(page_count);
+
+    for (page_index, image) in images.iter().enumerate() {
+        let rgb_image = match image {
+            image::DynamicImage::ImageRgb8(rgb) => std::borrow::Cow::Borrowed(rgb),
+            other => std::borrow::Cow::Owned(other.to_rgb8()),
+        };
+
+        let inference_start = Instant::now();
+        let detection = engine.detect(&rgb_image).map_err(|e| {
+            crate::pdf::error::PdfError::RenderingFailed(format!(
+                "Layout detection failed on page {}: {}",
+                page_index, e
+            ))
+        })?;
+        let inference_ms = inference_start.elapsed().as_secs_f64() * 1000.0;
+
+        let mapping_start = Instant::now();
+        let (page_w, page_h) = page_dimensions.get(page_index).copied().unwrap_or((612.0, 792.0));
+        let page_result = detection_to_page_result(page_index, &detection, page_w, page_h);
+        let mapping_ms = mapping_start.elapsed().as_secs_f64() * 1000.0;
+
+        tracing::debug!(
+            page = page_index,
+            detections = page_result.regions.len(),
+            inference_ms,
+            "Layout detection complete for page"
+        );
+
+        timings.push(PageTiming {
+            render_ms: 0.0, // rendering was batched above
+            inference_ms,
+            mapping_ms,
+        });
+        results.push(page_result);
+    }
+
+    let total_ms = total_start.elapsed().as_secs_f64() * 1000.0;
+
+    tracing::info!(
+        page_count,
+        total_ms,
+        total_detections = results.iter().map(|r| r.regions.len()).sum::<usize>(),
+        "Layout detection complete for document"
+    );
+
+    Ok((
+        results,
+        LayoutTimingReport {
+            total_ms,
+            per_page: timings,
+        },
+    ))
+}
+
+/// Render all pages and extract their dimensions in a single pdfium session.
+///
+/// This avoids acquiring `PDFIUM_OPERATION_LOCK` twice (which would deadlock).
+fn render_and_get_dimensions(pdf_bytes: &[u8]) -> Result<(Vec<image::DynamicImage>, Vec<(f32, f32)>)> {
+    #![allow(clippy::type_complexity)]
+    use super::bindings::bind_pdfium;
+    use pdfium_render::prelude::*;
+
+    let pdfium = bind_pdfium(
+        crate::pdf::error::PdfError::RenderingFailed,
+        "layout detection render + dimensions",
+    )?;
+    let document = pdfium.load_pdf_from_byte_slice(pdf_bytes, None).map_err(|e| {
+        crate::pdf::error::PdfError::InvalidPdf(format!("Failed to load PDF for layout detection: {:?}", e))
+    })?;
+
+    let pages = document.pages();
+    let page_count = pages.len() as usize;
+    let mut images = Vec::with_capacity(page_count);
+    let mut dimensions = Vec::with_capacity(page_count);
+
+    for i in 0..page_count {
+        let page = pages
+            .get(i as i32)
+            .map_err(|e| crate::pdf::error::PdfError::RenderingFailed(format!("Failed to get page {}: {:?}", i, e)))?;
+
+        let width_pts = page.width().value;
+        let height_pts = page.height().value;
+        dimensions.push((width_pts, height_pts));
+
+        // Render at the resolution the layout model needs.
+        // The model uses 640×640 input with aspect-preserving letterbox.
+        // Rendering directly at the model's target size avoids a redundant
+        // resize in preprocessing and produces sharper text edges.
+        const MODEL_SIZE: f32 = 640.0;
+        let scale = (MODEL_SIZE / width_pts).min(MODEL_SIZE / height_pts);
+        let render_w = (width_pts * scale).round() as i32;
+        let render_h = (height_pts * scale).round() as i32;
+
+        let config = PdfRenderConfig::new()
+            .set_target_width(render_w.max(1))
+            .set_target_height(render_h.max(1))
+            .rotate_if_landscape(PdfPageRenderRotation::None, false);
+
+        let bitmap = page
+            .render_with_config(&config)
+            .map_err(|e| crate::pdf::error::PdfError::RenderingFailed(format!("Failed to render page {}: {}", i, e)))?;
+
+        let image = bitmap
+            .as_image()
+            .map_err(|e| {
+                crate::pdf::error::PdfError::RenderingFailed(format!(
+                    "Failed to convert bitmap to image for page {}: {}",
+                    i, e
+                ))
+            })?
+            .into_rgb8();
+
+        images.push(image::DynamicImage::ImageRgb8(image));
+    }
+
+    Ok((images, dimensions))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::layout_detection::BBox;
+
+    #[test]
+    fn test_pixel_to_pdf_bbox_full_page() {
+        // Full page bounding box: pixel (0,0)-(612,792) for a 612x792 image
+        // Should map to PDF (0,0)-(612,792) at 72 DPI (1:1 mapping)
+        let pixel = BBox::new(0.0, 0.0, 612.0, 792.0);
+        let pdf = pixel_to_pdf_bbox(&pixel, 612, 792, 612.0, 792.0);
+        assert!((pdf.left - 0.0).abs() < 0.01);
+        assert!((pdf.bottom - 0.0).abs() < 0.01);
+        assert!((pdf.right - 612.0).abs() < 0.01);
+        assert!((pdf.top - 792.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_pixel_to_pdf_bbox_top_quarter() {
+        // Top-left quarter in pixel space: (0,0)-(306,396)
+        // In PDF space: left=0, right=306, bottom=396, top=792
+        let pixel = BBox::new(0.0, 0.0, 306.0, 396.0);
+        let pdf = pixel_to_pdf_bbox(&pixel, 612, 792, 612.0, 792.0);
+        assert!((pdf.left - 0.0).abs() < 0.01);
+        assert!((pdf.right - 306.0).abs() < 0.01);
+        assert!((pdf.top - 792.0).abs() < 0.01, "top should be page top: {}", pdf.top);
+        assert!(
+            (pdf.bottom - 396.0).abs() < 0.01,
+            "bottom should be mid-page: {}",
+            pdf.bottom
+        );
+    }
+
+    #[test]
+    fn test_pixel_to_pdf_bbox_bottom_quarter() {
+        // Bottom-right quarter in pixel space: (306,396)-(612,792)
+        // In PDF space: left=306, right=612, bottom=0, top=396
+        let pixel = BBox::new(306.0, 396.0, 612.0, 792.0);
+        let pdf = pixel_to_pdf_bbox(&pixel, 612, 792, 612.0, 792.0);
+        assert!((pdf.left - 306.0).abs() < 0.01);
+        assert!((pdf.right - 612.0).abs() < 0.01);
+        assert!((pdf.top - 396.0).abs() < 0.01, "top should be mid-page: {}", pdf.top);
+        assert!(
+            (pdf.bottom - 0.0).abs() < 0.01,
+            "bottom should be page bottom: {}",
+            pdf.bottom
+        );
+    }
+
+    #[test]
+    fn test_pixel_to_pdf_bbox_scaled_image() {
+        // Image rendered at different resolution than page points
+        // Image: 640x640, Page: 612x792
+        let pixel = BBox::new(0.0, 0.0, 640.0, 640.0);
+        let pdf = pixel_to_pdf_bbox(&pixel, 640, 640, 612.0, 792.0);
+        assert!((pdf.left - 0.0).abs() < 0.01);
+        assert!((pdf.right - 612.0).abs() < 0.01);
+        assert!((pdf.top - 792.0).abs() < 0.01);
+        assert!((pdf.bottom - 0.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_pixel_to_pdf_bbox_center_region() {
+        // Center region: pixel (160,160)-(480,480) on 640x640 image, page 612x792
+        let pixel = BBox::new(160.0, 160.0, 480.0, 480.0);
+        let pdf = pixel_to_pdf_bbox(&pixel, 640, 640, 612.0, 792.0);
+        // sx = 612/640 = 0.95625, sy = 792/640 = 1.2375
+        let sx = 612.0 / 640.0;
+        let sy = 792.0 / 640.0;
+        assert!((pdf.left - 160.0 * sx).abs() < 0.01);
+        assert!((pdf.right - 480.0 * sx).abs() < 0.01);
+        assert!((pdf.top - (792.0 - 160.0 * sy)).abs() < 0.01);
+        assert!((pdf.bottom - (792.0 - 480.0 * sy)).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_pixel_to_pdf_bbox_preserves_width() {
+        let pixel = BBox::new(100.0, 200.0, 400.0, 500.0);
+        let pdf = pixel_to_pdf_bbox(&pixel, 612, 792, 612.0, 792.0);
+        // Width should be preserved at 1:1 scale
+        let pixel_width = 300.0; // 400 - 100
+        assert!((pdf.width() - pixel_width).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_pixel_to_pdf_bbox_y_flip() {
+        // A box near the top in pixel space should be near the top in PDF space (high y)
+        let top_pixel = BBox::new(0.0, 0.0, 100.0, 50.0);
+        let top_pdf = pixel_to_pdf_bbox(&top_pixel, 612, 792, 612.0, 792.0);
+        assert!(
+            top_pdf.top > 700.0,
+            "Box at pixel-top should have high PDF y: {}",
+            top_pdf.top
+        );
+
+        // A box near the bottom in pixel space should be near the bottom in PDF space (low y)
+        let bottom_pixel = BBox::new(0.0, 742.0, 100.0, 792.0);
+        let bottom_pdf = pixel_to_pdf_bbox(&bottom_pixel, 612, 792, 612.0, 792.0);
+        assert!(
+            bottom_pdf.bottom < 50.0,
+            "Box at pixel-bottom should have low PDF y: {}",
+            bottom_pdf.bottom
+        );
+    }
+
+    #[test]
+    fn test_pdf_layout_bbox_dimensions() {
+        let bbox = PdfLayoutBBox {
+            left: 10.0,
+            bottom: 20.0,
+            right: 110.0,
+            top: 120.0,
+        };
+        assert!((bbox.width() - 100.0).abs() < 0.01);
+        assert!((bbox.height() - 100.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_detection_to_page_result() {
+        use crate::layout_detection::{DetectionResult, LayoutDetection};
+
+        let detection = DetectionResult::new(
+            640,
+            640,
+            vec![
+                LayoutDetection::new(LayoutClass::Title, 0.95, BBox::new(50.0, 30.0, 590.0, 80.0)),
+                LayoutDetection::new(LayoutClass::Text, 0.88, BBox::new(50.0, 100.0, 590.0, 600.0)),
+            ],
+        );
+
+        let result = detection_to_page_result(0, &detection, 612.0, 792.0);
+        assert_eq!(result.page_index, 0);
+        assert_eq!(result.regions.len(), 2);
+        assert_eq!(result.regions[0].class, LayoutClass::Title);
+        assert!((result.regions[0].confidence - 0.95).abs() < 0.001);
+        // Title should be near the top of the page (high y)
+        assert!(result.regions[0].bbox.top > 700.0);
+        assert_eq!(result.regions[1].class, LayoutClass::Text);
+    }
+
+    #[test]
+    fn test_layout_timing_report() {
+        let report = LayoutTimingReport {
+            total_ms: 500.0,
+            per_page: vec![
+                PageTiming {
+                    render_ms: 10.0,
+                    inference_ms: 80.0,
+                    mapping_ms: 0.1,
+                },
+                PageTiming {
+                    render_ms: 12.0,
+                    inference_ms: 85.0,
+                    mapping_ms: 0.1,
+                },
+                PageTiming {
+                    render_ms: 11.0,
+                    inference_ms: 82.0,
+                    mapping_ms: 0.1,
+                },
+            ],
+        };
+        assert!((report.avg_render_ms() - 11.0).abs() < 0.01);
+        assert!((report.avg_inference_ms() - 82.333).abs() < 0.1);
+        assert!((report.total_inference_ms() - 247.0).abs() < 0.01);
+        assert!((report.total_render_ms() - 33.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_layout_timing_report_empty() {
+        let report = LayoutTimingReport {
+            total_ms: 0.0,
+            per_page: vec![],
+        };
+        assert!((report.avg_render_ms()).abs() < 0.001);
+        assert!((report.avg_inference_ms()).abs() < 0.001);
+    }
+}
