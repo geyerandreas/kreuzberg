@@ -523,7 +523,7 @@ pub(super) fn perform_ocr(
             let table = reconstruct_table(&words, config.table_column_threshold, config.table_row_threshold_ratio);
             if !table.is_empty() && !table[0].is_empty() {
                 // Apply full post-processing validation to reject false positives.
-                if let Some(cleaned) = post_process_table(table) {
+                if let Some(cleaned) = post_process_table(table, false) {
                     metadata.insert("table_count".to_string(), serde_json::Value::String("1".to_string()));
                     metadata.insert(
                         "tables_detected".to_string(),

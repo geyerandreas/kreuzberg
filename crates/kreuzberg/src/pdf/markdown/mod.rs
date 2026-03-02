@@ -13,6 +13,7 @@ pub(crate) mod layout_classify;
 mod lines;
 mod paragraphs;
 mod pipeline;
+mod regions;
 mod render;
 pub(crate) mod types;
 

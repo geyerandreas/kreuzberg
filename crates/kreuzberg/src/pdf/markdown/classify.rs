@@ -66,7 +66,7 @@ pub(super) struct GapInfo {
     avg_gap: f32,
 }
 
-fn precompute_gap_info(heading_map: &[(f32, Option<u8>)]) -> GapInfo {
+pub(super) fn precompute_gap_info(heading_map: &[(f32, Option<u8>)]) -> GapInfo {
     if heading_map.len() <= 1 {
         return GapInfo { avg_gap: f32::INFINITY };
     }

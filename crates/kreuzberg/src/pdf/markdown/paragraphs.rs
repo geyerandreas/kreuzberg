@@ -83,7 +83,7 @@ pub(super) fn lines_to_paragraphs(lines: Vec<PdfLine>) -> Vec<PdfParagraph> {
 }
 
 /// Build a PdfParagraph from a set of lines.
-fn finalize_paragraph(lines: Vec<PdfLine>) -> PdfParagraph {
+pub(super) fn finalize_paragraph(lines: Vec<PdfLine>) -> PdfParagraph {
     let dominant_font_size = super::lines::most_frequent_font_size(lines.iter().map(|l| l.dominant_font_size));
 
     let bold_count = lines.iter().filter(|l| l.is_bold).count();
@@ -163,7 +163,7 @@ fn ends_with_sentence_terminator(para: &PdfParagraph) -> bool {
 }
 
 /// Check if text looks like a list item prefix.
-fn is_list_prefix(text: &str) -> bool {
+pub(super) fn is_list_prefix(text: &str) -> bool {
     let trimmed = text.trim();
     // Bullet characters: hyphen, asterisk, bullet, en dash, em dash
     if matches!(trimmed, "-" | "*" | "\u{2022}" | "\u{2013}" | "\u{2014}") {

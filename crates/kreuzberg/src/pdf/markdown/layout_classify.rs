@@ -175,6 +175,7 @@ fn apply_proportional_overrides(paragraphs: &mut [PdfParagraph], hints: &[Layout
 /// Line-level matching is much more precise because a single-line bbox is narrow
 /// (one line height), so containment with a similarly-sized SectionHeader hint
 /// is high for true matches and low for false matches.
+#[cfg(test)]
 pub(super) fn split_and_classify_with_layout(
     paragraphs: &mut Vec<PdfParagraph>,
     hints: &[LayoutHint],
@@ -401,7 +402,7 @@ pub(super) fn split_and_classify_with_layout(
 /// - "3.2 AI models" → H3 (sub-section)
 /// - "3.2.1 Details" → H4 (sub-sub-section)
 /// - "Layout Analysis Model" (no number) → H2 (default for SectionHeader)
-fn infer_heading_level_from_text(text: &str, hint_class: LayoutHintClass) -> u8 {
+pub(super) fn infer_heading_level_from_text(text: &str, hint_class: LayoutHintClass) -> u8 {
     if hint_class == LayoutHintClass::Title {
         return 1;
     }
@@ -433,6 +434,7 @@ fn infer_heading_level_from_text(text: &str, hint_class: LayoutHintClass) -> u8 
     }
 }
 
+#[cfg(test)]
 /// Find the best heading hint match for a single line using centroid-based spatial matching.
 ///
 /// Uses two criteria:
@@ -482,6 +484,7 @@ fn best_line_heading_match(line: &super::types::PdfLine, hints: &[&LayoutHint]) 
         .map(|(class, _)| class)
 }
 
+#[cfg(test)]
 /// Get the bounding box (bottom, top, left, right) of a line from its segments.
 fn line_bbox(line: &super::types::PdfLine) -> (f32, f32, f32, f32) {
     let mut bottom = f32::MAX;
@@ -509,6 +512,7 @@ fn line_bbox(line: &super::types::PdfLine) -> (f32, f32, f32, f32) {
     }
 }
 
+#[cfg(test)]
 /// Create a paragraph from lines, inheriting structural properties.
 fn make_paragraph_from_lines(
     lines: Vec<super::types::PdfLine>,
@@ -532,7 +536,7 @@ fn make_paragraph_from_lines(
 }
 
 /// Apply a single hint's classification to a paragraph.
-fn apply_hint_to_paragraph(para: &mut PdfParagraph, hint: &LayoutHint) {
+pub(super) fn apply_hint_to_paragraph(para: &mut PdfParagraph, hint: &LayoutHint) {
     para.layout_class = Some(hint.class);
 
     match hint.class {

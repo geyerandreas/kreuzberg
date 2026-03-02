@@ -430,13 +430,13 @@ const DOCS: &[BenchDoc] = &[
         name: "table-paper",
         pdf_path: "vendored/docling/pdf/2305.03393v1-pg9.pdf",
         gt_path: "ground_truth/pdf/2305.03393v1-pg9.md",
-        docling_path: None,
+        docling_path: Some("vendored/docling/md/2305.03393v1-pg9.md"),
     },
     BenchDoc {
         name: "handbook",
         pdf_path: "vendored/docling/pdf/amt_handbook_sample.pdf",
         gt_path: "ground_truth/pdf/amt_handbook_sample.md",
-        docling_path: None,
+        docling_path: Some("vendored/docling/md/amt_handbook_sample.md"),
     },
     BenchDoc {
         name: "multi-page",
@@ -455,6 +455,12 @@ const DOCS: &[BenchDoc] = &[
         pdf_path: "pdf/right_to_left_01.pdf",
         gt_path: "ground_truth/pdf/right_to_left_01.md",
         docling_path: Some("vendored/docling/md/right_to_left_01.md"),
+    },
+    BenchDoc {
+        name: "doclaynet-paper",
+        pdf_path: "vendored/docling/pdf/2206.01062.pdf",
+        gt_path: "ground_truth/pdf/2206.01062.md",
+        docling_path: Some("vendored/docling/md/2206.01062.md"),
     },
 ];
 
@@ -721,4 +727,57 @@ fn compare_frameworks() {
         avg_docling_str
     );
     eprintln!();
+
+    // ============================================================
+    // Quality guardrails: prevent regressions
+    // ============================================================
+    // Minimum SF1 thresholds (set ~10% below current performance).
+    // If any threshold is violated, the test fails.
+    let sf1_guardrails: &[(&str, f64)] = &[
+        ("multi-page", 0.55),      // Current: 0.615
+        ("code-formula", 0.75),    // Current: 0.811
+        ("docling", 0.60),         // Current: 0.651
+        ("doclaynet-paper", 0.30), // Current: 0.357
+        ("rtl-arabic", 0.30),      // Current: 0.672
+        ("table-paper", 0.90),     // Current: 0.994
+    ];
+    let tf1_guardrails: &[(&str, f64)] = &[
+        ("multi-page", 0.95),      // Current: 0.995
+        ("code-formula", 0.95),    // Current: 0.986
+        ("docling", 0.85),         // Current: 0.880
+        ("doclaynet-paper", 0.82), // Current: 0.868
+    ];
+
+    let mut failures = Vec::new();
+    for (name, min_sf1) in sf1_guardrails {
+        if let Some(r) = results.iter().find(|r| r.name == *name)
+            && r.layout_sf1 < *min_sf1
+        {
+            failures.push(format!(
+                "SF1 regression: {} layout SF1 {:.1}% < minimum {:.1}%",
+                name,
+                r.layout_sf1 * 100.0,
+                min_sf1 * 100.0,
+            ));
+        }
+    }
+    for (name, min_tf1) in tf1_guardrails {
+        if let Some(r) = results.iter().find(|r| r.name == *name)
+            && r.layout_tf1 < *min_tf1
+        {
+            failures.push(format!(
+                "TF1 regression: {} layout TF1 {:.1}% < minimum {:.1}%",
+                name,
+                r.layout_tf1 * 100.0,
+                min_tf1 * 100.0,
+            ));
+        }
+    }
+
+    if !failures.is_empty() {
+        for f in &failures {
+            eprintln!("GUARDRAIL FAIL: {}", f);
+        }
+        panic!("{} quality guardrail(s) violated", failures.len());
+    }
 }

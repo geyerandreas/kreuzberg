@@ -12,8 +12,8 @@ use super::bridge::{
 use super::classify::{classify_paragraphs, refine_heading_hierarchy};
 use super::columns::split_segments_into_columns;
 use super::constants::{
-    FULL_LINE_FRACTION, MIN_DEHYPHENATION_FRAGMENT_LEN, MIN_FONT_SIZE, MIN_HEADING_FONT_GAP, MIN_HEADING_FONT_RATIO,
-    PAGE_BOTTOM_MARGIN_FRACTION, PAGE_TOP_MARGIN_FRACTION,
+    FULL_LINE_FRACTION, MIN_FONT_SIZE, MIN_HEADING_FONT_GAP, MIN_HEADING_FONT_RATIO, PAGE_BOTTOM_MARGIN_FRACTION,
+    PAGE_TOP_MARGIN_FRACTION,
 };
 use super::lines::{is_cjk_char, segments_to_lines};
 use super::paragraphs::{lines_to_paragraphs, merge_continuation_paragraphs};
@@ -309,6 +309,43 @@ pub fn render_document_as_markdown_with_tables(
         .find(|(_, level)| level.is_none())
         .map(|(size, _)| *size);
 
+    // Extract tables from layout-detected Table regions using character-level
+    // word extraction. This must happen before segments are consumed by Stage 3.
+    let mut layout_tables: Vec<crate::types::Table> = Vec::new();
+    if let Some(hints_pages) = layout_hints {
+        for &page_idx in &heuristic_pages {
+            let Some(hints) = hints_pages.get(page_idx) else {
+                continue;
+            };
+            if !hints.iter().any(|h| h.class == super::types::LayoutHintClass::Table) {
+                continue;
+            }
+
+            let page = pages.get(page_idx as PdfPageIndex).map_err(|e| {
+                crate::pdf::error::PdfError::TextExtractionFailed(format!(
+                    "Failed to get page {} for table extraction: {:?}",
+                    page_idx, e
+                ))
+            })?;
+
+            let page_height = page.height().value;
+
+            // Extract character-level words from the page (accurate positions)
+            match crate::pdf::table::extract_words_from_page(&page, 0.0) {
+                Ok(words) if !words.is_empty() => {
+                    layout_tables.extend(super::regions::extract_tables_from_layout_hints(
+                        &words,
+                        hints,
+                        page_idx,
+                        page_height,
+                        0.5,
+                    ));
+                }
+                _ => {}
+            }
+        }
+    }
+
     // Stage 3: Per-page structured extraction.
     let mut all_page_paragraphs: Vec<Vec<PdfParagraph>> = Vec::with_capacity(page_count as usize);
     for i in 0..page_count as usize {
@@ -331,29 +368,33 @@ pub fn render_document_as_markdown_with_tables(
             all_page_paragraphs.push(paragraphs);
         } else {
             let page_segments = std::mem::take(&mut all_page_segments[i]);
-            let column_groups = split_segments_into_columns(&page_segments);
-            let mut paragraphs: Vec<PdfParagraph> = if column_groups.len() <= 1 {
-                let lines = segments_to_lines(page_segments);
-                lines_to_paragraphs(lines)
+            let mut paragraphs = if let Some(hints) = layout_hints.and_then(|h| h.get(i))
+                && !hints.is_empty()
+            {
+                // Layout-guided assembly: assign segments to layout regions
+                // BEFORE line/paragraph assembly, ensuring paragraph boundaries
+                // align with the model's structural predictions.
+                super::regions::assemble_region_paragraphs(page_segments, hints, &heading_map, 0.5, doc_body_font_size)
             } else {
-                let mut all_paragraphs = Vec::new();
-                for group in column_groups {
-                    let col_segments: Vec<_> = group.into_iter().map(|idx| page_segments[idx].clone()).collect();
-                    let lines = segments_to_lines(col_segments);
-                    all_paragraphs.extend(lines_to_paragraphs(lines));
-                }
-                all_paragraphs
+                // Standard pipeline: XY-Cut → lines → paragraphs → classify
+                let column_groups = split_segments_into_columns(&page_segments);
+                let mut paras: Vec<PdfParagraph> = if column_groups.len() <= 1 {
+                    let lines = segments_to_lines(page_segments);
+                    lines_to_paragraphs(lines)
+                } else {
+                    let mut all_paras = Vec::new();
+                    for group in column_groups {
+                        let col_segments: Vec<_> = group.into_iter().map(|idx| page_segments[idx].clone()).collect();
+                        let lines = segments_to_lines(col_segments);
+                        all_paras.extend(lines_to_paragraphs(lines));
+                    }
+                    all_paras
+                };
+                classify_paragraphs(&mut paras, &heading_map);
+                merge_continuation_paragraphs(&mut paras);
+                paras
             };
-            classify_paragraphs(&mut paragraphs, &heading_map);
-            // Apply line-level layout matching BEFORE merging so that
-            // section headers get split out of multi-line paragraphs and
-            // assigned heading_level, preventing them from being merged
-            // with following body text paragraphs.
-            if let Some(hints) = layout_hints.and_then(|h| h.get(i)) {
-                super::layout_classify::split_and_classify_with_layout(&mut paragraphs, hints, 0.5, doc_body_font_size);
-                paragraphs.retain(|p| !p.is_page_furniture);
-            }
-            merge_continuation_paragraphs(&mut paragraphs);
+            paragraphs.retain(|p| !p.is_page_furniture);
             // Apply contextual ligature repair to heuristic pages where
             // chars_to_segments didn't catch encoding issues (pdfium
             // doesn't always flag broken ToUnicode CMaps).
@@ -395,7 +436,9 @@ pub fn render_document_as_markdown_with_tables(
     );
 
     // Stage 4: Assemble markdown with tables interleaved
-    let markdown = assemble_markdown_with_tables(all_page_paragraphs, tables, page_marker_format);
+    // Combine heuristic tables (from extraction.rs) with layout-detected tables
+    let combined_tables: Vec<crate::types::Table> = tables.iter().cloned().chain(layout_tables).collect();
+    let markdown = assemble_markdown_with_tables(all_page_paragraphs, &combined_tables, page_marker_format);
     tracing::debug!(
         markdown_len = markdown.len(),
         has_headings = markdown.contains("# "),
@@ -555,32 +598,11 @@ fn dehyphenate_paragraph_lines(para: &mut PdfParagraph) {
             continue;
         }
 
-        // Case 2: no hyphen — full line, alphabetic fragments, lowercase continuation
-        let trailing_alpha: String = trailing_word.chars().filter(|c| c.is_alphabetic()).collect();
-        let leading_alpha: String = leading_word.chars().take_while(|c| c.is_alphabetic()).collect();
-        // Also consider trailing alphabetic chars after stripping leading punctuation
-        let leading_alpha_core: String = leading_word
-            .chars()
-            .skip_while(|c| !c.is_alphabetic())
-            .take_while(|c| c.is_alphabetic())
-            .collect();
-        let effective_leading_alpha = if leading_alpha.len() >= leading_alpha_core.len() {
-            &leading_alpha
-        } else {
-            &leading_alpha_core
-        };
-
-        if trailing_alpha.len() >= MIN_DEHYPHENATION_FRAGMENT_LEN
-            && effective_leading_alpha.len() >= MIN_DEHYPHENATION_FRAGMENT_LEN
-            && trailing_alpha.chars().all(|c| c.is_alphabetic())
-            && effective_leading_alpha.chars().all(|c| c.is_alphabetic())
-            && leading_word.starts_with(|c: char| c.is_lowercase())
-        {
-            let joined = format!("{}{}", trailing_word, leading_word);
-            let tw = trailing_word.to_string();
-            let lw = leading_word.to_string();
-            apply_dehyphenation_join(para, i, &tw, &lw, &joined);
-        }
+        // Case 2 (removed): no-hyphen full-line word joining was too aggressive.
+        // It incorrectly joined separate words like "through" + "several" →
+        // "throughseveral" at every line boundary where text wraps to the margin.
+        // Unhyphenated word splits are extremely rare in PDFs — explicit hyphens
+        // (Case 1) cover the vast majority of real word breaks.
     }
 }
 
@@ -745,14 +767,17 @@ mod tests {
     }
 
     #[test]
-    fn test_case2_no_hyphen_full_line() {
+    fn test_case2_no_hyphen_full_line_no_join() {
+        // Case 2 (no-hyphen joining) was removed — too many false positives
+        // (e.g., "through" + "several" → "throughseveral"). Words without
+        // hyphens are now left as-is.
         let mut p = para(vec![
             line(vec![full_line_seg("the soft")]),
             line(vec![seg("ware is great", 10.0, 200.0)]),
         ]);
         dehyphenate_paragraph_lines(&mut p);
-        assert_eq!(p.lines[0].segments[0].text, "the software");
-        assert_eq!(p.lines[1].segments[0].text, "is great");
+        assert_eq!(p.lines[0].segments[0].text, "the soft");
+        assert_eq!(p.lines[1].segments[0].text, "ware is great");
     }
 
     #[test]
@@ -805,36 +830,39 @@ mod tests {
     }
 
     #[test]
-    fn test_real_world_software() {
+    fn test_real_world_software_no_join_without_hyphen() {
+        // Without hyphen, words are not joined (Case 2 removed).
         let mut p = para(vec![
             line(vec![full_line_seg("advanced soft")]),
             line(vec![seg("ware development", 10.0, 200.0)]),
         ]);
         dehyphenate_paragraph_lines(&mut p);
-        assert_eq!(p.lines[0].segments[0].text, "advanced software");
-        assert_eq!(p.lines[1].segments[0].text, "development");
+        assert_eq!(p.lines[0].segments[0].text, "advanced soft");
+        assert_eq!(p.lines[1].segments[0].text, "ware development");
     }
 
     #[test]
-    fn test_real_world_hardware() {
+    fn test_real_world_hardware_no_join_without_hyphen() {
+        // Without hyphen, words are not joined (Case 2 removed).
         let mut p = para(vec![
             line(vec![full_line_seg("modern hard")]),
             line(vec![seg("ware components", 10.0, 200.0)]),
         ]);
         dehyphenate_paragraph_lines(&mut p);
-        assert_eq!(p.lines[0].segments[0].text, "modern hardware");
-        assert_eq!(p.lines[1].segments[0].text, "components");
+        assert_eq!(p.lines[0].segments[0].text, "modern hard");
+        assert_eq!(p.lines[1].segments[0].text, "ware components");
     }
 
     #[test]
-    fn test_leading_word_with_trailing_punctuation() {
+    fn test_leading_word_with_trailing_punctuation_no_join() {
+        // Without hyphen, words are not joined (Case 2 removed).
         let mut p = para(vec![
             line(vec![full_line_seg("the soft")]),
             line(vec![seg("ware, which is great", 10.0, 200.0)]),
         ]);
         dehyphenate_paragraph_lines(&mut p);
-        assert_eq!(p.lines[0].segments[0].text, "the software,");
-        assert_eq!(p.lines[1].segments[0].text, "which is great");
+        assert_eq!(p.lines[0].segments[0].text, "the soft");
+        assert_eq!(p.lines[1].segments[0].text, "ware, which is great");
     }
 
     #[test]
@@ -867,8 +895,8 @@ mod tests {
     }
 
     #[test]
-    fn test_multi_segment_line() {
-        // Trailing word is in the last segment of the line.
+    fn test_multi_segment_line_no_join_without_hyphen() {
+        // Without hyphen, words are not joined even across segments (Case 2 removed).
         let mut p = para(vec![
             line(vec![
                 seg("first part", 10.0, 200.0),
@@ -877,8 +905,8 @@ mod tests {
             line(vec![seg("ware next words", 10.0, 200.0)]),
         ]);
         dehyphenate_paragraph_lines(&mut p);
-        assert_eq!(p.lines[0].segments[1].text, "software");
-        assert_eq!(p.lines[1].segments[0].text, "next words");
+        assert_eq!(p.lines[0].segments[1].text, "soft");
+        assert_eq!(p.lines[1].segments[0].text, "ware next words");
     }
 
     // ── has_font_size_variation tests ──

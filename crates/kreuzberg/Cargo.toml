@@ -27,7 +27,7 @@ simd-utf8 = ["dep:simdutf8"]
 
 tokio-runtime = ["dep:tokio"]
 
-pdf = ["dep:pdfium-render", "dep:lopdf", "dep:image"]
+pdf = ["dep:pdfium-render", "dep:lopdf", "dep:image", "html"]
 static-pdfium = ["pdf"]
 bundled-pdfium = ["pdf"]
 system-pdfium = ["pdf"]

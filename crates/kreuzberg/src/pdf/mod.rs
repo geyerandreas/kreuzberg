@@ -60,6 +60,8 @@ pub mod rendering;
 #[cfg(feature = "pdf")]
 pub mod table;
 #[cfg(feature = "pdf")]
+pub mod table_reconstruct;
+#[cfg(feature = "pdf")]
 pub mod text;
 
 #[cfg(feature = "pdf")]
