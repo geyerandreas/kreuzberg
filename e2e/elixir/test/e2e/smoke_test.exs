@@ -47,7 +47,7 @@ defmodule E2E.SmokeTest do
           result
           |> E2E.Helpers.assert_expected_mime(["text/html"])
           |> E2E.Helpers.assert_min_content_length(10)
-          |> E2E.Helpers.assert_content_contains_any(["#", "**", "simple", "HTML"])
+          |> E2E.Helpers.assert_content_contains_any(["Sample Data Table", "Laptop", "Electronics", "Product"])
 
         {:skipped, reason} ->
           IO.puts("SKIPPED: #{reason}")

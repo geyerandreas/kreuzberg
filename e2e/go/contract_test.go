@@ -162,7 +162,7 @@ func TestContractConfigElementTypes(t *testing.T) {
 "result_format": "element_based"
 }`))
 	assertExpectedMime(t, result, []string{"application/vnd.openxmlformats-officedocument.wordprocessingml.document"})
-	assertElements(t, result, intPtr(1), []string{"narrative_text"})
+	assertElements(t, result, intPtr(1), []string{"NarrativeText"})
 }
 
 func TestContractConfigForceOcr(t *testing.T) {

@@ -424,6 +424,7 @@ describe("pdf fixtures", () => {
 			const documentPath = resolveDocument("pdf/tiny.pdf");
 			if (!existsSync(documentPath)) {
 				console.warn("Skipping pdf_tables_small: missing document at", documentPath);
+				console.warn("Notes: PDF table extraction requires OCR feature");
 				return;
 			}
 			const config = buildConfig(undefined);
@@ -431,7 +432,7 @@ describe("pdf fixtures", () => {
 			try {
 				result = extractFileSync(documentPath, null, config);
 			} catch (error) {
-				if (shouldSkipFixture(error, "pdf_tables_small", [], undefined)) {
+				if (shouldSkipFixture(error, "pdf_tables_small", ["ocr"], "PDF table extraction requires OCR feature")) {
 					return;
 				}
 				throw error;

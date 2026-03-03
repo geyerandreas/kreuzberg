@@ -266,7 +266,7 @@ def test_config_document_structure_disabled() -> None:
 def test_config_document_structure_headings() -> None:
     """Tests document structure extraction with heading nodes on a DOCX"""
 
-    document_path = helpers.resolve_document("office/docx/headers.docx")
+    document_path = helpers.resolve_document("docx/unit_test_headers.docx")
     if not document_path.exists():
         pytest.skip(f"Skipping config_document_structure_headings: missing document at {document_path}")
 
@@ -296,7 +296,7 @@ def test_config_document_structure_with_headings() -> None:
 def test_config_element_types() -> None:
     """Tests element-based result format with element type assertions on DOCX"""
 
-    document_path = helpers.resolve_document("office/docx/headers.docx")
+    document_path = helpers.resolve_document("docx/unit_test_headers.docx")
     if not document_path.exists():
         pytest.skip(f"Skipping config_element_types: missing document at {document_path}")
 
@@ -305,7 +305,7 @@ def test_config_element_types() -> None:
     result = extract_file_sync(document_path, None, config)
 
     helpers.assert_expected_mime(result, ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"])
-    helpers.assert_elements(result, min_count=1, types_include=["title", "narrative_text"])
+    helpers.assert_elements(result, min_count=1, types_include=["NarrativeText"])
     helpers.assert_result_format(result, "element_based")
 
 

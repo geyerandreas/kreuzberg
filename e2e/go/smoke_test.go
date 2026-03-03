@@ -16,7 +16,7 @@ func TestSmokeSmokeHtmlBasic(t *testing.T) {
 	result := runExtraction(t, "html/simple_table.html", nil)
 	assertExpectedMime(t, result, []string{"text/html"})
 	assertMinContentLength(t, result, 10)
-	assertContentContainsAny(t, result, []string{"#", "**", "simple", "HTML"})
+	assertContentContainsAny(t, result, []string{"Sample Data Table", "Laptop", "Electronics", "Product"})
 }
 
 func TestSmokeSmokeImagePng(t *testing.T) {

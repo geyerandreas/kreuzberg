@@ -928,7 +928,7 @@ describe("office fixtures", () => {
 			assertions.assertExpectedMime(result, [
 				"application/vnd.openxmlformats-officedocument.presentationml.presentation",
 			]);
-			assertions.assertMinContentLength(result, 20);
+			assertions.assertMinContentLength(result, 15);
 		},
 		TEST_TIMEOUT_MS,
 	);

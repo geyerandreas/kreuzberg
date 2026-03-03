@@ -54,7 +54,7 @@ public class SmokeTest {
           E2EHelpers.Assertions.assertExpectedMime(result, Arrays.asList("text/html"));
           E2EHelpers.Assertions.assertMinContentLength(result, 10);
           E2EHelpers.Assertions.assertContentContainsAny(
-              result, Arrays.asList("#", "**", "simple", "HTML"));
+              result, Arrays.asList("Sample Data Table", "Laptop", "Electronics", "Product"));
         });
   }
 

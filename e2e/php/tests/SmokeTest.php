@@ -36,7 +36,7 @@ class SmokeTest extends TestCase
     }
 
     /**
-     * Smoke test: HTML converted to Markdown
+     * Smoke test: HTML table extraction
      */
     public function test_smoke_html_basic(): void
     {
@@ -52,7 +52,7 @@ class SmokeTest extends TestCase
 
         Helpers::assertExpectedMime($result, ['text/html']);
         Helpers::assertMinContentLength($result, 10);
-        Helpers::assertContentContainsAny($result, ['#', '**', 'simple', 'HTML']);
+        Helpers::assertContentContainsAny($result, ['Sample Data Table', 'Laptop', 'Electronics', 'Product']);
     }
 
     /**

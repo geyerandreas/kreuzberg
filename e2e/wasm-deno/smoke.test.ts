@@ -61,7 +61,7 @@ Deno.test("smoke_html_basic", { permissions: { read: true, net: true } }, async 
 	}
 	assertions.assertExpectedMime(result, ["text/html"]);
 	assertions.assertMinContentLength(result, 10);
-	assertions.assertContentContainsAny(result, ["#", "**", "simple", "HTML"]);
+	assertions.assertContentContainsAny(result, ["Sample Data Table", "Laptop", "Electronics", "Product"]);
 });
 
 Deno.test("smoke_image_png", { permissions: { read: true, net: true } }, async () => {

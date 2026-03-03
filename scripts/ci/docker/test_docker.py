@@ -172,9 +172,18 @@ def test_extract_text(t: TestRunner) -> None:
 
 def test_extract_pdf(t: TestRunner) -> None:
     t.start("Extract searchable PDF")
-    out = t.run_cli_output("extract", "/data/pdf/searchable.pdf", volumes=True)
-    t.debug(f"PDF extraction output (first 100 chars): {out[:100]}")
-    if len(out) > 50:
+    name = t.container_name()
+    r = subprocess.run(
+        ["docker", "run", "--rm", "--name", name,
+         "-v", f"{TEST_DOCS_DIR}:/data:ro",
+         t.image, "extract", "/data/pdf/searchable.pdf"],
+        capture_output=True, text=True, timeout=120,
+    )
+    out = (r.stdout + r.stderr).strip()
+    t.debug(f"PDF extraction output (first 200 chars): {out[:200]}")
+    if r.returncode != 0:
+        t.fail_test("Searchable PDF extraction", f"Exit code {r.returncode}: {out[:300]}")
+    elif len(out) > 50:
         t.pass_test()
     else:
         t.fail_test("Searchable PDF extraction", f"Output too short: {len(out)} chars")

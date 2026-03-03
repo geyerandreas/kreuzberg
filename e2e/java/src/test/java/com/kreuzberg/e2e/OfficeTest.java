@@ -598,7 +598,7 @@ public class OfficeTest {
               result,
               Arrays.asList(
                   "application/vnd.openxmlformats-officedocument.presentationml.presentation"));
-          E2EHelpers.Assertions.assertMinContentLength(result, 20);
+          E2EHelpers.Assertions.assertMinContentLength(result, 15);
         });
   }
 

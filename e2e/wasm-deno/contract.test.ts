@@ -370,7 +370,7 @@ Deno.test("config_element_types", { permissions: { read: true, net: true } }, as
 		return;
 	}
 	assertions.assertExpectedMime(result, ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"]);
-	assertions.assertElements(result, 1, ["narrative_text"]);
+	assertions.assertElements(result, 1, ["NarrativeText"]);
 });
 
 Deno.test("config_force_ocr", { permissions: { read: true, net: true } }, async () => {

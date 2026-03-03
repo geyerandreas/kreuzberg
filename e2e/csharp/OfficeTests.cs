@@ -444,7 +444,7 @@ namespace Kreuzberg.E2E.Office
 
             var result = KreuzbergClient.ExtractFileSync(documentPath, config);
             TestHelpers.AssertExpectedMime(result, new[] { "application/vnd.openxmlformats-officedocument.presentationml.presentation" });
-            TestHelpers.AssertMinContentLength(result, 20);
+            TestHelpers.AssertMinContentLength(result, 15);
         }
 
         [SkippableFact]

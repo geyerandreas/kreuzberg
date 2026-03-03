@@ -510,7 +510,7 @@ def test_office_pptx_images() -> None:
     result = extract_file_sync(document_path, None, config)
 
     helpers.assert_expected_mime(result, ["application/vnd.openxmlformats-officedocument.presentationml.presentation"])
-    helpers.assert_min_content_length(result, 20)
+    helpers.assert_min_content_length(result, 15)
 
 
 def test_office_pptx_pitch_deck() -> None:

@@ -345,7 +345,7 @@ defmodule E2E.ContractTest do
     test "config_document_structure_headings" do
       case E2E.Helpers.run_fixture(
              "config_document_structure_headings",
-             "office/docx/headers.docx",
+             "docx/unit_test_headers.docx",
              %{include_document_structure: true},
              requirements: ["office"],
              notes: nil,
@@ -397,7 +397,7 @@ defmodule E2E.ContractTest do
     test "config_element_types" do
       case E2E.Helpers.run_fixture(
              "config_element_types",
-             "office/docx/headers.docx",
+             "docx/unit_test_headers.docx",
              %{result_format: "element_based"},
              requirements: ["office"],
              notes: nil,
@@ -408,7 +408,7 @@ defmodule E2E.ContractTest do
           |> E2E.Helpers.assert_expected_mime([
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           ])
-          |> E2E.Helpers.assert_elements(min_count: 1, types_include: ["title", "narrative_text"])
+          |> E2E.Helpers.assert_elements(min_count: 1, types_include: ["NarrativeText"])
 
         {:skipped, reason} ->
           IO.puts("SKIPPED: #{reason}")

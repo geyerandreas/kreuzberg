@@ -30,7 +30,7 @@ def test_smoke_docx_basic() -> None:
 
 
 def test_smoke_html_basic() -> None:
-    """Smoke test: HTML converted to Markdown"""
+    """Smoke test: HTML table extraction"""
 
     document_path = helpers.resolve_document("html/simple_table.html")
     if not document_path.exists():
@@ -42,7 +42,7 @@ def test_smoke_html_basic() -> None:
 
     helpers.assert_expected_mime(result, ["text/html"])
     helpers.assert_min_content_length(result, 10)
-    helpers.assert_content_contains_any(result, ["#", "**", "simple", "HTML"])
+    helpers.assert_content_contains_any(result, ["Sample Data Table", "Laptop", "Electronics", "Product"])
 
 
 def test_smoke_image_png() -> None:

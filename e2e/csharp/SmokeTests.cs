@@ -36,7 +36,7 @@ namespace Kreuzberg.E2E.Smoke
             var result = KreuzbergClient.ExtractFileSync(documentPath, config);
             TestHelpers.AssertExpectedMime(result, new[] { "text/html" });
             TestHelpers.AssertMinContentLength(result, 10);
-            TestHelpers.AssertContentContainsAny(result, new[] { "#", "**", "simple", "HTML" });
+            TestHelpers.AssertContentContainsAny(result, new[] { "Sample Data Table", "Laptop", "Electronics", "Product" });
         }
 
         [SkippableFact]

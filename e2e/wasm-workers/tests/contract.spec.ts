@@ -367,7 +367,7 @@ describe("contract", () => {
 	});
 
 	it("config_document_structure_headings", async () => {
-		const documentBytes = getFixture("office/docx/headers.docx");
+		const documentBytes = getFixture("docx/unit_test_headers.docx");
 		if (documentBytes === null) {
 			console.warn("[SKIP] Test skipped: fixture not available in Cloudflare Workers environment");
 			return;
@@ -415,7 +415,7 @@ describe("contract", () => {
 	});
 
 	it("config_element_types", async () => {
-		const documentBytes = getFixture("office/docx/headers.docx");
+		const documentBytes = getFixture("docx/unit_test_headers.docx");
 		if (documentBytes === null) {
 			console.warn("[SKIP] Test skipped: fixture not available in Cloudflare Workers environment");
 			return;
@@ -435,7 +435,7 @@ describe("contract", () => {
 			return;
 		}
 		assertions.assertExpectedMime(result, ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"]);
-		assertions.assertElements(result, 1, ["title", "narrative_text"]);
+		assertions.assertElements(result, 1, ["NarrativeText"]);
 	});
 
 	it("config_force_ocr", async () => {

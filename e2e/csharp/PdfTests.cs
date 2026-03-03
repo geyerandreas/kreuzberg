@@ -220,6 +220,7 @@ namespace Kreuzberg.E2E.Pdf
         [SkippableFact]
         public void PdfTablesSmall()
         {
+            TestHelpers.SkipIfFeatureUnavailable("ocr");
             TestHelpers.SkipIfLegacyOfficeDisabled("pdf/tiny.pdf");
             TestHelpers.SkipIfOfficeTestOnWindows("pdf/tiny.pdf");
             var documentPath = TestHelpers.EnsureDocument("pdf/tiny.pdf", true);

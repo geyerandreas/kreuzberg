@@ -309,6 +309,8 @@ class PdfTest extends TestCase
             $this->markTestSkipped('Skipping pdf_tables_small: missing document at ' . $documentPath);
         }
 
+        Helpers::skipIfFeatureUnavailable('ocr');
+
         $config = Helpers::buildConfig(null);
 
         $kreuzberg = new Kreuzberg($config);

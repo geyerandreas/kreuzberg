@@ -35,7 +35,7 @@ fn test_smoke_docx_basic() {
 
 #[test]
 fn test_smoke_html_basic() {
-    // Smoke test: HTML converted to Markdown
+    // Smoke test: HTML table extraction
 
     let document_path = resolve_document("html/simple_table.html");
     if !document_path.exists() {
@@ -54,7 +54,7 @@ fn test_smoke_html_basic() {
 
     assertions::assert_expected_mime(&result, &["text/html"]);
     assertions::assert_min_content_length(&result, 10);
-    assertions::assert_content_contains_any(&result, &["#", "**", "simple", "HTML"]);
+    assertions::assert_content_contains_any(&result, &["Sample Data Table", "Laptop", "Electronics", "Product"]);
 }
 
 #[test]

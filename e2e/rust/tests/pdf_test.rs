@@ -384,6 +384,17 @@ fn test_pdf_tables_small() {
     let config = ExtractionConfig::default();
 
     let result = match kreuzberg::extract_file_sync(&document_path, None, &config) {
+        Err(KreuzbergError::MissingDependency(dep)) => {
+            println!("Skipping pdf_tables_small: missing dependency {dep}", dep = dep);
+            return;
+        }
+        Err(KreuzbergError::UnsupportedFormat(fmt)) => {
+            println!(
+                "Skipping pdf_tables_small: unsupported format {fmt} (requires optional tool)",
+                fmt = fmt
+            );
+            return;
+        }
         Err(err) => panic!("Extraction failed for pdf_tables_small: {err:?}"),
         Ok(result) => result,
     };

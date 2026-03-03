@@ -30,7 +30,8 @@ class ContractTest extends TestCase
         $kreuzberg = new Kreuzberg($config);
         $bytes = file_get_contents($documentPath);
         $mimeType = Kreuzberg::detectMimeType($bytes);
-        $results = $kreuzberg->batchExtractBytes([$bytes], [$mimeType]);
+        $deferred = $kreuzberg->batchExtractBytesAsync([$bytes], [$mimeType]);
+        $results = $deferred->getResults();
         $result = $results[0];
 
         Helpers::assertExpectedMime($result, ['application/pdf']);
@@ -74,7 +75,8 @@ class ContractTest extends TestCase
         $config = Helpers::buildConfig(null);
 
         $kreuzberg = new Kreuzberg($config);
-        $results = $kreuzberg->batchExtractFiles([$documentPath]);
+        $deferred = $kreuzberg->batchExtractFilesAsync([$documentPath]);
+        $results = $deferred->getResults();
         $result = $results[0];
 
         Helpers::assertExpectedMime($result, ['application/pdf']);
@@ -118,7 +120,8 @@ class ContractTest extends TestCase
         $kreuzberg = new Kreuzberg($config);
         $bytes = file_get_contents($documentPath);
         $mimeType = Kreuzberg::detectMimeType($bytes);
-        $result = $kreuzberg->extractBytes($bytes, $mimeType);
+        $deferred = $kreuzberg->extractBytesAsync($bytes, $mimeType);
+        $result = $deferred->getResult();
 
         Helpers::assertExpectedMime($result, ['application/pdf']);
         Helpers::assertMinContentLength($result, 10);
@@ -160,7 +163,8 @@ class ContractTest extends TestCase
         $config = Helpers::buildConfig(null);
 
         $kreuzberg = new Kreuzberg($config);
-        $result = $kreuzberg->extractFile($documentPath);
+        $deferred = $kreuzberg->extractFileAsync($documentPath);
+        $result = $deferred->getResult();
 
         Helpers::assertExpectedMime($result, ['application/pdf']);
         Helpers::assertMinContentLength($result, 10);
@@ -315,7 +319,7 @@ class ContractTest extends TestCase
      */
     public function test_config_document_structure_headings(): void
     {
-        $documentPath = Helpers::resolveDocument('office/docx/headers.docx');
+        $documentPath = Helpers::resolveDocument('docx/unit_test_headers.docx');
         if (!file_exists($documentPath)) {
             $this->markTestSkipped('Skipping config_document_structure_headings: missing document at ' . $documentPath);
         }
@@ -355,7 +359,7 @@ class ContractTest extends TestCase
      */
     public function test_config_element_types(): void
     {
-        $documentPath = Helpers::resolveDocument('office/docx/headers.docx');
+        $documentPath = Helpers::resolveDocument('docx/unit_test_headers.docx');
         if (!file_exists($documentPath)) {
             $this->markTestSkipped('Skipping config_element_types: missing document at ' . $documentPath);
         }
@@ -368,7 +372,7 @@ class ContractTest extends TestCase
         $result = $kreuzberg->extractFile($documentPath);
 
         Helpers::assertExpectedMime($result, ['application/vnd.openxmlformats-officedocument.wordprocessingml.document']);
-        Helpers::assertElements($result, 1, ['title', 'narrative_text']);
+        Helpers::assertElements($result, 1, ['NarrativeText']);
     }
 
     /**

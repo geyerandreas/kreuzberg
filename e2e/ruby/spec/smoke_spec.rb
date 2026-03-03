@@ -40,7 +40,7 @@ RSpec.describe 'smoke fixtures' do
         ['text/html']
       )
       E2ERuby::Assertions.assert_min_content_length(result, 10)
-      E2ERuby::Assertions.assert_content_contains_any(result, ['#', '**', 'simple', 'HTML'])
+      E2ERuby::Assertions.assert_content_contains_any(result, ['Sample Data Table', 'Laptop', 'Electronics', 'Product'])
     end
   end
 

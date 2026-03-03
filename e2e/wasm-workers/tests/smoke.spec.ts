@@ -60,7 +60,7 @@ describe("smoke", () => {
 		}
 		assertions.assertExpectedMime(result, ["text/html"]);
 		assertions.assertMinContentLength(result, 10);
-		assertions.assertContentContainsAny(result, ["#", "**", "simple", "HTML"]);
+		assertions.assertContentContainsAny(result, ["Sample Data Table", "Laptop", "Electronics", "Product"]);
 	});
 
 	it("smoke_image_png", async () => {

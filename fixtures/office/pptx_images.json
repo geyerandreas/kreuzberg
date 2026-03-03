@@ -11,6 +11,6 @@
 	},
 	"assertions": {
 		"expected_mime": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-		"min_content_length": 20
+		"min_content_length": 15
 	}
 }

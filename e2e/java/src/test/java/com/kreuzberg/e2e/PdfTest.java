@@ -278,8 +278,8 @@ public class PdfTest {
         "pdf_tables_small",
         "pdf/tiny.pdf",
         config,
-        Collections.emptyList(),
-        null,
+        Arrays.asList("ocr"),
+        "PDF table extraction requires OCR feature",
         true,
         result -> {
           E2EHelpers.Assertions.assertExpectedMime(result, Arrays.asList("application/pdf"));

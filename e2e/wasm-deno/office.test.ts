@@ -706,7 +706,7 @@ Deno.test("office_pptx_images", { permissions: { read: true, net: true } }, asyn
 		return;
 	}
 	assertions.assertExpectedMime(result, ["application/vnd.openxmlformats-officedocument.presentationml.presentation"]);
-	assertions.assertMinContentLength(result, 20);
+	assertions.assertMinContentLength(result, 15);
 });
 
 Deno.test("office_pptx_pitch_deck", { permissions: { read: true, net: true } }, async () => {

@@ -5,13 +5,18 @@
 # not the default MSVC ABI, to avoid linker symbol mismatches.
 rustup target add x86_64-pc-windows-gnu 2>/dev/null || true
 
-# Resolve Python command: prefer python3, fall back to python.
-# On Windows, python3 may not exist — the executable is often just "python".
+# Resolve Python command: on Windows, prefer py (Python launcher), then python3, then python.
+# The py command is the standard way to invoke Python on Windows.
+# Also check RETICULATE_PYTHON and PYTHON environment variables as fallbacks.
 PYTHON_CMD=""
-if command -v python3 >/dev/null 2>&1; then
+if command -v py >/dev/null 2>&1; then
+  PYTHON_CMD="py"
+elif command -v python3 >/dev/null 2>&1; then
   PYTHON_CMD="python3"
 elif command -v python >/dev/null 2>&1; then
   PYTHON_CMD="python"
+elif [ -n "${RETICULATE_PYTHON}" ] && [ -x "${RETICULATE_PYTHON}" ]; then
+  PYTHON_CMD="${RETICULATE_PYTHON}"
 elif [ -n "${PYTHON}" ] && [ -x "${PYTHON}" ]; then
   PYTHON_CMD="${PYTHON}"
 fi
@@ -92,7 +97,7 @@ if [ ! -f "vendor/kreuzberg/Cargo.toml" ]; then
       exit 1
     fi
 
-    tar xzf "${TARBALL}" -C "${WORK}"
+    tar xzf "${TARBALL}" -C "${WORK}" 2>&1 | grep -v "Cannot create symlink" || true
     EXTRACTED="${WORK}/kreuzberg-${VERSION}"
 
     if [ ! -d "${EXTRACTED}/crates/kreuzberg" ]; then

@@ -252,7 +252,7 @@ test_that("config_element_types", {
     skip_if_missing = TRUE
   )
   assert_expected_mime(result, c("application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
-  assert_elements(result, min_count = 1L, types_include = c("narrative_text"))
+  assert_elements(result, min_count = 1L, types_include = c("NarrativeText"))
 })
 
 test_that("config_force_ocr", {

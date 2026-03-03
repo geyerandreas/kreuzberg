@@ -67,7 +67,7 @@ env:
 
 jobs:
   build-php-extension:
-    name: PHP Build (${{ matrix.os }})
+    name: PHP Build (${{ matrix.os }}, PHP ${{ matrix.php-version }})
     if: github.repository == 'kreuzberg-dev/kreuzberg' && github.actor != 'dependabot[bot]'
     timeout-minutes: 180
     strategy:
@@ -75,6 +75,7 @@ jobs:
       matrix:
         # TODO: Re-enable ubuntu-24.04-arm once cargo fingerprint issues on ARM64 are resolved
         os: [ubuntu-latest, macos-latest, windows-latest]
+        php-version: ["8.4", "8.5"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -120,7 +121,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.4"
+          php-version: ${{ matrix.php-version }}
           extensions: ffi
           tools: composer
 
@@ -208,7 +209,7 @@ jobs:
         uses: ./.github/actions/cleanup-rust-cache
 
   test-php:
-    name: PHP Tests (${{ matrix.os }})
+    name: PHP Tests (${{ matrix.os }}, PHP ${{ matrix.php-version }})
     if: github.repository == 'kreuzberg-dev/kreuzberg' && github.actor != 'dependabot[bot]'
     needs: build-php-extension
     timeout-minutes: 180
@@ -218,6 +219,7 @@ jobs:
         # TODO: Re-enable ubuntu-24.04-arm once cargo fingerprint issues on ARM64 are resolved
         # TODO: Re-enable windows-latest once Tesseract installation issues are resolved
         os: [ubuntu-latest, macos-latest]
+        php-version: ["8.4", "8.5"]
     runs-on: ${{ matrix.os }}
     env:
       RUSTC_WRAPPER: ""
@@ -249,7 +251,7 @@ jobs:
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.4"
+          php-version: ${{ matrix.php-version }}
           extensions: ffi
           tools: composer
 

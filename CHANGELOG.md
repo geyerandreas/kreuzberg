@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Alpine/musl CLI Docker image**: Fixed "Dynamic loading not supported" error when running `kreuzberg-cli` in Alpine containers. The CLI binary is now dynamically linked against musl libc, enabling runtime library loading for PDF processing.
+- **R package Windows installation**: Improved Python detection in configure script for Windows environments (added `py` launcher and `RETICULATE_PYTHON` support). Symlink extraction errors during source package installation are now handled gracefully.
+- **PHP 8.5 precompiled extension binaries**: Added PHP 8.5 support alongside existing PHP 8.4 in CI and release workflows.
 - **PPTX text run spacing**: Adjacent text runs within paragraphs are now joined with smart spacing instead of being concatenated directly ("HelloWorld" → "Hello World").
 - **CSV Shift-JIS/cp932 encoding detection**: `encoding_rs` is now a non-optional dependency. CSV files with Shift-JIS encoding are correctly decoded instead of producing mojibake. Fallback encoding detection tries common encodings (Shift-JIS, cp932, windows-1252, iso-8859-1, gb18030, big5).
 - **EML multipart body extraction**: All text/html body parts are now extracted by iterating over all indices instead of only index 0. Nested `message/rfc822` parts in multipart/digest are recursively extracted.

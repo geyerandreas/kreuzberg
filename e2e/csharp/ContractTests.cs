@@ -223,9 +223,9 @@ namespace Kreuzberg.E2E.Contract
         public void ConfigDocumentStructureHeadings()
         {
             TestHelpers.SkipIfFeatureUnavailable("office");
-            TestHelpers.SkipIfLegacyOfficeDisabled("office/docx/headers.docx");
-            TestHelpers.SkipIfOfficeTestOnWindows("office/docx/headers.docx");
-            var documentPath = TestHelpers.EnsureDocument("office/docx/headers.docx", true);
+            TestHelpers.SkipIfLegacyOfficeDisabled("docx/unit_test_headers.docx");
+            TestHelpers.SkipIfOfficeTestOnWindows("docx/unit_test_headers.docx");
+            var documentPath = TestHelpers.EnsureDocument("docx/unit_test_headers.docx", true);
             var config = TestHelpers.BuildConfig("{\"include_document_structure\":true}");
 
             var result = KreuzbergClient.ExtractFileSync(documentPath, config);
@@ -250,14 +250,14 @@ namespace Kreuzberg.E2E.Contract
         public void ConfigElementTypes()
         {
             TestHelpers.SkipIfFeatureUnavailable("office");
-            TestHelpers.SkipIfLegacyOfficeDisabled("office/docx/headers.docx");
-            TestHelpers.SkipIfOfficeTestOnWindows("office/docx/headers.docx");
-            var documentPath = TestHelpers.EnsureDocument("office/docx/headers.docx", true);
+            TestHelpers.SkipIfLegacyOfficeDisabled("docx/unit_test_headers.docx");
+            TestHelpers.SkipIfOfficeTestOnWindows("docx/unit_test_headers.docx");
+            var documentPath = TestHelpers.EnsureDocument("docx/unit_test_headers.docx", true);
             var config = TestHelpers.BuildConfig("{\"result_format\":\"element_based\"}");
 
             var result = KreuzbergClient.ExtractFileSync(documentPath, config);
             TestHelpers.AssertExpectedMime(result, new[] { "application/vnd.openxmlformats-officedocument.wordprocessingml.document" });
-            TestHelpers.AssertElements(result, 1, new[] { "title", "narrative_text" });
+            TestHelpers.AssertElements(result, 1, new[] { "NarrativeText" });
         }
 
         [SkippableFact]

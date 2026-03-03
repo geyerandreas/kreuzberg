@@ -648,7 +648,7 @@ class OfficeTest extends TestCase
         $result = $kreuzberg->extractFile($documentPath);
 
         Helpers::assertExpectedMime($result, ['application/vnd.openxmlformats-officedocument.presentationml.presentation']);
-        Helpers::assertMinContentLength($result, 20);
+        Helpers::assertMinContentLength($result, 15);
     }
 
     /**

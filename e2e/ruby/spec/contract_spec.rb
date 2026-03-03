@@ -325,7 +325,7 @@ RSpec.describe 'contract fixtures' do
         result,
         ['application/vnd.openxmlformats-officedocument.wordprocessingml.document']
       )
-      E2ERuby::Assertions.assert_elements(result, min_count: 1, types_include: %w[narrative_text])
+      E2ERuby::Assertions.assert_elements(result, min_count: 1, types_include: %w[NarrativeText])
     end
   end
 

@@ -380,7 +380,7 @@ describe("pdf", () => {
 		try {
 			result = await extractBytes(documentBytes, "application/pdf", config);
 		} catch (error) {
-			if (shouldSkipFixture(error, "pdf_tables_small", [], undefined)) {
+			if (shouldSkipFixture(error, "pdf_tables_small", ["ocr"], "PDF table extraction requires OCR feature")) {
 				return;
 			}
 			throw error;

@@ -424,7 +424,7 @@ fn test_config_document_structure_disabled() {
 fn test_config_document_structure_headings() {
     // Tests document structure extraction with heading nodes on a DOCX
 
-    let document_path = resolve_document("office/docx/headers.docx");
+    let document_path = resolve_document("docx/unit_test_headers.docx");
     if !document_path.exists() {
         println!(
             "Skipping config_document_structure_headings: missing document at {}",
@@ -500,7 +500,7 @@ fn test_config_document_structure_with_headings() {
 fn test_config_element_types() {
     // Tests element-based result format with element type assertions on DOCX
 
-    let document_path = resolve_document("office/docx/headers.docx");
+    let document_path = resolve_document("docx/unit_test_headers.docx");
     if !document_path.exists() {
         println!(
             "Skipping config_element_types: missing document at {}",
@@ -535,7 +535,7 @@ fn test_config_element_types() {
         &result,
         &["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
     );
-    assertions::assert_elements(&result, Some(1), Some(&["title", "narrative_text"]));
+    assertions::assert_elements(&result, Some(1), Some(&["NarrativeText"]));
 }
 
 #[test]

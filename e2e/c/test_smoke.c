@@ -18,7 +18,7 @@ static void test_smoke_smoke_html_basic(void) {
     if (!result) return; /* skipped */
     assert_expected_mime(result, (const char *[]){"text/html"}, 1);
     assert_min_content_length(result, 10);
-    assert_content_contains_any(result, (const char *[]){"#", "**", "simple", "HTML"}, 4);
+    assert_content_contains_any(result, (const char *[]){"Sample Data Table", "Laptop", "Electronics", "Product"}, 4);
     kreuzberg_free_result(result);
 }
 

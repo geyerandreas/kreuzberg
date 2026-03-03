@@ -30,7 +30,8 @@ class EmbeddingsTest extends TestCase
         $config = Helpers::buildConfig(['chunking' => ['embedding' => ['model' => ['name' => 'balanced', 'type' => 'preset'], 'normalize' => true], 'max_chars' => 500, 'max_overlap' => 50]]);
 
         $kreuzberg = new Kreuzberg($config);
-        $result = $kreuzberg->extractFile($documentPath);
+        $deferred = $kreuzberg->extractFileAsync($documentPath);
+        $result = $deferred->getResult();
 
         Helpers::assertExpectedMime($result, ['application/pdf']);
         Helpers::assertMinContentLength($result, 10);

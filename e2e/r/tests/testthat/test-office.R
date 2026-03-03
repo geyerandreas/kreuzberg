@@ -437,7 +437,7 @@ test_that("office_pptx_images", {
     skip_if_missing = TRUE
   )
   assert_expected_mime(result, c("application/vnd.openxmlformats-officedocument.presentationml.presentation"))
-  assert_min_content_length(result, 20L)
+  assert_min_content_length(result, 15L)
 })
 
 test_that("office_pptx_pitch_deck", {

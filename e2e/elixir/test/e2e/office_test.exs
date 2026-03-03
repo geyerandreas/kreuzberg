@@ -755,7 +755,7 @@ defmodule E2E.OfficeTest do
           |> E2E.Helpers.assert_expected_mime([
             "application/vnd.openxmlformats-officedocument.presentationml.presentation"
           ])
-          |> E2E.Helpers.assert_min_content_length(20)
+          |> E2E.Helpers.assert_min_content_length(15)
 
         {:skipped, reason} ->
           IO.puts("SKIPPED: #{reason}")

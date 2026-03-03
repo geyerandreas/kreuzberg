@@ -426,7 +426,7 @@ describe("contract fixtures", () => {
 	it(
 		"config_document_structure_headings",
 		() => {
-			const documentPath = resolveDocument("office/docx/headers.docx");
+			const documentPath = resolveDocument("docx/unit_test_headers.docx");
 			if (!existsSync(documentPath)) {
 				console.warn("Skipping config_document_structure_headings: missing document at", documentPath);
 				return;
@@ -484,7 +484,7 @@ describe("contract fixtures", () => {
 	it(
 		"config_element_types",
 		() => {
-			const documentPath = resolveDocument("office/docx/headers.docx");
+			const documentPath = resolveDocument("docx/unit_test_headers.docx");
 			if (!existsSync(documentPath)) {
 				console.warn("Skipping config_element_types: missing document at", documentPath);
 				return;
@@ -505,7 +505,7 @@ describe("contract fixtures", () => {
 			assertions.assertExpectedMime(result, [
 				"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 			]);
-			chunkAssertions.assertElements(result, 1, ["title", "narrative_text"]);
+			chunkAssertions.assertElements(result, 1, ["NarrativeText"]);
 		},
 		TEST_TIMEOUT_MS,
 	);

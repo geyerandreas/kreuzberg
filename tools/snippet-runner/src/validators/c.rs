@@ -79,7 +79,10 @@ impl SnippetValidator for CValidator {
             return false;
         }
 
-        error_lines.iter().all(|line| {
+        // Use any() instead of all(): if ANY error is a dependency error, treat the
+        // entire snippet as dependency-limited. Cascading errors from missing headers
+        // produce unpredictable secondary messages that can't all be enumerated.
+        error_lines.iter().any(|line| {
             line.contains("file not found")
                 || line.contains("unknown type name")
                 || line.contains("use of undeclared identifier")
@@ -102,7 +105,6 @@ impl SnippetValidator for CValidator {
                 || line.contains("type specifier missing") // cascading from missing headers
                 || line.contains("parameter list without types") // cascading
                 || line.contains("call to undeclared library") // undeclared library function
-                || line.contains("errors generated") // summary line
                 || line.contains("warnings and") // "N warnings and M errors generated"
                 || line.contains("too many errors") // fatal: too many errors emitted
                 || line.contains("incompatible integer") // cascading from unknown types

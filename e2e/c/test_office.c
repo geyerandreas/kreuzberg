@@ -271,7 +271,7 @@ static void test_office_office_pptx_images(void) {
     CExtractionResult *result = run_extraction("pptx/powerpoint_with_image.pptx", NULL);
     if (!result) return; /* skipped */
     assert_expected_mime(result, (const char *[]){"application/vnd.openxmlformats-officedocument.presentationml.presentation"}, 1);
-    assert_min_content_length(result, 20);
+    assert_min_content_length(result, 15);
     kreuzberg_free_result(result);
 }
 

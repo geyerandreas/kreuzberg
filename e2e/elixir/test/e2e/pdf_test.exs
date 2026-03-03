@@ -338,8 +338,8 @@ defmodule E2E.PdfTest do
              "pdf_tables_small",
              "pdf/tiny.pdf",
              nil,
-             requirements: [],
-             notes: nil,
+             requirements: ["ocr"],
+             notes: "PDF table extraction requires OCR feature",
              skip_if_missing: true
            ) do
         {:ok, result} ->

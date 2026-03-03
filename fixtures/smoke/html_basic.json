@@ -1,8 +1,8 @@
 {
 	"id": "smoke_html_basic",
 	"category": "smoke",
-	"tags": ["smoke", "html", "markdown"],
-	"description": "Smoke test: HTML converted to Markdown",
+	"tags": ["smoke", "html"],
+	"description": "Smoke test: HTML table extraction",
 	"document": {
 		"path": "html/simple_table.html",
 		"media_type": "text/html"
@@ -13,6 +13,6 @@
 	"assertions": {
 		"expected_mime": "text/html",
 		"min_content_length": 10,
-		"content_contains_any": ["#", "**", "simple", "HTML"]
+		"content_contains_any": ["Sample Data Table", "Laptop", "Electronics", "Product"]
 	}
 }

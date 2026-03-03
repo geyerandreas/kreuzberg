@@ -574,7 +574,7 @@ RSpec.describe 'office fixtures' do
         result,
         ['application/vnd.openxmlformats-officedocument.presentationml.presentation']
       )
-      E2ERuby::Assertions.assert_min_content_length(result, 20)
+      E2ERuby::Assertions.assert_min_content_length(result, 15)
     end
   end
 

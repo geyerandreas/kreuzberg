@@ -29,7 +29,7 @@ test_that("smoke_html_basic", {
   )
   assert_expected_mime(result, c("text/html"))
   assert_min_content_length(result, 10L)
-  assert_content_contains_any(result, c("#", "**", "simple", "HTML"))
+  assert_content_contains_any(result, c("Sample Data Table", "Laptop", "Electronics", "Product"))
 })
 
 test_that("smoke_image_png", {

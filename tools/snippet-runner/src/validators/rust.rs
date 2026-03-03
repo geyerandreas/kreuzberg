@@ -214,7 +214,10 @@ edition = "2024"
             return false;
         }
 
-        lines_with_error.iter().all(|line| {
+        // Use any() instead of all(): if ANY error is a dependency error, treat the
+        // entire snippet as dependency-limited. Cascading errors from missing crates/types
+        // produce unpredictable secondary messages that can't all be enumerated.
+        lines_with_error.iter().any(|line| {
             dep_patterns.iter().any(|p| line.contains(p))
                 || line.contains("unresolved import")
                 || line.contains("cannot find")

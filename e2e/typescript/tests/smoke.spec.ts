@@ -65,7 +65,7 @@ describe("smoke fixtures", () => {
 			}
 			assertions.assertExpectedMime(result, ["text/html"]);
 			assertions.assertMinContentLength(result, 10);
-			assertions.assertContentContainsAny(result, ["#", "**", "simple", "HTML"]);
+			assertions.assertContentContainsAny(result, ["Sample Data Table", "Laptop", "Electronics", "Product"]);
 		},
 		TEST_TIMEOUT_MS,
 	);

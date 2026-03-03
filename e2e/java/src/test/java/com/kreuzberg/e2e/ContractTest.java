@@ -423,7 +423,7 @@ public class ContractTest {
     JsonNode config = MAPPER.readTree("{\"include_document_structure\":true}");
     E2EHelpers.runFixture(
         "config_document_structure_headings",
-        "office/docx/headers.docx",
+        "docx/unit_test_headers.docx",
         config,
         Arrays.asList("office"),
         null,
@@ -462,7 +462,7 @@ public class ContractTest {
     JsonNode config = MAPPER.readTree("{\"result_format\":\"element_based\"}");
     E2EHelpers.runFixture(
         "config_element_types",
-        "office/docx/headers.docx",
+        "docx/unit_test_headers.docx",
         config,
         Arrays.asList("office"),
         null,
@@ -472,7 +472,7 @@ public class ContractTest {
               result,
               Arrays.asList(
                   "application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
-          E2EHelpers.Assertions.assertElements(result, 1, Arrays.asList("title", "narrative_text"));
+          E2EHelpers.Assertions.assertElements(result, 1, Arrays.asList("NarrativeText"));
         });
   }
 

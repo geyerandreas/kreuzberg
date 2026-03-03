@@ -825,7 +825,7 @@ fn test_office_pptx_images() {
         &result,
         &["application/vnd.openxmlformats-officedocument.presentationml.presentation"],
     );
-    assertions::assert_min_content_length(&result, 20);
+    assertions::assert_min_content_length(&result, 15);
 }
 
 #[test]

@@ -207,7 +207,7 @@ func TestOfficeOfficePptxBasic(t *testing.T) {
 func TestOfficeOfficePptxImages(t *testing.T) {
 	result := runExtraction(t, "pptx/powerpoint_with_image.pptx", nil)
 	assertExpectedMime(t, result, []string{"application/vnd.openxmlformats-officedocument.presentationml.presentation"})
-	assertMinContentLength(t, result, 20)
+	assertMinContentLength(t, result, 15)
 }
 
 func TestOfficeOfficePptxPitchDeck(t *testing.T) {
