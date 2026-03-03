@@ -462,6 +462,24 @@ const DOCS: &[BenchDoc] = &[
         gt_path: "ground_truth/pdf/2206.01062.md",
         docling_path: Some("vendored/docling/md/2206.01062.md"),
     },
+    BenchDoc {
+        name: "rtl-farsi",
+        pdf_path: "vendored/docling/pdf/right_to_left_03.pdf",
+        gt_path: "ground_truth/pdf/right_to_left_03.md",
+        docling_path: Some("vendored/docling/md/right_to_left_03.md"),
+    },
+    BenchDoc {
+        name: "google-docs",
+        pdf_path: "pdf/google_doc_document.pdf",
+        gt_path: "ground_truth/pdf/pdf_google_docs.md",
+        docling_path: None,
+    },
+    BenchDoc {
+        name: "embedded-tables",
+        pdf_path: "pdf/embedded_images_tables.pdf",
+        gt_path: "ground_truth/pdf/pdf_embedded.md",
+        docling_path: None,
+    },
 ];
 
 const ALL_TYPES: [MdBlockType; 10] = [
