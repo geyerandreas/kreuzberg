@@ -4,22 +4,17 @@ Duplicated
 
 Font
 
-Size
 
+Size
 Italic
 
 Weight
 
-Horizontal shift
+Horizontal
+Horizontalshift
+           shift
 
+Vertical
 Vertical shift
-
-Horizontal shift
-
-Weight
-
-Italic
-
-Size
-
-Font
+         shift
+

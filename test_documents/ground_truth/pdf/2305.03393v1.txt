@@ -1,427 +1,729 @@
-Optimized Table Tokenization for Table Structure
-Recognition
+                                        Optimized Table Tokenization for Table Structure
+                                                         Recognition
 
-Maksim Lyuk^2020−2031−0025, Ahmad Nassar^2020−2033−9488−9869,
-Nikolaus Hristella^2020−2031−0018, Christoph Auer^2020−2033−1552,
-and Peter Staar
+                                           Maksym Lysak[0000−0002−3723−6960] , Ahmed Nassar[0000−0002−9468−0822] ,
+                                         Nikolaos Livathinos[0000−0001−8513−3491] , Christoph Auer[0000−0001−5761−0422] ,
+                                                              and Peter Staar[0000−0002−8088−0823]
 
-IBM Research
-2025-08-X82-4083, IBM.com
 
-Abstract. Extracting tables from documents is a crucial task in any
-document intelligence pipeline. Recently, transformer-based models have
-demonstrated that they can be used effectively for automatic table structure
-extraction. However, most existing work on transformer-based approaches taking
-HTML, LaTeX token sequences as input is not explicitly optimized for
-in HTML, LaTeX which represent the structure of the table. Since the
-table representation of the table into HTML, LaTeX has a significant impact on the
-model's performance, we hypothesize that the encoding method will improve the
-model's performance.
-We propose a new, optimized table-tokenization language (OTL) with a
-unified topology and operator semantics. The benefits of OTL are: (1) it
-reduces the token sequence length by 75%, (2) it improves the
-sequence length to half of HTML on average. Consequently, based
-on our empirical results we show that by simply replacing the HTML input
-with OTL models, we get significant performance improvement of 12-score and 14-point
-reduction as compared to baseline methods.
-Popular table structure datasets will be published in OTL format to the
-ML community.
 
-Keywords: Table structure recognition, Data Representation, Transformer, Optimization.
 
-1 Introduction
+arXiv:2305.03393v1 [cs.CV] 5 May 2023
+                                                                         IBM Research
+                                                             {mly,ahn,nli,cau,taa}@zurich.ibm.com
 
-Table extraction from documents such as scientific papers, patents, reports,
-business documents, books etc. is a critical task in any document intelligence
-pipeline. Recently, transformer-based models have been shown to have
-reliable information and therefore need to be extracted with high accuracy.
-Automatically table expect in document is various forms, online and offline
-documents. There exist many transformer-based methods based on these types of
-structural methods. Therefore, accurate table extraction is achieved these days with
-machine-learning based methods.
-In essence, table extraction (called table recognition) is typically a two-stage process. Firstly, every table on a page is located with a bounding
-box, and secondly, their logical row and column structure is recognized. As of
 
-2 M. Lyusk, et al.
 
-Fig. 1. Comparison between HTML and OTL table structure representation. (A)
-table example with complex row and column headers, including a 2D input span,
-rowspan, and mixed header. (B) renders the same table as HTML. (C)
-HTML representation of OTL (OTL) to reduced representation size (12 tokens ) in this case.
-In reduced sequence length (55 tokens 55) and a reduced structure tree (example
-HTML span). OTL greatly reduces the number of tokens needed for table repr.
+                                              Abstract. Extracting tables from documents is a crucial task in any
+                                              document conversion pipeline. Recently, transformer-based models have
+                                              demonstrated that table-structure can be recognized with impressive ac-
+                                              curacy using Image-to-Markup-Sequence (Im2Seq) approaches. Taking
+                                              only the image of a table, such models predict a sequence of tokens (e.g.
+                                              in HTML, LaTeX) which represent the structure of the table. Since the
+                                              token representation of the table structure has a significant impact on
+                                              the accuracy and run-time performance of any Im2Seq model, we inves-
+                                              tigate in this paper how table-structure representation can be optimised.
+                                              We propose a new, optimised table-structure language (OTSL) with a
+                                              minimized vocabulary and specific rules. The benefits of OTSL are that
+                                              it reduces the number of tokens to 5 (HTML needs 28+) and shortens
+                                              the sequence length to half of HTML on average. Consequently, model
+                                              accuracy improves significantly, inference time is halved compared to
+                                              HTML-based models, and the predicted table structures are always syn-
+                                              tactically correct. This in turn eliminates most post-processing needs.
+                                              Popular table structure data-sets will be published in OTSL format to
+                                              the community.
 
-[Figure A shows an HTML representation with complex table structure and various colored cells]
-[Figure B shows the same table rendered in HTML with colored cells]
-[Figure C shows the OTL representation with abbreviated notation]
-[Figure shows a legend indicating different cell types]
+                                              Keywords: Table Structure Recognition · Data Representation · Trans-
+                                              formers · Optimization.
 
-Today, table detection in documents is a well understood problem, and the latest state-of-the-art (SOTA) object detection methods provide an accuracy comparable
-to the human-level. However, table structure recognition (TSR) is a far more challenging and remains a very active
+
+                                        1   Introduction
+
+                                        Tables are ubiquitous in documents such as scientific papers, patents, reports,
+                                        manuals, specification sheets or marketing material. They often encode highly
+                                        valuable information and therefore need to be extracted with high accuracy.
+                                        Unfortunately, tables appear in documents in various sizes, styling and struc-
+                                        ture, making it difficult to recover their correct structure with simple analyt-
+                                        ical methods. Therefore, accurate table extraction is achieved these days with
+                                        machine-learning based methods.
+                                            In modern document understanding systems [1,15], table extraction is typi-
+                                        cally a two-step process. Firstly, every table on a page is located with a bounding
+                                        box, and secondly, their logical row and column structure is recognized. As of
+2       M. Lysak, et al.
+
+
+Fig. 1. Comparison between HTML and OTSL table structure representation: (A)
+table-example with complex row and column headers, including a 2D empty span,
+(B) minimal graphical representation of table structure using rectangular layout, (C)
+HTML representation, (D) OTSL representation. This example demonstrates many of
+the key-features of OTSL, namely its reduced vocabulary size (12 versus 5 in this case),
+its reduced sequence length (55 versus 30) and a enhanced internal structure (variable
+token sequence length per row in HTML versus a fixed length of rows in OTSL).
+
+    A                                                      B
+
+
+
+
+     C HTML                                                                     D OTSL
+       sequence length: 55                                                        sequence length: 30
+    <table>
+       <tr>
+                                                                                   C L C L L NL
+          <td colspan=“2” rowspan=“2” > </td> <td colspan=“3” > </td>              U X C C C NL
+       </tr>
+       <tr>                                                                        C C C C C NL
+          <td> </td> <td> </td> <td> </td>                                         U C C C C NL
+       </tr>
+       <tr>                                                                        U C C C C NL
+          <td rowspan=“3” > </td> <td> </td> <td> </td> <td> </td> <td> </td>
+       </tr>
+       <tr>
+          <td> </td> <td> </td> <td> </td> <td> </td>
+       </tr>
+       <tr>
+          <td> </td> <td> </td> <td> </td> <td> </td>
+       </tr>
+    </table>
+    vocabulary for this table: 12 tokens                                          vocabulary: 5 tokens
+    <table> <tr> </tr> <td> </td> <td colspan="2" colspan="3"                     C L U X NL
+    rowspan="2" rowspan="3" > </table>
+
+
+
+
+today, table detection in documents is a well understood problem, and the latest
+state-of-the-art (SOTA) object detection methods provide an accuracy compa-
+rable to human observers [7,8,10,14,23]. On the other hand, the problem of table
+structure recognition (TSR) is a lot more challenging and remains a very active
 area of research, in which many novel machine learning algorithms are being
-developed and constantly improved upon [1, 2].
-Recently, existing SOTA methods for table structure recognition employ
-vision-based approaches based on the HTML page in a pure encoding and decoding
-style. These methods represent table structure as HTML or LaTeX/Markdown.
-These
-a purely data-driven solution. The tokens of the sequence length being to a
-simple structure such as HTML, LaTeX or Markdown, while else is therefore
-to be illustrated in Figure 1. In Figure 1 we illustrate how HTML is used to represent the table-structure
-of a particular example table. Public table-structure data sets such as PublicTableNet, which has about 500K table annotations. This is typically captured PDF and HTML sources (e.g. Padded Control), paramount primarily
-the use of HTML or annotated table representations format for TSR.
+explored [3,4,5,9,11,12,13,14,17,18,21,22].
+    Recently emerging SOTA methods for table structure recognition employ
+transformer-based models, in which an image of the table is provided to the net-
+work in order to predict the structure of the table as a sequence of tokens. These
+image-to-sequence (Im2Seq) models are extremely powerful, since they allow for
+a purely data-driven solution. The tokens of the sequence typically belong to a
+markup language such as HTML, Latex or Markdown, which allow to describe
+table structure as rows, columns and spanning cells in various configurations.
+In Figure 1, we illustrate how HTML is used to represent the table-structure
+of a particular example table. Public table-structure data sets such as PubTab-
+Net [22], and FinTabNet [21], which were created in a semi-automated way from
+paired PDF and HTML sources (e.g. PubMed Central), popularized primarily
+the use of HTML as ground-truth representation format for TSR.
+              Optimized Table Tokenization for Table Structure Recognition      3
 
-3
-
-Optimized Table Tokenization for Table Structure Recognition
-
-While the majority of research in TSR is currently focused on the development and application of novel neural model architectures, the table structure
-recognition task not explicitly be on the sequence of tokens of the encoding
-adapted so is for the sequence tokenization in IngiDyn models. In this paper,
-we aim for the exposable and investigate the impact of the tokens and table
-representation on the performance of the neural transformer-based deep learning
-architecture. Since the current state-of-the-art IngiDyn model is TableFormer [8],
-in the paper to perform our experiments.
-In this work, we propose and introduce a new table structure language (OTL) – specifically designed for the table-structure
-in the structure and structured way for IngiDyn models. OTL has a similar set
-of operations as HTML, but with a highly structured and optimized format
-compared to other languages such as HTML. OTL: has a minimized vocabulary
-which avoids short sequence length, strong inductive representation to avoid critical
-information. As a result, OTL reduces the number of tokens required and
+    While the majority of research in TSR is currently focused on the develop-
+ment and application of novel neural model architectures, the table structure
+representation language (e.g. HTML in PubTabNet and FinTabNet) is usually
+adopted as is for the sequence tokenization in Im2Seq models. In this paper,
+we aim for the opposite and investigate the impact of the table structure rep-
+resentation language with an otherwise unmodified Im2Seq transformer-based
+architecture. Since the current state-of-the-art Im2Seq model is TableFormer [9],
+we select this model to perform our experiments.
+    The main contribution of this paper is the introduction of a new optimised ta-
+ble structure language (OTSL), specifically designed to describe table-structure
+in an compact and structured way for Im2Seq models. OTSL has a number of
+key features, which make it very attractive to use in Im2Seq models. Specifically,
+compared to other languages such as HTML, OTSL has a minimized vocabulary
+which yields short sequence length, strong inherent structure (e.g. strict rectan-
+gular layout) and a strict syntax with rules that only look backwards. The latter
 allows for syntax validation during inference and ensures a syntactically correct
-table representation. These OTL features are illustrated in Figure 2.
-The paper is structured as follows. In section 2 we give an overview of the
-latest developments in table-structure recognition. In section 3 we process
-the current limitations of existing markup languages and table representations and discuss the flaws. Subsequently, we introduce OTL in section 4 which includes
-the language definition, syntax rules and error correction procedures. In
-section 5, we describe the table-structure recognition model (TableFormer). In
-section 6 we finally demonstrate the advantages of OTIL. Finally, in section 7 we conclude and summarize our recommendations.
+table-structure. These OTSL features are illustrated in Figure 1, in comparison
+to HTML.
+    The paper is structured as follows. In section 2, we give an overview of the
+latest developments in table-structure reconstruction. In section 3 we review
+the current HTML table encoding (popularised by PubTabNet and FinTabNet)
+and discuss its flaws. Subsequently, we introduce OTSL in section 4, which in-
+cludes the language definition, syntax rules and error-correction procedures. In
+section 5, we apply OTSL on the TableFormer architecture, compare it to Table-
+Former models trained on HTML and ultimately demonstrate the advantages
+of using OTSL. Finally, in section 6 we conclude our work and outline next
+potential steps.
 
-2 Related Work
+
+2   Related Work
 
 Approaches to formalize the logical structure and layout of tables in electronic
-documents date back more than two decades [10]. In the course years, a wide
-spectrum of methods have been proposed and developed for the representation
-and modeling of table structure recognition, i.e., the correct identification of columns,
-rows and spanning cells is a given table. Broadly speaking, the current deep
-learning based approaches can be divided into 1D and 2D input space-based methods.
-Graph-Neural-Network (GNN) methods and Image-to-Markup-Sequence
-(IAMS) methods. Object-action based methods [11][12] are shown to be able to detect bounding-box predictions to define table cells, rows, and columns on a table
-image. Graph-Neural-Network (GNN) based methods [13][14] the same
-research direction. The edges of the graph define the relationship
-between cells, which allows the model to use information from neighboring cells to predict structure of other cells.
+documents date back more than two decades [16]. In the recent past, a wide
+variety of computer vision methods have been explored to tackle the prob-
+lem of table structure recognition, i.e. the correct identification of columns,
+rows and spanning cells in a given table. Broadly speaking, the current deep-
+learning based approaches fall into three categories: object detection (OD) meth-
+ods, Graph-Neural-Network (GNN) methods and Image-to-Markup-Sequence
+(Im2Seq) methods. Object-detection based methods [11,12,13,14,21] rely on table-
+structure annotation using (overlapping) bounding boxes for training, and pro-
+duce bounding-box predictions to define table cells, rows, and columns on a table
+image. Graph Neural Network (GNN) based methods [3,6,17,18], as the name
+suggests, represent tables as graph structures. The graph nodes represent the
+content of each table cell, an embedding vector from the table image, or geomet-
+ric coordinates of the table cell. The edges of the graph define the relationship
+between the nodes, e.g. if they belong to the same column, row, or table cell.
+4       M. Lysak, et al.
 
-4
+Other work [20] aims at predicting a grid for each table and deciding which cells
+must be merged using an attention network. Im2Seq methods cast the problem
+as a sequence generation task [4,5,9,22], and therefore need an internal table-
+structure representation language, which is often implemented with standard
+markup languages (e.g. HTML, LaTeX, Markdown). In theory, Im2Seq methods
+have a natural advantage over the OD and GNN methods by virtue of directly
+predicting the table-structure. As such, no post-processing or rules are needed
+in order to obtain the table-structure, which is necessary with OD and GNN
+approaches. In practice, this is not entirely true, because a predicted sequence
+of table-structure markup does not necessarily have to be syntactically correct.
+Hence, depending on the quality of the predicted sequence, some post-processing
+needs to be performed to ensure a syntactically valid (let alone correct) sequence.
+    Within the Im2Seq method, we find several popular models, namely the
+encoder-dual-decoder model (EDD) [22], TableFormer [9], Tabsplitter[2] and Ye
+et. al. [19]. EDD uses two consecutive long short-term memory (LSTM) decoders
+to predict a table in HTML representation. The tag decoder predicts a sequence
+of HTML tags. For each decoded table cell (<td>), the attention is passed to
+the cell decoder to predict the content with an embedded OCR approach. The
+latter makes it susceptible to transcription errors in the cell content of the table.
+TableFormer address this reliance on OCR and uses two transformer decoders for
+HTML structure and cell bounding box prediction in an end-to-end architecture.
+The predicted cell bounding box is then used to extract text tokens from an
+originating (digital) PDF page, circumventing any need for OCR. TabSplitter
+[2] proposes a compact double-matrix representation of table rows and columns
+to do error detection and error correction of HTML structure sequences based
+on predictions from [19]. This compact double-matrix representation can not be
+used directly by the Img2seq model training, so the model uses HTML as an
+intermediate form. Chi et. al. [4] introduce a data set and a baseline method
+using bidirectional LSTMs to predict LaTeX code. Kayal [5] introduces Gated
+ResNet transformers to predict LaTeX code, and a separate OCR module to
+extract content.
+    Im2Seq approaches have shown to be well-suited for the TSR task and allow a
+full end-to-end network design that can output the final table structure without
+pre- or post-processing logic. Furthermore, Im2Seq models have demonstrated
+to deliver state-of-the-art prediction accuracy [9]. This motivated the authors
+to investigate if the performance (both in accuracy and inference time) can
+be further improved by optimising the table structure representation language.
+We believe this is a necessary step before further improving neural network
+architectures for this task.
 
-M. Lyusk, et al.
 
-Other work [24] aims at predicting a grid set table table and defining which cells
-must be split or merged depending on an attention network. InsGyn methods
-model the table as a logical sequence and they use the table-structure
-representation language, which is often implemented with standard
-markup languages like HTML, LaTeX, Markdown. In these languages,
-preprocessing is usually required to obtain the table-structure, which is necessary and not [25] [26]
-are preprocessing methods like HTML post-processing or rules are needed
-in order to be obtain the table-structure, which is necessary and not [25] [26]
-Many of the difficulties in table-structure models and rules can be caused and
-described from the table's rendered table structure, as shown in Figure 1.
-Within the IngiDyn method, we find several popular models, namely the
-sequence-to-sequence model (IAMIS) [27]. IngiDyn is [28] to predict a table in HTML representation. The tag decoder produces a sequence
-of HTML tags. For each decoded table cell ( , , , ), a
-token sequence (one or more tokens), which describe the cell location is passed on. The
-logic under it susceptible to transcription errors in the cell content of the table.
-This problem addresses error correction on the level of error detection and
-error correction of HTML structure sequences based on the Levenshtein distance metric [29]. For example, using the Levenshtein distance, a close approach used
-approaches in generative models. Other approaches [30] use encoder-based
-the sequence encoding of the table in HTML format. LaTeX is used an alternative text
-form. OTL is to explicitly a set of rules on explicit rules on explicit rules on
-code which includes LaTeX level. LaTeX is a separate OCR model to
-ensure is a necessary step before further improving neural network
-architecture for the task.
+3   Problem Statement
 
-3 Problem Statement
+All known Im2Seq based models for TSR fundamentally work in similar ways.
+Given an image of a table, the Im2Seq model predicts the structure of the table
+by generating a sequence of tokens. These tokens originate from a finite vocab-
+              Optimized Table Tokenization for Table Structure Recognition      5
 
-All known IngiDyn based models for TSR fundamentally work in similar ways.
-Given an image of a table, the IngiDyn model predicts the structure of the table
-as a sequence of tokens to an HTML or similar encoding of format. These tokens optimal must
-
-Fig. 2. Frequency of Values in HTML and OTL, as they appear in PubTableNet.
-
-[Figure shows bar charts comparing frequency distributions between HTML and OTL]
-
-is described HTML and other general-purpose markup languages,
-named for IngiDyn is not designed to describe the structure of the table. First,
-tokens needed to describe a simple 1×1 table, at the extreme end, at least 28 HTML tokens to describe the most common complex tables observed
-in public datasets [31]?, due to a variety of exuberant and ambiguous in
+ulary and can be interpreted as a table structure. For example, with the HTML
+tokens <table>, </table>, <tr>, </tr>, <td> and </td>, one can construct
+simple table structures without any spanning cells. In reality though, one needs
+at least 28 HTML tokens to describe the most common complex tables observed
+in real-world documents [21,22], due to a variety of spanning cells definitions in
 the HTML token vocabulary.
 
-Fig. 3. Frequency of Values in HTML, and OTL, as they appear in PubTableNet
 
-[Figure shows bar charts comparing frequency distributions]
 
-HTML of these HTML and other general-purpose markup languages,
-named for IngiDyn is not designed to describe the structure of the table. First,
-it requires a lot of tokens. Due to typical table structure in order to validate
-attributes of the sequence tokens by labels. Therefore, to reduce inference are
-a critical issue. Every token to a cell of a table, we need to typically enumerate all possible column-spans and row-span
-in practice, this ends up requiring 28 different HTML tokens while
-coding 5 column and 10 rows. This is typical of the PubTableNet dataset. Clearly, not every token is equally represented, as
-it show in the Figure 2. The skewed distribution of tokens in combination with
-input the length properties and the difficulty to encode in markup languages, the table
+  Fig. 2. Frequency of tokens in HTML and OTSL as they appear in PubTabNet.
+
+
+
+
+    Obviously, HTML and other general-purpose markup languages were not de-
+signed for Im2Seq models. As such, they have some serious drawbacks. First, the
+token vocabulary needs to be artificially large in order to describe all plausible
+tabular structures. Since most Im2Seq models use an autoregressive approach,
+they generate the sequence token by token. Therefore, to reduce inference time,
+a shorter sequence length is critical. Every table-cell is represented by at least
+two tokens (<td> and </td>). Furthermore, when tokenizing the HTML struc-
+ture, one needs to explicitly enumerate possible column-spans and row-spans
+as words. In practice, this ends up requiring 28 different HTML tokens (when
+including column- and row-spans up to 10 cells) just to describe every table in
+the PubTabNet dataset. Clearly, not every token is equally represented, as is
+depicted in Figure 2. This skewed distribution of tokens in combination with
+variable token row-length makes it challenging for models to learn the HTML
 structure.
-
-Additionally, it would be desirable if the representation would easily allow
-an independent validation of generated sequences or allow the prediction of the
+    Additionally, it would be desirable if the representation would easily allow
+an early detection of invalid sequences on-the-go, before the prediction of the
 entire table structure is completed. HTML is not well-suited for this purpose as
-the composition of complete sequences is mandated or even impossible.
-Therefore, all cells are identified with a cell, its column, and row indices,
-cells, undefined in row major ordering, where each row and each column have
-the same length, which complicating row- and column-ranges. Furthermore, rows
-and columns, may have hierarchical structure, such as rowspan and column-span
-chords number. Since the number of tokens for each table row and column can
-vary significantly, especially for large tables with many row and column-spans,
-the sequence length is very much unnecessary to be tokenized, the table can be decomposed row-by-row, the table can be decomposed row-by-row representation format for TSR.6    M. Lyuski, et al.
+the verification of incomplete sequences is non-trivial or even impossible.
+    In a valid HTML table, the token sequence must describe a 2D grid of table
+cells, serialised in row-major ordering, where each row and each column have
+the same length (while considering row- and column-spans). Furthermore, every
+opening tag in HTML needs to be matched by a closing tag in a correct hierar-
+chical manner. Since the number of tokens for each table row and column can
+vary significantly, especially for large tables with many row- and column-spans,
+it is complex to verify the consistency of predicted structures during sequence
+6         M. Lysak, et al.
 
-generation languages, this also means that bidding models need to learn these correspondences, and more work is needed to automatically identify appropriate tokens. In practice, we observed two failure issues with production quality table tokenization: (1) HTML tokens for complex nested table cells and (2) occasionally, we failed to properly handle very wide tables. In the visual structures of the model often could be ill structured merging forward cell by all sequence. This issue becomes more apparent when a table has tall rows and additional structure, with the cell position. If allowed the model to still move forward (column as all or complete loss of vertical adjustment, as illustrated in Fig 7E). Addressing this with great adjusting is partially possible, since OTSL tokens can explicitly specify column span. Accordingly, we observed that [OTSL model architecture could be better specified with more strict design. A problem with the alignment of tables in Fig 5J which are nearly impossible to predict. OTSL achieves more coherence than the previous approaches, including a fundamental issue of table cell control.
-
-4    Optimised Table Structure Language
-
-We introduce a token stream with OTSL-based TABLE models in our prior work. The performance demonstrated on various TABLE-based models showed that OTSL achieves significant reduction compared to HTML. At the same time, compared methods or approaches, such as Table-Factory, reduce both downstream generation and the subsequent structure length inspection prediction accuracy and infinite label
-
-4.1  Language Definition
-
-In Figure 5 we illustrate how the OTSL is defined. To ensure, the OTSL follows only a token that directly describe a tabular structure based on an atomic 2D
-
-The OTSL vocabulary is comprised of the following tokens:
-
-"[" cell - a new table cell that either has or does not have of content
-"^" cell - split-stacking cell merging with the left neighbor cell to create a
-"<" cell - split-stacking cell merging with the upper neighbor cell to create a
-"|" cell - new cell to merge cells both left and upper neighbor cells
-">" cell - row link, switch to the next row
-
-A notable attribute of OTSL is that it has the capability of achieving lossless conversion to HTML.
+generation. Implicitly, this also means that Im2Seq models need to learn these
+complex syntax rules, simply to deliver valid output.
+    In practice, we observe two major issues with prediction quality when train-
+ing Im2Seq models on HTML table structure generation from images. On the
+one hand, we find that on large tables, the visual attention of the model often
+starts to drift and is not accurately moving forward cell by cell anymore. This
+manifests itself in either in an increasing location drift for proposed table-cells
+in later rows on the same column or even complete loss of vertical alignment, as
+illustrated in Figure 5. Addressing this with post-processing is partially possible,
+but clearly undesired. On the other hand, we find many instances of predictions
+with structural inconsistencies or plain invalid HTML output, as shown in Fig-
+ure 6, which are nearly impossible to properly correct. Both problems seriously
+impact the TSR model performance, since they reflect not only in the task of
+pure structure recognition but also in the equally crucial recognition or matching
+of table cell content.
 
 
-Optimised Table Tokenisation for Table Structure Recognition    7
+4      Optimised Table Structure Language
 
-Fig. 4. OTSL description of table structure: A - table example B - graphical representation of table structure; C - mapping structure on a grid; D - OTSL structure representation
+To mitigate the issues with HTML in Im2Seq-based TSR models laid out before,
+we propose here our Optimised Table Structure Language (OTSL). OTSL is
+designed to express table structure with a minimized vocabulary and a simple
+set of rules, which are both significantly reduced compared to HTML. At the
+same time, OTSL enables easy error detection and correction during sequence
+generation. We further demonstrate how the compact structure representation
+and minimized sequence length improves prediction accuracy and inference time
+in the TableFormer architecture.
 
-[Complex figure showing table structure conversion process with examples A, B, C, D demonstrating OTSL structure representation and a heat map visualization]
 
-4.2  Language Syntax
+4.1     Language Definition
+
+In Figure 3, we illustrate how the OTSL is defined. In essence, the OTSL defines
+only 5 tokens that directly describe a tabular structure based on an atomic 2D
+grid.
+    The OTSL vocabulary is comprised of the following tokens:
+
+    – "C" cell - a new table cell that either has or does not have cell content
+    – "L" cell - left-looking cell, merging with the left neighbor cell to create a
+      span
+    – "U" cell - up-looking cell, merging with the upper neighbor cell to create a
+      span
+    – "X" cell - cross cell, to merge with both left and upper neighbor cells
+    – "NL" - new-line, switch to the next row.
+
+   A notable attribute of OTSL is that it has the capability of achieving lossless
+conversion to HTML.
+                 Optimized Table Tokenization for Table Structure Recognition          7
+
+
+Fig. 3. OTSL description of table structure: A - table example; B - graphical repre-
+sentation of table structure; C - mapping structure on a grid; D - OTSL structure
+encoding; E - explanation on cell encoding
+                         2
+        A        4                   C                     D     C L C L L NL
+             3
+                                                                 U X C C C NL
+                                 1
+                                                                 C C C C C NL
+        B                                                        U C C C C NL
+                                                                 U C C C C NL
+
+        E   1                3       4             1 - simple cells: "C"
+                 C               C       C L L L
+                                                   2 - horizontal merges: "C", "L"
+                                 U       U X X X   3 - vertical merges: "C", "U"
+            2    C L L L         U       U X X X   4 - 2d merges: "C", "L", "U", "X"
+
+
+
+
+4.2   Language Syntax
 
 The OTSL representation follows these syntax rules:
 
-1. Labeling cell rules. The left neighbour of a "[" cell must be either
-   a "," or end of row.
-2. Uplinking cell rules. The upper neighbour of a "[" cell must be either
-   a "," or end of column.
-   The left neighbour of an "^" cell must be either another "^" cell or a "[" cell,
-   and the upper neighbour of an "^" cell must be either another "[" cell.
-3. First row rule. Only "[" and "^" cells are allowed in the first row.
-4. First column rule. Only "[" cells and "," are allowed in the first column.
-5. Rectangular nature. Every table must have an equal number of tokens, terminated with "," token.
+ 1. Left-looking cell rule: The left neighbour of an "L" cell must be either
+    another "L" cell or a "C" cell.
+ 2. Up-looking cell rule: The upper neighbour of a "U" cell must be either
+    another "U" cell or a "C" cell.
+ 3. Cross cell rule:
+    The left neighbour of an "X" cell must be either another "X" cell or a "U"
+    cell, and the upper neighbour of an "X" cell must be either another "X" cell
+    or an "L" cell.
+ 4. First row rule: Only "L" cells and "C" cells are allowed in the first row.
+ 5. First column rule: Only "U" cells and "C" cells are allowed in the first
+    column.
+ 6. Rectangular rule: The table representation is always rectangular - all rows
+    must have an equal number of tokens, terminated with "NL" token.
 
-The application of these rules gives OTSL a set of unique properties. First of all, the OTSL enforces a strictly rectangular structure representation, where every row contains the same row is a commentary of row and column with uniform cells. As a consequence, all text and cell structure tokens can be validated straight during sequence generation by looking at the predicted token can be validated straight during sequence generation by looking at the previously predicted sequence. As such, OTSL can guarantee that every generated structure is a valid table.
+    The application of these rules gives OTSL a set of unique properties. First
+of all, the OTSL enforces a strictly rectangular structure representation, where
+every new-line token starts a new row. As a consequence, all rows and all columns
+have exactly the same number of tokens, irrespective of cell spans. Secondly, the
+OTSL representation is unambiguous: Every table structure is represented in one
+way. In this representation every table cell corresponds to a "C"-cell token, which
+in case of spans is always located in the top-left corner of the table cell definition.
+Third, OTSL syntax rules are only backward-looking. As a consequence, every
+predicted token can be validated straight during sequence generation by looking
+at the previously predicted sequence. As such, OTSL can guarantee that every
+predicted sequence is syntactically valid.
+    These characteristics can be easily learned by sequence generator networks,
+as we demonstrate further below. We find strong indications that this pattern
+8                      M. Lysak, et al.
 
-These characteristics can be easily learned by sequence generator networks, as demonstrated earlier below. We find strong indications that this pattern
-
-
-8    M. Lyuski, et al.
-
-reduces significantly the column shift seen in the HTML-based models (see Fig. 5E)
-
-4.3  Error detection and -mitigation
-
-The design of OTSL allows us to solve a tables structure family on an unvalidated sample. As a sequence-to-sequence model and token to a table cell token to a table cell is made. Different heuristics can be used to correct token errors to work around token errors in the predicted sequence. For example, a model that the predictions are not the end of a row marker, or at the end of a row marker, the system will substitute the predicted token with the next highest confidence token from OTSL, and replace it in the predicted with the next highest confidence until OTSL orders are satisfied.
-
-5  Experiments
-
-To evaluate the impact of OTSL on prediction accuracy and inference times, we conduct experiments on the HiRES dataset (Kaggle competition 2022) [35] along with the objectives. Firstly we evaluate the prediction quality and performance of OTSL vs. HTML-like inference formats via [PubTable]. Bauer Parameter Optimization (HPO) on found in the first step and evaluate new OTSL imports the performance of TidEformer after training on other publicly available data set [PALDocs]. Our experiments focus in the second time OTSL format for this paper, and will be made publicly available.
-
-Fig. 4. Architecture sketch of the TableFormer model, which is a representative for the tf-idf approach
-
-[Complex architectural diagram showing the TableFormer model with various processing steps]
-
-We rely on standard metrics such as Tree Edit Distance (TEDs) for table structure prediction, and Mean Average Precision (mAP) with 0.75 baseline-section Over-Limit (OOL) threshold for the bounding box predictions of table cells. The predicted OTSL structures were converted back to HTML format as
-
-
-Optimised Table Tokenisation for Table Structure Recognition    9
-
-order to compute the TED score. Inference timing results for all experiments were obtained from the same machine on a single core with AMD EPYC 7551.
-
-5.1  Hyper Parameter Optimization
-
-We use Hyper Parameter Optimization (HPO) since it includes a grid search over multiple combinations of different parameters. We tested various cases combined OTSL with HTML by evaluating on the other HPO step using the inference routine over HTML.
-
-| Table 1. HPO performed on OTSL and HTML transformer-based TableFormer [21] architecture, trained only on PubTables 28. To verify the performance of the model was with baseline and improve of the model they found in the first step and evaluate new Bidirectional Encoder Representations from Transformers (BERT) score and slightly of table structures, and maintain a much higher mAP score than the HTML counterpart |
-|---|
-| Data set | Language | TEDs | mAP | mAP/15 | Inference time (ms) |
-| | | OTSL | 0.903 | 0.931 | 0.93 | 0.48 | 2.73 |
-| 1 | 1 | HTML | 0.908 | 0.927 | 0.925 | 0.45 | 3.81 |
-| | | OTSL | 0.902 | 0.930 | 0.949 | 0.47 | 2.77 |
-| 2 | 3 | HTML | 0.914 | 0.907 | 0.942 | 0.432 | 3.91 |
-| | | OTSL | 0.852 | 0.940 | 0.942 | 0.457 | 1.22 |
-| 3 | 7 | HTML | 0.914 | 0.903 | 0.923 | 0.432 | 3.73 |
-
-5.2  Quantitative Results
-
-We picked the model parameter configuration that produced the best prediction results as these with PubTables, OTSL PubTables-HT and FactISAC OTSL PubTables-HT which are provided in Table 3. It is clearly evident that the model achieve better OTSL over HTML with the highest leverage both TED and mAP tables.
-
-Architectural the results show that OTSL has an advantage over HTML baseline on the PubTables-HT and achieves significant improved scores. Finally, OTSL achieves better inference due to fewer decoding steps which is a result of the reduced sequence representation.
+reduces significantly the column drift seen in the HTML based models (see Fig-
+ure 5).
 
 
-10   M. Lyuski, et al.
+4.3            Error-detection and -mitigation
 
-| Table 2. TED and cell inference metric compared between OTSL and HTML on the PubTables [29], FactISAC [23] and PubTables-HT [4] data sets [mAP scores in Table 5 cells do carry B]. |
-|---|
-| Data set | Language | TEDs | mAP | mAP/15 | Inference time (ms) |
-| PubTables | OTSL | 0.903 | 0.933 | 0.93 | 0.48 | 2.73 |
-| | HTML | 0.900 | 0.922 | 0.925 | 0.45 | 3.81 |
-| FactISAC | OTSL | 0.902 | 0.930 | 0.949 | 0.47 | 2.77 |
-| | HTML | 0.917 | 0.922 | 0.32 | 0.432 | 3.72 |
-| PubTables-HT | OTSL | 0.801 | 0.961 | 0.977 | 0.906 | 1.79 |
-| | HTML | 0.833 | 0.913 | 0.903 | 0.902 | 2.22 |
+The design of OTSL allows to validate a table structure easily on an unfinished
+sequence. The detection of an invalid sequence token is a clear indication of a
+prediction mistake, however a valid sequence by itself does not guarantee pre-
+diction correctness. Different heuristics can be used to correct token errors in
+an invalid sequence and thus increase the chances for accurate predictions. Such
+heuristics can be applied either after the prediction of each token, or at the end
+on the entire predicted sequence. For example a simple heuristic which can cor-
+rect the predicted OTSL sequence on-the-fly is to verify if the token with the
+highest prediction confidence invalidates the predicted sequence, and replace it
+by the token with the next highest confidence until OTSL rules are satisfied.
 
-5.3  Qualitative Results
 
-To illustrate the qualitative differences between OTSL and HTML, Figure 4 demonstrates true samples and their accurate bounding boxes with OTSL. In particular, we illustrate the overlapping of OTSL getting the first prediction boxes, and show structural errors using OTSL vs more predictive in these previously predicted structures. The evaluation of performance analysis which indicates that the OTSL model produces more accurate bounding boxes with less input [5] than the HTML model [1], when predicting the structure of a sparse table [2]; at different the inference speed because of shorter string length [RLS].
+5         Experiments
 
-[Complex figure showing OTSL Correct (1) and HTML Correct (2) visualizations with multiple table examples and heatmaps demonstrating the differences between OTSL and HTML predictions]
-Optimized Table Tokenization for Table Structure Recognition    11
+To evaluate the impact of OTSL on prediction accuracy and inference times, we
+conducted a series of experiments based on the TableFormer model (Figure 4)
+with two objectives: Firstly we evaluate the prediction quality and performance
+of OTSL vs. HTML after performing Hyper Parameter Optimization (HPO) on
+the canonical PubTabNet data set. Secondly we pick the best hyper-parameters
+found in the first step and evaluate how OTSL impacts the performance of
+TableFormer after training on other publicly available data sets (FinTabNet,
+PubTables-1M [14]). The ground truth (GT) from all data sets has been con-
+verted into OTSL format for this purpose, and will be made publicly available.
+
+
+
+Fig. 4. Architecture sketch of the TableFormer model, which is a representative for the
+Im2Seq approach.
+                                                        BBox                           BBoxes
+                                             Encoder   Decoder
+      Extracted                                                                     1 [x1, y2, x2, y2]                                    1        2
+    Table Images                                                                    2 [x1', y2', x2', y2']         BBoxes can be
+                              Standardized                                                                       traced back to the
+                                                                                    3 [x1'', y2'', x2'', y2'']                            3
+                                 Images                                                                           original image to
+    Names           Amount                                                            ...                          extract content
+    1. Item   1000     unit
+    2. Item   500      unit
+                                                                                        BBoxes in sync
+    3. Item   3500     unit
+                                                       Structure                        with tag sequence
+    4. Item   150      unit
+                                                       Decoder
+                                                                                      1      2
+                                                                                        C C L NL
+                                                                                      3C C C NL                      Structure Tags sequence
+                                                                                                                     provide full description of
+                                                                                          C C C NL                      the table structure
+                                                                   Structure Tags         C C C NL
+                                                                   in OTSL format         C C C NL
+
+
+
+
+    We rely on standard metrics such as Tree Edit Distance score (TEDs) for
+table structure prediction, and Mean Average Precision (mAP) with 0.75 Inter-
+section Over Union (IOU) threshold for the bounding-box predictions of table
+cells. The predicted OTSL structures were converted back to HTML format in
+              Optimized Table Tokenization for Table Structure Recognition          9
+
+order to compute the TED score. Inference timing results for all experiments
+were obtained from the same machine on a single core with AMD EPYC 7763
+CPU @2.45 GHz.
+
+5.1   Hyper Parameter Optimization
+We have chosen the PubTabNet data set to perform HPO, since it includes a
+highly diverse set of tables. Also we report TED scores separately for simple and
+complex tables (tables with cell spans). Results are presented in Table. 1. It is
+evident that with OTSL, our model achieves the same TED score and slightly
+better mAP scores in comparison to HTML. However OTSL yields a 2x speed
+up in the inference runtime over HTML.
+
+Table 1. HPO performed in OTSL and HTML representation on the same
+transformer-based TableFormer [9] architecture, trained only on PubTabNet [22]. Ef-
+fects of reducing the # of layers in encoder and decoder stages of the model show that
+smaller models trained on OTSL perform better, especially in recognizing complex
+table structures, and maintain a much higher mAP score than the HTML counterpart.
+
+      #          #                       TEDs         mAP     Inference
+                        Language
+  enc-layers dec-layers          simple complex   all (0.75) time  (secs)
+                         OTSL     0.965  0.934  0.955 0.88      2.73
+      6          6
+                         HTML     0.969  0.927  0.955 0.857      5.39
+                         OTSL     0.938  0.904  0.927 0.853     1.97
+      4          4
+                         HTML     0.952  0.909  0.938 0.843      3.77
+                         OTSL     0.923  0.897  0.915 0.859     1.91
+      2          4
+                         HTML     0.945  0.901  0.931 0.834      3.81
+                         OTSL     0.952   0.92  0.942 0.857     1.22
+      4          2
+                         HTML     0.944  0.903  0.931 0.824       2
+
+
+
+
+5.2   Quantitative Results
+We picked the model parameter configuration that produced the best prediction
+quality (enc=6, dec=6, heads=8) with PubTabNet alone, then independently
+trained and evaluated it on three publicly available data sets: PubTabNet (395k
+samples), FinTabNet (113k samples) and PubTables-1M (about 1M samples).
+Performance results are presented in Table. 2. It is clearly evident that the model
+trained on OTSL outperforms HTML across the board, keeping high TEDs and
+mAP scores even on difficult financial tables (FinTabNet) that contain sparse
+and large tables.
+    Additionally, the results show that OTSL has an advantage over HTML
+when applied on a bigger data set like PubTables-1M and achieves significantly
+improved scores. Finally, OTSL achieves faster inference due to fewer decoding
+steps which is a result of the reduced sequence representation.
+10       M. Lysak, et al.
+
+Table 2. TSR and cell detection results compared between OTSL and HTML on
+the PubTabNet [22], FinTabNet [21] and PubTables-1M [14] data sets using Table-
+Former [9] (with enc=6, dec=6, heads=8).
+
+                                                                                TEDs                    Inference
+       Data set                         Language                                             mAP(0.75)
+                                                                        simple complex   all           time  (secs)
+                                            OTSL                         0.965  0.934  0.955   0.88       2.73
+      PubTabNet
+                                            HTML                         0.969  0.927  0.955   0.857       5.39
+                                            OTSL                         0.955  0.961  0.959  0.862       1.85
+      FinTabNet
+                                            HTML                         0.917  0.922   0.92   0.722       3.26
+                                            OTSL                         0.987  0.964  0.977  0.896       1.79
+     PubTables-1M
+                                            HTML                         0.983  0.944  0.966   0.889       3.26
+
+
+
+5.3    Qualitative Results
+
+To illustrate the qualitative differences between OTSL and HTML, Figure 5
+demonstrates less overlap and more accurate bounding boxes with OTSL. In
+Figure 6, OTSL proves to be more effective in handling tables with longer to-
+ken sequences, resulting in even more precise structure prediction and bounding
+boxes.
+
+
+Fig. 5. The OTSL model produces more accurate bounding boxes with less over-
+lap (E) than the HTML model (D), when predicting the structure of a sparse ta-
+ble (A), at twice the inference speed because of shorter sequence length (B),(C).
+"PMC2807444_006_00.png" PubTabNet.               μ
+
+
+
+                                                                                                                                                                       ≥ 128
+                                                                        S                                 I                                       R
+                     A        ST            0.03          0.06              0.12      0.25          0.5        1      2      4       8      16        32       64
+
+                              63                                                                                                            1         1        3
+                              199                                           5                       1                        2       4      1         1
+                              416                                           4
+                              230                         1                 9                                  1                                               1
+                              276                                                                                                                     2        12      1
+                              320                                                                                                           1         4        20
+                              2013                                          3
+
+
+
+        HTML # tokens: 258                                                                                                                                   OTSL # tokens: 135
+                 <table>
+                                                                                                                                                                    C C L L L C L L L L L C L L NL
+        B          <tr><td></td><td colspan="4"></td><td colspan="6"></td><td colspan="3"></td></tr>
+                   <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>    C     C C C C C C C C C C C C C C NL
+                                                                                                                                                                    C C C C C C C C C C C C C C NL
+                   <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                                                                                                                                                                    C C C C C C C C C C C C C C NL
+                   <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                                                                                                                                                                    C C C C C C C C C C C C C C NL
+                   <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                                                                                                                                                                    C C C C C C C C C C C C C C NL
+                   <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                                                                                                                                                                    C C C C C C C C C C C C C C NL
+                   <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                                                                                                                                                                    C C C C C C C C C C C C C C NL
+                   <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                                                                                                                                                                    C C C C C C C C C C C C C C NL
+                   <tr><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+                 </table>
+
+
+                                        ≤        μ
+        D
+
+          HTML
+
+                                                                                                                                                 HTML model shows
+                                                                                                                                                 bounding box drifting
+
+                                                              E
+
+             OTSL model shows                                    OTSL
+             clean bounding box
+             alignment
+
+                                                μ
+
+
+
+                                                                                                ≥
+                    Optimized Table Tokenization for Table Structure Recognition                      11
+
 
 Fig. 6. Visualization of predicted structure and detected bounding boxes on a complex
-table with loose rows. The OTM model (B) captured repeating patterns of horizontally
-grouped cells whereas the baseline model (A) missed this pattern. The right side of the
-table's complete HTML structure correctly and incorrectly predicted areas of drift and
-overlaps of bounding boxes. "c" = correct, "o/d" = overlap/drift, "i" = PubLabels.
+table with many rows. The OTSL model (B) captured repeating pattern of horizontally
+merged cells from the GT (A), unlike the HTML model (C). The HTML model also
+didn’t complete the HTML sequence correctly and displayed a lot more of drift and
+overlap of bounding boxes. "PMC5406406_003_01.png" PubTabNet.
+                                       A
 
-6 Conclusion
 
-We demonstrated that representing table as HTML for the task of table structure
-extraction with Beobox models can improve baselines trained on visual and structural information. When extended with OTSL, which, when compared to commonly used general purpose languages,
-produces Improved performance. Additionally, OTM model, when extended with OTSL produces
-a model that performs between 0.5-2x better compared to baseline models and between 0.5-1.2x
-on OTSL approach. Additional performance benefit can be gained with
-the specialized OTSL model which can be significantly smaller (e.g. by reducing the number
-of tables and solver losses), while generating comparable good predictions
-on both baseline models. Significant benefits can be derived by introducing special
+
+
+                Repeating pattern of
+                horizontally merged cells
+
+
+         B
+
+
+
+
+         OTSL
+
+
+
+
+                                               Repeating pattern is well represented in predictions
+
+
+
+        C
+
+
+
+
+         HTML
+
+
+
+                                               Bounding box drifting at the end
+                                            Horizontally merged cells are not present
+                                            Incorrect end of HTML sequence
+12      M. Lysak, et al.
+
+6    Conclusion
+
+We demonstrated that representing tables in HTML for the task of table struc-
+ture recognition with Im2Seq models is ill-suited and has serious limitations.
+Furthermore, we presented in this paper an Optimized Table Structure Language
+(OTSL) which, when compared to commonly used general purpose languages,
+has several key benefits.
+    First and foremost, given the same network configuration, inference time for
+a table-structure prediction is about 2 times faster compared to the conventional
+HTML approach. This is primarily owed to the shorter sequence length of the
+OTSL representation. Additional performance benefits can be obtained with
+HPO (hyper parameter optimization). As we demonstrate in our experiments,
+models trained on OTSL can be significantly smaller, e.g. by reducing the number
+of encoder and decoder layers, while preserving comparatively good prediction
+quality. This can further improve inference performance, yielding 5-6 times faster
 inference speed in OTSL with prediction quality comparable to models trained
-on ITRM, see Table (1).
-
-We also validated our approach on a held-out ICDAR 2019 competition large
-calendar size. This shows intrinsic trade on perterm better for the TEHR
-metrics (as regards better predictions for core accuracy of table structure
-predictions. The approach also demonstrates the stability of the model which
-clearly achieves the drift for table cell bounding boxes of high row count and in
-wide tables. This leads to more accurate predictions and a significant reduction
-of bounding box errors for tables with dense and complex cell structures
-InBohB models. Significant novelty lies in OTSR-aware (model rules), which are few,
-simple and always backtrack looking. Each row token can be validated only by
-looking at neighboring rows within the window of specified length, which helps
+on HTML (see Table 1).
+    Secondly, OTSL has more inherent structure and a significantly restricted vo-
+cabulary size. This allows autoregressive models to perform better in the TED
+metric, but especially with regards to prediction accuracy of the table-cell bound-
+ing boxes (see Table 2). As shown in Figure 5, we observe that the OTSL dras-
+tically reduces the drift for table cell bounding boxes at high row count and in
+sparse tables. This leads to more accurate predictions and a significant reduction
+in post-processing complexity, which is an undesired necessity in HTML-based
+Im2Seq models. Significant novelty lies in OTSL syntactical rules, which are few,
+simple and always backwards looking. Each new token can be validated only by
+analyzing the sequence of previous tokens, without requiring the entire sequence
 to detect mistakes. This in return allows to perform structural error detection
-and corrections on-the-fly during sequence generation.
+and correction on-the-fly during sequence generation.
+
 
 References
 
-1. Arar, C., Dali, M., Canalia, A., Rouain, G.H., Bang, P.W.: Detecting decorated column in a lined vector with high longitudinal and interpretations. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition, pp. 444–453 (2020). https://doi.org/10.48550/arXiv.2020.0000
+ 1. Auer, C., Dolfi, M., Carvalho, A., Ramis, C.B., Staar, P.W.J.: Delivering doc-
+    ument conversion as a cloud service with high throughput and responsiveness.
+    CoRR abs/2206.00785 (2022). https://doi.org/10.48550/arXiv.2206.00785,
+    https://doi.org/10.48550/arXiv.2206.00785
+ 2. Chen, B., Peng, D., Zhang, J., Ren, Y., Jin, L.: Complex table structure recognition
+    in the wild using transformer and identity matrix-based augmentation. In: Porwal,
+    U., Fornés, A., Shafait, F. (eds.) Frontiers in Handwriting Recognition. pp. 545–
+    561. Springer International Publishing, Cham (2022)
+ 3. Chi, Z., Huang, H., Xu, H.D., Yu, H., Yin, W., Mao, X.L.: Complicated table
+    structure recognition. arXiv preprint arXiv:1908.04729 (2019)
+ 4. Deng, Y., Rosenberg, D., Mann, G.: Challenges in end-to-end neural scientific
+    table recognition. In: 2019 International Conference on Document Analysis and
+    Recognition (ICDAR). pp. 894–901. IEEE (2019)
+               Optimized Table Tokenization for Table Structure Recognition           13
 
-2. Chen, H., Peng, J., Zhang, J., Han, Y., Lin, L.: Complex table structure recognition based on grid lines. In: Proceedings of the IEEE International Conference on Document Analysis and Recognition (ICDAR), pp. 145–156. Springer International Publishing, Cham (2022)
+ 5. Kayal, P., Anand, M., Desai, H., Singh, M.: Tables to latex: structure and content
+    extraction from scientific tables. International Journal on Document Analysis and
+    Recognition (IJDAR) pp. 1–10 (2022)
+ 6. Lee, E., Kwon, J., Yang, H., Park, J., Lee, S., Koo, H.I., Cho, N.I.: Table structure
+    recognition based on grid shape graph. In: 2022 Asia-Pacific Signal and Information
+    Processing Association Annual Summit and Conference (APSIPA ASC). pp. 1868–
+    1873. IEEE (2022)
+ 7. Li, M., Cui, L., Huang, S., Wei, F., Zhou, M., Li, Z.: Tablebank: A benchmark
+    dataset for table detection and recognition (2019)
+ 8. Livathinos, N., Berrospi, C., Lysak, M., Kuropiatnyk, V., Nassar, A., Carvalho,
+    A., Dolfi, M., Auer, C., Dinkla, K., Staar, P.: Robust pdf document conversion
+    using recurrent neural networks. Proceedings of the AAAI Conference on Artificial
+    Intelligence 35(17), 15137–15145 (May 2021), https://ojs.aaai.org/index.php/
+    AAAI/article/view/17777
+ 9. Nassar, A., Livathinos, N., Lysak, M., Staar, P.: Tableformer: Table structure un-
+    derstanding with transformers. In: Proceedings of the IEEE/CVF Conference on
+    Computer Vision and Pattern Recognition (CVPR). pp. 4614–4623 (June 2022)
+10. Pfitzmann, B., Auer, C., Dolfi, M., Nassar, A.S., Staar, P.W.J.: Doclaynet: A
+    large human-annotated dataset for document-layout segmentation. In: Zhang, A.,
+    Rangwala, H. (eds.) KDD ’22: The 28th ACM SIGKDD Conference on Knowledge
+    Discovery and Data Mining, Washington, DC, USA, August 14 - 18, 2022. pp.
+    3743–3751. ACM (2022). https://doi.org/10.1145/3534678.3539043, https://
+    doi.org/10.1145/3534678.3539043
+11. Prasad, D., Gadpal, A., Kapadni, K., Visave, M., Sultanpure, K.: Cascadetabnet:
+    An approach for end to end table detection and structure recognition from image-
+    based documents. In: Proceedings of the IEEE/CVF conference on computer vision
+    and pattern recognition workshops. pp. 572–573 (2020)
+12. Schreiber, S., Agne, S., Wolf, I., Dengel, A., Ahmed, S.: Deepdesrt: Deep learning
+    for detection and structure recognition of tables in document images. In: 2017 14th
+    IAPR international conference on document analysis and recognition (ICDAR).
+    vol. 1, pp. 1162–1167. IEEE (2017)
+13. Siddiqui, S.A., Fateh, I.A., Rizvi, S.T.R., Dengel, A., Ahmed, S.: Deeptabstr: Deep
+    learning based table structure recognition. In: 2019 International Conference on
+    Document Analysis and Recognition (ICDAR). pp. 1403–1409 (2019). https://
+    doi.org/10.1109/ICDAR.2019.00226
+14. Smock, B., Pesala, R., Abraham, R.: PubTables-1M: Towards comprehensive ta-
+    ble extraction from unstructured documents. In: Proceedings of the IEEE/CVF
+    Conference on Computer Vision and Pattern Recognition (CVPR). pp. 4634–4642
+    (June 2022)
+15. Staar, P.W.J., Dolfi, M., Auer, C., Bekas, C.: Corpus conversion service: A ma-
+    chine learning platform to ingest documents at scale. In: Proceedings of the 24th
+    ACM SIGKDD International Conference on Knowledge Discovery & Data Min-
+    ing. pp. 774–782. KDD ’18, Association for Computing Machinery, New York, NY,
+    USA (2018). https://doi.org/10.1145/3219819.3219834, https://doi.org/10.
+    1145/3219819.3219834
+16. Wang, X.: Tabular Abstraction, Editing, and Formatting. Ph.D. thesis, CAN
+    (1996), aAINN09397
+17. Xue, W., Li, Q., Tao, D.: Res2tim: Reconstruct syntactic structures from table
+    images. In: 2019 International Conference on Document Analysis and Recognition
+    (ICDAR). pp. 749–755. IEEE (2019)
+14      M. Lysak, et al.
 
-3. Cha, Z., Hasan, H., Yi, H.D., Yu, Yi., Sim, N., Mani, X.L.: Complicated table extraction from pdf, arxiv (2019). https://arxiv.org/abs/1910.00049
-
-4. Dua, V., Reuenberg, D., Mani, G.: Challenges in mid-level ground-truthed table recognition. In: 2023 International Conference on Document Analysis and Recognition (ICDAR), pp. 1–6. IEEE (2023)
-
-5. Kayal, P., Anand, H., Desai, H., Singh, M., Akilex, J.C.: Tasso to label structure and content of scanned table. International Journal on Document Analysis and Recognition 24(1), 1–19 (2021). https://doi.org/10.1007/s10032-021-00377-1
-
-6. Lee, E., Kwan, J., Yang, H., Park, J., Lee, S., Kim, H.I., Cho, S.J.: Table structure recognition based on grid graph. In: 2022 Asia-Pacific Signal and Information Processing Association Annual Summit and Conference (APSIPA ASC), pp. 1446–1450. IEEE (2022)
-
-7. Li, Y., Huang, Z., Jia, Z., Agin, S., Wai, F., Zhou, M., Li, Z.: FADeblock: A benchmark dataset for table detection and recognition (2018)
-
-8. Liao, J., Meng, X., Li, Y., Yin, X., Gao, J., Lin, H., Qi, H., Ding, B., Huang, J., Yan, X.: Robert self-supervised conversion with structural networks. Proceedings of the AAAI Conference on Artificial Intelligence 36(4), 4307–4315 (2022). https://doi.org/10.1609/aaai.v36i4.20343
-
-9. Lo, A., Lindholm, S., Jork, M., Meyr, P.: Table-former: Table structure understanding with transformers. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pp. 4614–4623 (June 2022). https://doi.org/10.1109/CVPR52688.2022.00459
-
-10. Prasad, D., Gadpal, A., Kapadni, K., Visuri, M., Solinger, K.: Cascadatnet: Determining table layout using cascaded encoder-assisted networks (ICDAR). In: 2019 International Conference on Document Analysis and Recognition (ICDAR), pp. 1–6. IEEE (2020). https://doi.org/10.1109/ICCV47853.2019.00168
-
-11. Prasad, D., Gadpal, A., Kapadni, K., Visuri, M., Solinger, K.: Cascadatnet: Determining table structure and content extraction for document image analysis. In: 2020 International Conference on Document Analysis and Recognition (ICDAR), pp. 1–6. IEEE (2020). https://doi.org/10.1109/ICDAR49629.2020.00019
-
-12. Scholer, I., Stacy, Jy, Wold, I., Deloit, J., Manen, S.: Degebok: Deep learning for detection and structure recognition of tables in document images. In: Asian Conference on Computer Vision, pp. 1, 1pp–1152–1167 IEEE (2017)
-
-13. Schreiber, S., Agne, S., Wolf, I., Dengel, A., Ahmed, S.: DeepDeSRT: Deep Learning for Detection and Structure Recognition of Tables in Document Images. In: 2017 14th IAPR International Conference on Document Analysis and Recognition (ICDAR), pp. 1135–1140 (2017). https://doi.org/10.1109/ICDAR.2017.206
-
-14. Shi, B., Bai, X., Yao, C.: An end-to-end trainable neural network for image-based sequence recognition and its application to scene text recognition. IEEE transactions on pattern analysis and machine intelligence 39(11), 2298–2304 (2016). https://doi.org/10.1109/TPAMI.2016.2646371
-
-15. Wang, J., Diakowska, H., Joshi, M., Arag, C., Fisher, C.: Corpus enrichment platforms to inject documents at scale. In: Proceedings of the 15th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD), pp. 1–10. ACM (2021). https://doi.org/10.1145/3447548.3467138
-
-16. Xing, X., Jiang, X., Wax, S., Alpers, H., Das, S.: Hybrid Methods for Document Representation. Ph.D thesis, CAS-USTC (2023). https://doi.org/10.48550/arXiv.2306.13344
-
-17. Xia, W., Xie, Q., Tan, D., Pan, D., Liu, Reconstructed scanable column from table images. In: 2019 International Conference on Document Analysis and Recognition (ICDAR), pp. 1–6. IEEE (2019)
-
-18. You, M., Yi, D., Wang, W., Fey, D., Li, Q., Tsensi, A. table of contents: MIDE for tables in visual documents. IEEE Transactions on Pattern Analysis and Machine Intelligence 44(8), 4589–4600 (2022). https://doi.org/10.1109/TPAMI.2021.3073813
-
-19. Zhang, B., Shi, B., Li, C., Zhu, J., Gao, L., Jin, L., Zhu, S.: A new benchmark and approach for understanding semantic-level labeling problems in complex scene documents. In: 2019 International Conference on Document Analysis and Recognition (ICDAR), pp. 1–6. IEEE (2019)
-
-20. Zhang, X., Bai, X.: Performance comparison of deep learning architectures for table structure recognition. In: 2022 International Conference on Pattern Recognition and Image Analysis (IPRIA), pp. 2022. https://doi.org/10.1109/IPRIA59159.2022.10031373
-
-21. Zhang, X., Bao, B., Yin, W., Zuo, Z., Huang, Y.: Texture semantic labeling: A reinforced intelligent technique on document structure and document detection for scientific paper documents. Master's thesis, Computer Vision and Pattern Recognition (CVPR), pp. 1–6 (2022). https://doi.org/10.1109/CVPRW56347.2022.00031
-
-22. Zheng, X., Berman, D., Pope, L., Zheng, X., Yang, S., Yik, L.: Unified table extractor through deep learning on structured HTML and image data. In: 2021 IEEE/CVF International Conference on Computer Vision (ICCV), pp. 1–6. IEEE (2021). https://doi.org/10.1109/ICCV48881.2021.00023
-
-23. Zhu, Y., Guan, Y., Zheng, Y., Qi, W., Tian, R., Tsung, D., Tian, G., Yin, H., Gao, Y., Chen, L.: Semantic types a knowledge-based table recognition. In: 2018 International Conference on Document Analysis and Recognition (ICDAR), pp. 1015–1022. IEEE (2018)
-
-12    M. Lysak, et al.
-
-You, M., Yi, D., Wang, W., Fey, D., Li, Q., Tsensi, A. table of contents: MIDE for tables in visual documents. IEEE Transactions on Pattern Analysis and Machine Intelligence 44(8), 4589–4600 (2022). https://doi.org/10.1109/TPAMI.2021.3073813
-
-Zhang, B., Shi, B., Li, C., Zhu, J., Gao, L., Jin, L., Zhu, S.: A new benchmark and approach for understanding semantic-level labeling problems in complex scene documents. In: 2019 International Conference on Document Analysis and Recognition (ICDAR), pp. 1–6. IEEE (2019)
-
-Zhang, X., Bai, X.: Performance comparison of deep learning architectures for table structure recognition. In: 2022 International Conference on Pattern Recognition and Image Analysis (IPRIA), pp. 2022. https://doi.org/10.1109/IPRIA59159.2022.10031373
-
-Zhang, X., Bao, B., Yin, W., Zuo, Z., Huang, Y.: Texture semantic labeling: A reinforced intelligent technique on document structure and document detection for scientific paper documents. Master's thesis, Computer Vision and Pattern Recognition (CVPR), pp. 1–6 (2022). https://doi.org/10.1109/CVPRW56347.2022.00031
-
-Zheng, X., Berman, D., Pope, L., Zheng, X., Yang, S., Yik, L.: Unified table extractor through deep learning on structured HTML and image data. In: 2021 IEEE/CVF International Conference on Computer Vision (ICCV), pp. 1–6. IEEE (2021). https://doi.org/10.1109/ICCV48881.2021.00023
-
-Zhu, Y., Guan, Y., Zheng, Y., Qi, W., Tian, R., Tsung, D., Tian, G., Yin, H., Gao, Y., Chen, L.: Semantic types a knowledge-based table recognition. In: 2018 International Conference on Document Analysis and Recognition (ICDAR), pp. 1015–1022. IEEE (2018)
-
-Optimized Table Tokenization for Table Structure Recognition    13
-
-Kayal, P., Anand, H., Desai, H., Singh, M.: Tables to label structure and content of scanned tables. International Journal on Document Analysis and Recognition 24(1), 1–19 (2021). https://doi.org/10.1007/s10032-021-00377-1
-
-Lee, E., Kwan, J., Yang, H., Park, J., Lee, S., Kim, H.I., Cho, S.J.: Table structure recognition based on grid graph. In: 2022 Asia-Pacific Signal and Information Processing Association Annual Summit and Conference (APSIPA ASC), pp. 1446–1450. IEEE (2022)
-
-Li, Y., Huang, Z., Jia, Z., Agin, S., Wai, F., Zhou, M., Li, Z.: FADeblock: A benchmark dataset for table detection and recognition (2018)
-
-Liao, J., Meng, X., Li, Y., Yin, X., Gao, J., Lin, H., Qi, H., Ding, B., Huang, J., Yan, X.: Robert self-supervised conversion with structural networks. Proceedings of the AAAI Conference on Artificial Intelligence 36(4), 4307–4315 (2022). https://doi.org/10.1609/aaai.v36i4.20343
-
-Lo, A., Lindholm, S., Jork, M., Meyr, P.: Table-former: Table structure understanding with transformers. In: Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR), pp. 4614–4623 (June 2022). https://doi.org/10.1109/CVPR52688.2022.00459
-
-Prasad, D., Gadpal, A., Kapadni, K., Visuri, M., Solinger, K.: Cascadatnet: Determining table layout using cascaded encoder-assisted networks (ICDAR). In: 2019 International Conference on Document Analysis and Recognition (ICDAR), pp. 1–6. IEEE (2020). https://doi.org/10.1109/ICCV47853.2019.00168
-
-Prasad, D., Gadpal, A., Kapadni, K., Visuri, M., Solinger, K.: Cascadatnet: Determining table structure and content extraction for document image analysis. In: 2020 International Conference on Document Analysis and Recognition (ICDAR), pp. 1–6. IEEE (2020). https://doi.org/10.1109/ICDAR49629.2020.00019
-
-Scholer, I., Stacy, Jy, Wold, I., Deloit, J., Manen, S.: Degebok: Deep learning for detection and structure recognition of tables in document images. In: Asian Conference on Computer Vision, pp. 1, 1pp–1152–1167 IEEE (2017)
-
-Schreiber, S., Agne, S., Wolf, I., Dengel, A., Ahmed, S.: DeepDeSRT: Deep Learning for Detection and Structure Recognition of Tables in Document Images. In: 2017 14th IAPR International Conference on Document Analysis and Recognition (ICDAR), pp. 1135–1140 (2017). https://doi.org/10.1109/ICDAR.2017.206
-
-Shi, B., Bai, X., Yao, C.: An end-to-end trainable neural network for image-based sequence recognition and its application to scene text recognition. IEEE transactions on pattern analysis and machine intelligence 39(11), 2298–2304 (2016). https://doi.org/10.1109/TPAMI.2016.2646371
-
-Wang, J., Diakowska, H., Joshi, M., Arag, C., Fisher, C.: Corpus enrichment platforms to inject documents at scale. In: Proceedings of the 15th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining (KDD), pp. 1–10. ACM (2021). https://doi.org/10.1145/3447548.3467138
-
-Xing, X., Jiang, X., Wax, S., Alpers, H., Das, S.: Hybrid Methods for Document Representation. Ph.D thesis, CAS-USTC (2023). https://doi.org/10.48550/arXiv.2306.13344
-
-Xia, W., Xie, Q., Tan, D., Pan, D., Liu, Reconstructed scanable column from table images. In: 2019 International Conference on Document Analysis and Recognition (ICDAR), pp. 1–6. IEEE (2019)
-
-14    M. Lysak, et al.
-
-You, M., Yi, D., Wang, W., Fey, D., Li, Q., Tsensi, A. table of contents: MIDE for tables in visual documents. IEEE Transactions on Pattern Analysis and Machine Intelligence 44(8), 4589–4600 (2022). https://doi.org/10.1109/TPAMI.2021.3073813
-
-Zhang, B., Shi, B., Li, C., Zhu, J., Gao, L., Jin, L., Zhu, S.: A new benchmark and approach for understanding semantic-level labeling problems in complex scene documents. In: 2019 International Conference on Document Analysis and Recognition (ICDAR), pp. 1–6. IEEE (2019)
-
-Zhang, X., Bai, X.: Performance comparison of deep learning architectures for table structure recognition. In: 2022 International Conference on Pattern Recognition and Image Analysis (IPRIA), pp. 2022. https://doi.org/10.1109/IPRIA59159.2022.10031373
-
-Zhang, X., Bao, B., Yin, W., Zuo, Z., Huang, Y.: Texture semantic labeling: A reinforced intelligent technique on document structure and document detection for scientific paper documents. Master's thesis, Computer Vision and Pattern Recognition (CVPR), pp. 1–6 (2022). https://doi.org/10.1109/CVPRW56347.2022.00031
-
-Zheng, X., Berman, D., Pope, L., Zheng, X., Yang, S., Yik, L.: Unified table extractor through deep learning on structured HTML and image data. In: 2021 IEEE/CVF International Conference on Computer Vision (ICCV), pp. 1–6. IEEE (2021). https://doi.org/10.1109/ICCV48881.2021.00023
-
-Zhu, Y., Guan, Y., Zheng, Y., Qi, W., Tian, R., Tsung, D., Tian, G., Yin, H., Gao, Y., Chen, L.: Semantic types a knowledge-based table recognition. In: 2018 International Conference on Document Analysis and Recognition (ICDAR), pp. 1015–1022. IEEE (2018)
+18. Xue, W., Yu, B., Wang, W., Tao, D., Li, Q.: Tgrnet: A table graph reconstruc-
+    tion network for table structure recognition. In: Proceedings of the IEEE/CVF
+    International Conference on Computer Vision. pp. 1295–1304 (2021)
+19. Ye, J., Qi, X., He, Y., Chen, Y., Gu, D., Gao, P., Xiao, R.: Pingan-vcgroup’s
+    solution for icdar 2021 competition on scientific literature parsing task b: Ta-
+    ble recognition to html (2021). https://doi.org/10.48550/ARXIV.2105.01848,
+    https://arxiv.org/abs/2105.01848
+20. Zhang, Z., Zhang, J., Du, J., Wang, F.: Split, embed and merge: An accurate table
+    structure recognizer. Pattern Recognition 126, 108565 (2022)
+21. Zheng, X., Burdick, D., Popa, L., Zhong, X., Wang, N.X.R.: Global table extractor
+    (gte): A framework for joint table identification and cell structure recognition using
+    visual context. In: 2021 IEEE Winter Conference on Applications of Computer Vi-
+    sion (WACV). pp. 697–706 (2021). https://doi.org/10.1109/WACV48630.2021.
+    00074
+22. Zhong, X., ShafieiBavani, E., Jimeno Yepes, A.: Image-based table recognition:
+    Data, model, and evaluation. In: Vedaldi, A., Bischof, H., Brox, T., Frahm, J.M.
+    (eds.) Computer Vision – ECCV 2020. pp. 564–580. Springer International Pub-
+    lishing, Cham (2020)
+23. Zhong, X., Tang, J., Yepes, A.J.: Publaynet: largest dataset ever for document lay-
+    out analysis. In: 2019 International Conference on Document Analysis and Recog-
+    nition (ICDAR). pp. 1015–1022. IEEE (2019)
+

@@ -8,6 +8,7 @@ use super::validation::{
     resolve_all_installed_languages, resolve_tessdata_path, strip_control_characters, validate_language_and_traineddata,
 };
 use crate::core::config::ExtractionConfig;
+use crate::image::normalize_image_dpi;
 use crate::ocr::cache::OcrCache;
 use crate::ocr::conversion::{TsvRow, tsv_row_to_element};
 use crate::ocr::error::OcrError;
@@ -329,16 +330,61 @@ pub(super) fn perform_ocr(
     };
 
     let rgb_image = img.to_rgb8();
-    let (width, height) = rgb_image.dimensions();
-    let bytes_per_pixel = 3;
-    let bytes_per_line = width * bytes_per_pixel;
+    let (orig_width, orig_height) = rgb_image.dimensions();
 
     log_ci_debug(ci_debug_enabled, "image", || {
-        format!(
-            "dimensions={}x{} bytes_per_line={} color_type=RGB8",
-            width, height, bytes_per_line
-        )
+        format!("dimensions={}x{} color_type=RGB8", orig_width, orig_height)
     });
+
+    // Normalize image DPI: resize to target DPI and calculate the actual DPI
+    // of the image that will be passed to tesseract.
+    let dpi_config = config
+        .preprocessing
+        .as_ref()
+        .map(|p| crate::types::ExtractionConfig {
+            target_dpi: p.target_dpi,
+            ..Default::default()
+        })
+        .unwrap_or_default();
+
+    let (image_data, width, height, source_dpi) = match normalize_image_dpi(
+        rgb_image.as_raw(),
+        orig_width as usize,
+        orig_height as usize,
+        &dpi_config,
+        None,
+    ) {
+        Ok(result) => {
+            let w = result.dimensions.0 as u32;
+            let h = result.dimensions.1 as u32;
+            let final_dpi = result.metadata.final_dpi;
+
+            log_ci_debug(ci_debug_enabled, "dpi_normalization", || {
+                format!(
+                    "original={}x{} normalized={}x{} target_dpi={} final_dpi={} resized={}",
+                    orig_width,
+                    orig_height,
+                    w,
+                    h,
+                    result.metadata.target_dpi,
+                    final_dpi,
+                    !result.metadata.skipped_resize
+                )
+            });
+
+            (result.rgb_data, w, h, final_dpi)
+        }
+        Err(e) => {
+            // If normalization fails, fall back to the original image with default 300 DPI
+            tracing::warn!("DPI normalization failed, using original image: {}", e);
+            let w = orig_width;
+            let h = orig_height;
+            (rgb_image.into_raw(), w, h, 300)
+        }
+    };
+
+    let bytes_per_pixel: u32 = 3;
+    let bytes_per_line = width * bytes_per_pixel;
 
     let api = TesseractAPI::new();
     let tessdata_path = resolve_tessdata_path();
@@ -413,7 +459,7 @@ pub(super) fn perform_ocr(
     apply_tesseract_variables(&api, config)?;
 
     api.set_image(
-        rgb_image.as_raw(),
+        &image_data,
         width as i32,
         height as i32,
         bytes_per_pixel as i32,
@@ -421,10 +467,14 @@ pub(super) fn perform_ocr(
     )
     .map_err(|e| OcrError::ProcessingFailed(format!("Failed to set image: {}", e)))?;
 
+    // Tell tesseract the source resolution based on our DPI normalization calculation.
+    api.set_source_resolution(source_dpi)
+        .map_err(|e| OcrError::ProcessingFailed(format!("Failed to set source resolution: {}", e)))?;
+
     log_ci_debug(ci_debug_enabled, "set_image", || {
         format!(
-            "width={} height={} bytes_per_pixel={} bytes_per_line={}",
-            width, height, bytes_per_pixel, bytes_per_line
+            "width={} height={} bytes_per_pixel={} bytes_per_line={} source_dpi={}",
+            width, height, bytes_per_pixel, bytes_per_line, source_dpi
         )
     });
 

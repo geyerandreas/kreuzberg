@@ -1,4 +1,4 @@
-DocLayNet: A Large Human-Annotated Dataset for
+                                                           DocLayNet: A Large Human-Annotated Dataset for
                                                                      Document-Layout Analysis
                                                          Birgit Pfitzmann                                              Christoph Auer                                                                                                                                                                               Michele Dolfi
                                                           IBM Research                                                 IBM Research                                                                                                                                                                IBM Research
@@ -898,3 +898,4 @@ and missing boxes.
      In Proceedings of the 26th ACM SIGKDD International Conference on Knowledge
      Discovery and Data Mining, KDD, pages 1192–1200, New York, USA, 2020. Asso-
      ciation for Computing Machinery.
+

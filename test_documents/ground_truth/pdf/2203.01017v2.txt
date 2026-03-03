@@ -1,4 +1,4 @@
-TableFormer: Table Structure Understanding with Transformers.
+                                                     TableFormer: Table Structure Understanding with Transformers.
 
                                                                  Ahmed Nassar, Nikolaos Livathinos, Maksym Lysak, Peter Staar
                                                                                        IBM Research
@@ -875,3 +875,4 @@ ing and prediction of structure.
 
 
                                                            16
+

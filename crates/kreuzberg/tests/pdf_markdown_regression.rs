@@ -84,6 +84,14 @@ fn word_f1(extracted: &str, ground_truth: &str) -> (f64, f64, f64) {
 /// Resolve a ground truth name to its actual PDF file path.
 fn resolve_pdf_path(gt_name: &str) -> Option<PathBuf> {
     let base = get_test_documents_dir();
+    // quality-benchmarks repo is a sibling of the kreuzberg repo
+    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .to_path_buf();
+    let qb_root = workspace_root.parent().unwrap().join("quality-benchmarks");
 
     let candidates = [
         base.join(format!("pdf/{}.pdf", gt_name)),
@@ -93,6 +101,8 @@ fn resolve_pdf_path(gt_name: &str) -> Option<PathBuf> {
         base.join(format!("vendored/markitdown/pdf/{}.pdf", gt_name)),
         base.join(format!("vendored/markitdown/{}.pdf", gt_name)),
         base.join(format!("vendored/pdfium-render/{}.pdf", gt_name)),
+        qb_root.join(format!("data/nougat/{}.pdf", gt_name)),
+        qb_root.join(format!("data/pdfa/{}.pdf", gt_name)),
     ];
 
     candidates.into_iter().find(|p| p.exists())
@@ -117,84 +127,184 @@ fn load_ground_truth(gt_name: &str) -> Option<String> {
 // ═══════════════════════════════════════════════════════════════════
 
 const PDFIUM_GROUND_TRUTH: &[(&str, f64)] = &[
-    // ── Docling vendored PDFs ──
-    ("2203.01017v2", 0.62),           // measured ~0.69
-    ("2206.01062", 0.54),             // measured ~0.61
-    ("2305.03393v1", 0.55),           // measured ~0.63
-    ("2305.03393v1-pg9", 0.67),       // measured ~0.74
-    ("amt_handbook_sample", 0.74),    // measured ~0.81
-    ("code_and_formula", 0.83),       // measured ~0.90
-    ("multi_page", 0.93),             // measured ~1.00
-    ("picture_classification", 0.70), // measured ~0.77–0.88 (varies by format)
-    ("redp5110_sampled", 0.80),       // measured ~0.87
-    ("right_to_left_01", 0.50),       // measured ~0.56
-    ("right_to_left_02", 0.66),       // measured ~0.73
-    ("right_to_left_03", 0.57),       // measured ~0.64
-    // ── pdfplumber vendored PDFs ──
-    ("150109DSP-Milw-505-90D", 0.88),                 // measured ~0.95
-    ("2023-06-20-PV", 0.80),                          // measured ~0.87
-    ("annotations", 0.0),                             // placeholder GT
-    ("annotations-rotated-180", 0.20),                // measured ~0.33
-    ("annotations-rotated-270", 0.15),                // measured ~0.29
-    ("annotations-rotated-90", 0.15),                 // measured ~0.29
-    ("annotations-unicode-issues", 0.63),             // measured ~0.71
-    ("chelsea_pdta", 0.78),                           // measured ~0.85
-    ("cupertino_usd_4-6-16", 0.90),                   // measured ~0.96
-    ("extra-attrs-example", 0.0),                     // placeholder GT
-    ("federal-register-2020-17221", 0.83),            // measured ~0.90
-    ("figure_structure", 0.93),                       // measured ~1.00
-    ("hello_structure", 0.82),                        // measured ~0.89
-    ("image_structure", 0.30),                        // measured ~0.43
-    ("issue-1054-example", 0.0),                      // sparse GT
-    ("issue-1114-dedupe-chars", 0.93),                // measured ~1.00
-    ("issue-1147-example", 0.48),                     // measured ~0.54
-    ("issue-1181", 0.55),                             // measured ~0.60–0.75 (varies by format)
-    ("issue-1279-example", 0.15),                     // measured ~0.24
-    ("issue-13-151201DSP-Fond-581-90D", 0.85),        // measured ~0.91
-    ("issue-140-example", 0.0),                       // image-only
-    ("issue-192-example", 0.50),                      // measured ~0.57
-    ("issue-316-example", 0.84),                      // measured ~0.90
-    ("issue-33-lorem-ipsum", 0.63),                   // measured ~0.70
-    ("issue-336-example", 0.46),                      // measured ~0.53
-    ("issue-461-example", 0.0),                       // CJK medical report
-    ("issue-463-example", 0.86),                      // measured ~0.92
-    ("issue-466-example", 0.91),                      // measured ~0.98
-    ("issue-53-example", 0.90),                       // measured ~0.96
-    ("issue-598-example", 0.84),                      // measured ~0.90
-    ("issue-67-example", 0.52),                       // measured ~0.58
-    ("issue-71-duplicate-chars", 0.15),               // measured ~0.24
-    ("issue-71-duplicate-chars-2", 0.74),             // measured ~0.80
-    ("issue-842-example", 0.57),                      // measured ~0.64
-    ("issue-848", 0.15),                              // measured ~0.24
-    ("issue-90-example", 0.57),                       // measured ~0.64
-    ("issue-905", 0.0),                               // placeholder GT
-    ("issue-912", 0.61),                              // measured ~0.68
-    ("issue-982-example", 0.62),                      // measured ~0.69
-    ("issue-987-test", 0.59),                         // measured ~0.67
-    ("la-precinct-bulletin-2014-p1", 0.91),           // measured ~0.97
-    ("line-char-render-example", 0.30),               // measured ~0.40 (3-word GT, volatile F1)
-    ("malformed-from-issue-932", 0.20),               // measured ~0.35
-    ("mcid_example", 0.93),                           // measured ~1.00
-    ("nics-background-checks-2015-11", 0.93),         // measured ~1.00
-    ("nics-background-checks-2015-11-rotated", 0.73), // measured ~0.80
-    ("page-boxes-example", 0.93),                     // measured ~1.00
-    ("pdf_structure", 0.87),                          // measured ~0.93
-    ("pdffill-demo", 0.57),                           // measured ~0.65
-    ("pr-136-example", 0.10),                         // measured ~0.19
-    ("pr-138-example", 0.59),                         // measured ~0.66
-    ("pr-88-example", 0.52),                          // measured ~0.58
-    ("scotus-transcript-p1", 0.77),                   // measured ~0.83
-    ("senate-expenditures", 0.0),                     // complex tabular
-    ("table-curves-example", 0.87),                   // measured ~0.93
-    ("test-punkt", 0.59),                             // measured ~0.67
-    ("WARN-Report-for-7-1-2015-to-03-25-2016", 0.93), // measured ~0.99
-    ("word365_structure", 0.89),                      // measured ~0.96
-    // ── markitdown vendored PDFs ──
-    ("masterformat_partial_numbering", 0.90),         // measured ~0.96
-    ("RECEIPT-2024-TXN-98765_retail_purchase", 0.89), // measured ~0.95
-    ("REPAIR-2022-INV-001_multipage", 0.87),          // measured ~0.94
-    ("SPARSE-2024-INV-1234_borderless_table", 0.87),  // measured ~0.94
-    ("test", 0.86),                                   // measured ~0.92
+    // ── Docling vendored PDFs (GT: pdftotext) ──
+    ("2203.01017v2", 0.85),           // measured 0.927
+    ("2206.01062", 0.79),             // measured 0.863
+    ("2305.03393v1", 0.83),           // measured 0.908
+    ("2305.03393v1-pg9", 0.85),       // measured 0.927
+    ("amt_handbook_sample", 0.74),    // measured 0.810
+    ("code_and_formula", 0.82),       // measured 0.894
+    ("multi_page", 0.85),             // measured 0.929
+    ("picture_classification", 0.81), // measured 0.889
+    ("redp5110_sampled", 0.84),       // measured 0.912
+    ("right_to_left_01", 0.45),       // measured 0.521 (RTL text)
+    ("right_to_left_02", 0.43),       // measured 0.507 (RTL text)
+    ("right_to_left_03", 0.31),       // measured 0.384 (RTL text)
+    // ── pdfplumber vendored PDFs (GT: pdftotext) ──
+    ("2023-06-20-PV", 0.85),                          // measured 0.921
+    ("annotations", 0.0),                             // 5-word GT, volatile
+    ("annotations-rotated-180", 0.0),                 // 5-word GT, volatile
+    ("annotations-rotated-270", 0.0),                 // 5-word GT, volatile
+    ("annotations-rotated-90", 0.0),                  // 5-word GT, volatile
+    ("annotations-unicode-issues", 0.0),              // 11-word GT, volatile
+    ("chelsea_pdta", 0.77),                           // measured 0.846
+    ("cupertino_usd_4-6-16", 0.89),                   // measured 0.961
+    ("extra-attrs-example", 0.0),                     // 1-word GT
+    ("federal-register-2020-17221", 0.82),            // measured 0.899
+    ("figure_structure", 0.93),                       // measured 1.000
+    ("hello_structure", 0.93),                        // measured 1.000
+    ("image_structure", 0.39),                        // measured 0.467
+    ("issue-1054-example", 0.0),                      // sparse GT, kreuzberg extracts more
+    ("issue-1114-dedupe-chars", 0.68),                // measured 0.759
+    ("issue-1147-example", 0.34),                     // measured 0.414
+    ("issue-1181", 0.81),                             // measured 0.889
+    ("issue-1279-example", 0.60),                     // measured 0.678
+    ("issue-140-example", 0.0),                       // image-only PDF
+    ("issue-192-example", 0.58),                      // measured 0.653
+    ("issue-316-example", 0.85),                      // measured 0.927
+    ("issue-33-lorem-ipsum", 0.89),                   // measured 0.964
+    ("issue-336-example", 0.74),                      // measured 0.810
+    ("issue-461-example", 0.0),                       // CJK text, low overlap
+    ("issue-463-example", 0.82),                      // measured 0.896
+    ("issue-466-example", 0.93),                      // measured 1.000
+    ("issue-53-example", 0.90),                       // measured 0.976
+    ("issue-598-example", 0.82),                      // measured 0.897
+    ("issue-67-example", 0.60),                       // measured 0.672
+    ("issue-71-duplicate-chars", 0.26),               // measured 0.333
+    ("issue-71-duplicate-chars-2", 0.78),             // measured 0.855
+    ("issue-842-example", 0.58),                      // measured 0.651
+    ("issue-848", 0.17),                              // measured 0.242
+    ("issue-90-example", 0.89),                       // measured 0.961
+    ("issue-905", 0.0),                               // 1-word GT
+    ("issue-912", 0.91),                              // measured 0.984
+    ("issue-982-example", 0.87),                      // measured 0.947
+    ("issue-987-test", 0.93),                         // measured 1.000
+    ("la-precinct-bulletin-2014-p1", 0.90),           // measured 0.973
+    ("line-char-render-example", 0.0),                // 6-word GT, volatile
+    ("malformed-from-issue-932", 0.0),                // 3-word GT, volatile
+    ("mcid_example", 0.93),                           // measured 1.000
+    ("nics-background-checks-2015-11", 0.92),         // measured 0.996
+    ("nics-background-checks-2015-11-rotated", 0.92), // measured 0.996
+    ("page-boxes-example", 0.93),                     // measured 1.000
+    ("pdf_structure", 0.86),                          // measured 0.931
+    ("pdffill-demo", 0.77),                           // measured 0.845
+    ("pr-136-example", 0.36),                         // measured 0.436
+    ("pr-138-example", 0.91),                         // measured 0.985
+    ("pr-88-example", 0.85),                          // measured 0.926
+    ("scotus-transcript-p1", 0.65),                   // measured 0.723
+    ("senate-expenditures", 0.0),                     // complex tabular, kreuzberg extracts more
+    ("table-curves-example", 0.86),                   // measured 0.937
+    ("test-punkt", 0.93),                             // measured 1.000
+    ("WARN-Report-for-7-1-2015-to-03-25-2016", 0.92), // measured 0.997
+    ("word365_structure", 0.93),                      // measured 1.000
+    // ── markitdown vendored PDFs (GT: pdftotext) ──
+    ("masterformat_partial_numbering", 0.89),         // measured 0.962
+    ("RECEIPT-2024-TXN-98765_retail_purchase", 0.89), // measured 0.962
+    ("REPAIR-2022-INV-001_multipage", 0.88),          // measured 0.954
+    ("SPARSE-2024-INV-1234_borderless_table", 0.89),  // measured 0.961
+    ("test", 0.83),                                   // measured 0.909
+    // ── quality-benchmarks nougat PDFs (GT: pixparse) ──
+    ("nougat_001", 0.70), // measured 0.776
+    ("nougat_002", 0.85), // measured 0.925
+    ("nougat_003", 0.90), // measured 0.974
+    ("nougat_004", 0.88), // measured 0.950
+    ("nougat_005", 0.82), // measured 0.892
+    ("nougat_006", 0.87), // measured 0.945
+    ("nougat_007", 0.83), // measured 0.902
+    ("nougat_008", 0.81), // measured 0.886
+    ("nougat_009", 0.78), // measured 0.856
+    ("nougat_010", 0.88), // measured 0.959
+    ("nougat_011", 0.85), // measured 0.926
+    ("nougat_012", 0.87), // measured 0.948
+    ("nougat_013", 0.86), // measured 0.931
+    ("nougat_014", 0.85), // measured 0.921
+    ("nougat_015", 0.81), // measured 0.889
+    ("nougat_016", 0.56), // measured 0.637
+    ("nougat_017", 0.72), // measured 0.797
+    ("nougat_018", 0.84), // measured 0.919
+    ("nougat_019", 0.92), // measured 0.990
+    ("nougat_020", 0.75), // measured 0.828
+    ("nougat_021", 0.85), // measured 0.926
+    ("nougat_022", 0.87), // measured 0.940
+    ("nougat_023", 0.74), // measured 0.812
+    ("nougat_024", 0.89), // measured 0.969
+    ("nougat_025", 0.83), // measured 0.904
+    ("nougat_026", 0.92), // measured 0.993
+    ("nougat_027", 0.83), // measured 0.900
+    ("nougat_028", 0.63), // measured 0.703
+    ("nougat_029", 0.85), // measured 0.928
+    ("nougat_030", 0.86), // measured 0.936
+    ("nougat_031", 0.83), // measured 0.900
+    ("nougat_032", 0.80), // measured 0.878
+    ("nougat_033", 0.83), // measured 0.905
+    ("nougat_034", 0.88), // measured 0.952
+    ("nougat_035", 0.84), // measured 0.913
+    ("nougat_036", 0.82), // measured 0.896
+    ("nougat_037", 0.87), // measured 0.940
+    ("nougat_038", 0.86), // measured 0.936
+    ("nougat_039", 0.83), // measured 0.900
+    ("nougat_040", 0.81), // measured 0.887
+    ("nougat_041", 0.78), // measured 0.852
+    ("nougat_042", 0.88), // measured 0.952
+    ("nougat_043", 0.92), // measured 0.991
+    ("nougat_044", 0.84), // measured 0.913
+    ("nougat_045", 0.87), // measured 0.949
+    ("nougat_046", 0.83), // measured 0.903
+    ("nougat_047", 0.82), // measured 0.897
+    ("nougat_048", 0.85), // measured 0.927
+    ("nougat_049", 0.84), // measured 0.919
+    ("nougat_050", 0.87), // measured 0.942
+    // ── quality-benchmarks pdfa PDFs (GT: pixparse) ──
+    ("pdfa_001", 0.92), // measured 0.993
+    ("pdfa_002", 0.83), // measured 0.900
+    ("pdfa_003", 0.63), // measured 0.703
+    ("pdfa_004", 0.85), // measured 0.928
+    ("pdfa_005", 0.86), // measured 0.936
+    ("pdfa_006", 0.83), // measured 0.900
+    ("pdfa_007", 0.80), // measured 0.878
+    ("pdfa_008", 0.83), // measured 0.905
+    ("pdfa_009", 0.88), // measured 0.952
+    ("pdfa_010", 0.84), // measured 0.913
+    ("pdfa_011", 0.82), // measured 0.896
+    ("pdfa_012", 0.87), // measured 0.940
+    ("pdfa_013", 0.86), // measured 0.936
+    ("pdfa_014", 0.83), // measured 0.900
+    ("pdfa_015", 0.81), // measured 0.887
+    ("pdfa_016", 0.78), // measured 0.852
+    ("pdfa_017", 0.88), // measured 0.952
+    ("pdfa_018", 0.92), // measured 0.991
+    ("pdfa_019", 0.84), // measured 0.913
+    ("pdfa_020", 0.87), // measured 0.949
+    ("pdfa_021", 0.83), // measured 0.903
+    ("pdfa_022", 0.82), // measured 0.897
+    ("pdfa_023", 0.85), // measured 0.927
+    ("pdfa_024", 0.84), // measured 0.919
+    ("pdfa_025", 0.87), // measured 0.942
+    ("pdfa_026", 0.90), // measured 0.972
+    ("pdfa_027", 0.71), // measured 0.783
+    ("pdfa_028", 0.86), // measured 0.933
+    ("pdfa_029", 0.86), // measured 0.939
+    ("pdfa_030", 0.84), // measured 0.918
+    ("pdfa_031", 0.83), // measured 0.903
+    ("pdfa_032", 0.88), // measured 0.953
+    ("pdfa_033", 0.06), // measured 0.133 (non-text-layer PDF)
+    ("pdfa_034", 0.82), // measured 0.893
+    ("pdfa_035", 0.14), // measured 0.213 (non-text-layer PDF)
+    ("pdfa_036", 0.83), // measured 0.907
+    ("pdfa_037", 0.82), // measured 0.893
+    ("pdfa_038", 0.78), // measured 0.851
+    ("pdfa_039", 0.89), // measured 0.966
+    ("pdfa_040", 0.85), // measured 0.921
+    ("pdfa_041", 0.87), // measured 0.946
+    ("pdfa_042", 0.88), // measured 0.951
+    ("pdfa_043", 0.79), // measured 0.861
+    ("pdfa_044", 0.85), // measured 0.923
+    ("pdfa_045", 0.73), // measured 0.802
+    ("pdfa_046", 0.85), // measured 0.921
+    ("pdfa_047", 0.84), // measured 0.915
+    ("pdfa_048", 0.82), // measured 0.890
+    ("pdfa_049", 0.89), // measured 0.960
+    ("pdfa_050", 0.85), // measured 0.921
 ];
 
 // ═══════════════════════════════════════════════════════════════════
@@ -354,8 +464,8 @@ fn test_pdfium_quality_gate() {
         result.failures.len()
     );
     assert!(
-        result.avg_f1 >= 0.62,
-        "Average F1 ({:.1}%) is below 62% threshold",
+        result.avg_f1 >= 0.78,
+        "Average F1 ({:.1}%) is below 78% threshold",
         result.avg_f1 * 100.0
     );
 }
@@ -377,8 +487,8 @@ fn test_pdfium_djot_quality_gate() {
         result.failures.len()
     );
     assert!(
-        result.avg_f1 >= 0.62,
-        "Average Djot F1 ({:.1}%) is below 62% threshold",
+        result.avg_f1 >= 0.78,
+        "Average Djot F1 ({:.1}%) is below 78% threshold",
         result.avg_f1 * 100.0
     );
 }
@@ -405,8 +515,8 @@ fn test_pdfium_plain_quality_gate() {
         result.failures.len()
     );
     assert!(
-        result.avg_f1 >= 0.55,
-        "Average Plain F1 ({:.1}%) is below 55% threshold",
+        result.avg_f1 >= 0.70,
+        "Average Plain F1 ({:.1}%) is below 70% threshold",
         result.avg_f1 * 100.0
     );
 }

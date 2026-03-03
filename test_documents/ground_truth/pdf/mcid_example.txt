@@ -1,11 +1,25 @@
 Test of figures
 
-Figure 1: Chart
 
-1 ligne  2 ligne  3 ligne  4 ligne
 
-0  2  4  6  8  10  12
+                                      Figure 1: Chart
+      12
 
-1 colonne
-2 colonne
-3 colonne
+
+      10
+
+
+       8
+                                                                  1 colonne
+                                                                  2 colonne
+       6                                                          3 colonne
+
+       4
+
+
+       2
+
+
+       0
+                  1 ligne   2 ligne           3 ligne   4 ligne
+

@@ -1,11 +1,10 @@
-First Page    Previous Page    Next Page    Last Page
+  First Page        Previous Page         Next Page       Last Page
 
-PDFill: PDF Drawing
-
-You can open a PDF or create a blank PDF by PDFill.
+                                                                    Print
+                 PDFill: PDF Drawing
+You can open a PDF or create a blank PDF by PDFill.             Online Help
 Here are the PDF drawings created by PDFill
-
-Please save into a new PDF to see the effect!
+     Please save into a new PDF to see the effect!
 
 Goto Page 2: Line Tool
 Goto Page 3: Arrow Tool
@@ -15,160 +14,104 @@ Goto Page 6: Tool for Basic Shapes
 Goto Page 7: Tool for Curves
 
 Here are the tools to change line width, style, arrow style and colors
+Line Width and Color
 
-0.25 pt
-0.50 pt
-0.75 pt
-1.00 pt
-1.50 pt
-2.00 pt
-3.00 pt
-4.50 pt
-6.00 pt
-More Lines...
 
-[Line width samples shown with various styles: solid, dotted, dashed, dash-dot patterns]
 
-[Arrow style palette displayed]
 
-[Color palette with primary and additional colors shown]
+                                      Online Help
 
-Online Help
 
-Line Width and Color
 
-[Colored horizontal lines in sequence: gray, red, green, blue, purple]
+Arrow Style and Size                First Page
 
-Arrow Style and Size
+                                    Previous Page
 
-[Various dash and dot patterns displayed]
+                                    Next Page
 
-[Arrow style illustrations with different end styles]
+                                    Last Page
+
+
+
 
 Point Snapping and Hold SHIFT Key
+First Page      Previous Page          Next Page      Last Page
 
-[Geometric diagram showing point snapping with intersecting lines and rectangle]
 
-First Page    Previous Page    Next Page    Last Page
+                             Online Help
+ Six Arrow Styles:
 
-Online Help
 
-Six Arrow Styles:
+                                           No Arrow
+                                           Arrow
+                                           Open Arrow Stealth
+                                           Arrow Diamond
+                                           Arrow Oval Arrow
 
-[Horizontal line with no arrow]
-[Horizontal line with double-headed arrow]
-[Horizontal line with open/stealth double-headed arrow]
-[Horizontal line with diamond-headed arrow]
-[Horizontal line with oval-headed arrow]
 
-No Arrow
-Arrow
-Open Arrow Stealth
-Arrow Diamond
-Arrow Oval Arrow
 
-9 Arrow Sizes for Each Style:
 
-[Red double-headed arrow, large]
-[Blue double-headed arrow, medium-large]
-[Cyan double-headed arrow, medium]
-[Black double-headed arrow, medium]
-[Orange double-headed arrow, small-medium]
-[Yellow double-headed arrow, small]
-[Black double-headed arrow, very small]
-[Black double-headed arrow, tiny]
-[Black double-headed arrow, minimal]
+ 9 Arrow Sizes for Each Style:
 
-Mixed Arrow Styles, Sizes, Color, Dashed Style
 
-[Curved black path with red section and green dashed diamond-ended line]
 
-First Page    Previous Page    Next Page    Last Page
 
-Online Help
+ Mixed Arrow Styles, Sizes, Color, Dashed Style
+First Page       Previous Page       Next Page   Last Page
 
-Create Rectangle, Square; Add a Corner Radius
 
-[Blue outlined rectangle]
-[Red dotted/dashed square]
-[Red filled rectangle]
-[Cyan rounded rectangle with rotation label inside]
-[Yellow rounded square with blue outline and dashed rotation indicator]
+ Create Rectangle, Square; Add a Corner Radius
+                                                   Online Help
 
-First Page    Previous Page    Next Page    Last Page
 
-Online Help
 
-Create Circle, Ellipse, Arc, Pie
 
-[Black outlined ellipse with rotation label]
-[Black outlined circle]
-[Black outlined pac-man/pie shape (270 degrees)]
-[Black outlined arc shape (90 degrees)]
+         ta
+             n                         Ro
+           tio
+                                         tatio
+       Ro                                   n
+First Page        Previous Page     Next Page   Last Page
 
-[Red filled ellipse]
-[Red filled pie slice (90 degrees)]
-[Red filled pac-man shape (270 degrees)]
-[Red filled circle]
 
-First Page    Previous Page    Next Page    Last Page
+                                                 Online Help
+ Create Circle, Ellipse, Arc, Pie
 
-Online Help
 
-Create Basic Shapes
+              n
+         atio
+       Ro t
+     First Page                 Previous Page            Next Page              Last Page
 
-[Row 1 - Outline shapes:]
-Isosceles Triangle
-Right Triangle
-Diamond
-Pentagon
-Hexagon
-Left Arrow
 
-[Row 2 - Filled shapes in green:]
-Right Arrow
-Up Arrow
-Down Arrow
-4 Point Start
-5 Point Star
-6 Point Star
+        Create Basic Shapes                                                      Online Help
 
-[Row 3 - Various callouts and icons:]
-Rounded Callout (yellow with blue outline)
-Rounded Callout (green filled)
-Cloud Callout (yellow filled)
-Heart (red filled)
-Lighting (blue lightning bolt)
-Smiley face (magenta with blue eyes and mouth)
 
-First Page    Previous Page    Next Page    Last Page
 
-Online Help
 
-Drawing Curves
+Isosceles Triangle Right Triangle   Diamond      Pentagon        Hexagon         Left Arrow
 
-[Row 1:]
-[Curved black arc with arrow endpoints]
-Smooth Curve
 
-[Blue outlined house-shape with points]
-Straight Curve
 
-[Green curved shape with crossing lines]
-Smooth Scribble
 
-[Cyan triangle with crossing lines]
-Straight Scribble
+Right Arrow       Up Arrow          Down Arrow   4 Point Start   5 Point Star    6 Point Star
 
-[Row 2:]
-[Purple curved freeform shape]
-Smooth Freeform
 
-[Purple curved straight-edge shape]
-Straight Freeform
 
-[Yellow rectangle with handwriting "Sample"]
-Signature Pen
 
-[Cyan cloud/bubble shape with spiky edges]
-Cloud Tool
+Rounded Callout Rounded Callout Cloud Callout    Heart           Lighting        Smiley face
+First Page         Previous Page                Next Page              Last Page
+
+
+ Drawing Curves                                                          Online Help
+
+
+
+
+  Smooth Curve     Straight Curve      Smooth Scribble   Straight Scribble
+
+
+
+
+ Smooth Freeform   Straight Freeform   Signature Pen     Cloud Tool
+

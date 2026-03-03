@@ -1,7 +1,7 @@
-TECHMART ELECTRONICS
-4567 Innovation Blvd
-San Francisco, CA 94103
-(415) 555-0199
+      TECHMART ELECTRONICS
+          4567 Innovation Blvd
+        San Francisco, CA 94103
+             (415) 555-0199
 ===================================
 Store #0342 - Downtown SF
 11/23/2024 14:32:18 PST
@@ -44,6 +44,7 @@ Rewards Applied -$25.00
 ===================================
 TOTAL $821.14
 ===================================
+
 PAYMENT METHOD
 Visa Card ending in 4782
 Auth: 847392
@@ -61,9 +62,13 @@ RETURN POLICY
 Returns within 30 days
 Receipt required
 Electronics must be unopened
-*TXN98765202411231432*
-MEMBER EXCLUSIVE
-Promo: TECHSAVE2024
-Thank you for shopping!
-www.techmart.example.com
+
+      *TXN98765202411231432*
+
+
+
+
+        Thank you for shopping!
+        www.techmart.example.com
 ===================================
+
