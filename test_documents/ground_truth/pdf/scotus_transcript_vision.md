@@ -1,6 +1,6 @@
-# Official - Subject to Final Review
+Official - Subject to Final Review
 
-## IN THE SUPREME COURT OF THE UNITED STATES
+# IN THE SUPREME COURT OF THE UNITED STATES
 
 - - - - - - - - - - - - - - - - x
 
@@ -27,7 +27,3 @@ The above-entitled matter came on for oral argument before the Supreme Court of 
 STEVEN E. MERCER, ESQ., Deputy Attorney General, Los Angeles, Cal.; on behalf of the Petitioner.
 
 CHARLES M. SEVILLA, ESQ., San Diego, Cal.; on behalf of the Respondent.
-
----
-
-Alderson Reporting Company

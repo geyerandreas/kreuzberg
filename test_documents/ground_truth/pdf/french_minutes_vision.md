@@ -1,55 +1,58 @@
-# COMITE DE DEMOLITION
+<!-- image -->
 
-## PROCES-VERBAL
+# COMITÉ DE DÉMOLITION
 
-Seance publique tenue le 20 juin, a 16h00 a la salle du conseil
+## PROCÈS-VERBAL
 
-### Presences
+Séance publique tenue le 20 juin, à 16h00 à la salle du conseil
+
+### Présences
 
 Membres :
-- M. Gaetan Gagne, conseiller municipal
+- M. Gaétan Gagné, conseiller municipal
 - M. David Hugues-Daines, conseiller municipal
 
-Secretaire :
-- Mme Ariane Belanger, greffiere adjointe, Service du greffe
+Secrétaire :
+- Mme Ariane Bélanger, greffière adjointe, Service du greffe
 
-### 1. Ouverture de la seance
+### 1. Ouverture de la séance
 
-La seance est ouverte a 16h00.
+La séance est ouverte à 16h00.
 
 ### 2. Adoption de l'ordre du jour
 
-L'ordre du jour de la seance est adopte.
+L'ordre du jour de la séance est adopté.
 
-### 3. Periode de question du public
+### 3. Période de question du public
 
 Aucune question.
 
-### 4. Demande de demolition pour le 1069, boulevard de Sainte-Adele
+### 4. Demande de démolition pour le 1069, boulevard de Sainte-Adèle
 
-Resolution DM-2023-001
+Résolution DM-2023-001
 
-ATTENDU la demande 2023-0379, visant la demolition partielle d'un batiment, soit la partie arriere du 1069, boulevard de Sainte-Adele;
+ATTENDU la demande 2023-0379, visant la démolition partielle d'un bâtiment, soit la partie arrière du 1069, boulevard de Sainte-Adèle;
 
-ATTENDU QUE le batiment est protege en vertu du reglement 1274 concernant la citation du Theatre Sainte-Adele a titre d'immeuble patrimonial;
+ATTENDU QUE le bâtiment est protégé en vertu du règlement 1274 concernant la citation du Théâtre Sainte-Adèle à titre d'immeuble patrimonial;
 
-ATTENDU QUE la portion arriere, visee par la demande, est en mauvais etat et que son niveau d'authenticite est peu eleve;
+ATTENDU QUE la portion arrière, visée par la demande, est en mauvais état et que son niveau d'authenticité est peu élevé;
 
-ATTENDU QUE l'estimation du cout des travaux de renovation et de mise aux normes du batiment dans son ensemble est de l'ordre de plus de 2 000 000$;
+ATTENDU QUE l'estimation du coût des travaux de rénovation et de mise aux normes du bâtiment dans son ensemble est de l'ordre de plus de 2 000 000$;
 
-ATTENDU QUE le projet vise la preservation, la restauration et la perennisation de la partie avant du batiment patrimonial;
+ATTENDU QUE le projet vise la préservation, la restauration et la pérennisation de la partie avant du bâtiment patrimonial;
 
-ATTENDU QUE le projet de construction propose prevoit, pour l'utilisation projetee du sol degage, un agrandissement de l'arriere du batiment principal, permettant l'ajout de 43 logements;
+ATTENDU QUE le projet de construction proposé prévoit, pour l'utilisation projetée du sol dégagé, un agrandissement de l'arrière du bâtiment principal, permettant l'ajout de 43 logements;
 
-ATTENDU la pertinence du projet de remplacement propose;
+ATTENDU la pertinence du projet de remplacement proposé;
 
-ATTENDU QU'aucune opposition n'a ete recue a la suite de la publication de l'avis public de demolition le 7 juin 2023;
-ATTENDU l'avis du comite consultatif d'urbanisme, qui agit a titre de comite local du patrimoine, a l'effet d'accepter la demande de demolition 2023-0379;
+ATTENDU QU'aucune opposition n'a été reçue à la suite de la publication de l'avis public de démolition le 7 juin 2023;
 
-IL EST RESOLU A L'UNANIMITE
+ATTENDU l'avis du comité consultatif d'urbanisme, qui agit à titre de comité local du patrimoine, à l'effet d'accepter la demande de démolition 2023-0379;
 
-D'APPROUVER la demande de demolition partielle, soit de la partie arriere du batiment situe au 1069, boulevard de Sainte-Adele, en vertu du reglement 1314-2023-DEM regissant la demolition des constructions.
+IL EST RÉSOLU À L'UNANIMITÉ
 
-### 5. Levee de la seance
+D'APPROUVER la demande de démolition partielle, soit de la partie arrière du bâtiment situé au 1069, boulevard de Sainte-Adèle, en vertu du règlement 1314-2023-DEM régissant la démolition des constructions.
 
-La seance est levee a 16h05.
+### 5. Levée de la séance
+
+La séance est levée à 16h05.
