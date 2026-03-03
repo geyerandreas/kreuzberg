@@ -37,6 +37,7 @@ pub(super) fn assemble_region_paragraphs(
     heading_map: &[(f32, Option<u8>)],
     min_confidence: f32,
     doc_body_font_size: Option<f32>,
+    page_index: usize,
 ) -> Vec<PdfParagraph> {
     let (mut regions, unassigned_indices) = assign_segments_to_regions(&segments, hints, min_confidence);
 
@@ -49,6 +50,18 @@ pub(super) fn assemble_region_paragraphs(
     let page_height = segments.iter().map(|s| s.y + s.height).fold(0.0_f32, f32::max);
 
     order_regions_reading_order(&mut regions, page_height);
+
+    // Count heading-class regions with segments (for H1 promotion heuristic).
+    // When there's only 1 heading region on the page and font size says H1,
+    // it's very likely a document title. With multiple heading regions, the
+    // single-cluster font level H1 is ambiguous (could be section headers).
+    let heading_region_count = regions
+        .iter()
+        .filter(|r| {
+            matches!(r.hint.class, LayoutHintClass::Title | LayoutHintClass::SectionHeader)
+                && !r.segment_indices.is_empty()
+        })
+        .count();
 
     let mut all_paragraphs: Vec<PdfParagraph> = Vec::new();
 
@@ -78,7 +91,15 @@ pub(super) fn assemble_region_paragraphs(
             paragraphs.push(super::paragraphs::finalize_paragraph(merged_lines));
         }
 
-        apply_region_class(&mut paragraphs, region.hint, heading_map, doc_body_font_size);
+        apply_region_class(
+            &mut paragraphs,
+            region.hint,
+            heading_map,
+            doc_body_font_size,
+            page_height,
+            heading_region_count,
+            page_index,
+        );
 
         all_paragraphs.extend(paragraphs);
     }
@@ -344,10 +365,20 @@ fn apply_region_class(
     hint: &LayoutHint,
     heading_map: &[(f32, Option<u8>)],
     doc_body_font_size: Option<f32>,
+    page_height: f32,
+    heading_region_count: usize,
+    page_index: usize,
 ) {
     match hint.class {
         LayoutHintClass::Title | LayoutHintClass::SectionHeader => {
-            apply_heading_region(paragraphs, hint, heading_map, doc_body_font_size);
+            apply_heading_region(
+                paragraphs,
+                hint,
+                heading_map,
+                doc_body_font_size,
+                heading_region_count,
+                page_index,
+            );
         }
         LayoutHintClass::Text => {
             // Text regions: run font-size-based heading classification
@@ -356,8 +387,35 @@ fn apply_region_class(
                 para.layout_class = Some(LayoutHintClass::Text);
             }
         }
+        LayoutHintClass::PageHeader | LayoutHintClass::PageFooter => {
+            // Validate position: only mark as page furniture if the region
+            // is actually near the page margins. The layout model (trained on
+            // academic papers) sometimes misclassifies body text as page
+            // furniture on non-standard documents (legal, receipts, etc.).
+            let is_near_margin = if page_height > 0.0 {
+                let region_center_y = (hint.top + hint.bottom) / 2.0;
+                let margin_fraction = 0.12; // top/bottom 12% of page
+                let near_top = region_center_y > page_height * (1.0 - margin_fraction);
+                let near_bottom = region_center_y < page_height * margin_fraction;
+                near_top || near_bottom
+            } else {
+                true // Can't validate, trust the model
+            };
+
+            if is_near_margin {
+                for para in paragraphs.iter_mut() {
+                    apply_hint_to_paragraph(para, hint);
+                }
+            } else {
+                // Region is in the body of the page — treat as Text, not furniture
+                classify_paragraphs(paragraphs, heading_map);
+                for para in paragraphs.iter_mut() {
+                    para.layout_class = Some(LayoutHintClass::Text);
+                }
+            }
+        }
         _ => {
-            // Code, Formula, ListItem, PageHeader, PageFooter, Caption, Other
+            // Code, Formula, ListItem, Caption, Other
             for para in paragraphs.iter_mut() {
                 apply_hint_to_paragraph(para, hint);
             }
@@ -376,6 +434,8 @@ fn apply_heading_region(
     hint: &LayoutHint,
     heading_map: &[(f32, Option<u8>)],
     doc_body_font_size: Option<f32>,
+    heading_region_count: usize,
+    page_index: usize,
 ) {
     // Split multi-line paragraphs from SectionHeader regions where each line
     // is a distinct heading (merged by overlapping layout bboxes).
@@ -447,6 +507,18 @@ fn apply_heading_region(
         let inferred_level = match (text_level, font_level) {
             // Font-size says H1 AND there are 2+ heading clusters → trust it
             (_, Some(1)) if heading_cluster_count >= 2 => 1,
+            // Title promotion: sole heading region on first page with font size
+            // significantly larger than body text (≥1.5×). With only 1 heading
+            // font cluster, a section header at 1.2× body won't match,
+            // but a document title at 2×+ will.
+            (_, Some(1))
+                if heading_cluster_count == 1
+                    && heading_region_count == 1
+                    && page_index == 0
+                    && doc_body_font_size.is_some_and(|body| body > 0.0 && para.dominant_font_size / body >= 1.5) =>
+            {
+                1
+            }
             // Font says H2 but text says deeper → trust font (flat heading style)
             // e.g. "5.1 Evaluation Setup" has 1 dot → text H3, but font size = H2
             (level, Some(2)) if level > 2 => 2,
@@ -1006,7 +1078,7 @@ mod tests {
             make_segment("}", 10.0, 670.0, 10.0, 12.0),
         ];
         let hints = vec![make_hint(LayoutHintClass::Code, 0.9, 0.0, 660.0, 200.0, 720.0)];
-        let paragraphs = assemble_region_paragraphs(segments, &hints, &[], 0.5, None);
+        let paragraphs = assemble_region_paragraphs(segments, &hints, &[], 0.5, None, 0);
         assert!(!paragraphs.is_empty());
         assert!(paragraphs[0].is_code_block);
     }
@@ -1015,7 +1087,7 @@ mod tests {
     fn test_assemble_heading_region() {
         let segments = vec![make_segment("1 Introduction", 10.0, 700.0, 120.0, 18.0)];
         let hints = vec![make_hint(LayoutHintClass::SectionHeader, 0.9, 0.0, 690.0, 200.0, 725.0)];
-        let paragraphs = assemble_region_paragraphs(segments, &hints, &[], 0.5, None);
+        let paragraphs = assemble_region_paragraphs(segments, &hints, &[], 0.5, None, 0);
         assert_eq!(paragraphs.len(), 1);
         assert_eq!(paragraphs[0].heading_level, Some(2));
     }
@@ -1063,7 +1135,7 @@ mod tests {
             make_hint(LayoutHintClass::Text, 0.9, 0.0, 690.0, 200.0, 720.0),
             make_hint(LayoutHintClass::Code, 0.9, 0.0, 640.0, 200.0, 665.0),
         ];
-        let paragraphs = assemble_region_paragraphs(segments, &hints, &[], 0.5, None);
+        let paragraphs = assemble_region_paragraphs(segments, &hints, &[], 0.5, None, 0);
         assert_eq!(paragraphs.len(), 3);
         assert_eq!(paragraphs[0].heading_level, Some(1)); // Title
         assert_eq!(paragraphs[0].layout_class, Some(LayoutHintClass::Title));

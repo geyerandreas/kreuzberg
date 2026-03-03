@@ -363,7 +363,7 @@ pub fn render_document_as_markdown_with_tables(
             // Apply layout detection overrides when available.
             if let Some(hints) = layout_hints.and_then(|h| h.get(i)) {
                 super::layout_classify::apply_layout_overrides(&mut paragraphs, hints, 0.5, 0.2);
-                paragraphs.retain(|p| !p.is_page_furniture);
+                retain_page_furniture_safely(&mut paragraphs);
             }
             all_page_paragraphs.push(paragraphs);
         } else {
@@ -374,7 +374,14 @@ pub fn render_document_as_markdown_with_tables(
                 // Layout-guided assembly: assign segments to layout regions
                 // BEFORE line/paragraph assembly, ensuring paragraph boundaries
                 // align with the model's structural predictions.
-                super::regions::assemble_region_paragraphs(page_segments, hints, &heading_map, 0.5, doc_body_font_size)
+                super::regions::assemble_region_paragraphs(
+                    page_segments,
+                    hints,
+                    &heading_map,
+                    0.5,
+                    doc_body_font_size,
+                    i,
+                )
             } else {
                 // Standard pipeline: XY-Cut → lines → paragraphs → classify
                 let column_groups = split_segments_into_columns(&page_segments);
@@ -394,7 +401,7 @@ pub fn render_document_as_markdown_with_tables(
                 merge_continuation_paragraphs(&mut paras);
                 paras
             };
-            paragraphs.retain(|p| !p.is_page_furniture);
+            retain_page_furniture_safely(&mut paragraphs);
             // Apply contextual ligature repair to heuristic pages where
             // chars_to_segments didn't catch encoding issues (pdfium
             // doesn't always flag broken ToUnicode CMaps).
@@ -471,6 +478,34 @@ pub fn render_document_as_markdown_with_tables(
     };
 
     Ok((final_markdown, has_font_encoding_issues))
+}
+
+/// Filter page furniture paragraphs with a safety valve.
+///
+/// Removes paragraphs marked as page furniture (headers/footers) by layout
+/// detection. If removing ALL furniture-marked paragraphs would leave zero
+/// content, the furniture markings are cleared instead — better to include
+/// headers/footers than to produce empty output. This handles layout models
+/// misclassifying body text as page furniture on non-standard document types
+/// (e.g., legal transcripts, cover pages).
+fn retain_page_furniture_safely(paragraphs: &mut Vec<PdfParagraph>) {
+    let total = paragraphs.len();
+    let furniture_count = paragraphs.iter().filter(|p| p.is_page_furniture).count();
+
+    if furniture_count == 0 {
+        return; // Nothing to filter
+    }
+
+    if furniture_count >= total {
+        // All paragraphs marked as furniture — model likely wrong.
+        // Clear furniture markings to preserve content.
+        for para in paragraphs.iter_mut() {
+            para.is_page_furniture = false;
+        }
+        return;
+    }
+
+    paragraphs.retain(|p| !p.is_page_furniture);
 }
 
 /// Remove standalone page numbers from segments.
