@@ -32,7 +32,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::error::KreuzbergError;
-use sha2::{Digest, Sha256};
+use crate::model_download;
 
 /// HuggingFace repository containing PaddleOCR ONNX models.
 const HF_REPO_ID: &str = "Kreuzberg/paddleocr-onnx-models";
@@ -358,44 +358,18 @@ impl ModelManager {
 
     /// Download a file from the HuggingFace Hub.
     fn hf_download(&self, remote_filename: &str) -> Result<PathBuf, KreuzbergError> {
-        tracing::info!(repo = HF_REPO_ID, filename = remote_filename, "Downloading via hf-hub");
-
-        let api = hf_hub::api::sync::ApiBuilder::new()
-            .with_progress(true)
-            .build()
-            .map_err(|e| KreuzbergError::Plugin {
-                message: format!("Failed to initialize HuggingFace Hub API: {e}"),
-                plugin_name: "paddle-ocr".to_string(),
-            })?;
-
-        let repo = api.model(HF_REPO_ID.to_string());
-        let cached_path = repo.get(remote_filename).map_err(|e| KreuzbergError::Plugin {
-            message: format!("Failed to download '{remote_filename}' from {HF_REPO_ID}: {e}"),
+        model_download::hf_download(HF_REPO_ID, remote_filename).map_err(|e| KreuzbergError::Plugin {
+            message: e,
             plugin_name: "paddle-ocr".to_string(),
-        })?;
-
-        Ok(cached_path)
+        })
     }
 
     /// Verify SHA256 checksum of a downloaded file.
     fn verify_checksum(path: &Path, expected: &str, label: &str) -> Result<(), KreuzbergError> {
-        if expected.is_empty() {
-            return Ok(());
-        }
-
-        let bytes = fs::read(path)?;
-        let mut hasher = Sha256::new();
-        hasher.update(&bytes);
-        let hash_hex = hex::encode(hasher.finalize());
-
-        if hash_hex != expected {
-            return Err(KreuzbergError::Validation {
-                message: format!("Checksum mismatch for {label}: expected {expected}, got {hash_hex}"),
-                source: None,
-            });
-        }
-        tracing::debug!(label, "Checksum verified");
-        Ok(())
+        model_download::verify_sha256(path, expected, label).map_err(|e| KreuzbergError::Validation {
+            message: e,
+            source: None,
+        })
     }
 
     /// Checks if shared models (det + cls) are cached locally.

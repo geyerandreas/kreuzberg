@@ -7,11 +7,7 @@ use crate::layout::types::LayoutDetection;
 ///
 /// This is required for YOLO models. RT-DETR is NMS-free.
 pub fn greedy_nms(detections: &mut Vec<LayoutDetection>, iou_threshold: f32) {
-    detections.sort_by(|a, b| {
-        b.confidence
-            .partial_cmp(&a.confidence)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
+    LayoutDetection::sort_by_confidence_desc(detections);
 
     let n = detections.len();
     let mut keep = vec![true; n];

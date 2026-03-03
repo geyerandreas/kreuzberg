@@ -65,7 +65,7 @@ impl DbNet {
 
         let tensor = Tensor::from_array(input_tensors)?;
 
-        let outputs = session.run(inputs![self.input_names[0].clone() => tensor])?;
+        let outputs = session.run(inputs![self.input_names[0].as_str() => tensor])?;
 
         let text_boxes = Self::get_text_boxes_core(
             &outputs,

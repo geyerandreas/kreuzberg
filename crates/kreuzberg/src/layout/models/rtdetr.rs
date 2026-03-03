@@ -58,8 +58,8 @@ impl RtDetrModel {
         let sizes_tensor = Tensor::from_array(sizes)?;
 
         let outputs = self.session.run(inputs![
-            self.input_names[0].clone() => images_tensor,
-            self.input_names[1].clone() => sizes_tensor
+            self.input_names[0].as_str() => images_tensor,
+            self.input_names[1].as_str() => sizes_tensor
         ])?;
 
         // Extract output tensors: try i64 labels first, then f32 boxes/scores.
@@ -130,11 +130,7 @@ impl RtDetrModel {
             detections.push(LayoutDetection::new(class, score, BBox::new(x1, y1, x2, y2)));
         }
 
-        detections.sort_by(|a, b| {
-            b.confidence
-                .partial_cmp(&a.confidence)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        LayoutDetection::sort_by_confidence_desc(&mut detections);
 
         Ok(detections)
     }

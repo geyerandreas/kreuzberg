@@ -150,7 +150,7 @@ impl CrnnNet {
 
         let input_tensors = Tensor::from_array(input_tensors)?;
 
-        let outputs = session.run(inputs![self.input_names[0].clone() => input_tensors])?;
+        let outputs = session.run(inputs![self.input_names[0].as_str() => input_tensors])?;
 
         let (_, red_data) = outputs.iter().next().ok_or_else(|| {
             OcrError::Io(std::io::Error::new(

@@ -1,12 +1,13 @@
 //! Model downloading and caching for layout detection.
 //!
 //! Downloads ONNX models from HuggingFace Hub and caches them locally.
-//! Each model may come from a different HuggingFace repository.
+//! Uses shared download/checksum utilities from [`crate::model_download`].
 
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::layout::error::LayoutError;
+use crate::model_download;
 
 /// Model definition for a layout model.
 #[derive(Debug, Clone)]
@@ -39,18 +40,8 @@ impl LayoutModelManager {
     /// 1. `KREUZBERG_CACHE_DIR` env var + `/layout`
     /// 2. `.kreuzberg/layout/` in current directory
     pub fn new(cache_dir: Option<PathBuf>) -> Self {
-        let cache_dir = cache_dir.unwrap_or_else(Self::default_cache_dir);
+        let cache_dir = cache_dir.unwrap_or_else(|| model_download::resolve_cache_dir("layout"));
         Self { cache_dir }
-    }
-
-    fn default_cache_dir() -> PathBuf {
-        if let Ok(env_path) = std::env::var("KREUZBERG_CACHE_DIR") {
-            return PathBuf::from(env_path).join("layout");
-        }
-        std::env::current_dir()
-            .unwrap_or_else(|_| PathBuf::from("."))
-            .join(".kreuzberg")
-            .join("layout")
     }
 
     /// Ensure the RT-DETR model (Docling Heron) exists locally, downloading if needed.
@@ -81,11 +72,11 @@ impl LayoutModelManager {
             LayoutError::ModelDownload(format!("Failed to create cache dir {}: {e}", model_dir.display()))
         })?;
 
-        let cached_path = Self::hf_download(definition.hf_repo_id, definition.remote_filename)?;
+        let cached_path = model_download::hf_download(definition.hf_repo_id, definition.remote_filename)
+            .map_err(LayoutError::ModelDownload)?;
 
-        if !definition.sha256_checksum.is_empty() {
-            Self::verify_checksum(&cached_path, definition.sha256_checksum, model_type)?;
-        }
+        model_download::verify_sha256(&cached_path, definition.sha256_checksum, model_type)
+            .map_err(LayoutError::ModelDownload)?;
 
         fs::copy(&cached_path, &model_file).map_err(|e| {
             LayoutError::ModelDownload(format!("Failed to copy model to {}: {e}", model_file.display()))
@@ -93,45 +84,6 @@ impl LayoutModelManager {
 
         tracing::info!(path = %model_file.display(), model_type, "Layout model saved to cache");
         Ok(model_file)
-    }
-
-    fn hf_download(repo_id: &str, remote_filename: &str) -> Result<PathBuf, LayoutError> {
-        tracing::info!(repo = repo_id, filename = remote_filename, "Downloading via hf-hub");
-
-        let api = hf_hub::api::sync::ApiBuilder::new()
-            .with_progress(true)
-            .build()
-            .map_err(|e| LayoutError::ModelDownload(format!("Failed to initialize HF Hub API: {e}")))?;
-
-        let repo = api.model(repo_id.to_string());
-        let cached_path = repo.get(remote_filename).map_err(|e| {
-            LayoutError::ModelDownload(format!("Failed to download '{remote_filename}' from {repo_id}: {e}"))
-        })?;
-
-        Ok(cached_path)
-    }
-
-    fn verify_checksum(path: &Path, expected: &str, label: &str) -> Result<(), LayoutError> {
-        if expected.is_empty() {
-            return Ok(());
-        }
-
-        let bytes =
-            fs::read(path).map_err(|e| LayoutError::ModelDownload(format!("Failed to read file for checksum: {e}")))?;
-
-        use sha2::{Digest, Sha256};
-        let mut hasher = Sha256::new();
-        hasher.update(&bytes);
-        let hash_hex = hex::encode(hasher.finalize());
-
-        if hash_hex != expected {
-            return Err(LayoutError::ModelDownload(format!(
-                "Checksum mismatch for {label}: expected {expected}, got {hash_hex}"
-            )));
-        }
-
-        tracing::debug!(label, "Checksum verified");
-        Ok(())
     }
 
     /// Check if the RT-DETR model is cached.

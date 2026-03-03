@@ -90,13 +90,13 @@ impl YoloModel {
         let input_tensor = preprocessing::preprocess_rescale(img, self.input_width);
         let images_tensor = Tensor::from_array(input_tensor)?;
 
-        let outputs = self.session.run(inputs![self.input_name.clone() => images_tensor])?;
+        let outputs = self.session.run(inputs![self.input_name.as_str() => images_tensor])?;
 
         // Get the first output tensor.
         let (_, output_value) = outputs
             .iter()
             .next()
-            .ok_or_else(|| LayoutError::InvalidOutput("No output tensors from YOLO model".to_string()))?;
+            .ok_or_else(|| LayoutError::InvalidOutput("No output tensors from YOLO model".into()))?;
 
         let view = output_value
             .try_extract_tensor::<f32>()
@@ -187,11 +187,7 @@ impl YoloModel {
             nms::greedy_nms(&mut detections, NMS_IOU_THRESHOLD);
         }
 
-        detections.sort_by(|a, b| {
-            b.confidence
-                .partial_cmp(&a.confidence)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        LayoutDetection::sort_by_confidence_desc(&mut detections);
 
         Ok(detections)
     }
@@ -223,12 +219,12 @@ impl YoloModel {
         let (input_tensor, scale) = preprocessing::preprocess_letterbox(img, input_w, input_h);
         let images_tensor = Tensor::from_array(input_tensor)?;
 
-        let outputs = self.session.run(inputs![self.input_name.clone() => images_tensor])?;
+        let outputs = self.session.run(inputs![self.input_name.as_str() => images_tensor])?;
 
         let (_, output_value) = outputs
             .iter()
             .next()
-            .ok_or_else(|| LayoutError::InvalidOutput("No output tensors from YOLOX model".to_string()))?;
+            .ok_or_else(|| LayoutError::InvalidOutput("No output tensors from YOLOX model".into()))?;
 
         let view = output_value
             .try_extract_tensor::<f32>()
@@ -318,11 +314,7 @@ impl YoloModel {
 
         nms::greedy_nms(&mut detections, NMS_IOU_THRESHOLD);
 
-        detections.sort_by(|a, b| {
-            b.confidence
-                .partial_cmp(&a.confidence)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        });
+        LayoutDetection::sort_by_confidence_desc(&mut detections);
 
         Ok(detections)
     }

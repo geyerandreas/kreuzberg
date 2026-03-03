@@ -8,8 +8,6 @@ pub mod engine;
 pub mod error;
 mod model_manager;
 pub mod models;
-#[allow(unsafe_code)]
-pub mod ort_discovery;
 pub mod postprocessing;
 pub mod preprocessing;
 pub mod session;
@@ -27,7 +25,13 @@ use crate::core::config::layout::LayoutDetectionConfig;
 
 /// Convert an [`LayoutDetectionConfig`] into a [`LayoutEngineConfig`].
 pub fn config_from_extraction(layout_config: &LayoutDetectionConfig) -> LayoutEngineConfig {
-    let preset: LayoutPreset = layout_config.preset.parse().unwrap_or(LayoutPreset::Fast);
+    let preset: LayoutPreset = layout_config.preset.parse().unwrap_or_else(|_| {
+        tracing::warn!(
+            preset = %layout_config.preset,
+            "unrecognized layout preset, falling back to 'fast'"
+        );
+        LayoutPreset::Fast
+    });
 
     let mut engine_config = LayoutEngineConfig::from_preset(preset);
     engine_config.confidence_threshold = layout_config.confidence_threshold;

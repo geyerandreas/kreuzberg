@@ -224,6 +224,15 @@ pub struct LayoutDetection {
 }
 
 impl LayoutDetection {
+    /// Sort detections by confidence in descending order.
+    pub fn sort_by_confidence_desc(detections: &mut [LayoutDetection]) {
+        detections.sort_by(|a, b| {
+            b.confidence
+                .partial_cmp(&a.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
+    }
+
     pub fn new(class: LayoutClass, confidence: f32, bbox: BBox) -> Self {
         Self {
             class,

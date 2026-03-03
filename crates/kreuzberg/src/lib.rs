@@ -79,6 +79,9 @@ pub mod ocr;
 #[cfg(any(feature = "paddle-ocr", feature = "embeddings", feature = "layout-detection"))]
 pub mod ort_discovery;
 
+#[cfg(any(feature = "paddle-ocr", feature = "layout-detection"))]
+pub(crate) mod model_download;
+
 #[cfg(feature = "paddle-ocr")]
 pub mod paddle_ocr;
 

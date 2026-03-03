@@ -143,7 +143,7 @@ impl LayoutEngine {
                 return Err(LayoutError::ModelDownload(
                     "YOLO DocLayNet model is not available for automatic download. \
                      Use ModelBackend::Custom with a local YOLO ONNX file instead."
-                        .to_string(),
+                        .into(),
                 ));
             }
             ModelBackend::RtDetr => {
