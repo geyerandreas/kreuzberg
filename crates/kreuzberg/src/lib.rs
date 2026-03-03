@@ -83,7 +83,7 @@ pub mod ort_discovery;
 pub mod paddle_ocr;
 
 #[cfg(feature = "layout-detection")]
-pub mod layout_detection;
+pub mod layout;
 
 #[cfg(feature = "pdf")]
 pub mod pdf;
@@ -118,7 +118,7 @@ pub use paddle_ocr::{CacheStats, ModelManager, ModelPaths, PaddleLanguage, Paddl
 pub use core::config::LayoutDetectionConfig;
 
 #[cfg(feature = "layout-detection")]
-pub use layout_detection::LayoutPreset;
+pub use layout::LayoutPreset;
 
 pub use core::mime::{
     DOCX_MIME_TYPE, EXCEL_MIME_TYPE, HTML_MIME_TYPE, JSON_MIME_TYPE, MARKDOWN_MIME_TYPE, PDF_MIME_TYPE,

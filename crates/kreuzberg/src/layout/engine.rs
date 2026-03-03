@@ -11,13 +11,13 @@ use std::str::FromStr;
 use image::RgbImage;
 use serde::{Deserialize, Serialize};
 
-use crate::error::LayoutError;
-use crate::model_manager::LayoutModelManager;
-use crate::models::LayoutModel;
-use crate::models::rtdetr::RtDetrModel;
-use crate::models::yolo::{YoloModel, YoloVariant};
-use crate::postprocessing::heuristics;
-use crate::types::DetectionResult;
+use crate::layout::error::LayoutError;
+use crate::layout::model_manager::LayoutModelManager;
+use crate::layout::models::LayoutModel;
+use crate::layout::models::rtdetr::RtDetrModel;
+use crate::layout::models::yolo::{YoloModel, YoloVariant};
+use crate::layout::postprocessing::heuristics;
+use crate::layout::types::DetectionResult;
 
 /// Preset for layout detection model selection.
 ///

@@ -1,11 +1,11 @@
 use image::RgbImage;
 use ort::{inputs, session::Session, value::Tensor};
 
-use crate::error::LayoutError;
-use crate::models::LayoutModel;
-use crate::postprocessing::nms;
-use crate::preprocessing;
-use crate::types::{BBox, LayoutClass, LayoutDetection};
+use crate::layout::error::LayoutError;
+use crate::layout::models::LayoutModel;
+use crate::layout::postprocessing::nms;
+use crate::layout::preprocessing;
+use crate::layout::types::{BBox, LayoutClass, LayoutDetection};
 
 /// Default confidence threshold for YOLO detections.
 const DEFAULT_THRESHOLD: f32 = 0.35;
@@ -50,7 +50,7 @@ impl YoloModel {
         input_height: u32,
         model_name: &str,
     ) -> Result<Self, LayoutError> {
-        let session = crate::session::build_session(path)?;
+        let session = crate::layout::session::build_session(path)?;
         let input_name = session.inputs()[0].name().to_string();
         Ok(Self {
             session,

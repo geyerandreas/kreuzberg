@@ -1,4 +1,4 @@
-use crate::types::{LayoutClass, LayoutDetection};
+use crate::layout::types::{LayoutClass, LayoutDetection};
 
 /// Per-class confidence thresholds from Docling's layout_postprocessor.py.
 ///

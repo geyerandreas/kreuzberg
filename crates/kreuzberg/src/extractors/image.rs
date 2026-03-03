@@ -85,7 +85,7 @@ impl ImageExtractor {
     /// assembles the results into structured markdown.
     #[cfg(all(feature = "layout-detection", any(feature = "ocr", feature = "ocr-wasm")))]
     async fn extract_with_layout_ocr(&self, content: &[u8], config: &ExtractionConfig) -> Result<ExtractionResult> {
-        use crate::layout_detection::LayoutClass;
+        use crate::layout::LayoutClass;
         use crate::plugins::registry::get_ocr_backend_registry;
         use image::ImageEncoder;
         use std::io::Cursor;
@@ -108,7 +108,7 @@ impl ImageExtractor {
         let rgb = img.to_rgb8();
 
         // 2. Run layout detection
-        let mut engine = crate::layout_detection::create_engine(layout_config)
+        let mut engine = crate::layout::create_engine(layout_config)
             .map_err(|e| crate::KreuzbergError::Other(format!("Layout engine init failed: {e}")))?;
 
         let detection = engine

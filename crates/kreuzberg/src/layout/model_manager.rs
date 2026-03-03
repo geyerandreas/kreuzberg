@@ -6,7 +6,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::error::LayoutError;
+use crate::layout::error::LayoutError;
 
 /// Model definition for a layout model.
 #[derive(Debug, Clone)]

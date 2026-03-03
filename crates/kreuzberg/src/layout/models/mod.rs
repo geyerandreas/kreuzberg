@@ -3,8 +3,8 @@ pub mod yolo;
 
 use image::RgbImage;
 
-use crate::error::LayoutError;
-use crate::types::LayoutDetection;
+use crate::layout::error::LayoutError;
+use crate::layout::types::LayoutDetection;
 
 /// Common interface for all layout detection model backends.
 pub trait LayoutModel: Send {

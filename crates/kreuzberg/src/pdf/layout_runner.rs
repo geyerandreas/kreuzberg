@@ -5,7 +5,7 @@
 
 use std::time::Instant;
 
-use crate::layout_detection::{DetectionResult, LayoutClass, LayoutEngine};
+use crate::layout::{DetectionResult, LayoutClass, LayoutEngine};
 use crate::pdf::error::Result;
 
 /// Bounding box in PDF coordinate space (points, y=0 at bottom of page).
@@ -88,7 +88,7 @@ impl LayoutTimingReport {
 /// Pixel coordinates: (x1, y1) top-left, (x2, y2) bottom-right, y increases downward.
 /// PDF coordinates: (left, bottom, right, top), y=0 at bottom of page, y increases upward.
 fn pixel_to_pdf_bbox(
-    pixel: &crate::layout_detection::BBox,
+    pixel: &crate::layout::BBox,
     img_width: u32,
     img_height: u32,
     page_width_pts: f32,
@@ -281,7 +281,7 @@ fn render_and_get_dimensions(pdf_bytes: &[u8]) -> Result<(Vec<image::DynamicImag
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::layout_detection::BBox;
+    use crate::layout::BBox;
 
     #[test]
     fn test_pixel_to_pdf_bbox_full_page() {
@@ -397,7 +397,7 @@ mod tests {
 
     #[test]
     fn test_detection_to_page_result() {
-        use crate::layout_detection::{DetectionResult, LayoutDetection};
+        use crate::layout::{DetectionResult, LayoutDetection};
 
         let detection = DetectionResult::new(
             640,

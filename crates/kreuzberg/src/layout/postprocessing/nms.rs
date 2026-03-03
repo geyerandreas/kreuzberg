@@ -1,4 +1,4 @@
-use crate::types::LayoutDetection;
+use crate::layout::types::LayoutDetection;
 
 /// Standard greedy Non-Maximum Suppression.
 ///

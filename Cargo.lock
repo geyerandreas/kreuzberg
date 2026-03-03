@@ -3111,7 +3111,6 @@ dependencies = [
  "infer",
  "jotdown",
  "kamadak-exif",
- "kreuzberg-layout",
  "kreuzberg-paddle-ocr",
  "kreuzberg-pdfium-render",
  "kreuzberg-tesseract",
@@ -3121,11 +3120,13 @@ dependencies = [
  "mail-parser",
  "memchr",
  "mime_guess",
+ "ndarray",
  "num_cpus",
  "once_cell",
  "opentelemetry",
  "opentelemetry_sdk",
  "org",
+ "ort",
  "parking_lot",
  "pastey 0.2.1",
  "pkg-config",
@@ -3216,22 +3217,6 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tokio",
-]
-
-[[package]]
-name = "kreuzberg-layout"
-version = "4.4.1"
-dependencies = [
- "hex",
- "hf-hub 0.5.0",
- "image",
- "ndarray",
- "num_cpus",
- "ort",
- "serde",
- "sha2",
- "thiserror 2.0.18",
- "tracing",
 ]
 
 [[package]]

@@ -1,6 +1,6 @@
 use ort::session::{Session, builder::GraphOptimizationLevel};
 
-use crate::error::LayoutError;
+use crate::layout::error::LayoutError;
 
 /// Build an optimized ORT session from an ONNX model file.
 ///

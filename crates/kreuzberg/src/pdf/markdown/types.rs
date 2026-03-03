@@ -28,7 +28,7 @@ pub(super) struct PdfParagraph {
 
 /// Simplified layout class for the markdown pipeline.
 ///
-/// Decoupled from `kreuzberg_layout::LayoutClass` so the markdown module
+/// Decoupled from `crate::layout::LayoutClass` so the markdown module
 /// compiles without the `layout-detection` feature.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum LayoutHintClass {

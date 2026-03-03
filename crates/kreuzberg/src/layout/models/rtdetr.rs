@@ -2,10 +2,10 @@ use image::RgbImage;
 use ndarray::Array;
 use ort::{inputs, session::Session, value::Tensor};
 
-use crate::error::LayoutError;
-use crate::models::LayoutModel;
-use crate::preprocessing;
-use crate::types::{BBox, LayoutClass, LayoutDetection};
+use crate::layout::error::LayoutError;
+use crate::layout::models::LayoutModel;
+use crate::layout::preprocessing;
+use crate::layout::types::{BBox, LayoutClass, LayoutDetection};
 
 /// Default confidence threshold for RT-DETR detections.
 const DEFAULT_THRESHOLD: f32 = 0.3;
@@ -33,7 +33,7 @@ pub struct RtDetrModel {
 impl RtDetrModel {
     /// Load a Docling RT-DETR ONNX model from a file.
     pub fn from_file(path: &str) -> Result<Self, LayoutError> {
-        let session = crate::session::build_session(path)?;
+        let session = crate::layout::session::build_session(path)?;
         let input_names: Vec<String> = session.inputs().iter().map(|i| i.name().to_string()).collect();
         Ok(Self { session, input_names })
     }

@@ -153,13 +153,13 @@ pub(crate) fn extract_all_from_document(
 
 /// Convert layout detection results to per-page layout hints for the markdown pipeline.
 ///
-/// Maps `LayoutClass` (from kreuzberg-layout) to `LayoutHintClass` (feature-gate-free
+/// Maps `LayoutClass` (from `crate::layout`) to `LayoutHintClass` (feature-gate-free
 /// types in the markdown module) and flattens per-page regions into hint vectors.
 #[cfg(all(feature = "pdf", feature = "layout-detection"))]
 pub(crate) fn convert_results_to_hints(
     results: &[crate::pdf::layout_runner::PageLayoutResult],
 ) -> Vec<Vec<crate::pdf::markdown::types::LayoutHint>> {
-    use crate::layout_detection::LayoutClass;
+    use crate::layout::LayoutClass;
     use crate::pdf::markdown::types::{LayoutHint, LayoutHintClass};
 
     results

@@ -56,7 +56,7 @@ fn run_layout_detection(
         return None;
     }
 
-    let mut engine = match crate::layout_detection::create_engine(layout_config) {
+    let mut engine = match crate::layout::create_engine(layout_config) {
         Ok(e) => e,
         Err(e) => {
             tracing::warn!("Layout engine init failed, continuing without: {}", e);

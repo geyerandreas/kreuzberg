@@ -1,13 +1,13 @@
 //! ONNX Runtime library auto-discovery.
 //!
-//! Delegates to the shared implementation in `kreuzberg-layout` when the
+//! Delegates to the shared implementation in the `layout` module when the
 //! `layout-detection` feature is enabled. Otherwise falls back to a local
 //! implementation with the same logic.
 
 /// Ensure ONNX Runtime is discoverable. Safe to call multiple times (no-op after first).
 #[cfg(feature = "layout-detection")]
 pub fn ensure_ort_available() {
-    kreuzberg_layout::ort_discovery::ensure_ort_available();
+    crate::layout::ort_discovery::ensure_ort_available();
 }
 
 #[cfg(not(feature = "layout-detection"))]
