@@ -276,7 +276,7 @@ module E2ERuby
       expect(elements.length).to be >= min_count if min_count
       return unless types_include
 
-      found_types = elements.map(&:type).compact.uniq
+      found_types = elements.map(&:element_type).compact.uniq
       types_include.each do |t|
         expect(found_types).to include(t)
       end

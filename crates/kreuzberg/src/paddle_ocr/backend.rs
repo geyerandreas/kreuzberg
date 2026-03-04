@@ -248,9 +248,9 @@ impl PaddleOcrBackend {
         ocr_engine: &Arc<Mutex<OcrLite>>,
         config: &PaddleOcrConfig,
     ) -> Result<Vec<kreuzberg_paddle_ocr::TextBlock>> {
-        let img = image::load_from_memory(image_bytes)
+        let img = crate::extraction::image::load_image_for_ocr(image_bytes)
             .map_err(|e| crate::KreuzbergError::Ocr {
-                message: format!("Failed to decode image: {}", e),
+                message: e.to_string(),
                 source: None,
             })?
             .to_rgb8();

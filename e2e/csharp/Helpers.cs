@@ -568,7 +568,7 @@ public static class TestHelpers
         }
         if (typesInclude is not null)
         {
-            var foundTypes = elements.Select(el => el.ElementType.ToString()).ToHashSet();
+            var foundTypes = elements.Select(el => JsonSerializer.Serialize(el.ElementType).Trim('"')).ToHashSet();
             foreach (var elType in typesInclude)
             {
                 if (!foundTypes.Contains(elType))

@@ -478,7 +478,7 @@ export const assertions = {
 			assertEquals(elements.length >= minCount, true, `Expected at least ${minCount} elements, got ${elements.length}`);
 		}
 		if (typesInclude && typesInclude.length > 0) {
-			const foundTypes = new Set(elements.map((el) => (el as PlainRecord).type));
+			const foundTypes = new Set(elements.map((el) => (el as PlainRecord).element_type));
 			for (const elType of typesInclude) {
 				assertEquals(foundTypes.has(elType), true, `Expected element type ${elType} not found`);
 			}

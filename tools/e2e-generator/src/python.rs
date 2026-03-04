@@ -361,7 +361,7 @@ def assert_elements(
     if min_count is not None and count < min_count:
         pytest.fail(f"Expected at least {min_count} elements, found {count}")
     if types_include:
-        found_types = {getattr(el, "type", None) for el in elements}
+        found_types = {(el.get("element_type") if isinstance(el, dict) else getattr(el, "element_type", None)) for el in elements}
         for el_type in types_include:
             if el_type not in found_types:
                 pytest.fail(f"Expected element type {el_type!r} not found in {found_types}")

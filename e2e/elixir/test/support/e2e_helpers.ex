@@ -436,7 +436,7 @@ defmodule E2E.Helpers do
     end
 
     if opts[:types_include] do
-      found_types = elements |> Enum.map(fn elem -> elem.type end) |> Enum.uniq()
+      found_types = elements |> Enum.map(fn elem -> to_string(elem.element_type) end) |> Enum.uniq()
 
       if !Enum.all?(opts[:types_include], fn t -> Enum.member?(found_types, t) end) do
         flunk("Element types #{inspect(found_types)} do not include all of #{inspect(opts[:types_include])}")

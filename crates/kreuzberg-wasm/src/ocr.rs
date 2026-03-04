@@ -65,7 +65,7 @@ pub fn ocr_recognize_raw(
 #[wasm_bindgen(js_name = ocrRecognize)]
 pub fn ocr_recognize(image_bytes: &[u8], tessdata: &[u8], language: &str) -> Result<String, JsValue> {
     let img =
-        image::load_from_memory(image_bytes).map_err(|e| JsValue::from_str(&format!("Failed to decode image: {e}")))?;
+        kreuzberg::extraction::image::load_image_for_ocr(image_bytes).map_err(|e| JsValue::from_str(&e.to_string()))?;
 
     let rgb = img.to_rgb8();
     let (width, height) = rgb.dimensions();

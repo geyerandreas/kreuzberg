@@ -61,8 +61,8 @@ ocr = [
     "html",
 ]
 # Minimal OCR for WASM: Tesseract + basic image support, without heavy native deps
-# (tiff, fast_image_resize, kamadak-exif, hayro-jpeg2000, hayro-jbig2)
-ocr-wasm = ["dep:kreuzberg-tesseract", "dep:image"]
+# (tiff, fast_image_resize, kamadak-exif)
+ocr-wasm = ["dep:kreuzberg-tesseract", "dep:image", "dep:hayro-jpeg2000", "dep:hayro-jbig2"]
 # PaddleOCR via ONNX Runtime
 # Requires 'ocr' feature for shared conversion utilities and table reconstruction
 paddle-ocr = [

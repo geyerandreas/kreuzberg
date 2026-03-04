@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **WASM OCR blocking event loop**: The `ocrRecognize()` function in the WASM package was running synchronously on the main thread, blocking the Node.js event loop during image decoding and Tesseract OCR processing. This prevented timeouts and other async operations from firing while OCR was in progress. OCR now runs in a worker thread (Node.js `worker_threads` / browser `Web Worker`), keeping the main thread responsive.
+- **JPEG 2000 OCR decode failure**: JPEG 2000 images (jp2, jpx, jpm, mj2) and JBIG2 images failed with "The image format could not be determined" during PaddleOCR and WASM OCR because these code paths used the standard `image` crate which doesn't support JPEG 2000. A shared `load_image_for_ocr()` helper now detects JP2/J2K/JBIG2 formats by magic bytes and uses `hayro-jpeg2000`/`hayro-jbig2` decoders across all OCR backends. The `ocr-wasm` feature now includes these decoders (pure Rust, WASM-compatible).
+- **WASM PDF empty content**: `initWasm()` fired off PDFium initialization asynchronously without awaiting it, causing a race condition where PDF extraction could start before PDFium was ready, returning empty content. PDFium initialization is now properly awaited during `initWasm()`.
 
 ### Added
 

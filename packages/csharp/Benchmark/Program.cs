@@ -290,7 +290,7 @@ static string GuessMimeType(string path)
         ".jp2" => "image/jp2",
         ".jpx" => "image/jpx",
         ".jpm" => "image/jpm",
-        ".mj2" => "video/mj2",
+        ".mj2" => "image/mj2",
         ".svg" => "image/svg+xml",
         ".zip" => "application/zip",
         ".tar" => "application/x-tar",

@@ -759,7 +759,7 @@ export const chunkAssertions = {
             expect(elements.length).toBeGreaterThanOrEqual(minCount);
         }
         if (typesInclude && typesInclude.length > 0) {
-            const foundTypes = new Set(elements.map((el) => (el as PlainRecord).type));
+            const foundTypes = new Set(elements.map((el) => (el as PlainRecord).elementType ?? (el as PlainRecord).element_type));
             for (const elType of typesInclude) {
                 expect(foundTypes.has(elType)).toBe(true);
             }

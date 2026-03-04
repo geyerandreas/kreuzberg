@@ -251,9 +251,11 @@ export async function initWasm(options?: InitWasmOptions): Promise<void> {
 			}
 
 			if (loadedModule && typeof loadedModule.initialize_pdfium_render === "function") {
-				initializePdfiumAsync(loadedModule).catch((error) => {
+				try {
+					await initializePdfiumAsync(loadedModule);
+				} catch (error) {
 					console.warn("PDFium auto-initialization failed (PDF extraction disabled):", error);
-				});
+				}
 			}
 
 			setInitialized(true);

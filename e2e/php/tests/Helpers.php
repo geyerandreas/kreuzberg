@@ -343,8 +343,8 @@ class Helpers
         if ($typesInclude !== null && !empty($typesInclude)) {
             $foundTypes = [];
             foreach ($elements as $element) {
-                if (isset($element->type)) {
-                    $foundTypes[] = strtolower($element->type);
+                if (isset($element->elementType)) {
+                    $foundTypes[] = strtolower($element->elementType);
                 }
             }
 

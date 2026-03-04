@@ -207,7 +207,7 @@ fn parse_j2k_siz(bytes: &[u8]) -> Result<ImageMetadata> {
 /// Decode JPEG 2000 image bytes to an RGB image using hayro-jpeg2000.
 ///
 /// Pure Rust, memory-safe decoder. No temp files needed.
-#[cfg(feature = "ocr")]
+#[cfg(any(feature = "ocr", feature = "ocr-wasm"))]
 pub(crate) fn decode_jp2_to_rgb(bytes: &[u8]) -> Result<image::RgbImage> {
     use hayro_jpeg2000::{DecodeSettings, Image as Jp2Image};
 
@@ -294,7 +294,7 @@ pub(crate) fn is_jbig2(bytes: &[u8]) -> bool {
 ///
 /// JBIG2 is a bi-level (1-bit) image compression format commonly used in scanned PDFs.
 /// The decoder converts black/white pixels to grayscale (0/255) for OCR processing.
-#[cfg(feature = "ocr")]
+#[cfg(any(feature = "ocr", feature = "ocr-wasm"))]
 pub(crate) fn decode_jbig2_to_gray(bytes: &[u8]) -> Result<image::GrayImage> {
     use hayro_jbig2::decode;
 
@@ -311,6 +311,24 @@ pub(crate) fn decode_jbig2_to_gray(bytes: &[u8]) -> Result<image::GrayImage> {
 
     image::GrayImage::from_raw(width, height, pixels)
         .ok_or_else(|| KreuzbergError::parsing("Failed to construct grayscale image from JBIG2 data".to_string()))
+}
+
+/// Load image bytes for OCR, with JPEG 2000 and JBIG2 fallback support.
+///
+/// The standard `image` crate does not support JPEG 2000 or JBIG2 formats.
+/// This function detects these formats by magic bytes and uses `hayro-jpeg2000`
+/// / `hayro-jbig2` for decoding, falling back to the standard `image` crate
+/// for all other formats.
+#[cfg(any(feature = "ocr", feature = "ocr-wasm"))]
+pub fn load_image_for_ocr(image_bytes: &[u8]) -> Result<image::DynamicImage> {
+    if is_jp2(image_bytes) || is_j2k(image_bytes) {
+        decode_jp2_to_rgb(image_bytes).map(image::DynamicImage::ImageRgb8)
+    } else if is_jbig2(image_bytes) {
+        decode_jbig2_to_gray(image_bytes).map(image::DynamicImage::ImageLuma8)
+    } else {
+        image::load_from_memory(image_bytes)
+            .map_err(|e| KreuzbergError::parsing(format!("Failed to decode image: {}", e)))
+    }
 }
 
 /// Extract metadata from image bytes.

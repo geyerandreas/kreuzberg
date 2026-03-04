@@ -53,4 +53,4 @@ console_error_panic_hook = ["dep:console_error_panic_hook"]
 wasm-opt = false
 
 [package.metadata.cargo-machete]
-ignored = ["getrandom", "getrandom_compat", "serde", "uuid"]
+ignored = ["getrandom", "getrandom_compat", "image", "serde", "uuid"]
