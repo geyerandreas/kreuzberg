@@ -9,17 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **PDF image placeholder toggle**: New `inject_placeholders` option on `ImageExtractionConfig` (default: `true`). Set to `false` to extract images as data without injecting `![image](...)` references into the markdown content.
+
 ### Fixed
 
-- **Nested HTML table extraction**: Nested HTML tables now extract correctly with proper cell data and markdown rendering. Replaced ~300 lines of custom HTML parsing with the visitor-based `convert_with_tables()` API from html-to-markdown-rs, which handles nested structures natively.
+- **Token reduction not applied** ([#436](https://github.com/kreuzberg-dev/kreuzberg/issues/436)): Token reduction config was accepted but never executed during extraction. The pipeline now applies `reduce_tokens()` when `token_reduction.mode` is configured.
+- **Nested HTML table extraction**: Nested HTML tables now extract correctly with proper cell data and markdown rendering, using the visitor-based table extraction API from html-to-markdown-rs.
 - **hOCR plain text output**: hOCR conversion now correctly produces plain text when `OutputFormat::Plain` is requested, instead of silently falling back to Markdown.
-- **PDF image placeholder toggle**: Added `inject_image_placeholders` option to `ImageExtractionConfig` (default: `true`). Set to `false` to extract images for data without injecting `![image](...)` references into the markdown content.
-- **E2E generator camelCase metadata keys**: Fixed e2e test generators for TypeScript, WASM-Deno, and WASM-Workers to use camelCase metadata keys (e.g., `pageCount` instead of `page_count`), matching the Node.js binding's snake-to-camel transformation.
-
-- **PDF markdown garbled text for positioned/tabular content** ([#431](https://github.com/kreuzberg-dev/kreuzberg/issues/431)): PDF text extraction now detects X-position gaps between consecutive characters and inserts spaces when the gap exceeds `0.8 × avg_font_size`. Previously, characters placed at specific coordinates without explicit space characters (common in tabular/positioned PDFs) were concatenated without spaces, producing garbled output like `12345.6778.90` instead of `123 45.67 78.90`.
-- **Chunk page metadata drift with overlap** ([#439](https://github.com/kreuzberg-dev/kreuzberg/issues/439)): Chunk byte offsets are now computed via pointer arithmetic from the source text, fixing cumulative drift that caused chunks to report incorrect page numbers. Previously, a running byte offset subtracted overlap each iteration, causing ~N×overlap bytes of drift by the last chunk in multi-page documents.
-- **Node.js Metadata casing standardization**: Standardized all `Metadata` and `EmailMetadata` fields to `camelCase` (e.g., `pageCount`, `creationDate`, `fromEmail`) to provide a consistent TypeScript-native experience. Implemented a recursive `snake_to_camel` transformation in the Rust bridge to ensure non-leaky API behavior.
-- **Node.js pluralization**: Corrected pluralization for `authors` and `keywords` (string array) in the Node.js/TypeScript bindings to align with the core Rust implementation and documentation.
+- **PDF garbled text for positioned/tabular content** ([#431](https://github.com/kreuzberg-dev/kreuzberg/issues/431)): PDF text extraction now detects X-position gaps between consecutive characters and inserts spaces when the gap exceeds `0.8 × avg_font_size`. Previously, characters placed at specific coordinates without explicit space characters were concatenated without spaces.
+- **Chunk page metadata drift with overlap** ([#439](https://github.com/kreuzberg-dev/kreuzberg/issues/439)): Chunk byte offsets are now computed via pointer arithmetic from the source text, fixing cumulative drift that caused chunks to report incorrect page numbers when overlap is enabled.
+- **Node.js metadata casing**: Standardized all `Metadata` and `EmailMetadata` fields to `camelCase` (e.g., `pageCount`, `creationDate`, `fromEmail`) in the Node.js/TypeScript bindings. Also corrected pluralization for `authors` and `keywords`.
 
 ## [4.4.2]
 
