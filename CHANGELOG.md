@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.4.3]
+
+### Added
+
+- **PDF image placeholder toggle**: New `inject_placeholders` option on `ImageExtractionConfig` (default: `true`). Set to `false` to extract images as data without injecting `![image](...)` references into the markdown content.
+
+### Fixed
+
+- **Token reduction not applied** ([#436](https://github.com/kreuzberg-dev/kreuzberg/issues/436)): Token reduction config was accepted but never executed during extraction. The pipeline now applies `reduce_tokens()` when `token_reduction.mode` is configured.
+- **Nested HTML table extraction**: Nested HTML tables now extract correctly with proper cell data and markdown rendering, using the visitor-based table extraction API from html-to-markdown-rs.
+- **hOCR plain text output**: hOCR conversion now correctly produces plain text when `OutputFormat::Plain` is requested, instead of silently falling back to Markdown.
+- **PDF garbled text for positioned/tabular content** ([#431](https://github.com/kreuzberg-dev/kreuzberg/issues/431)): PDF text extraction now detects X-position gaps between consecutive characters and inserts spaces when the gap exceeds `0.8 × avg_font_size`. Previously, characters placed at specific coordinates without explicit space characters were concatenated without spaces.
+- **Chunk page metadata drift with overlap** ([#439](https://github.com/kreuzberg-dev/kreuzberg/issues/439)): Chunk byte offsets are now computed via pointer arithmetic from the source text, fixing cumulative drift that caused chunks to report incorrect page numbers when overlap is enabled.
+- **Node.js metadata casing**: Standardized all `Metadata` and `EmailMetadata` fields to `camelCase` (e.g., `pageCount`, `creationDate`, `fromEmail`) in the Node.js/TypeScript bindings. Also corrected pluralization for `authors` and `keywords`.
+- **WASM build failure on Windows CI**: CMake try-compile checks on Windows used the host MSVC compiler (`cl.exe`), which rejected GCC/Clang flags like `-Wno-implicit-function-declaration`. Added `CMAKE_TRY_COMPILE_TARGET_TYPE=STATIC_LIBRARY` to both `build_leptonica_wasm` and `build_tesseract_wasm` to skip linking during cross-compilation checks.
+- **WASM OCR build panic when `git`/`patch` unavailable**: The tesseract WASM patch (`tesseract.diff`) application panicked when both `git apply` and `patch` commands failed. Added programmatic C++ source fixups as a fallback, applying all necessary changes (CPUID guard, pixa_debug_ unique_ptr conversion, source list trimming) via string replacement when the diff patch cannot be applied.
+
 ## [4.4.2]
 
 ### Fixed

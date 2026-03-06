@@ -437,14 +437,14 @@ public final class E2EHelpers {
     public static void assertOcrElements(
         ExtractionResult result,
         boolean hasElements,
-        boolean hasGeometry,
+        Boolean hasGeometry,
         Boolean hasConfidence,
         Integer minCount) {
       var ocrElements = result.getOcrElements();
       if (hasElements) {
         assertTrue(!ocrElements.isEmpty(), "Expected OCR elements, but none found");
       }
-      if (hasGeometry) {
+      if (hasGeometry != null && hasGeometry) {
         for (int i = 0; i < ocrElements.size(); i++) {
           assertNotNull(
               ocrElements.get(i).getGeometry(),

@@ -356,9 +356,14 @@ impl DocumentExtractor for PdfExtractor {
         #[cfg(feature = "pdf")]
         let (text, used_pdf_markdown) = if use_pdf_markdown {
             if let Some(md) = pre_rendered_markdown {
-                let final_md = if let Some(ref imgs) = images {
-                    if !imgs.is_empty() {
-                        crate::pdf::markdown::inject_image_placeholders(&md, imgs)
+                let should_inject = config.images.as_ref().is_none_or(|img_cfg| img_cfg.inject_placeholders);
+                let final_md = if should_inject {
+                    if let Some(ref imgs) = images {
+                        if !imgs.is_empty() {
+                            crate::pdf::markdown::inject_image_placeholders(&md, imgs)
+                        } else {
+                            md
+                        }
                     } else {
                         md
                     }

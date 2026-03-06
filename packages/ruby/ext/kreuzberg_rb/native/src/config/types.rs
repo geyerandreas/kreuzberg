@@ -317,10 +317,17 @@ pub fn parse_image_extraction_config(ruby: &Ruby, hash: RHash) -> Result<ImageEx
         600
     };
 
+    let inject_placeholders = if let Some(val) = get_kw(ruby, hash, "inject_placeholders") {
+        bool::try_convert(val)?
+    } else {
+        true
+    };
+
     let config = ImageExtractionConfig {
         extract_images,
         target_dpi,
         max_image_dimension,
+        inject_placeholders,
         auto_adjust_dpi,
         min_dpi,
         max_dpi,

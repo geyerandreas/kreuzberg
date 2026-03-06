@@ -19,6 +19,23 @@ public class ArchiveTest {
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   @Test
+  public void archiveGzBasic() throws Exception {
+    JsonNode config = null;
+    E2EHelpers.runFixture(
+        "archive_gz_basic",
+        "archives/book_war_and_peace_1p.txt.gz",
+        config,
+        Collections.emptyList(),
+        null,
+        true,
+        result -> {
+          E2EHelpers.Assertions.assertExpectedMime(
+              result, Arrays.asList("application/gzip", "application/x-gzip"));
+          E2EHelpers.Assertions.assertMinContentLength(result, 10);
+        });
+  }
+
+  @Test
   public void archiveSevenzBasic() throws Exception {
     JsonNode config = null;
     E2EHelpers.runFixture(

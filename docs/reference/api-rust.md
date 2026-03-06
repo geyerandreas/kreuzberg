@@ -1102,7 +1102,11 @@ Document metadata with format-specific fields.
 #[derive(Debug, Clone, Default)]
 pub struct Metadata {
     pub abstract_text: Option<String>,
+
+    /// Deprecated: Prefer using typed fields instead of dynamic access.
+    /// This index signature may be removed in a future version.
     pub additional: HashMap<String, serde_json::Value>,
+
     pub authors: Option<Vec<String>>,
     pub category: Option<String>,
     pub created_at: Option<String>,

@@ -2734,6 +2734,7 @@ pub struct ImageExtractionConfig {
     pub extract_images: bool,
     pub target_dpi: i32,
     pub max_image_dimension: i32,
+    pub inject_placeholders: bool,
     pub auto_adjust_dpi: bool,
     pub min_dpi: i32,
     pub max_dpi: i32,
@@ -2748,6 +2749,7 @@ class ImageExtractionConfig:
     extract_images: bool = True
     target_dpi: int = 300
     max_image_dimension: int = 4096
+    inject_placeholders: bool = True
     auto_adjust_dpi: bool = True
     min_dpi: int = 72
     max_dpi: int = 600
@@ -2760,6 +2762,7 @@ export interface ImageExtractionConfig {
   extractImages?: boolean;
   targetDpi?: number;
   maxImageDimension?: number;
+  injectPlaceholders?: boolean;
   autoAdjustDpi?: boolean;
   minDpi?: number;
   maxDpi?: number;
@@ -2773,6 +2776,7 @@ public record ImageExtractionConfig(
     boolean extractImages,
     int targetDpi,
     int maxImageDimension,
+    boolean injectPlaceholders,
     boolean autoAdjustDpi,
     int minDpi,
     int maxDpi
@@ -2783,12 +2787,13 @@ public record ImageExtractionConfig(
 
 ```go title="image_extraction_config.go"
 type ImageExtractionConfig struct {
-    ExtractImages      bool
-    TargetDPI          int32
-    MaxImageDimension  int32
-    AutoAdjustDPI      bool
-    MinDPI             int32
-    MaxDPI             int32
+    ExtractImages        bool
+    TargetDPI            int32
+    MaxImageDimension    int32
+    InjectPlaceholders   bool
+    AutoAdjustDPI        bool
+    MinDPI               int32
+    MaxDPI               int32
 }
 ```
 

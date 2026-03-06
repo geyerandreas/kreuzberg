@@ -772,6 +772,7 @@ impl ImageExtractionConfig {
         extract_images=None,
         target_dpi=None,
         max_image_dimension=None,
+        inject_placeholders=None,
         auto_adjust_dpi=None,
         min_dpi=None,
         max_dpi=None
@@ -780,6 +781,7 @@ impl ImageExtractionConfig {
         extract_images: Option<bool>,
         target_dpi: Option<i32>,
         max_image_dimension: Option<i32>,
+        inject_placeholders: Option<bool>,
         auto_adjust_dpi: Option<bool>,
         min_dpi: Option<i32>,
         max_dpi: Option<i32>,
@@ -789,6 +791,7 @@ impl ImageExtractionConfig {
                 extract_images: extract_images.unwrap_or(true),
                 target_dpi: target_dpi.unwrap_or(300),
                 max_image_dimension: max_image_dimension.unwrap_or(4096),
+                inject_placeholders: inject_placeholders.unwrap_or(true),
                 auto_adjust_dpi: auto_adjust_dpi.unwrap_or(true),
                 min_dpi: min_dpi.unwrap_or(72),
                 max_dpi: max_dpi.unwrap_or(600),
@@ -824,6 +827,16 @@ impl ImageExtractionConfig {
     #[setter]
     fn set_max_image_dimension(&mut self, value: i32) {
         self.inner.max_image_dimension = value;
+    }
+
+    #[getter]
+    fn inject_placeholders(&self) -> bool {
+        self.inner.inject_placeholders
+    }
+
+    #[setter]
+    fn set_inject_placeholders(&mut self, value: bool) {
+        self.inner.inject_placeholders = value;
     }
 
     #[getter]

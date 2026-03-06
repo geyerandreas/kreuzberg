@@ -1065,9 +1065,10 @@ fn render_assertions(assertions: &Assertions, _requirements: &[String]) -> Strin
 
     if !assertions.metadata.is_empty() {
         for (path, expectation) in &assertions.metadata {
+            let camel_path = to_camel_case(path);
             buffer.push_str(&format!(
                 "    assertions.assertMetadataExpectation(result, \"{}\", {});\n",
-                escape_ts_string(path),
+                escape_ts_string(&camel_path),
                 normalize_metadata_expectation(expectation)
             ));
         }

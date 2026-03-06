@@ -2911,12 +2911,13 @@ Configuration for extracting and processing images from documents.
 
 | Field                 | Type   | Default | Description                                              |
 | --------------------- | ------ | ------- | -------------------------------------------------------- |
-| `extract_images`      | `bool` | `true`  | Extract images from documents                            |
-| `target_dpi`          | `int`  | `300`   | Target DPI for extracted/normalized images               |
-| `max_image_dimension` | `int`  | `4096`  | Maximum image dimension (width or height) in pixels      |
-| `auto_adjust_dpi`     | `bool` | `true`  | Automatically adjust DPI based on image size and content |
-| `min_dpi`             | `int`  | `72`    | Minimum DPI when auto-adjusting                          |
-| `max_dpi`             | `int`  | `600`   | Maximum DPI when auto-adjusting                          |
+| `extract_images`        | `bool` | `true`  | Extract images from documents                            |
+| `target_dpi`            | `int`  | `300`   | Target DPI for extracted/normalized images               |
+| `max_image_dimension`   | `int`  | `4096`  | Maximum image dimension (width or height) in pixels      |
+| `inject_placeholders`   | `bool` | `true`  | Inject image reference placeholders (e.g. `![Image](embedded:p1_i0)`) into markdown output. Set to `false` to extract images as data without modifying the text content. |
+| `auto_adjust_dpi`       | `bool` | `true`  | Automatically adjust DPI based on image size and content |
+| `min_dpi`               | `int`  | `72`    | Minimum DPI when auto-adjusting                          |
+| `max_dpi`               | `int`  | `600`   | Maximum DPI when auto-adjusting                          |
 
 ### Example
 

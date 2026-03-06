@@ -232,7 +232,7 @@ jobs:
         run: cargo build --release -p snippet-runner
 
       - name: Validate documentation snippets
-        run: ./target/release/snippet-runner validate --snippets docs/snippets --reference docs/reference --level syntax
+        run: ./target/release/snippet-runner validate --snippets docs/snippets --reference docs/reference --level syntax --timeout 120
 
       - name: Verify API Parity
         run: python scripts/verify_api_parity.py

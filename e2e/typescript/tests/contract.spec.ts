@@ -343,6 +343,34 @@ describe("contract fixtures", () => {
 	);
 
 	it(
+		"config_chunking_text",
+		() => {
+			const documentPath = resolveDocument("pdf/fake_memo.pdf");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_chunking_text: missing document at", documentPath);
+				return;
+			}
+			const config = buildConfig({ chunking: { chunker_type: "text", max_chars: 500, max_overlap: 50 } });
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "config_chunking_text", [], undefined)) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/pdf"]);
+			assertions.assertMinContentLength(result, 10);
+			chunkAssertions.assertChunks(result, 1, null, true, null);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
 		"config_djot_content",
 		() => {
 			const documentPath = resolveDocument("pdf/fake_memo.pdf");
@@ -419,6 +447,35 @@ describe("contract fixtures", () => {
 			}
 			assertions.assertExpectedMime(result, ["application/pdf"]);
 			chunkAssertions.assertDocument(result, false, null, null, null);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		"config_document_structure_groups",
+		() => {
+			const documentPath = resolveDocument("docx/unit_test_headers.docx");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_document_structure_groups: missing document at", documentPath);
+				return;
+			}
+			const config = buildConfig({ include_document_structure: true });
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "config_document_structure_groups", ["office"], undefined)) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, [
+				"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+			]);
+			chunkAssertions.assertDocument(result, true, null, null, true);
 		},
 		TEST_TIMEOUT_MS,
 	);
@@ -593,6 +650,35 @@ describe("contract fixtures", () => {
 	);
 
 	it(
+		"config_images_with_formats",
+		() => {
+			const documentPath = resolveDocument("pptx/powerpoint_with_image.pptx");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_images_with_formats: missing document at", documentPath);
+				return;
+			}
+			const config = buildConfig({ images: { extract_images: true } });
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "config_images_with_formats", [], undefined)) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, [
+				"application/vnd.openxmlformats-officedocument.presentationml.presentation",
+			]);
+			chunkAssertions.assertImages(result, 1, null, null);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
 		"config_keywords",
 		() => {
 			const documentPath = resolveDocument("pdf/fake_memo.pdf");
@@ -644,6 +730,34 @@ describe("contract fixtures", () => {
 			assertions.assertExpectedMime(result, ["application/pdf"]);
 			assertions.assertMinContentLength(result, 10);
 			assertions.assertDetectedLanguages(result, ["eng"], 0.5);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		"config_language_detection_multi",
+		() => {
+			const documentPath = resolveDocument("pdf/fake_memo.pdf");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_language_detection_multi: missing document at", documentPath);
+				return;
+			}
+			const config = buildConfig({ language_detection: { detect_multiple: true, enabled: true, min_confidence: 0.3 } });
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "config_language_detection_multi", [], undefined)) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/pdf"]);
+			assertions.assertMinContentLength(result, 10);
+			assertions.assertDetectedLanguages(result, ["eng"], null);
 		},
 		TEST_TIMEOUT_MS,
 	);
@@ -705,6 +819,34 @@ describe("contract fixtures", () => {
 	);
 
 	it(
+		"config_pages_exact_count",
+		() => {
+			const documentPath = resolveDocument("pdf/multi_page.pdf");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_pages_exact_count: missing document at", documentPath);
+				return;
+			}
+			const config = buildConfig({ pages: { extract_pages: true } });
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "config_pages_exact_count", ["pdf"], undefined)) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/pdf"]);
+			assertions.assertMinContentLength(result, 10);
+			chunkAssertions.assertPages(result, null, 5);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
 		"config_pages_extract",
 		() => {
 			const documentPath = resolveDocument("pdf/fake_memo.pdf");
@@ -761,6 +903,45 @@ describe("contract fixtures", () => {
 	);
 
 	it(
+		"config_pdf_annotations_count",
+		() => {
+			const documentPath = resolveDocument("vendored/pdfplumber/pdf/annotations.pdf");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_pdf_annotations_count: missing document at", documentPath);
+				console.warn("Notes: PDFium ARM Linux binary does not support annotation extraction");
+				return;
+			}
+			if (process.arch === "arm64" && process.platform === "linux") {
+				console.warn("Skipping config_pdf_annotations_count: not supported on this platform");
+				return;
+			}
+			const config = buildConfig({ pdf_options: { extract_annotations: true } });
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (
+					shouldSkipFixture(
+						error,
+						"config_pdf_annotations_count",
+						["pdf"],
+						"PDFium ARM Linux binary does not support annotation extraction",
+					)
+				) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/pdf"]);
+			assertions.assertAnnotations(result, true, 3);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
 		"config_pdf_hierarchy",
 		() => {
 			const documentPath = resolveDocument("pdf/fake_memo.pdf");
@@ -791,6 +972,33 @@ describe("contract fixtures", () => {
 	);
 
 	it(
+		"config_pdf_margins",
+		() => {
+			const documentPath = resolveDocument("pdf/fake_memo.pdf");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_pdf_margins: missing document at", documentPath);
+				return;
+			}
+			const config = buildConfig({ pdf_options: { bottom_margin_fraction: 0.1, top_margin_fraction: 0.1 } });
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "config_pdf_margins", ["pdf"], undefined)) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/pdf"]);
+			assertions.assertMinContentLength(result, 5);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
 		"config_postprocessor",
 		() => {
 			const documentPath = resolveDocument("pdf/fake_memo.pdf");
@@ -814,6 +1022,34 @@ describe("contract fixtures", () => {
 			assertions.assertExpectedMime(result, ["application/pdf"]);
 			assertions.assertMinContentLength(result, 10);
 			assertions.assertContentNotEmpty(result);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		"config_processing_warnings_empty",
+		() => {
+			const documentPath = resolveDocument("pdf/fake_memo.pdf");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_processing_warnings_empty: missing document at", documentPath);
+				return;
+			}
+			const config = buildConfig(undefined);
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "config_processing_warnings_empty", [], undefined)) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/pdf"]);
+			assertions.assertMinContentLength(result, 10);
+			assertions.assertProcessingWarnings(result, undefined, true);
 		},
 		TEST_TIMEOUT_MS,
 	);
@@ -875,6 +1111,62 @@ describe("contract fixtures", () => {
 	);
 
 	it(
+		"config_quality_score_range",
+		() => {
+			const documentPath = resolveDocument("pdf/fake_memo.pdf");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_quality_score_range: missing document at", documentPath);
+				return;
+			}
+			const config = buildConfig({ enable_quality_processing: true });
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "config_quality_score_range", ["quality"], undefined)) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/pdf"]);
+			assertions.assertQualityScore(result, true, 0.1, undefined);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		"config_security_limits",
+		() => {
+			const documentPath = resolveDocument("archives/documents.zip");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_security_limits: missing document at", documentPath);
+				return;
+			}
+			const config = buildConfig({
+				security_limits: { max_archive_size: 104857600, max_compression_ratio: 50, max_files_in_archive: 100 },
+			});
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "config_security_limits", [], undefined)) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/zip", "application/x-zip-compressed"]);
+			assertions.assertMinContentLength(result, 10);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
 		"config_structured_output",
 		() => {
 			const documentPath = resolveDocument("pdf/fake_memo.pdf");
@@ -897,6 +1189,35 @@ describe("contract fixtures", () => {
 			}
 			assertions.assertExpectedMime(result, ["application/pdf"]);
 			assertions.assertMinContentLength(result, 10);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		"config_tables_content",
+		() => {
+			const documentPath = resolveDocument("docx/docx_tables.docx");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_tables_content: missing document at", documentPath);
+				return;
+			}
+			const config = buildConfig(undefined);
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "config_tables_content", [], undefined)) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, [
+				"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+			]);
+			assertions.assertTableCount(result, 1, null);
 		},
 		TEST_TIMEOUT_MS,
 	);

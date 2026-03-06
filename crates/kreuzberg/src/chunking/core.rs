@@ -74,7 +74,7 @@ pub fn chunk_text(
         }
     };
 
-    let chunks = build_chunks(text_chunks.into_iter(), config.overlap, page_boundaries)?;
+    let chunks = build_chunks(text, text_chunks.into_iter(), page_boundaries)?;
     let chunk_count = chunks.len();
 
     Ok(ChunkingResult { chunks, chunk_count })
@@ -1048,6 +1048,141 @@ mod tests {
 
         for chunk in &result.chunks {
             assert_eq!(chunk.metadata.byte_end - chunk.metadata.byte_start, chunk.content.len());
+        }
+    }
+
+    /// Regression test for GitHub issue #439:
+    /// Chunk metadata reports wrong page numbers for documents with many pages.
+    /// The byte offset drift causes chunks near the end of the document to
+    /// reference pages far earlier than where their content actually resides.
+    #[test]
+    fn test_issue_439_chunk_page_metadata_many_pages() {
+        let num_pages = 50;
+        let mut full_text = String::new();
+        let mut boundaries = Vec::new();
+
+        for p in 1..=num_pages {
+            let page_content = format!(
+                "Page {} content. This is the text on page number {}. It has some words to fill space here. ",
+                p, p
+            );
+            let start = full_text.len();
+            full_text.push_str(&page_content);
+            let end = full_text.len();
+            boundaries.push(PageBoundary {
+                byte_start: start,
+                byte_end: end,
+                page_number: p,
+            });
+        }
+
+        let config = ChunkingConfig {
+            max_characters: 200,
+            overlap: 50,
+            trim: true,
+            chunker_type: ChunkerType::Text,
+            embedding: None,
+            preset: None,
+        };
+
+        let result = chunk_text(&full_text, &config, Some(&boundaries)).unwrap();
+
+        // The last chunk must reference pages near the end of the document
+        let last_chunk = result.chunks.last().unwrap();
+        assert!(
+            last_chunk.metadata.last_page.unwrap() >= num_pages - 2,
+            "Last chunk should reference near the last page ({}), but got {:?}",
+            num_pages,
+            last_chunk.metadata.last_page
+        );
+
+        // Every chunk's byte range must correspond to where its content
+        // actually lives in the original text
+        for (i, chunk) in result.chunks.iter().enumerate() {
+            let actual_pos = full_text
+                .find(&chunk.content)
+                .expect("Chunk content must be a substring of the original text");
+            let actual_page = boundaries
+                .iter()
+                .find(|b| actual_pos >= b.byte_start && actual_pos < b.byte_end)
+                .map(|b| b.page_number);
+
+            if let (Some(reported), Some(actual)) = (chunk.metadata.first_page, actual_page) {
+                assert_eq!(
+                    reported, actual,
+                    "Chunk {} reports first_page={} but content starts on page {} \
+                     (byte_start={}, actual_pos={})",
+                    i, reported, actual, chunk.metadata.byte_start, actual_pos
+                );
+            }
+        }
+    }
+
+    /// Verify that chunk byte_start/byte_end match the actual position of the
+    /// chunk content within the original text.
+    #[test]
+    fn test_issue_439_chunk_byte_offsets_match_text_position() {
+        let text = "Alpha bravo charlie delta echo foxtrot golf hotel india juliet kilo lima mike november oscar papa quebec romeo sierra tango uniform victor whiskey xray yankee zulu. ";
+        let repeated = text.repeat(5);
+
+        let boundaries = vec![
+            PageBoundary {
+                byte_start: 0,
+                byte_end: text.len(),
+                page_number: 1,
+            },
+            PageBoundary {
+                byte_start: text.len(),
+                byte_end: text.len() * 2,
+                page_number: 2,
+            },
+            PageBoundary {
+                byte_start: text.len() * 2,
+                byte_end: text.len() * 3,
+                page_number: 3,
+            },
+            PageBoundary {
+                byte_start: text.len() * 3,
+                byte_end: text.len() * 4,
+                page_number: 4,
+            },
+            PageBoundary {
+                byte_start: text.len() * 4,
+                byte_end: text.len() * 5,
+                page_number: 5,
+            },
+        ];
+
+        let config = ChunkingConfig {
+            max_characters: 80,
+            overlap: 20,
+            trim: true,
+            chunker_type: ChunkerType::Text,
+            embedding: None,
+            preset: None,
+        };
+
+        let result = chunk_text(&repeated, &config, Some(&boundaries)).unwrap();
+
+        for (i, chunk) in result.chunks.iter().enumerate() {
+            // The chunk content at byte_start..byte_end must match the actual content
+            let byte_start = chunk.metadata.byte_start;
+            let byte_end = chunk.metadata.byte_end;
+            assert!(
+                byte_end <= repeated.len(),
+                "Chunk {} byte_end ({}) exceeds text length ({})",
+                i,
+                byte_end,
+                repeated.len()
+            );
+            assert_eq!(
+                &repeated[byte_start..byte_end],
+                chunk.content,
+                "Chunk {} content doesn't match text at byte_start={}..byte_end={}",
+                i,
+                byte_start,
+                byte_end
+            );
         }
     }
 

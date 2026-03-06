@@ -481,7 +481,7 @@ public final class E2EHelpers {
         public static void assertOcrElements(
                 ExtractionResult result,
                 boolean hasElements,
-                boolean hasGeometry,
+                Boolean hasGeometry,
                 Boolean hasConfidence,
                 Integer minCount
         ) {
@@ -489,7 +489,7 @@ public final class E2EHelpers {
             if (hasElements) {
                 assertTrue(!ocrElements.isEmpty(), "Expected OCR elements, but none found");
             }
-            if (hasGeometry) {
+            if (hasGeometry != null && hasGeometry) {
                 for (int i = 0; i < ocrElements.size(); i++) {
                     assertNotNull(ocrElements.get(i).getGeometry(),
                             String.format("OCR element %d expected to have geometry", i));
@@ -690,16 +690,16 @@ const JAVA_POM_TEMPLATE: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <junit.version>5.11.3</junit.version>
         <jackson.version>2.18.2</jackson.version>
-        <kreuzberg.version>4.4.2</kreuzberg.version>
+        <kreuzberg.version>4.4.3</kreuzberg.version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>dev.kreuzberg</groupId>
             <artifactId>kreuzberg</artifactId>
-            <version>4.4.2</version>
+            <version>4.4.3</version>
             <scope>system</scope>
-            <systemPath>${project.basedir}/../../packages/java/target/kreuzberg-4.4.2.jar</systemPath>
+            <systemPath>${project.basedir}/../../packages/java/target/kreuzberg-4.4.3.jar</systemPath>
         </dependency>
 
         <dependency>

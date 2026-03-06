@@ -32,6 +32,7 @@ class Token_reductionTest extends TestCase
 
         Helpers::assertExpectedMime($result, ['application/pdf']);
         Helpers::assertMinContentLength($result, 5);
+        Helpers::assertMaxContentLength($result, 150);
         Helpers::assertContentNotEmpty($result);
     }
 
@@ -52,6 +53,7 @@ class Token_reductionTest extends TestCase
 
         Helpers::assertExpectedMime($result, ['application/pdf']);
         Helpers::assertMinContentLength($result, 5);
+        Helpers::assertMaxContentLength($result, 200);
         Helpers::assertContentNotEmpty($result);
     }
 
@@ -92,6 +94,7 @@ class Token_reductionTest extends TestCase
 
         Helpers::assertExpectedMime($result, ['application/pdf']);
         Helpers::assertMinContentLength($result, 5);
+        Helpers::assertMaxContentLength($result, 200);
         Helpers::assertChunks($result, 1, null, true, null);
         Helpers::assertContentNotEmpty($result);
     }
