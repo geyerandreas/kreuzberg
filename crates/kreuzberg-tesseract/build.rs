@@ -1192,6 +1192,12 @@ namespace this_thread {
         let mut config = Config::new(leptonica_src);
 
         config.target("wasm32-wasi");
+        // On Windows, the default Visual Studio generator ignores CMAKE_C_COMPILER
+        // and uses cl.exe, which doesn't understand GCC/Clang flags (-fPIC, -Wno-*, etc.).
+        // Force Ninja to ensure the WASI SDK clang is actually used.
+        if cfg!(target_os = "windows") {
+            config.generator("Ninja");
+        }
         config.define("CMAKE_TOOLCHAIN_FILE", &toolchain_file);
         config.define("CMAKE_SYSROOT", &sysroot);
         config.define("CMAKE_C_COMPILER", &clang);
@@ -1360,6 +1366,12 @@ Installation instructions:
 
         // Use wasm32-wasi (non-threaded) - no atomic operations emitted
         config.target("wasm32-wasi");
+        // On Windows, the default Visual Studio generator ignores CMAKE_C_COMPILER
+        // and uses cl.exe, which doesn't understand GCC/Clang flags (-fPIC, -Wno-*, etc.).
+        // Force Ninja to ensure the WASI SDK clang is actually used.
+        if cfg!(target_os = "windows") {
+            config.generator("Ninja");
+        }
         config.define("CMAKE_TOOLCHAIN_FILE", &toolchain_file);
         config.define("CMAKE_SYSROOT", &sysroot);
         config.define("CMAKE_C_COMPILER", &clang);
