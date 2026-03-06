@@ -1198,9 +1198,12 @@ namespace this_thread {
         if cfg!(target_os = "windows") {
             config.generator("Ninja");
         }
-        config.define("CMAKE_TOOLCHAIN_FILE", &toolchain_file);
-        config.define("CMAKE_SYSROOT", &sysroot);
-        config.define("CMAKE_C_COMPILER", &clang);
+        // Normalize all paths to forward slashes for CMake on Windows.
+        // Backslash paths (e.g. C:\hostedtoolcache\...) cause CMake "Invalid character escape"
+        // errors when written to CMakeCCompiler.cmake cache files.
+        config.define("CMAKE_TOOLCHAIN_FILE", normalize_cmake_path(&toolchain_file));
+        config.define("CMAKE_SYSROOT", normalize_cmake_path(&sysroot));
+        config.define("CMAKE_C_COMPILER", normalize_cmake_path(&clang));
 
         config
             .define("CMAKE_BUILD_TYPE", "Release")
@@ -1229,7 +1232,7 @@ namespace this_thread {
             // (e.g., mkstemp — WASI has no temp directories). These code paths are never reached
             // in WASM since OCR is fully in-memory.
             .define("CMAKE_C_FLAGS", "-fPIC -Os -fno-lto -fno-exceptions -D_WASI_EMULATED_PROCESS_CLOCKS -D_WASI_EMULATED_SIGNAL -Wno-implicit-function-declaration")
-            .define("CMAKE_INSTALL_PREFIX", leptonica_install);
+            .define("CMAKE_INSTALL_PREFIX", normalize_cmake_path(leptonica_install));
 
         config.build();
     }
@@ -1372,19 +1375,25 @@ Installation instructions:
         if cfg!(target_os = "windows") {
             config.generator("Ninja");
         }
-        config.define("CMAKE_TOOLCHAIN_FILE", &toolchain_file);
-        config.define("CMAKE_SYSROOT", &sysroot);
-        config.define("CMAKE_C_COMPILER", &clang);
-        config.define("CMAKE_CXX_COMPILER", &clangxx);
-        config.define("WASI_SDK_PREFIX", wasi_sdk_dir);
+        // Normalize all paths to forward slashes for CMake on Windows.
+        // Backslash paths (e.g. C:\hostedtoolcache\...) cause CMake "Invalid character escape"
+        // errors when written to CMakeCCompiler.cmake cache files.
+        config.define("CMAKE_TOOLCHAIN_FILE", normalize_cmake_path(&toolchain_file));
+        config.define("CMAKE_SYSROOT", normalize_cmake_path(&sysroot));
+        config.define("CMAKE_C_COMPILER", normalize_cmake_path(&clang));
+        config.define("CMAKE_CXX_COMPILER", normalize_cmake_path(&clangxx));
+        config.define("WASI_SDK_PREFIX", normalize_cmake_path(wasi_sdk_dir));
 
         let leptonica_lib_dir = leptonica_install.join("lib");
         let leptonica_include_dir = leptonica_install.join("include");
 
-        config.define("Leptonica_DIR", leptonica_install);
-        config.define("CMAKE_PREFIX_PATH", leptonica_install);
+        config.define("Leptonica_DIR", normalize_cmake_path(leptonica_install));
+        config.define("CMAKE_PREFIX_PATH", normalize_cmake_path(leptonica_install));
         // Help the linker find leptonica during try_compile checks
-        config.define("CMAKE_EXE_LINKER_FLAGS", format!("-L{}", leptonica_lib_dir.display()));
+        config.define(
+            "CMAKE_EXE_LINKER_FLAGS",
+            format!("-L{}", normalize_cmake_path(&leptonica_lib_dir)),
+        );
 
         // TESSERACT_WASM_NOOP_MUTEX: Replace std::mutex with no-op stubs in WASM builds.
         // The wasm32-wasi-threads libc++ provides std::mutex that uses memory.atomic.wait32,
@@ -1398,13 +1407,13 @@ Installation instructions:
         }
         cxx_flags.push_str(&format!(
             "-fPIC -Os -fno-lto -I{} -I{}",
-            leptonica_include_dir.display(),
-            noop_mutex_include.display()
+            normalize_cmake_path(&leptonica_include_dir),
+            normalize_cmake_path(&noop_mutex_include)
         ));
 
         let c_flags = format!(
             "-fPIC -Os -fno-lto -fno-exceptions -D_WASI_EMULATED_PROCESS_CLOCKS -D_WASI_EMULATED_SIGNAL -I{}",
-            leptonica_include_dir.display()
+            normalize_cmake_path(&leptonica_include_dir)
         );
 
         config
@@ -1448,7 +1457,7 @@ Installation instructions:
             .define("HAVE_AVX2", "OFF")
             .define("HAVE_AVX512F", "OFF")
             .define("HAVE_FMA", "OFF")
-            .define("CMAKE_INSTALL_PREFIX", tesseract_install)
+            .define("CMAKE_INSTALL_PREFIX", normalize_cmake_path(tesseract_install))
             .define("CMAKE_CXX_FLAGS", &cxx_flags)
             .define("CMAKE_C_FLAGS", &c_flags);
 
