@@ -1,14 +1,17 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-	entry: [
-		"typescript/index.ts",
-		"typescript/runtime.ts",
-		"typescript/adapters/wasm-adapter.ts",
-		"typescript/ocr/registry.ts",
-		"typescript/ocr/tesseract-wasm-backend.ts",
-		"typescript/ocr/ocr-worker.ts",
-	],
+	entry: {
+		index: "typescript/index.ts",
+		runtime: "typescript/runtime.ts",
+		"adapters/wasm-adapter": "typescript/adapters/wasm-adapter.ts",
+		"ocr/registry": "typescript/ocr/registry.ts",
+		"ocr/tesseract-wasm-backend": "typescript/ocr/tesseract-wasm-backend.ts",
+		// ocr-worker must be at dist root (not dist/ocr/) because worker-bridge.ts
+		// references it via "./ocr-worker.js" relative to import.meta.url, and
+		// worker-bridge gets bundled into dist/index.js.
+		"ocr-worker": "typescript/ocr/ocr-worker.ts",
+	},
 	// ESM only - CJS is not supported due to top-level await in WASM initialization
 	// Modern Node.js (>= 14), Deno, and browsers all support ESM natively
 	format: ["esm"],

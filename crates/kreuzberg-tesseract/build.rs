@@ -459,6 +459,11 @@ mod build_tesseract {
         let tessdata_prefix = project_dir.clone();
 
         let leptonica_install_dir_cmake = normalize_cmake_path(&leptonica_install_dir);
+        // Leptonica_DIR must point to the directory containing LeptonicaConfig.cmake,
+        // not the install prefix. On Windows with cross-compilation toolchains,
+        // CMAKE_PREFIX_PATH search doesn't find it automatically.
+        let leptonica_cmake_dir = leptonica_install_dir.join("lib/cmake/leptonica");
+        let leptonica_cmake_dir_cmake = normalize_cmake_path(&leptonica_cmake_dir);
         let leptonica_include_dir_cmake = normalize_cmake_path(&leptonica_include_dir);
         let leptonica_lib_dir_cmake = normalize_cmake_path(&leptonica_lib_dir);
         let tesseract_install_dir_cmake = normalize_cmake_path(&tesseract_install_dir);
@@ -495,7 +500,7 @@ mod build_tesseract {
                     .define("DISABLE_ARCHIVE", "ON")
                     .define("DISABLE_CURL", "ON")
                     .define("DISABLE_OPENCL", "ON")
-                    .define("Leptonica_DIR", &leptonica_install_dir_cmake)
+                    .define("Leptonica_DIR", &leptonica_cmake_dir_cmake)
                     .define("LEPTONICA_INCLUDE_DIR", &leptonica_include_dir_cmake)
                     .define("LEPTONICA_LIBRARY", &leptonica_lib_dir_cmake)
                     .define("CMAKE_PREFIX_PATH", &leptonica_install_dir_cmake)
@@ -1387,7 +1392,11 @@ Installation instructions:
         let leptonica_lib_dir = leptonica_install.join("lib");
         let leptonica_include_dir = leptonica_install.join("include");
 
-        config.define("Leptonica_DIR", normalize_cmake_path(leptonica_install));
+        // Leptonica_DIR must point to the directory containing LeptonicaConfig.cmake,
+        // not the install prefix. On Windows with WASI toolchain, CMAKE_PREFIX_PATH
+        // search doesn't find it automatically because the toolchain overrides search paths.
+        let leptonica_cmake_dir = leptonica_install.join("lib/cmake/leptonica");
+        config.define("Leptonica_DIR", normalize_cmake_path(&leptonica_cmake_dir));
         config.define("CMAKE_PREFIX_PATH", normalize_cmake_path(leptonica_install));
         // Help the linker find leptonica during try_compile checks
         config.define(
