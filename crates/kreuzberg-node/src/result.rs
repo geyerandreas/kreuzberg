@@ -2,7 +2,7 @@ use crate::KNOWN_FORMAT_FIELDS;
 use crate::config::JsExtractionConfig;
 use kreuzberg::{
     Chunk as RustChunk, ChunkMetadata as RustChunkMetadata, ExtractionConfig, ExtractionResult as RustExtractionResult,
-    ProcessingWarning as RustProcessingWarning,
+    ProcessingWarning as RustProcessingWarning, utils::snake_to_camel,
 };
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
@@ -780,38 +780,4 @@ impl TryFrom<JsExtractionResult> for RustExtractionResult {
             }),
         })
     }
-}
-
-/// Recursively convert snake_case keys in a JSON Value to camelCase.
-fn snake_to_camel(val: Value) -> Value {
-    match val {
-        Value::Object(map) => {
-            let mut new_map = serde_json::Map::with_capacity(map.len());
-            for (key, value) in map {
-                let new_key = to_camel_case(&key);
-                new_map.insert(new_key, snake_to_camel(value));
-            }
-            Value::Object(new_map)
-        }
-        Value::Array(arr) => Value::Array(arr.into_iter().map(snake_to_camel).collect()),
-        _ => val,
-    }
-}
-
-/// Simple snake_case to camelCase converter for keys.
-fn to_camel_case(s: &str) -> String {
-    let mut camel = String::with_capacity(s.len());
-    let mut capitalize_next = false;
-
-    for c in s.chars() {
-        if c == '_' {
-            capitalize_next = true;
-        } else if capitalize_next {
-            camel.push(c.to_ascii_uppercase());
-            capitalize_next = false;
-        } else {
-            camel.push(c);
-        }
-    }
-    camel
 }

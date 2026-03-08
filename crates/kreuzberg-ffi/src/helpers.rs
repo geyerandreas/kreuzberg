@@ -136,6 +136,7 @@ pub fn to_c_extraction_result(result: ExtractionResult) -> std::result::Result<*
     let metadata_json_guard = {
         let json =
             serde_json::to_string(&metadata).map_err(|e| format!("Failed to serialize metadata to JSON: {}", e))?;
+
         Some(CStringGuard::new(CString::new(json).map_err(|e| {
             format!("Failed to convert metadata JSON to C string: {}", e)
         })?))
