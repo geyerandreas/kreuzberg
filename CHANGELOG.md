@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **PDF markdown garbles positioned text (#431)**: PDFs with positioned/tabular text (CVs, addresses, data tables) had their line breaks destroyed during paragraph grouping. Added page-level positioned text detection: when fewer than 30% of lines on a page reach the right margin, short lines are split into separate paragraphs to preserve the document's visual structure.
 - **Node worker pool password bug**: `extractFileInWorker` was passing the `password` argument as `mime_type` to `extract_file_sync`, meaning passwords were never applied and MIME detection could break. Password is now correctly injected into `config.pdf_options.passwords`.
 - **Unused import in kreuzberg-node**: Removed unused `use serde_json::Value` import in `result.rs` that caused clippy warnings.
 - **WASM Deno OCR test hang**: OCR tests hung indefinitely on WASM Deno because Tesseract synchronous initialization blocks the single-threaded runtime. OCR fixtures are now skipped for the wasm-deno target.
