@@ -66,8 +66,8 @@ pub fn to_c_extraction_result(result: ExtractionResult) -> std::result::Result<*
         chunks,
         images,
         pages,
-        djot_content: _,
         elements,
+        djot_content,
         ocr_elements,
         document,
         extracted_keywords,
@@ -251,10 +251,21 @@ pub fn to_c_extraction_result(result: ExtractionResult) -> std::result::Result<*
         None
     };
 
+    let djot_content_json_guard = match djot_content {
+        Some(djot) => {
+            let json = serde_json::to_string(&djot)
+                .map_err(|e| format!("Failed to serialize djot content to JSON: {}", e))?;
+            Some(CStringGuard::new(CString::new(json).map_err(|e| {
+                format!("Failed to convert djot content JSON to C string: {}", e)
+            })?))
+        }
+        _ => None,
+    };
+
     let annotations_json_guard = match annotations {
         Some(anns) if !anns.is_empty() => {
-            let json =
-                serde_json::to_string(&anns).map_err(|e| format!("Failed to serialize annotations to JSON: {}", e))?;
+            let json = serde_json::to_string(&anns)
+                .map_err(|e| format!("Failed to serialize annotations to JSON: {}", e))?;
             Some(CStringGuard::new(CString::new(json).map_err(|e| {
                 format!("Failed to convert annotations JSON to C string: {}", e)
             })?))
@@ -263,25 +274,26 @@ pub fn to_c_extraction_result(result: ExtractionResult) -> std::result::Result<*
     };
 
     Ok(Box::into_raw(Box::new(CExtractionResult {
-        content: content_guard.into_raw(),
-        mime_type: mime_type_guard.into_raw(),
-        language: language_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
-        date: date_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
-        subject: subject_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
-        tables_json: tables_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
-        detected_languages_json: detected_languages_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
-        metadata_json: metadata_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
+        annotations_json: annotations_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
         chunks_json: chunks_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
+        content: content_guard.into_raw(),
+        date: date_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
+        detected_languages_json: detected_languages_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
+        djot_content_json: djot_content_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
+        document_json: document_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
+        elements_json: elements_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
+        extracted_keywords_json: extracted_keywords_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
         images_json: images_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
+        language: language_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
+        metadata_json: metadata_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
+        mime_type: mime_type_guard.into_raw(),
+        ocr_elements_json: ocr_elements_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
         page_structure_json: page_structure_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
         pages_json: pages_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
-        elements_json: elements_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
-        ocr_elements_json: ocr_elements_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
-        document_json: document_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
-        extracted_keywords_json: extracted_keywords_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
-        quality_score_json: quality_score_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
         processing_warnings_json: processing_warnings_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
-        annotations_json: annotations_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
+        quality_score_json: quality_score_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
+        subject: subject_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
+        tables_json: tables_json_guard.map_or(ptr::null_mut(), |g| g.into_raw()),
         success: true,
         _padding1: [0u8; 7],
     })))
@@ -583,6 +595,9 @@ mod tests {
                 }
                 if !boxed.detected_languages_json.is_null() {
                     let _ = CString::from_raw(boxed.detected_languages_json);
+                }
+                if !boxed.djot_content_json.is_null() {
+                    let _ = CString::from_raw(boxed.djot_content_json);
                 }
             }
         }
