@@ -1557,6 +1557,13 @@ unsafe extern "C" {
     pub fn FPDFCatalog_SetLanguage(document: FPDF_DOCUMENT, language: FPDF_BYTESTRING) -> FPDF_BOOL;
 }
 unsafe extern "C" {
+    pub fn FPDFCatalog_GetLanguage(
+        document: FPDF_DOCUMENT,
+        buffer: *mut ::std::os::raw::c_char,
+        buflen: ::std::os::raw::c_ulong,
+    ) -> ::std::os::raw::c_ulong;
+}
+unsafe extern "C" {
     #[doc = " Function: FPDF_StructTree_GetForPage\n          Get the structure tree for a page.\n Parameters:\n          page        -   Handle to the page, as returned by FPDF_LoadPage().\n Return value:\n          A handle to the structure tree or NULL on error. The caller owns the\n          returned handle and must use FPDF_StructTree_Close() to release it.\n          The handle should be released before |page| gets released."]
     pub fn FPDF_StructTree_GetForPage(page: FPDF_PAGE) -> FPDF_STRUCTTREE;
 }
@@ -1602,6 +1609,13 @@ unsafe extern "C" {
 unsafe extern "C" {
     #[doc = " Experimental API.\n Function: FPDF_StructElement_GetLang\n          Get the case-insensitive IETF BCP 47 language code for an element.\n Parameters:\n          struct_element -   Handle to the struct element.\n          buffer         -   A buffer for output the lang string. May be NULL.\n          buflen         -   The length of the buffer, in bytes. May be 0.\n Return value:\n          The number of bytes in the ID string, including the terminating NUL\n          character. The number of bytes is returned regardless of the\n          |buffer| and |buflen| parameters.\n Comments:\n          Regardless of the platform, the |buffer| is always in UTF-16LE\n          encoding. The string is terminated by a UTF16 NUL character. If\n          |buflen| is less than the required length, or |buffer| is NULL,\n          |buffer| will not be modified."]
     pub fn FPDF_StructElement_GetLang(
+        struct_element: FPDF_STRUCTELEMENT,
+        buffer: *mut ::std::os::raw::c_void,
+        buflen: ::std::os::raw::c_ulong,
+    ) -> ::std::os::raw::c_ulong;
+}
+unsafe extern "C" {
+    pub fn FPDF_StructElement_GetExpansion(
         struct_element: FPDF_STRUCTELEMENT,
         buffer: *mut ::std::os::raw::c_void,
         buflen: ::std::os::raw::c_ulong,

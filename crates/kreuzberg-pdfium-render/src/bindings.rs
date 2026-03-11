@@ -1408,6 +1408,24 @@ pub trait PdfiumLibraryBindings: Send + Sync + Drop {
         buflen: c_ulong,
     ) -> c_ulong;
 
+    /// Gets the expansion of an abbreviation in a structure element.
+    ///
+    ///   `struct_element` - handle to the struct element.
+    ///   `buffer`         - a caller-allocated buffer for the expansion string.
+    ///   `buflen`         - the length of `buffer` in bytes.
+    ///
+    /// Returns the number of bytes in the expansion (including the terminating `NUL`
+    /// character) on success, 0 on error.
+    ///
+    /// Regardless of the platform, the `buffer` is always in UTF-16LE encoding.
+    #[allow(non_snake_case)]
+    fn FPDF_StructElement_GetExpansion(
+        &self,
+        struct_element: FPDF_STRUCTELEMENT,
+        buffer: *mut c_void,
+        buflen: c_ulong,
+    ) -> c_ulong;
+
     /// Gets a struct element attribute of type `name` or `string`.
     ///
     ///   `struct_element` -   Handle to the struct element.
@@ -8069,6 +8087,19 @@ pub trait PdfiumLibraryBindings: Send + Sync + Drop {
     /// Returns `true` on success.
     #[allow(non_snake_case)]
     fn FPDFCatalog_SetLanguage(&self, document: FPDF_DOCUMENT, language: &str) -> FPDF_BOOL;
+
+    /// Gets the language of `document`.
+    ///
+    ///    `document` - handle to a document.
+    ///    `buffer`   - a caller-allocated buffer for the language string.
+    ///    `buflen`   - the length of `buffer` in bytes.
+    ///
+    /// Returns the number of bytes in the language string (including the terminating `NUL`
+    /// character) on success, 0 on error.
+    ///
+    /// The language string is ASCII/UTF-8 encoded (not UTF-16LE).
+    #[allow(non_snake_case)]
+    fn FPDFCatalog_GetLanguage(&self, document: FPDF_DOCUMENT, buffer: *mut c_char, buflen: c_ulong) -> c_ulong;
 }
 
 #[cfg(test)]

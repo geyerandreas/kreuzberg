@@ -602,6 +602,17 @@ impl PdfiumLibraryBindings for StaticPdfiumBindings {
 
     #[inline]
     #[allow(non_snake_case)]
+    fn FPDF_StructElement_GetExpansion(
+        &self,
+        struct_element: FPDF_STRUCTELEMENT,
+        buffer: *mut c_void,
+        buflen: c_ulong,
+    ) -> c_ulong {
+        unsafe { crate::bindgen::FPDF_StructElement_GetExpansion(struct_element, buffer, buflen) }
+    }
+
+    #[inline]
+    #[allow(non_snake_case)]
     fn FPDF_StructElement_GetStringAttribute(
         &self,
         struct_element: FPDF_STRUCTELEMENT,
@@ -3822,6 +3833,12 @@ impl PdfiumLibraryBindings for StaticPdfiumBindings {
         let c_language = safe_cstring(language);
 
         unsafe { crate::bindgen::FPDFCatalog_SetLanguage(document, c_language.as_ptr()) }
+    }
+
+    #[inline]
+    #[allow(non_snake_case)]
+    fn FPDFCatalog_GetLanguage(&self, document: FPDF_DOCUMENT, buffer: *mut c_char, buflen: c_ulong) -> c_ulong {
+        unsafe { crate::bindgen::FPDFCatalog_GetLanguage(document, buffer, buflen) }
     }
 }
 

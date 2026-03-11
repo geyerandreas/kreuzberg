@@ -3579,6 +3579,63 @@ impl PdfiumLibraryBindings for WasmPdfiumBindings {
     }
 
     #[allow(non_snake_case)]
+    fn FPDF_StructElement_GetExpansion(
+        &self,
+        struct_element: FPDF_STRUCTELEMENT,
+        buffer: *mut c_void,
+        buflen: c_ulong,
+    ) -> c_ulong {
+        log::debug!("pdfium-render::PdfiumLibraryBindings::FPDF_StructElement_GetExpansion(): entering");
+
+        let state = PdfiumRenderWasmState::lock();
+
+        let buffer_length = buflen as usize;
+
+        let buffer_ptr = if buffer_length > 0 {
+            log::debug!(
+                "pdfium-render::PdfiumLibraryBindings::FPDF_StructElement_GetExpansion(): allocating buffer of {} bytes in Pdfium's WASM heap",
+                buffer_length
+            );
+
+            state.malloc(buffer_length)
+        } else {
+            0
+        };
+
+        log::debug!(
+            "pdfium-render::PdfiumLibraryBindings::FPDF_StructElement_GetExpansion(): calling FPDF_StructElement_GetExpansion()"
+        );
+
+        let result = state
+            .call(
+                "FPDF_StructElement_GetExpansion",
+                JsFunctionArgumentType::Number,
+                Some(vec![
+                    JsFunctionArgumentType::Pointer,
+                    JsFunctionArgumentType::Pointer,
+                    JsFunctionArgumentType::Number,
+                ]),
+                Some(&JsValue::from(Array::of3(
+                    &Self::js_value_from_struct_element(struct_element),
+                    &Self::js_value_from_offset(buffer_ptr),
+                    &JsValue::from_f64(buffer_length as f64),
+                ))),
+            )
+            .as_f64()
+            .unwrap() as usize;
+
+        if result > 0 && result <= buffer_length {
+            state.copy_struct_from_pdfium(buffer_ptr, result, buffer);
+        }
+
+        state.free(buffer_ptr);
+
+        log::debug!("pdfium-render::PdfiumLibraryBindings::FPDF_StructElement_GetExpansion(): leaving");
+
+        result as c_ulong
+    }
+
+    #[allow(non_snake_case)]
     fn FPDF_StructElement_GetStringAttribute(
         &self,
         struct_element: FPDF_STRUCTELEMENT,
@@ -15003,6 +15060,58 @@ impl PdfiumLibraryBindings for WasmPdfiumBindings {
         state.free(language_ptr);
 
         result
+    }
+
+    #[allow(non_snake_case)]
+    fn FPDFCatalog_GetLanguage(&self, document: FPDF_DOCUMENT, buffer: *mut c_char, buflen: c_ulong) -> c_ulong {
+        log::debug!("pdfium-render::PdfiumLibraryBindings::FPDFCatalog_GetLanguage(): entering");
+
+        let state = PdfiumRenderWasmState::lock();
+
+        let buffer_length = buflen as usize;
+
+        let buffer_ptr = if buffer_length > 0 {
+            log::debug!(
+                "pdfium-render::PdfiumLibraryBindings::FPDFCatalog_GetLanguage(): allocating buffer of {} bytes in Pdfium's WASM heap",
+                buffer_length
+            );
+
+            state.malloc(buffer_length)
+        } else {
+            0
+        };
+
+        log::debug!(
+            "pdfium-render::PdfiumLibraryBindings::FPDFCatalog_GetLanguage(): calling FPDFCatalog_GetLanguage()"
+        );
+
+        let result = state
+            .call(
+                "FPDFCatalog_GetLanguage",
+                JsFunctionArgumentType::Number,
+                Some(vec![
+                    JsFunctionArgumentType::Pointer,
+                    JsFunctionArgumentType::Pointer,
+                    JsFunctionArgumentType::Number,
+                ]),
+                Some(&JsValue::from(Array::of3(
+                    &Self::js_value_from_document(document),
+                    &Self::js_value_from_offset(buffer_ptr),
+                    &JsValue::from_f64(buffer_length as f64),
+                ))),
+            )
+            .as_f64()
+            .unwrap() as usize;
+
+        if result > 0 && result <= buffer_length {
+            state.copy_struct_from_pdfium(buffer_ptr, result, buffer as *mut c_void);
+        }
+
+        state.free(buffer_ptr);
+
+        log::debug!("pdfium-render::PdfiumLibraryBindings::FPDFCatalog_GetLanguage(): leaving");
+
+        result as c_ulong
     }
 }
 

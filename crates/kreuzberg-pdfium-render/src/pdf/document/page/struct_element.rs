@@ -254,6 +254,14 @@ impl<'a> PdfStructElement<'a> {
         self.extract_utf16_string(|handle, buf, len| self.bindings.FPDF_StructElement_GetLang(handle, buf, len))
     }
 
+    /// Returns the expansion of an abbreviation (/E entry) for this element, if any.
+    ///
+    /// For example, if this element represents the abbreviation "NASA", the expansion
+    /// might be "National Aeronautics and Space Administration".
+    pub fn expansion(&self) -> Option<String> {
+        self.extract_utf16_string(|handle, buf, len| self.bindings.FPDF_StructElement_GetExpansion(handle, buf, len))
+    }
+
     /// Returns the primary marked content ID of this element, or `None` if no ID exists.
     ///
     /// Consider using [PdfStructElement::all_marked_content_ids] to retrieve all MCIDs,
