@@ -549,7 +549,7 @@ jobs:
 
       - name: Setup Rust toolchain (native)
         if: runner.os != 'Linux'
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: python-wheels-${{ matrix.label }}
           target: ${{ matrix.rust_target }}
@@ -683,18 +683,18 @@ jobs:
         run: scripts/publish/ubuntu/free-disk-space.sh
 
       - name: Setup Python environment
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.13"
           cache-prefix: python-sdist
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: publish-python-sdist
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build sdist
         env:
@@ -766,7 +766,7 @@ jobs:
           package_json_file: package.json
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: publish-node-${{ matrix.settings.target }}
           use-sccache: 'false'
@@ -907,7 +907,7 @@ jobs:
         run: scripts/publish/ubuntu/free-disk-space.sh
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           target: ${{ matrix.target }}
           cache-key-prefix: publish-cli-${{ matrix.target }}
@@ -1056,7 +1056,7 @@ jobs:
         run: git checkout --progress --force ${{ needs.prepare.outputs.target_sha }}
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: publish-homebrew-${{ matrix.bottle_tag }}
 
@@ -1198,7 +1198,7 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Tesseract cache
         id: tesseract-cache
@@ -1208,7 +1208,7 @@ jobs:
           enable-cache: "true"
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: publish-ruby-${{ matrix.label }}
           use-sccache: true
@@ -1252,7 +1252,7 @@ jobs:
         run: scripts/ci/ruby/install-ruby-deps.sh packages/ruby
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build kreuzberg-ffi
         run: task rust:ffi:build
@@ -1409,7 +1409,7 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: ${{ matrix.settings.os == 'windows-latest' && 'publish-go-windows-gnu' || format('publish-go-{0}', matrix.settings.os) }}
           use-sccache: ${{ matrix.settings.os != 'windows-latest' }}
@@ -1462,7 +1462,7 @@ jobs:
         run: scripts/ci/go/setup-msys2-windows.ps1
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build FFI library (Windows)
         if: matrix.settings.os == 'windows-latest'
@@ -1547,7 +1547,7 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Tesseract cache
         id: tesseract-cache
@@ -1557,7 +1557,7 @@ jobs:
           enable-cache: "true"
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: publish-java-natives-${{ matrix.settings.label }}
           use-sccache: ${{ runner.os != 'Windows' }}
@@ -1584,7 +1584,7 @@ jobs:
           dest-dir: target/release
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build FFI library
         shell: bash
@@ -1692,10 +1692,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: publish-java
 
@@ -1708,7 +1708,7 @@ jobs:
           cache: 'maven'
 
       - name: Setup Maven 3.9.11
-        uses: ./.github/actions/setup-maven-4
+        uses: kreuzberg-dev/actions/setup-maven@v1
 
       - name: Cache PDFium
         uses: ./.github/actions/cache-pdfium
@@ -1731,7 +1731,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Download Java native artifacts
         uses: actions/download-artifact@v4
@@ -1810,7 +1810,7 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Tesseract cache
         id: tesseract-cache
@@ -1820,7 +1820,7 @@ jobs:
           enable-cache: "true"
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: publish-php-${{ matrix.settings.label }}
           use-sccache: ${{ runner.os != 'Windows' }}
@@ -1857,7 +1857,7 @@ jobs:
           dest-dir: target/release
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -1913,10 +1913,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: publish-csharp
 
@@ -1929,7 +1929,7 @@ jobs:
         run: scripts/publish/csharp/ensure-dotnet.sh
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Download native assets
         uses: actions/download-artifact@v4
@@ -2024,10 +2024,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: publish-csharp-native-${{ matrix.rid }}
 
@@ -2054,7 +2054,7 @@ jobs:
         run: rustup target add "${{ matrix.rust_target }}"
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build FFI library
         shell: bash
@@ -2264,7 +2264,7 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: ${{ matrix.settings.os == 'windows-latest' && 'publish-c-ffi-windows-gnu' || format('publish-c-ffi-{0}', matrix.settings.os) }}
           use-sccache: ${{ matrix.settings.os != 'windows-latest' }}
@@ -2388,7 +2388,7 @@ jobs:
           ref: ${{ needs.prepare.outputs.ref }}
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: publish-crates
 
@@ -2508,7 +2508,7 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           target: ${{ matrix.settings.target }}
           cache-key-prefix: ${{ matrix.settings.os == 'windows-latest' && 'publish-elixir-windows-gnu' || format('publish-elixir-{0}', matrix.settings.os) }}
@@ -2540,7 +2540,7 @@ jobs:
         run: scripts/ci/go/setup-msys2-windows.ps1
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Tesseract cache
         id: tesseract-cache
@@ -2550,7 +2550,7 @@ jobs:
           enable-cache: "true"
 
       - name: Restore Cargo cache
-        uses: ./.github/actions/restore-cargo-cache
+        uses: kreuzberg-dev/actions/restore-cargo-cache@v1
         with:
           shared-key: ${{ matrix.settings.os == 'windows-latest' && 'publish-elixir-windows-gnu' || format('publish-elixir-{0}', matrix.settings.os) }}
           prefix: elixir
@@ -3159,10 +3159,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Install WASI SDK
-        uses: ./.github/actions/install-wasi-sdk
+        uses: kreuzberg-dev/actions/install-wasi-sdk@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: publish-wasm
           target: wasm32-unknown-unknown
@@ -3174,7 +3174,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build all WASM targets and TypeScript wrapper
         run: task wasm:build:all
@@ -3242,11 +3242,11 @@ jobs:
 
       - name: Setup OpenSSL
         if: ${{ needs.prepare.outputs.dry_run != 'true' && steps.maven_check.outputs.exists != 'true' }}
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust
         if: ${{ needs.prepare.outputs.dry_run != 'true' && steps.maven_check.outputs.exists != 'true' }}
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: publish-maven
 
@@ -3274,7 +3274,7 @@ jobs:
 
       - name: Setup Maven 3.9.11
         if: ${{ needs.prepare.outputs.dry_run != 'true' && steps.maven_check.outputs.exists != 'true' }}
-        uses: ./.github/actions/setup-maven-4
+        uses: kreuzberg-dev/actions/setup-maven@v1
 
       - name: Cache PDFium
         if: ${{ needs.prepare.outputs.dry_run != 'true' && steps.maven_check.outputs.exists != 'true' }}

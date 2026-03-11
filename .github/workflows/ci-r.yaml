@@ -80,13 +80,13 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: r-${{ matrix.os }}
           use-sccache: 'true'
@@ -132,7 +132,7 @@ jobs:
 
       - name: Cleanup Rust cache
         if: always() && steps.checkout.outcome == 'success'
-        uses: ./.github/actions/cleanup-rust-cache
+        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
 
   test-r:
     name: R Tests (${{ matrix.os }})
@@ -154,10 +154,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: r-test-${{ matrix.os }}
           use-sccache: 'true'

@@ -106,27 +106,27 @@ jobs:
         shell: bash
 
       - name: Free disk space before setup
-        uses: ./.github/actions/free-disk-space-linux
+        uses: kreuzberg-dev/actions/free-disk-space-linux@v1
         with:
           show-initial: "false"
           show-final: "true"
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: validate
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.13"
           cache-prefix: validate
 
       - name: Setup Node
-        uses: ./.github/actions/setup-node-workspace
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -199,7 +199,7 @@ jobs:
         shell: bash
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Install golangci-lint
         run: |
@@ -212,7 +212,7 @@ jobs:
         shell: bash
 
       - name: Install WASI SDK
-        uses: ./.github/actions/install-wasi-sdk
+        uses: kreuzberg-dev/actions/install-wasi-sdk@v1
 
       - name: Check disk space before lint
         run: scripts/ci/validate/show-disk-space.sh "Disk space before lint"

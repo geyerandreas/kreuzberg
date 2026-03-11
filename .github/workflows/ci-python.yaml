@@ -97,16 +97,16 @@ jobs:
 
       - name: Free disk space before setup
         if: startsWith(matrix.os, 'ubuntu')
-        uses: ./.github/actions/free-disk-space-linux
+        uses: kreuzberg-dev/actions/free-disk-space-linux@v1
         with:
           show-initial: "true"
           show-final: "true"
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: python-${{ matrix.platform }}
           target: ${{ matrix.target }}
@@ -119,7 +119,7 @@ jobs:
         run: cargo clippy -p kreuzberg-py -- -D warnings
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.13"
           cache-prefix: wheels-${{ matrix.platform }}
@@ -149,7 +149,7 @@ jobs:
         run: scripts/ci/python/clean-artifacts.sh
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build CLI with features
         shell: bash
@@ -207,7 +207,7 @@ jobs:
 
       - name: Cleanup Rust cache
         if: always() && steps.checkout.outcome == 'success'
-        uses: ./.github/actions/cleanup-rust-cache
+        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
 
       - name: Smoke test wheel
         shell: bash
@@ -222,20 +222,20 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: python-sdist
           use-sccache: 'true'
           report-stats: 'true'
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.13"
           cache-prefix: sdist
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build sdist
         shell: bash
@@ -283,7 +283,7 @@ jobs:
         run: scripts/ci/python/free-disk-space.sh
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.13"
           cache-prefix: test-py-3.13
@@ -324,7 +324,7 @@ jobs:
         uses: ./.github/actions/setup-paddle-ocr-models
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Setup Tesseract tessdata (Windows)
         if: runner.os == 'Windows'

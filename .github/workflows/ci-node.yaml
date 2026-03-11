@@ -147,16 +147,16 @@ jobs:
 
       - name: Free disk space before setup
         if: startsWith(matrix.os, 'ubuntu')
-        uses: ./.github/actions/free-disk-space-linux
+        uses: kreuzberg-dev/actions/free-disk-space-linux@v1
         with:
           show-initial: "true"
           show-final: "true"
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: node-${{ matrix.platform }}
           target: ${{ matrix.target }}
@@ -169,7 +169,7 @@ jobs:
         run: cargo clippy -p kreuzberg-node -- -D warnings
 
       - name: Setup Node
-        uses: ./.github/actions/setup-node-workspace
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1
 
       - name: Cache PDFium
         uses: ./.github/actions/cache-pdfium
@@ -192,15 +192,15 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build or restore Node bindings from cache
         id: node
-        uses: ./.github/actions/build-and-cache-binding
+        uses: kreuzberg-dev/actions/build-and-cache-binding@v1
         with:
           binding-name: node
           platform: ${{ matrix.platform }}
-          task-command: node:build:ci
+          build-command: task node:build:ci
           cache-paths: |
             crates/kreuzberg-node/
           cache-version: v4
@@ -245,7 +245,7 @@ jobs:
 
       - name: Cleanup Rust cache
         if: always() && steps.checkout.outcome == 'success'
-        uses: ./.github/actions/cleanup-rust-cache
+        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
 
       - name: Smoke test Node.js bindings
         uses: ./.github/actions/smoke-node
@@ -322,10 +322,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Node
-        uses: ./.github/actions/setup-node-workspace
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1
 
       - name: Setup Bun
         if: matrix.runtime == 'bun'
@@ -382,7 +382,7 @@ jobs:
           set +x
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build TypeScript wrapper
         shell: bash

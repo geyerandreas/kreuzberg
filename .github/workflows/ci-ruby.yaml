@@ -91,13 +91,13 @@ jobs:
 
       - name: Free disk space before setup
         if: startsWith(matrix.os, 'ubuntu')
-        uses: ./.github/actions/free-disk-space-linux
+        uses: kreuzberg-dev/actions/free-disk-space-linux@v1
         with:
           show-initial: "true"
           show-final: "true"
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Verify OpenSSL setup
         shell: bash
@@ -114,10 +114,10 @@ jobs:
           fi
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: ruby-${{ matrix.os }}
           toolchain: ${{ runner.os == 'Windows' && 'stable-x86_64-pc-windows-msvc' || '' }}
@@ -506,7 +506,7 @@ jobs:
 
       - name: Cleanup Rust cache
         if: always() && steps.checkout.outcome == 'success'
-        uses: ./.github/actions/cleanup-rust-cache
+        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
 
   test-ruby:
     name: Ruby Tests (${{ matrix.os }})
@@ -531,10 +531,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: ruby-test-${{ matrix.os }}
           toolchain: ${{ runner.os == 'Windows' && 'stable-x86_64-pc-windows-msvc' || '' }}

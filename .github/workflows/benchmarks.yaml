@@ -82,10 +82,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: benchmarks-setup
           use-sccache: 'true'
@@ -105,7 +105,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Cache benchmark harness
         uses: ./.github/actions/cache-benchmark-harness
@@ -172,10 +172,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: benchmarks-native
           use-sccache: 'true'
@@ -234,10 +234,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: benchmarks-native-paddle
           use-sccache: 'true'
@@ -299,10 +299,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: benchmarks-python
           use-sccache: 'true'
@@ -318,7 +318,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: benchmark-python
@@ -329,7 +329,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Install Rust toolchain
         run: |
@@ -378,10 +378,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: benchmarks-node
           use-sccache: 'false'
@@ -397,7 +397,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Node
-        uses: ./.github/actions/setup-node-workspace
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1
 
       - name: Verify Node setup
         run: scripts/ci/benchmarks/verify-node-setup.sh "Node setup (async)"
@@ -408,7 +408,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build Node bindings and install locally
         env:
@@ -454,10 +454,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: benchmarks-wasm
           use-sccache: 'true'
@@ -473,13 +473,13 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Node
-        uses: ./.github/actions/setup-node-workspace
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Install WASI SDK
-        uses: ./.github/actions/install-wasi-sdk
+        uses: kreuzberg-dev/actions/install-wasi-sdk@v1
 
       - name: Build WASM bindings
         run: task wasm:build:bindings
@@ -523,10 +523,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: benchmarks-ruby
           use-sccache: 'true'
@@ -579,7 +579,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build FFI library
         id: ffi
@@ -647,10 +647,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: benchmarks-r
           use-sccache: 'true'
@@ -686,7 +686,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Install Rust toolchain
         run: |
@@ -738,10 +738,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: benchmarks-go
           use-sccache: 'true'
@@ -768,7 +768,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build FFI library
         id: ffi
@@ -835,10 +835,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: benchmarks-java
           use-sccache: 'true'
@@ -861,7 +861,7 @@ jobs:
           java-version: '25'
 
       - name: Setup Maven
-        uses: ./.github/actions/setup-maven-4
+        uses: kreuzberg-dev/actions/setup-maven@v1
 
       - name: Setup ONNX Runtime
         uses: ./.github/actions/setup-onnx-runtime
@@ -869,7 +869,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build FFI library
         id: ffi
@@ -927,10 +927,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: benchmarks-csharp
           use-sccache: 'true'
@@ -961,7 +961,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build FFI library
         id: ffi
@@ -1019,10 +1019,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: benchmarks-elixir
           use-sccache: 'true'
@@ -1049,7 +1049,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build Elixir bindings
         env:
@@ -1096,10 +1096,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: benchmarks-php
           use-sccache: 'true'
@@ -1155,7 +1155,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build FFI library
         id: ffi
@@ -1217,10 +1217,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: benchmarks-c
           use-sccache: 'true'
@@ -1286,7 +1286,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: benchmark-docling
@@ -1347,7 +1347,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: benchmark-markitdown
@@ -1408,7 +1408,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: benchmark-pandoc
@@ -1472,7 +1472,7 @@ jobs:
           sudo apt-get install -y tesseract-ocr tesseract-ocr-eng libmagic-dev poppler-utils libreoffice pandoc build-essential pkg-config
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: benchmark-unstructured
@@ -1586,7 +1586,7 @@ jobs:
           sudo apt-get install -y tesseract-ocr tesseract-ocr-eng libjpeg-dev libpng-dev libtiff-dev build-essential pkg-config
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: benchmark-pymupdf4llm
@@ -1642,7 +1642,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: benchmark-pdfplumber
@@ -1703,7 +1703,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: benchmark-mineru
@@ -1763,7 +1763,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: benchmark-pypdf
@@ -1823,7 +1823,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: benchmark-pdfminer
@@ -1888,7 +1888,7 @@ jobs:
           sudo apt-get install -y libpoppler-cpp-dev build-essential pkg-config
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: benchmark-pdftotext
@@ -1943,7 +1943,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: benchmark-playa-pdf
@@ -1990,7 +1990,7 @@ jobs:
           sudo apt-get install -y build-essential cmake pkg-config libssl-dev
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: aggregate
 

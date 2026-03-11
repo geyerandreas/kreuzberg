@@ -95,17 +95,17 @@ jobs:
 
       - name: Free disk space before setup
         if: startsWith(matrix.os, 'ubuntu')
-        uses: ./.github/actions/free-disk-space-linux
+        uses: kreuzberg-dev/actions/free-disk-space-linux@v1
         with:
           show-initial: "true"
           show-final: "true"
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust
         id: rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: elixir-${{ matrix.os }}
           use-sccache: 'true'
@@ -163,7 +163,7 @@ jobs:
         uses: ./.github/actions/cache-hf-fastembed
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build FFI library
         id: ffi
@@ -226,4 +226,4 @@ jobs:
 
       - name: Cleanup Rust cache
         if: always() && steps.checkout.outcome == 'success'
-        uses: ./.github/actions/cleanup-rust-cache
+        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1

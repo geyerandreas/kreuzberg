@@ -45,10 +45,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
@@ -67,7 +67,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build workspace (native libs + harness with profiling)
         env:
@@ -118,10 +118,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
@@ -186,16 +186,16 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: profiling-python
@@ -206,7 +206,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build Python bindings
         run: task python:build:bindings
@@ -266,16 +266,16 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: profiling-python
@@ -286,7 +286,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build Python bindings
         run: task python:build:bindings
@@ -346,16 +346,16 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
 
       - name: Setup Python
-        uses: ./.github/actions/setup-python-env
+        uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.11"
           cache-prefix: profiling-python
@@ -366,7 +366,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build Python bindings
         run: task python:build:bindings
@@ -426,16 +426,16 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
 
       - name: Setup Node
-        uses: ./.github/actions/setup-node-workspace
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1
 
       - name: Verify Node setup (async)
         run: scripts/ci/benchmarks/verify-node-setup.sh "Node setup (async)"
@@ -446,7 +446,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build Node bindings and install locally
         env:
@@ -508,16 +508,16 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
 
       - name: Setup Node
-        uses: ./.github/actions/setup-node-workspace
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1
 
       - name: Verify Node setup (batch)
         run: scripts/ci/benchmarks/verify-node-setup.sh "Node setup (batch)"
@@ -528,7 +528,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build Node bindings and install locally
         env:
@@ -590,19 +590,19 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
 
       - name: Setup Node
-        uses: ./.github/actions/setup-node-workspace
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build WASM bindings
         run: task wasm:build:bindings
@@ -662,19 +662,19 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
 
       - name: Setup Node
-        uses: ./.github/actions/setup-node-workspace
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build WASM bindings
         run: task wasm:build:bindings
@@ -734,10 +734,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
@@ -764,7 +764,7 @@ jobs:
         run: python3 scripts/ci/ruby/vendor-kreuzberg-core.py
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build Ruby native gem
         env:
@@ -834,10 +834,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
@@ -864,7 +864,7 @@ jobs:
         run: python3 scripts/ci/ruby/vendor-kreuzberg-core.py
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build Ruby native gem
         env:
@@ -934,10 +934,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
@@ -958,7 +958,7 @@ jobs:
         run: go mod download
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build Go bindings
         run: task go:build:bindings
@@ -1019,10 +1019,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
@@ -1043,7 +1043,7 @@ jobs:
         run: go mod download
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build Go bindings
         run: task go:build:bindings
@@ -1104,10 +1104,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
@@ -1120,7 +1120,7 @@ jobs:
           java-version: '25'
 
       - name: Setup Maven 3.9.11
-        uses: ./.github/actions/setup-maven-4
+        uses: kreuzberg-dev/actions/setup-maven@v1
 
       - name: Setup ONNX Runtime
         uses: ./.github/actions/setup-onnx-runtime
@@ -1128,7 +1128,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build Java bindings
         run: task java:build:bindings
@@ -1188,10 +1188,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: ./.github/actions/setup-openssl
+        uses: kreuzberg-dev/actions/setup-openssl@v1
 
       - name: Setup Rust toolchain
-        uses: ./.github/actions/setup-rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
         with:
           cache-key-prefix: profiling
           use-sccache: true
@@ -1207,7 +1207,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: ./.github/actions/install-task
+        uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build C# bindings
         run: task csharp:build:bindings
