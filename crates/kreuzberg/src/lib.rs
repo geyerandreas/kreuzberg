@@ -76,11 +76,17 @@ pub mod keywords;
 #[cfg(feature = "ocr")]
 pub mod ocr;
 
-#[cfg(any(feature = "paddle-ocr", feature = "embeddings"))]
+#[cfg(any(feature = "paddle-ocr", feature = "embeddings", feature = "layout-detection"))]
 pub mod ort_discovery;
+
+#[cfg(any(feature = "paddle-ocr", feature = "layout-detection"))]
+pub(crate) mod model_download;
 
 #[cfg(feature = "paddle-ocr")]
 pub mod paddle_ocr;
+
+#[cfg(feature = "layout-detection")]
+pub mod layout;
 
 #[cfg(feature = "pdf")]
 pub mod pdf;
@@ -111,6 +117,12 @@ pub use core::config::{HierarchyConfig, PdfConfig};
 
 #[cfg(feature = "paddle-ocr")]
 pub use paddle_ocr::{CacheStats, ModelManager, ModelPaths, PaddleLanguage, PaddleOcrBackend, PaddleOcrConfig};
+
+#[cfg(feature = "layout-detection")]
+pub use core::config::LayoutDetectionConfig;
+
+#[cfg(feature = "layout-detection")]
+pub use layout::LayoutPreset;
 
 pub use core::mime::{
     DOCX_MIME_TYPE, EXCEL_MIME_TYPE, HTML_MIME_TYPE, JSON_MIME_TYPE, MARKDOWN_MIME_TYPE, PDF_MIME_TYPE,

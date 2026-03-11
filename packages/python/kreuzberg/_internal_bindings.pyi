@@ -57,6 +57,7 @@ __all__ = [
     "KeywordAlgorithm",
     "KeywordConfig",
     "LanguageDetectionConfig",
+    "LayoutDetectionConfig",
     "LinkMetadata",
     "Metadata",
     "MissingDependencyError",
@@ -314,6 +315,50 @@ class ValidatorProtocol(Protocol):
     def priority(self) -> int: ...
     def should_validate(self, result: ExtractionResult) -> bool: ...
 
+class LayoutDetectionConfig:
+    """Layout detection configuration for PDF extraction.
+
+    Controls layout detection behavior using ONNX-based document layout models
+    (YOLO or RT-DETR) to detect document structure elements like tables, figures,
+    headers, and code blocks.
+
+    Requires the ``layout-detection`` feature to be compiled.
+
+    Attributes:
+        preset (str): Model preset for layout detection. ``"fast"`` uses YOLO
+            (DocLayNet, 11 classes), ``"accurate"`` uses RT-DETR (17 classes).
+            Default: ``"fast"``
+
+        confidence_threshold (float | None): Override the model's default
+            confidence threshold for detections. None uses the model default.
+            Default: None
+
+        apply_heuristics (bool): Whether to apply postprocessing heuristics
+            to improve detection quality (e.g., merging overlapping regions).
+            Default: True
+
+    Example:
+        Enable fast layout detection:
+            >>> from kreuzberg import LayoutDetectionConfig, ExtractionConfig
+            >>> config = ExtractionConfig(layout=LayoutDetectionConfig())
+
+        Use accurate model with custom threshold:
+            >>> layout = LayoutDetectionConfig(preset="accurate", confidence_threshold=0.5)
+            >>> config = ExtractionConfig(layout=layout)
+    """
+
+    preset: str
+    confidence_threshold: float | None
+    apply_heuristics: bool
+
+    def __init__(
+        self,
+        *,
+        preset: str | None = None,
+        confidence_threshold: float | None = None,
+        apply_heuristics: bool | None = None,
+    ) -> None: ...
+
 class ExtractionConfig:
     """Main extraction configuration for document processing.
 
@@ -409,6 +454,7 @@ class ExtractionConfig:
     result_format: str
     output_format: str
     include_document_structure: bool
+    layout: LayoutDetectionConfig | None
 
     def __init__(
         self,
@@ -431,6 +477,7 @@ class ExtractionConfig:
         result_format: str | None = None,
         output_format: str | None = None,
         include_document_structure: bool | None = None,
+        layout: LayoutDetectionConfig | None = None,
     ) -> None: ...
     @staticmethod
     def from_file(path: str | Path) -> ExtractionConfig: ...

@@ -113,6 +113,13 @@ func WithHTMLOptions(opts ...HTMLConversionOption) ExtractionOption {
 	}
 }
 
+// WithLayoutDetection sets the layout detection configuration with functional options.
+func WithLayoutDetection(opts ...LayoutDetectionOption) ExtractionOption {
+	return func(c *ExtractionConfig) {
+		c.LayoutDetection = NewLayoutDetectionConfig(opts...)
+	}
+}
+
 // WithPages sets the page configuration with functional options.
 func WithPages(opts ...PageOption) ExtractionOption {
 	return func(c *ExtractionConfig) {
@@ -697,6 +704,40 @@ func WithLanguageDetectionMinConfidence(confidence float64) LanguageDetectionOpt
 func WithDetectMultiple(enabled bool) LanguageDetectionOption {
 	return func(c *LanguageDetectionConfig) {
 		c.DetectMultiple = &enabled
+	}
+}
+
+// ============================================================================
+// LayoutDetectionConfig Options
+// ============================================================================
+
+// NewLayoutDetectionConfig creates a new LayoutDetectionConfig with the given options.
+func NewLayoutDetectionConfig(opts ...LayoutDetectionOption) *LayoutDetectionConfig {
+	cfg := &LayoutDetectionConfig{}
+	for _, opt := range opts {
+		opt(cfg)
+	}
+	return cfg
+}
+
+// WithLayoutPreset sets the layout detection preset.
+func WithLayoutPreset(preset string) LayoutDetectionOption {
+	return func(c *LayoutDetectionConfig) {
+		c.Preset = &preset
+	}
+}
+
+// WithLayoutConfidenceThreshold sets the confidence threshold for layout detection.
+func WithLayoutConfidenceThreshold(threshold float32) LayoutDetectionOption {
+	return func(c *LayoutDetectionConfig) {
+		c.ConfidenceThreshold = &threshold
+	}
+}
+
+// WithLayoutApplyHeuristics sets whether to apply heuristics for layout detection.
+func WithLayoutApplyHeuristics(apply bool) LayoutDetectionOption {
+	return func(c *LayoutDetectionConfig) {
+		c.ApplyHeuristics = &apply
 	}
 }
 

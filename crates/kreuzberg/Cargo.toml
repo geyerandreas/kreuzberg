@@ -25,13 +25,13 @@ pool-metrics = []
 
 simd-utf8 = ["dep:simdutf8"]
 
-tokio-runtime = ["dep:tokio", "tokio/rt", "tokio/rt-multi-thread"]
+tokio-runtime = ["dep:tokio"]
 
-pdf = ["dep:pdfium-render", "dep:lopdf", "dep:image"]
+pdf = ["dep:pdfium-render", "dep:lopdf", "dep:image", "html"]
 static-pdfium = ["pdf"]
 bundled-pdfium = ["pdf"]
 system-pdfium = ["pdf"]
-excel = ["dep:calamine"]
+excel = ["dep:calamine", "tokio-runtime"]
 excel-wasm = ["dep:calamine"]
 office = [
     "dep:cfb",
@@ -76,6 +76,15 @@ paddle-ocr = [
     "html",
     "tokio-runtime",
     "ocr",
+]
+# Layout detection via ONNX Runtime (YOLO + RT-DETR)
+layout-detection = [
+    "dep:ort",
+    "dep:ndarray",
+    "dep:hf-hub",
+    "dep:sha2",
+    "dep:image",
+    "tokio-runtime",
 ]
 language-detection = ["dep:whatlang"]
 chunking = ["dep:text-splitter", "dep:pulldown-cmark"]
@@ -127,8 +136,23 @@ formats = [
     "otel",
     "chunking-tokenizers",
 ]
-full = ["formats", "ocr", "paddle-ocr", "embeddings", "api", "mcp", "otel"]
-server = ["pdf", "excel", "html", "ocr", "paddle-ocr", "chunking", "api", "mcp"]
+full = ["formats", "ocr", "paddle-ocr", "layout-detection", "embeddings", "api", "mcp", "otel"]
+server = ["pdf", "excel", "html", "ocr", "paddle-ocr", "layout-detection", "chunking", "api", "mcp"]
+cli = [
+    "pdf",
+    "excel",
+    "office",
+    "email",
+    "html",
+    "xml",
+    "ocr",
+    "paddle-ocr",
+    "layout-detection",
+    "language-detection",
+    "chunking",
+    "quality",
+    "mdx",
+]
 
 [build-dependencies]
 tracing = { workspace = true }
@@ -239,6 +263,11 @@ opentelemetry_sdk = { version = "0.31", features = ["rt-tokio"], optional = true
 tracing-opentelemetry = { version = "0.32", optional = true }
 infer = "0.19.0"
 sha2 = { version = "0.10", optional = true }
+ort = { version = "2.0.0-rc.11", default-features = false, features = [
+    "ndarray",
+    "load-dynamic",
+], optional = true }
+ndarray = { version = "0.17", optional = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }

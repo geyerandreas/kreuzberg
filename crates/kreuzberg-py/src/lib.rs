@@ -79,6 +79,7 @@ fn _internal_bindings(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<config::TesseractConfig>()?;
     m.add_class::<config::ImagePreprocessingConfig>()?;
     m.add_class::<config::HierarchyConfig>()?;
+    m.add_class::<config::LayoutDetectionConfig>()?;
 
     m.add_class::<keywords::YakeParams>()?;
     m.add_class::<keywords::RakeParams>()?;

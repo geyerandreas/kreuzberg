@@ -18,6 +18,7 @@
 #' @param postprocessor Named list. Post-processor configuration.
 #' @param security_limits Named list. Security limits configuration.
 #' @param max_concurrent_extractions Integer. Max concurrent extractions.
+#' @param layout Layout detection configuration created by \code{layout_detection_config()}.
 #' @param ... Additional configuration options passed as named list elements.
 #' @return A named list representing the extraction configuration.
 #' @export
@@ -30,7 +31,8 @@ extraction_config <- function(force_ocr = FALSE, ocr = NULL, chunking = NULL,
                               pages = NULL, pdf_options = NULL,
                               html_options = NULL, postprocessor = NULL,
                               security_limits = NULL,
-                              max_concurrent_extractions = NULL, ...) {
+                              max_concurrent_extractions = NULL,
+                              layout = NULL, ...) {
   config <- list()
   if (isTRUE(force_ocr)) config$force_ocr <- TRUE
   if (!is.null(ocr)) config$ocr <- ocr
@@ -62,6 +64,7 @@ extraction_config <- function(force_ocr = FALSE, ocr = NULL, chunking = NULL,
   if (!is.null(max_concurrent_extractions)) {
     config$max_concurrent_extractions <- as.integer(max_concurrent_extractions)
   }
+  if (!is.null(layout)) config$layout <- layout
   extras <- list(...)
   if (length(extras) > 0) config <- c(config, extras)
   config
@@ -105,6 +108,34 @@ chunking_config <- function(max_characters = 1000L, overlap = 200L, ...) {
     max_characters = max_characters,
     overlap = overlap
   )
+  extras <- list(...)
+  if (length(extras) > 0) config <- c(config, extras)
+  config
+}
+
+#' Create a layout detection configuration
+#'
+#' @param preset Model preset controlling accuracy vs speed trade-off.
+#'   Supported values: "fast", "accurate". Default "fast".
+#' @param confidence_threshold Minimum confidence threshold for detected layout
+#'   regions (0.0-1.0). Regions below this threshold are discarded.
+#'   Default NULL (use engine default).
+#' @param apply_heuristics Logical. Whether to apply heuristic post-processing
+#'   to refine layout regions. Default TRUE.
+#' @param ... Additional layout detection options.
+#' @return A named list representing the layout detection configuration.
+#' @export
+layout_detection_config <- function(preset = "fast", confidence_threshold = NULL,
+                                    apply_heuristics = TRUE, ...) {
+  stopifnot(is.character(preset), length(preset) == 1L)
+  config <- list(preset = preset, apply_heuristics = apply_heuristics)
+  if (!is.null(confidence_threshold)) {
+    confidence_threshold <- as.double(confidence_threshold)
+    if (confidence_threshold < 0 || confidence_threshold > 1) {
+      stop("confidence_threshold must be between 0.0 and 1.0", call. = FALSE)
+    }
+    config$confidence_threshold <- confidence_threshold
+  }
   extras <- list(...)
   if (length(extras) > 0) config <- c(config, extras)
   config

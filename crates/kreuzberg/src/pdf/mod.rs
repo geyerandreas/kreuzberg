@@ -49,6 +49,8 @@ pub mod fonts;
 pub mod hierarchy;
 #[cfg(feature = "pdf")]
 pub mod images;
+#[cfg(all(feature = "pdf", feature = "layout-detection"))]
+pub mod layout_runner;
 #[cfg(feature = "pdf")]
 pub mod markdown;
 #[cfg(feature = "pdf")]
@@ -57,6 +59,8 @@ pub mod metadata;
 pub mod rendering;
 #[cfg(feature = "pdf")]
 pub mod table;
+#[cfg(feature = "pdf")]
+pub mod table_reconstruct;
 #[cfg(feature = "pdf")]
 pub mod text;
 

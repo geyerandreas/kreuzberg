@@ -26,6 +26,11 @@ pub(super) fn render_paragraph_to_output(para: &PdfParagraph, output: &mut Strin
             output.push('\n');
         }
         output.push_str("```");
+    } else if para.is_formula {
+        let text = join_line_texts(&para.lines);
+        output.push_str("$$\n");
+        output.push_str(&text);
+        output.push_str("\n$$");
     } else if para.is_list_item {
         let text = render_paragraph_with_inline_markup(para);
         let normalized = normalize_list_prefix(&text);
@@ -111,18 +116,48 @@ fn join_line_texts(lines: &[PdfLine]) -> String {
 }
 
 /// Join text chunks with spaces, but omit the space when both adjacent chunks are CJK.
+/// Also performs dehyphenation: if a word ends with `-` (preceded by an alphabetic char)
+/// and the next word starts with a lowercase letter, joins them without space and removes
+/// the trailing hyphen.
 fn join_texts_cjk_aware(texts: &[&str]) -> String {
     if texts.is_empty() {
         return String::new();
     }
     let mut result = String::from(texts[0]);
     for pair in texts.windows(2) {
-        if needs_space_between(pair[0], pair[1]) {
-            result.push(' ');
+        let prev = pair[0];
+        let next = pair[1];
+
+        // Dehyphenation: "syl-" + "lable" → "syllable"
+        if should_dehyphenate(prev, next) {
+            // Remove trailing hyphen from result and join directly
+            result.pop(); // remove the '-'
+            result.push_str(next);
+        } else {
+            if needs_space_between(prev, next) {
+                result.push(' ');
+            }
+            result.push_str(next);
         }
-        result.push_str(pair[1]);
     }
     result
+}
+
+/// Check if a line-ending hyphen should be removed and words joined.
+///
+/// Returns true when `prev` ends with `-` preceded by an alphabetic character
+/// and `next` starts with a lowercase letter.
+fn should_dehyphenate(prev: &str, next: &str) -> bool {
+    if prev.len() < 2 || !prev.ends_with('-') {
+        return false;
+    }
+    // Character before hyphen must be alphabetic
+    let before_hyphen = prev[..prev.len() - 1].chars().next_back();
+    if !before_hyphen.is_some_and(|c| c.is_alphabetic()) {
+        return false;
+    }
+    // Next word must start with a lowercase letter
+    next.chars().next().is_some_and(|c| c.is_lowercase())
 }
 
 /// Render an entire body paragraph with inline bold/italic markup.
@@ -240,6 +275,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -255,6 +293,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -273,6 +314,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -288,6 +332,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -303,6 +350,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -322,6 +372,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -347,6 +400,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -367,10 +423,63 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
         assert_eq!(output, "normal text **bold text** more normal");
+    }
+
+    #[test]
+    fn test_dehyphenate_basic() {
+        // "syl-" + "lable" → "syllable"
+        let words = vec!["syl-", "lable"];
+        assert_eq!(join_texts_cjk_aware(&words), "syllable");
+    }
+
+    #[test]
+    fn test_dehyphenate_in_paragraph() {
+        // Across line boundaries in a paragraph
+        let para = PdfParagraph {
+            lines: vec![
+                make_line(vec![make_segment("The neglect-", false, false)]),
+                make_line(vec![make_segment("ed buildings are old.", false, false)]),
+            ],
+            dominant_font_size: 12.0,
+            heading_level: None,
+            is_bold: false,
+            is_list_item: false,
+            is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
+        };
+        let mut output = String::new();
+        render_paragraph_to_output(&para, &mut output);
+        assert_eq!(output, "The neglected buildings are old.");
+    }
+
+    #[test]
+    fn test_no_dehyphenate_uppercase_next() {
+        // "word-" + "The" → keep hyphen (next word uppercase)
+        let words = vec!["word-", "The"];
+        assert_eq!(join_texts_cjk_aware(&words), "word- The");
+    }
+
+    #[test]
+    fn test_no_dehyphenate_standalone_hyphen() {
+        // "-" + "word" → not dehyphenated (standalone hyphen)
+        let words = vec!["-", "word"];
+        assert_eq!(join_texts_cjk_aware(&words), "- word");
+    }
+
+    #[test]
+    fn test_no_dehyphenate_number_suffix() {
+        // "item-" + "3" → keep as-is (next starts with digit, not lowercase)
+        let words = vec!["item-", "3"];
+        assert_eq!(join_texts_cjk_aware(&words), "item- 3");
     }
 
     #[test]
@@ -386,6 +495,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);

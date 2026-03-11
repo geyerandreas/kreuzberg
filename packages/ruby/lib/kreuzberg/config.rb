@@ -803,6 +803,36 @@ module Kreuzberg
       end
     end
 
+    # Layout detection configuration
+    #
+    # @example Basic usage with fast preset
+    #   layout = LayoutDetection.new(preset: "fast")
+    #
+    # @example Accurate preset with custom threshold
+    #   layout = LayoutDetection.new(
+    #     preset: "accurate",
+    #     confidence_threshold: 0.5,
+    #     apply_heuristics: true
+    #   )
+    #
+    class LayoutDetection
+      attr_reader :preset, :confidence_threshold, :apply_heuristics
+
+      def initialize(preset: 'fast', confidence_threshold: nil, apply_heuristics: true)
+        @preset = preset.to_s
+        @confidence_threshold = confidence_threshold&.to_f
+        @apply_heuristics = apply_heuristics ? true : false
+      end
+
+      def to_h
+        {
+          preset: @preset,
+          confidence_threshold: @confidence_threshold,
+          apply_heuristics: @apply_heuristics
+        }.compact
+      end
+    end
+
     # Main extraction configuration
     #
     # @example Basic usage
@@ -847,7 +877,7 @@ module Kreuzberg
                   :images, :postprocessor,
                   :token_reduction, :keywords, :html_options, :pages,
                   :max_concurrent_extractions, :output_format, :result_format,
-                  :security_limits
+                  :security_limits, :layout
 
       # Alias for backward compatibility - image_extraction is the canonical name
       alias image_extraction images
@@ -872,7 +902,7 @@ module Kreuzberg
         language_detection pdf_options image_extraction
         postprocessor token_reduction keywords html_options pages
         max_concurrent_extractions output_format result_format
-        security_limits
+        security_limits layout
       ].freeze
 
       # Aliases for backward compatibility
@@ -947,7 +977,8 @@ module Kreuzberg
                      max_concurrent_extractions: nil,
                      output_format: nil,
                      result_format: nil,
-                     security_limits: nil)
+                     security_limits: nil,
+                     layout: nil)
         kwargs = {
           use_cache: use_cache, enable_quality_processing: enable_quality_processing,
           force_ocr: force_ocr, include_document_structure: include_document_structure,
@@ -957,7 +988,7 @@ module Kreuzberg
           token_reduction: token_reduction, keywords: keywords, html_options: html_options,
           pages: pages, max_concurrent_extractions: max_concurrent_extractions,
           output_format: output_format, result_format: result_format,
-          security_limits: security_limits
+          security_limits: security_limits, layout: layout
         }
         extracted = extract_from_hash(hash, kwargs)
 
@@ -971,7 +1002,7 @@ module Kreuzberg
         defaults.merge(hash.slice(*defaults.keys))
       end
 
-      def assign_attributes(params)
+      def assign_attributes(params) # rubocop:disable Metrics/MethodLength
         @use_cache = params[:use_cache] ? true : false
         @enable_quality_processing = params[:enable_quality_processing] ? true : false
         @force_ocr = params[:force_ocr] ? true : false
@@ -986,6 +1017,7 @@ module Kreuzberg
         @keywords = normalize_config(params[:keywords], Keywords)
         @html_options = normalize_config(params[:html_options], HtmlOptions)
         @pages = normalize_config(params[:pages], PageConfig)
+        @layout = normalize_config(params[:layout], LayoutDetection)
         @max_concurrent_extractions = params[:max_concurrent_extractions]&.to_i
         @output_format = validate_output_format(params[:output_format])
         @result_format = validate_result_format(params[:result_format])
@@ -1034,7 +1066,8 @@ module Kreuzberg
           language_detection: @language_detection&.to_h, pdf_options: @pdf_options&.to_h,
           image_extraction: @images&.to_h, postprocessor: @postprocessor&.to_h,
           token_reduction: @token_reduction&.to_h, keywords: @keywords&.to_h,
-          html_options: @html_options&.to_h, pages: @pages&.to_h
+          html_options: @html_options&.to_h, pages: @pages&.to_h,
+          layout: @layout&.to_h
         }
       end
 
@@ -1172,6 +1205,8 @@ module Kreuzberg
           @html_options = normalize_config(value, HtmlOptions)
         when :pages
           @pages = normalize_config(value, PageConfig)
+        when :layout
+          @layout = normalize_config(value, LayoutDetection)
         when :max_concurrent_extractions
           @max_concurrent_extractions = value&.to_i
         when :output_format
@@ -1242,6 +1277,7 @@ module Kreuzberg
         @keywords = merged.keywords
         @html_options = merged.html_options
         @pages = merged.pages
+        @layout = merged.layout
         @max_concurrent_extractions = merged.max_concurrent_extractions
         @output_format = merged.output_format
         @result_format = merged.result_format

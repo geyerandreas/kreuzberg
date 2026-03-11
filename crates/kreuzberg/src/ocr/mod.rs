@@ -43,6 +43,8 @@ pub mod conversion;
 pub mod error;
 pub mod hocr;
 pub mod language_registry;
+#[cfg(feature = "layout-detection")]
+pub mod layout_assembly;
 pub mod processor;
 pub mod table;
 pub mod tesseract_backend;

@@ -52,13 +52,11 @@ fn test_pdf_password_protected_succeeds_with_correct_password() {
 
     let file_path = get_test_file_path("pdfs/copy_protected.pdf");
 
-    let config = ExtractionConfig {
-        pdf_options: Some(PdfConfig {
-            passwords: Some(vec!["wrong-password".into(), "<correct password>".into()]),
-            ..Default::default()
-        }),
+    let mut config = ExtractionConfig::default();
+    config.pdf_options = Some(PdfConfig {
+        passwords: Some(vec!["wrong-password".into(), "<correct password>".into()]),
         ..Default::default()
-    };
+    });
 
     let result = extract_file_sync(&file_path, None, &config);
 

@@ -30,6 +30,6 @@ pub(super) const MAX_BOLD_HEADING_WORD_COUNT: usize = 15;
 /// Fraction of the maximum right edge that a line must reach to be considered "full"
 /// (used for dehyphenation to avoid false joins on short/indented lines).
 pub(super) const FULL_LINE_FRACTION: f32 = 0.85;
-/// Minimum alphabetic character count for a word fragment to be eligible for
-/// dehyphenation joining (prevents false positives on short words like "a", "I").
-pub(super) const MIN_DEHYPHENATION_FRAGMENT_LEN: usize = 2;
+/// Y-tolerance for grouping layout regions into the same row (fraction of page height).
+/// Regions with vertical centers within this fraction are considered same-row and sorted left-to-right.
+pub(super) const REGION_SAME_ROW_FRACTION: f32 = 0.02;

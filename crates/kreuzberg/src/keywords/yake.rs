@@ -69,7 +69,7 @@ pub fn extract_keywords_yake(text: &str, config: &KeywordConfig) -> Result<Vec<K
         keywords.retain(|k| k.score >= config.min_score);
     }
 
-    keywords.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    keywords.sort_by(|a, b| b.score.total_cmp(&a.score));
 
     Ok(keywords)
 }

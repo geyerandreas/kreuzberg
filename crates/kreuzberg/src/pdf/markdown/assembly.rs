@@ -42,7 +42,13 @@ pub(super) fn assemble_markdown_with_tables(
         } else {
             for (para_idx, para) in paragraphs.iter().enumerate() {
                 if para_idx > 0 {
-                    output.push_str("\n\n");
+                    // Use single newline between consecutive list items
+                    let prev_is_list = paragraphs[para_idx - 1].is_list_item;
+                    if prev_is_list && para.is_list_item {
+                        output.push('\n');
+                    } else {
+                        output.push_str("\n\n");
+                    }
                 }
                 render_paragraph_to_output(para, &mut output);
             }
@@ -121,13 +127,25 @@ fn assemble_page_with_tables(output: &mut String, paragraphs: &[PdfParagraph], t
     elements.sort_by(|a, b| b.y_pos.total_cmp(&a.y_pos));
 
     let start_len = output.len();
+    let mut prev_was_list_item = false;
     for elem in &elements {
         if output.len() > start_len {
-            output.push_str("\n\n");
+            let curr_is_list_item = matches!(&elem.content, ElementContent::Paragraph(p) if p.is_list_item);
+            if prev_was_list_item && curr_is_list_item {
+                output.push('\n');
+            } else {
+                output.push_str("\n\n");
+            }
         }
         match &elem.content {
-            ElementContent::Paragraph(para) => render_paragraph_to_output(para, output),
-            ElementContent::Table(md) => output.push_str(md),
+            ElementContent::Paragraph(para) => {
+                prev_was_list_item = para.is_list_item;
+                render_paragraph_to_output(para, output);
+            }
+            ElementContent::Table(md) => {
+                prev_was_list_item = false;
+                output.push_str(md);
+            }
         }
     }
 
@@ -183,6 +201,9 @@ mod tests {
             is_bold: false,
             is_list_item: false,
             is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
         }
     }
 

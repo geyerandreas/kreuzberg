@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [4.5.0] - Unreleased
+
+### Added
+
+- **Layout-enhanced heading detection for structure tree PDFs**: When layout detection is enabled, the layout model's SectionHeader and Title regions are now used to detect headings in tagged (structure tree) PDF pages that lack heading metadata. Previously, layout hints were only used for page furniture (headers/footers) on structure tree pages.
+- **Language-agnostic section pattern recognition**: Headings ending with a period are now allowed when they match structural patterns — section symbol (§), all-caps short text, or numbered sections (e.g., "3.2. Methods", "ARTICLE IV."). This improves heading detection for legal, academic, and multilingual documents.
+
+### Fixed
+
+- **PDF structure tree heading trust**: Structure tree heading tags (H1–H6) are now trusted as author-intent metadata with only a word-count guard. Previously, font-size validation rejected valid headings when the font was close to body size.
+- **PDF structure tree extraction performance**: MCID text and style maps are now built in a single pass over page objects (was two passes). Uses the pre-loaded `FPDFText` page handle instead of calling `FPDFText_LoadPage` per text object, eliminating multi-second extraction times on complex pages.
+- **OCR layout: Picture regions no longer suppress text**: Layout-detected Picture regions (diagrams, figures) now preserve any embedded text as plain paragraphs instead of silently dropping it.
+- **Non-transitive sort comparators**: Fixed multiple sort comparators across the codebase that used tolerance-based "same row" grouping (non-transitive). All spatial reading-order sorts now quantize coordinates into discrete row buckets, ensuring correct and stable ordering.
+- **Float comparison soundness**: Replaced all `partial_cmp().unwrap_or(Equal)` patterns with `total_cmp()` across layout, PDF hierarchy, cache, keyword extraction, and token reduction modules. Eliminates undefined ordering for NaN values.
+
+### Changed
+
+- **Layout pipeline no longer forces heuristic extraction**: When layout detection is enabled, structure tree extraction proceeds normally instead of being forced into the heuristic path. Proportional matching applies layout hints to structure tree paragraphs, preserving text quality.
+
+---
+
 ## [4.4.6]
 
 ### Added

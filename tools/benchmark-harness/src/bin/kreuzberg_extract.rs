@@ -27,6 +27,17 @@ fn main() {
         .map(|w| w[1].as_str())
         .unwrap_or("tesseract");
 
+    // Parse --layout-preset <preset> (e.g., "fast" or "accurate")
+    let layout_preset = args
+        .windows(2)
+        .find(|w| w[0] == "--layout-preset")
+        .map(|w| w[1].clone());
+
+    let layout_config = layout_preset.map(|preset| kreuzberg::core::config::layout::LayoutDetectionConfig {
+        preset,
+        ..Default::default()
+    });
+
     let config = ExtractionConfig {
         use_cache: false,
         ocr: if ocr_enabled {
@@ -38,6 +49,7 @@ fn main() {
         } else {
             None
         },
+        layout: layout_config,
         ..Default::default()
     };
 

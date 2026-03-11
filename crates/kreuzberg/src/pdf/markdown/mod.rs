@@ -9,11 +9,13 @@ mod bridge;
 mod classify;
 mod columns;
 mod constants;
+pub(crate) mod layout_classify;
 mod lines;
 mod paragraphs;
 mod pipeline;
+mod regions;
 mod render;
-mod types;
+pub(crate) mod types;
 
-pub use pipeline::render_document_as_markdown_with_tables;
+pub(crate) use pipeline::render_document_as_markdown_with_tables;
 pub use render::inject_image_placeholders;

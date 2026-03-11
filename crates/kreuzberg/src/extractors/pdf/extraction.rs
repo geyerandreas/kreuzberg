@@ -51,6 +51,11 @@ pub(crate) type PdfExtractionPhaseResult = (
 pub(crate) fn extract_all_from_document(
     document: &PdfDocument,
     config: &ExtractionConfig,
+    layout_hints: Option<&[Vec<crate::pdf::markdown::types::LayoutHint>]>,
+    #[cfg(feature = "layout-detection")] layout_images: Option<&[image::DynamicImage]>,
+    #[cfg(not(feature = "layout-detection"))] _layout_images: Option<()>,
+    #[cfg(feature = "layout-detection")] layout_results: Option<&[crate::pdf::layout_runner::PageLayoutResult]>,
+    #[cfg(not(feature = "layout-detection"))] _layout_results: Option<()>,
 ) -> Result<PdfExtractionPhaseResult> {
     let (native_text, boundaries, page_contents, pdf_metadata) =
         crate::pdf::text::extract_text_and_metadata_from_pdf_document(document, Some(config))?;
@@ -104,6 +109,15 @@ pub(crate) fn extract_all_from_document(
             top_margin,
             bottom_margin,
             page_marker_format,
+            layout_hints,
+            #[cfg(feature = "layout-detection")]
+            layout_images,
+            #[cfg(not(feature = "layout-detection"))]
+            None,
+            #[cfg(feature = "layout-detection")]
+            layout_results,
+            #[cfg(not(feature = "layout-detection"))]
+            None,
         ) {
             Ok((md, has_encoding_issues)) if !md.trim().is_empty() => {
                 tracing::debug!(
@@ -149,13 +163,58 @@ pub(crate) fn extract_all_from_document(
     ))
 }
 
+/// Convert layout detection results to per-page layout hints for the markdown pipeline.
+///
+/// Maps `LayoutClass` (from `crate::layout`) to `LayoutHintClass` (feature-gate-free
+/// types in the markdown module) and flattens per-page regions into hint vectors.
+#[cfg(all(feature = "pdf", feature = "layout-detection"))]
+pub(crate) fn convert_results_to_hints(
+    results: &[crate::pdf::layout_runner::PageLayoutResult],
+) -> Vec<Vec<crate::pdf::markdown::types::LayoutHint>> {
+    use crate::layout::LayoutClass;
+    use crate::pdf::markdown::types::{LayoutHint, LayoutHintClass};
+
+    results
+        .iter()
+        .map(|page| {
+            page.regions
+                .iter()
+                .map(|region| {
+                    let class = match region.class {
+                        LayoutClass::Title => LayoutHintClass::Title,
+                        LayoutClass::SectionHeader => LayoutHintClass::SectionHeader,
+                        LayoutClass::Code => LayoutHintClass::Code,
+                        LayoutClass::Formula => LayoutHintClass::Formula,
+                        LayoutClass::ListItem => LayoutHintClass::ListItem,
+                        LayoutClass::Caption => LayoutHintClass::Caption,
+                        LayoutClass::PageHeader => LayoutHintClass::PageHeader,
+                        LayoutClass::PageFooter => LayoutHintClass::PageFooter,
+                        LayoutClass::Table => LayoutHintClass::Table,
+                        LayoutClass::Picture => LayoutHintClass::Picture,
+                        LayoutClass::Text => LayoutHintClass::Text,
+                        _ => LayoutHintClass::Other,
+                    };
+                    LayoutHint {
+                        class,
+                        confidence: region.confidence,
+                        left: region.bbox.left,
+                        bottom: region.bbox.bottom,
+                        right: region.bbox.right,
+                        top: region.bbox.top,
+                    }
+                })
+                .collect()
+        })
+        .collect()
+}
+
 /// Check whether words on a page exhibit column alignment consistent with a table.
 ///
 /// Groups word left-edges into buckets and checks that at least 3 buckets each contain
 /// multiple words. Two-column text layouts naturally produce 2 alignment clusters, so
 /// we require ≥3 to avoid false positives from academic papers and similar documents.
-#[cfg(all(feature = "pdf", feature = "ocr"))]
-fn has_column_alignment(words: &[crate::ocr::table::HocrWord]) -> bool {
+#[cfg(feature = "pdf")]
+fn has_column_alignment(words: &[crate::pdf::table_reconstruct::HocrWord]) -> bool {
     if words.len() < 6 {
         return false;
     }
@@ -187,13 +246,13 @@ fn has_column_alignment(words: &[crate::ocr::table::HocrWord]) -> bool {
 /// then uses the existing table reconstruction logic to detect tables.
 ///
 /// Uses the shared PdfDocument reference (wrapped in Arc<RwLock<>> for thread-safety).
-#[cfg(all(feature = "pdf", feature = "ocr"))]
+#[cfg(feature = "pdf")]
 fn extract_tables_from_document(
     document: &PdfDocument,
     _metadata: &crate::pdf::metadata::PdfExtractionMetadata,
 ) -> Result<Vec<Table>> {
-    use crate::ocr::table::{post_process_table, reconstruct_table, table_to_markdown};
     use crate::pdf::table::extract_words_from_page;
+    use crate::pdf::table_reconstruct::{post_process_table, reconstruct_table, table_to_markdown};
 
     let mut all_tables = Vec::new();
 
@@ -222,7 +281,7 @@ fn extract_tables_from_document(
 
         // Apply full post-processing validation: empty row removal, long cell rejection,
         // header detection, column merging, dimension checks, and cell normalization.
-        let table_cells = match post_process_table(table_cells) {
+        let table_cells = match post_process_table(table_cells, false) {
             Some(cleaned) => cleaned,
             None => continue,
         };
@@ -270,15 +329,6 @@ fn extract_tables_from_document(
     }
 
     Ok(all_tables)
-}
-
-/// Fallback for when OCR feature is not enabled - returns empty tables.
-#[cfg(all(feature = "pdf", not(feature = "ocr")))]
-fn extract_tables_from_document(
-    _document: &PdfDocument,
-    _metadata: &crate::pdf::metadata::PdfExtractionMetadata,
-) -> Result<Vec<crate::types::Table>> {
-    Ok(vec![])
 }
 
 #[cfg(test)]
@@ -382,9 +432,9 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "pdf", feature = "ocr"))]
+    #[cfg(feature = "pdf")]
     fn test_has_column_alignment_table_layout() {
-        use crate::ocr::table::HocrWord;
+        use crate::pdf::table_reconstruct::HocrWord;
 
         // Simulate a 3-column table: words at x=50, x=200, x=400
         // Requires ≥3 columns with ≥3 words each to pass.
@@ -469,9 +519,9 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "pdf", feature = "ocr"))]
+    #[cfg(feature = "pdf")]
     fn test_has_column_alignment_rejects_two_column_layout() {
-        use crate::ocr::table::HocrWord;
+        use crate::pdf::table_reconstruct::HocrWord;
 
         // Two-column text layout (like academic papers) should NOT be detected as a table.
         let words = vec![
@@ -528,9 +578,9 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "pdf", feature = "ocr"))]
+    #[cfg(feature = "pdf")]
     fn test_has_column_alignment_body_text() {
-        use crate::ocr::table::HocrWord;
+        use crate::pdf::table_reconstruct::HocrWord;
 
         // Body text: words flow left-to-right on each line with distinct x positions.
         // Each word has a unique left-edge so no bucket accumulates >= 2 words,
@@ -589,9 +639,9 @@ mod tests {
     }
 
     #[test]
-    #[cfg(all(feature = "pdf", feature = "ocr"))]
+    #[cfg(feature = "pdf")]
     fn test_has_column_alignment_too_few_words() {
-        use crate::ocr::table::HocrWord;
+        use crate::pdf::table_reconstruct::HocrWord;
 
         let words = vec![
             HocrWord {

@@ -24,6 +24,7 @@
 	},
 	"ground_truth": {
 		"text_file": "../../../test_documents/ground_truth/pdf/pdf_ocr_rotated_180.md",
-		"source": "vision"
+		"source": "vision",
+		"markdown_file": "../../../test_documents/ground_truth/pdf/pdf_ocr_rotated_180.md"
 	}
 }

@@ -566,14 +566,7 @@ pub fn merge_chars_into_blocks(chars: Vec<CharData>) -> Vec<TextBlock> {
         .collect();
 
     // Sort by position (top to bottom, then left to right)
-    char_boxes.sort_by(|a, b| {
-        let y_diff = a.1.top.partial_cmp(&b.1.top).unwrap_or(std::cmp::Ordering::Equal);
-        if y_diff != std::cmp::Ordering::Equal {
-            y_diff
-        } else {
-            a.1.left.partial_cmp(&b.1.left).unwrap_or(std::cmp::Ordering::Equal)
-        }
-    });
+    char_boxes.sort_by(|a, b| a.1.top.total_cmp(&b.1.top).then_with(|| a.1.left.total_cmp(&b.1.left)));
 
     // Greedy merging using union-find-like approach
     let mut blocks: Vec<Vec<CharData>> = Vec::new();

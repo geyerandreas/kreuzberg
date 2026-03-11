@@ -602,6 +602,24 @@ export interface PageExtractionConfig {
 }
 
 /**
+ * Layout detection configuration for PDF extraction.
+ *
+ * Controls layout detection using ONNX-based document layout models (YOLO or RT-DETR)
+ * to detect document structure elements like tables, figures, headers, and code blocks.
+ * Requires the `layout-detection` feature to be compiled.
+ */
+export interface LayoutDetectionConfig {
+	/** Model preset: "fast" (YOLO, 11 classes) or "accurate" (RT-DETR, 17 classes). Default: "fast". */
+	preset?: string;
+
+	/** Override the model's default confidence threshold for detections. Default: null (use model default). */
+	confidenceThreshold?: number;
+
+	/** Apply postprocessing heuristics to improve detection quality. Default: true. */
+	applyHeuristics?: boolean;
+}
+
+/**
  * Main extraction configuration interface.
  *
  * Combines all sub-configurations for document extraction, OCR, chunking, post-processing, etc.
@@ -670,6 +688,9 @@ export interface ExtractionConfig {
 	 * - "element_based": Semantic element extraction (Unstructured-compatible)
 	 */
 	resultFormat?: "unified" | "element_based";
+
+	/** Layout detection configuration for detecting document structure in PDFs. */
+	layout?: LayoutDetectionConfig;
 }
 
 /**

@@ -17,13 +17,16 @@ path = "src/main.rs"
 name = "kreuzberg-extract"
 path = "src/bin/kreuzberg_extract.rs"
 
+[[bin]]
+name = "pdfium-hang-test"
+path = "src/bin/pdfium_hang_test.rs"
+
 [lib]
 name = "benchmark_harness"
 path = "src/lib.rs"
 
 [dependencies]
-kreuzberg = { workspace = true, features = ["bundled-pdfium", "full"] }
-
+kreuzberg = { path = "../../crates/kreuzberg", features = ["full", "bundled-pdfium"] }
 tokio = { workspace = true, features = ["full"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -45,6 +48,8 @@ pprof = { version = "0.15", features = ["flamegraph", "criterion"], optional = t
 tikv-jemallocator = { version = "0.6", optional = true }
 tikv-jemalloc-ctl = { version = "0.6", features = ["stats"], optional = true }
 tempfile = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [dev-dependencies]
 

@@ -12,6 +12,8 @@ use async_trait::async_trait;
 /// Supports: PNG, JPEG, WebP, BMP, TIFF, GIF.
 /// Extracts dimensions, format, and EXIF metadata.
 /// Optionally runs OCR when configured.
+/// When layout detection is also enabled, uses per-region OCR with
+/// markdown formatting based on detected layout classes.
 pub struct ImageExtractor;
 
 impl ImageExtractor {
@@ -75,6 +77,181 @@ impl ImageExtractor {
             Ok(ocr_result)
         }
     }
+
+    /// Extract text from image using layout detection + per-region OCR.
+    ///
+    /// Runs layout detection to identify document regions (headings, text,
+    /// code, formulas, etc.), then OCRs each region individually and
+    /// assembles the results into structured markdown.
+    #[cfg(all(feature = "layout-detection", any(feature = "ocr", feature = "ocr-wasm")))]
+    async fn extract_with_layout_ocr(&self, content: &[u8], config: &ExtractionConfig) -> Result<ExtractionResult> {
+        use crate::layout::LayoutClass;
+        use crate::plugins::registry::get_ocr_backend_registry;
+        use image::ImageEncoder;
+        use std::io::Cursor;
+
+        let layout_config = config.layout.as_ref().ok_or_else(|| crate::KreuzbergError::Parsing {
+            message: "Layout config required for layout-enhanced OCR".to_string(),
+            source: None,
+        })?;
+
+        let ocr_config = config.ocr.as_ref().ok_or_else(|| crate::KreuzbergError::Parsing {
+            message: "OCR config required for layout-enhanced OCR".to_string(),
+            source: None,
+        })?;
+
+        // 1. Decode image
+        let img = image::load_from_memory(content).map_err(|e| crate::KreuzbergError::Parsing {
+            message: format!("Failed to decode image for layout detection: {e}"),
+            source: None,
+        })?;
+        let rgb = img.to_rgb8();
+
+        // 2. Run layout detection
+        let mut engine = crate::layout::create_engine(layout_config)
+            .map_err(|e| crate::KreuzbergError::Other(format!("Layout engine init failed: {e}")))?;
+
+        let detection = engine
+            .detect(&rgb)
+            .map_err(|e| crate::KreuzbergError::Other(format!("Layout detection failed: {e}")))?;
+
+        tracing::info!(
+            detections = detection.detections.len(),
+            img_width = rgb.width(),
+            img_height = rgb.height(),
+            "Layout detection completed for image"
+        );
+
+        if detection.detections.is_empty() {
+            tracing::debug!("No layout regions detected, falling back to whole-image OCR");
+            return self.extract_with_ocr(content, "image/png", config).await;
+        }
+
+        // 3. Sort detections by reading order (top-to-bottom, left-to-right)
+        let mut detections = detection.detections.clone();
+        // Quantize y-centers into discrete rows to ensure transitive ordering.
+        let row_threshold = (rgb.height() as f32 * 0.05).max(1.0);
+        detections.sort_by(|a, b| {
+            let ay = (a.bbox.y1 + a.bbox.y2) / 2.0;
+            let by = (b.bbox.y1 + b.bbox.y2) / 2.0;
+            let a_row = (ay / row_threshold) as i64;
+            let b_row = (by / row_threshold) as i64;
+            a_row.cmp(&b_row).then_with(|| {
+                let ax = (a.bbox.x1 + a.bbox.x2) / 2.0;
+                let bx = (b.bbox.x1 + b.bbox.x2) / 2.0;
+                ax.total_cmp(&bx)
+            })
+        });
+
+        // 4. Get OCR backend
+        let backend = {
+            let registry = get_ocr_backend_registry();
+            let registry = registry.read().map_err(|e| crate::KreuzbergError::Plugin {
+                message: format!("Failed to acquire read lock on OCR backend registry: {}", e),
+                plugin_name: "ocr-registry".to_string(),
+            })?;
+            registry.get(&ocr_config.backend)?
+        };
+
+        // Use plain text for per-region OCR (we build markdown structure ourselves)
+        let mut region_ocr_config = ocr_config.clone();
+        region_ocr_config.output_format = Some(crate::core::config::OutputFormat::Plain);
+
+        // 5. Per-region OCR + formatting
+        let mut markdown_parts = Vec::new();
+        let img_width = rgb.width();
+        let img_height = rgb.height();
+
+        for det in &detections {
+            // Skip picture regions (OCR on an embedded image is not useful)
+            if det.class == LayoutClass::Picture {
+                continue;
+            }
+
+            // Crop region (clamp to image bounds)
+            let x1 = (det.bbox.x1.max(0.0) as u32).min(img_width.saturating_sub(1));
+            let y1 = (det.bbox.y1.max(0.0) as u32).min(img_height.saturating_sub(1));
+            let x2 = (det.bbox.x2.max(0.0).ceil() as u32).min(img_width);
+            let y2 = (det.bbox.y2.max(0.0).ceil() as u32).min(img_height);
+
+            let crop_w = x2.saturating_sub(x1);
+            let crop_h = y2.saturating_sub(y1);
+            if crop_w < 4 || crop_h < 4 {
+                continue; // Too small to OCR meaningfully
+            }
+
+            let crop = image::imageops::crop_imm(&rgb, x1, y1, crop_w, crop_h).to_image();
+
+            // Encode crop as PNG for OCR backend
+            let mut png_buf = Cursor::new(Vec::new());
+            image::codecs::png::PngEncoder::new(&mut png_buf)
+                .write_image(
+                    crop.as_raw(),
+                    crop.width(),
+                    crop.height(),
+                    image::ExtendedColorType::Rgb8,
+                )
+                .map_err(|e| crate::KreuzbergError::Other(format!("Failed to encode crop as PNG: {e}")))?;
+            let crop_bytes = png_buf.into_inner();
+
+            // OCR the cropped region
+            let ocr_result = backend.process_image(&crop_bytes, &region_ocr_config).await?;
+            let text = ocr_result.content.trim().to_string();
+            if text.is_empty() {
+                continue;
+            }
+
+            tracing::trace!(
+                class = ?det.class,
+                confidence = det.confidence,
+                text_len = text.len(),
+                "OCR result for layout region"
+            );
+
+            // Format based on layout class
+            let formatted = match det.class {
+                LayoutClass::Title => format!("# {text}"),
+                LayoutClass::SectionHeader => format!("## {text}"),
+                LayoutClass::Code => format!("```\n{text}\n```"),
+                LayoutClass::Formula => format!("$$\n{text}\n$$"),
+                LayoutClass::ListItem => format!("- {text}"),
+                LayoutClass::Caption => format!("*{text}*"),
+                LayoutClass::Footnote => format!("[^]: {text}"),
+                LayoutClass::Table => text,
+                LayoutClass::PageHeader | LayoutClass::PageFooter => continue,
+                LayoutClass::CheckboxSelected => format!("- [x] {text}"),
+                LayoutClass::CheckboxUnselected => format!("- [ ] {text}"),
+                _ => text,
+            };
+
+            markdown_parts.push(formatted);
+        }
+
+        let content_text = markdown_parts.join("\n\n");
+
+        Ok(ExtractionResult {
+            content: content_text,
+            mime_type: "image/png".to_string().into(),
+            metadata: Metadata {
+                output_format: Some("markdown".to_string()),
+                ..Default::default()
+            },
+            pages: None,
+            tables: vec![],
+            detected_languages: None,
+            chunks: None,
+            images: None,
+            djot_content: None,
+            elements: None,
+            ocr_elements: None,
+            document: None,
+            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
+            extracted_keywords: None,
+            quality_score: None,
+            processing_warnings: Vec::new(),
+            annotations: None,
+        })
+    }
 }
 
 impl Default for ImageExtractor {
@@ -135,6 +312,24 @@ impl DocumentExtractor for ImageExtractor {
         };
 
         if config.ocr.is_some() {
+            // Layout-enhanced OCR: when both OCR and layout detection are configured,
+            // run layout detection first, then OCR each detected region individually
+            // and assemble into structured markdown.
+            #[cfg(all(feature = "layout-detection", any(feature = "ocr", feature = "ocr-wasm")))]
+            if config.layout.is_some() {
+                match self.extract_with_layout_ocr(content, config).await {
+                    Ok(mut result) => {
+                        result.metadata.format = Some(crate::types::FormatMetadata::Image(image_metadata));
+                        result.mime_type = mime_type.to_string().into();
+                        return Ok(result);
+                    }
+                    Err(e) => {
+                        tracing::warn!("Layout-enhanced OCR failed, falling back to regular OCR: {e}");
+                        // Fall through to regular OCR below
+                    }
+                }
+            }
+
             #[cfg(any(feature = "ocr", feature = "ocr-wasm"))]
             {
                 let mut ocr_result = self.extract_with_ocr(content, mime_type, config).await?;

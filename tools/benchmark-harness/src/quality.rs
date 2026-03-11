@@ -6,6 +6,33 @@
 use crate::types::QualityMetrics;
 use std::collections::HashMap;
 
+/// Compute quality metrics comparing extracted text against ground truth,
+/// optionally including structural quality scoring when markdown GT is available.
+///
+/// When `ground_truth_markdown` is `Some`, computes structural F1 from markdown
+/// block comparison and adjusts the quality_score formula to include it:
+///   quality_score = 0.5 * f1_text + 0.2 * f1_numeric + 0.3 * f1_layout
+///
+/// When `ground_truth_markdown` is `None`, falls back to text-only scoring:
+///   quality_score = 0.7 * f1_text + 0.3 * f1_numeric
+pub fn compute_quality_with_structure(
+    extracted: &str,
+    ground_truth: &str,
+    ground_truth_markdown: Option<&str>,
+) -> QualityMetrics {
+    let mut metrics = compute_quality(extracted, ground_truth);
+
+    if let Some(md_gt) = ground_truth_markdown {
+        let structural = crate::markdown_quality::score_structural_quality(extracted, md_gt);
+        metrics.f1_score_layout = structural.structural_f1;
+        // Adjust quality_score to include structural component
+        metrics.quality_score =
+            0.5 * metrics.f1_score_text + 0.2 * metrics.f1_score_numeric + 0.3 * metrics.f1_score_layout;
+    }
+
+    metrics
+}
+
 /// Compute quality metrics comparing extracted text against ground truth
 ///
 /// Algorithm:
@@ -47,7 +74,7 @@ pub fn compute_quality(extracted: &str, ground_truth: &str) -> QualityMetrics {
 }
 
 /// Tokenize text: lowercase, split on whitespace, strip non-alphanumeric characters
-fn tokenize(text: &str) -> Vec<String> {
+pub fn tokenize(text: &str) -> Vec<String> {
     text.to_lowercase()
         .split_whitespace()
         .map(|w| {
@@ -69,7 +96,7 @@ fn filter_numeric(tokens: &[String]) -> Vec<String> {
 }
 
 /// Compute F1 score between two token bags using multiset intersection
-fn compute_f1(extracted: &[String], truth: &[String]) -> f64 {
+pub fn compute_f1(extracted: &[String], truth: &[String]) -> f64 {
     if extracted.is_empty() && truth.is_empty() {
         return 1.0; // Both empty = perfect match
     }
@@ -116,9 +143,9 @@ fn build_counts(tokens: &[String]) -> HashMap<&str, usize> {
 /// - extra_tokens: tokens in extraction with higher count than in GT (precision misses)
 ///
 /// Both are sorted by deficit/surplus count descending.
-type TokenDiffs = (Vec<(String, usize)>, Vec<(String, usize)>);
+type TokenDiff = (Vec<(String, usize)>, Vec<(String, usize)>);
 
-fn compute_token_diff(extracted: &[String], truth: &[String]) -> TokenDiffs {
+fn compute_token_diff(extracted: &[String], truth: &[String]) -> TokenDiff {
     let extracted_counts = build_counts(extracted);
     let truth_counts = build_counts(truth);
 

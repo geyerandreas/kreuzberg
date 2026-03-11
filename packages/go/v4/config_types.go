@@ -46,6 +46,9 @@ type LanguageDetectionOption func(*LanguageDetectionConfig)
 // PostProcessorOption is a functional option for configuring PostProcessorConfig.
 type PostProcessorOption func(*PostProcessorConfig)
 
+// LayoutDetectionOption is a functional option for configuring LayoutDetectionConfig.
+type LayoutDetectionOption func(*LayoutDetectionConfig)
+
 // EmbeddingModelTypeOption is a functional option for configuring EmbeddingModelType.
 type EmbeddingModelTypeOption func(*EmbeddingModelType)
 
@@ -83,6 +86,7 @@ type ExtractionConfig struct {
 	Keywords                 *KeywordConfig           `json:"keywords,omitempty"`
 	Postprocessor            *PostProcessorConfig     `json:"postprocessor,omitempty"`
 	HTMLOptions              *HTMLConversionOptions   `json:"html_options,omitempty"`
+	LayoutDetection          *LayoutDetectionConfig   `json:"layout,omitempty"`
 	Pages                    *PageConfig              `json:"pages,omitempty"`
 	SecurityLimits           *SecurityLimitsConfig    `json:"security_limits,omitempty"`
 	MaxConcurrentExtractions *int                     `json:"max_concurrent_extractions,omitempty"`
@@ -245,6 +249,13 @@ type LanguageDetectionConfig struct {
 	Enabled        *bool    `json:"enabled,omitempty"`
 	MinConfidence  *float64 `json:"min_confidence,omitempty"`
 	DetectMultiple *bool    `json:"detect_multiple,omitempty"`
+}
+
+// LayoutDetectionConfig configures ONNX-based document layout detection.
+type LayoutDetectionConfig struct {
+	Preset              *string  `json:"preset,omitempty"`
+	ConfidenceThreshold *float32 `json:"confidence_threshold,omitempty"`
+	ApplyHeuristics     *bool    `json:"apply_heuristics,omitempty"`
 }
 
 // PostProcessorConfig determines which post processors run.

@@ -42,6 +42,7 @@ namespace Kreuzberg;
 [JsonSerializable(typeof(HtmlPreprocessingOptions))]
 [JsonSerializable(typeof(KeywordConfig))]
 [JsonSerializable(typeof(PageConfig))]
+[JsonSerializable(typeof(LayoutDetectionConfig))]
 [JsonSerializable(typeof(Metadata))]
 [JsonSerializable(typeof(Table))]
 [JsonSerializable(typeof(Chunk))]

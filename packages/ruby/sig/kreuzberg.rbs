@@ -456,6 +456,15 @@ module Kreuzberg
       def to_h: () -> Hash[Symbol, untyped]
     end
 
+    class LayoutDetection
+      attr_reader preset: String
+      attr_reader confidence_threshold: Float?
+      attr_reader apply_heuristics: bool
+
+      def initialize: (?preset: String, ?confidence_threshold: Float?, ?apply_heuristics: bool) -> void
+      def to_h: () -> Hash[Symbol, untyped]
+    end
+
     class Extraction
       attr_reader use_cache: bool
       attr_reader enable_quality_processing: bool
@@ -471,6 +480,7 @@ module Kreuzberg
       attr_reader keywords: Keywords?
       attr_reader html_options: HtmlOptions?
       attr_reader pages: PageConfig?
+      attr_reader layout: LayoutDetection?
       attr_reader max_concurrent_extractions: Integer?
       attr_reader output_format: String?
       attr_reader result_format: String?
@@ -495,6 +505,7 @@ module Kreuzberg
         ?keywords: (Keywords | Hash[Symbol, untyped])?,
         ?html_options: (HtmlOptions | Hash[Symbol, untyped])?,
         ?pages: (PageConfig | Hash[Symbol, untyped])?,
+        ?layout: (LayoutDetection | Hash[Symbol, untyped])?,
         ?max_concurrent_extractions: Integer?,
         ?output_format: String?,
         ?result_format: String?

@@ -28,9 +28,7 @@ impl PartialOrd for ScoredToken {
 
 impl Ord for ScoredToken {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.importance_score
-            .partial_cmp(&other.importance_score)
-            .unwrap_or(Ordering::Equal)
+        self.importance_score.total_cmp(&other.importance_score)
     }
 }
 
@@ -110,12 +108,7 @@ impl SemanticAnalyzer {
         if let Some(target) = target_reduction {
             let target_count = ((1.0 - target) * result.len() as f32) as usize;
 
-            // Handle NaN values in importance scores by treating them as equal ~keep
-            result.sort_by(|a, b| {
-                b.importance_score
-                    .partial_cmp(&a.importance_score)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-            });
+            result.sort_by(|a, b| b.importance_score.total_cmp(&a.importance_score));
 
             for token in result.iter_mut().skip(target_count) {
                 if let Some(hypernym) = self.get_hypernym(&token.token) {

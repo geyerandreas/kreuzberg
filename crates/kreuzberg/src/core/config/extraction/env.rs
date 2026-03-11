@@ -184,6 +184,27 @@ impl ExtractionConfig {
             }
         }
 
+        // KREUZBERG_LAYOUT_PRESET override
+        #[cfg(feature = "layout-detection")]
+        if let Ok(preset) = std::env::var("KREUZBERG_LAYOUT_PRESET") {
+            let lower = preset.to_lowercase();
+            if !["fast", "accurate", "yolo", "rtdetr", "rt-detr"].contains(&lower.as_str()) {
+                return Err(KreuzbergError::Validation {
+                    message: format!(
+                        "Invalid value for KREUZBERG_LAYOUT_PRESET: '{}'. Valid presets: fast, accurate",
+                        preset
+                    ),
+                    source: None,
+                });
+            }
+            if self.layout.is_none() {
+                self.layout = Some(super::super::layout::LayoutDetectionConfig::default());
+            }
+            if let Some(ref mut layout) = self.layout {
+                layout.preset = lower;
+            }
+        }
+
         Ok(())
     }
 }

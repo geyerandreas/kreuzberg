@@ -180,7 +180,7 @@ impl Eq for PdfPoints {}
 impl Ord for PdfPoints {
     #[inline]
     fn cmp(&self, other: &Self) -> Ordering {
-        self.value.partial_cmp(&other.value).unwrap_or(Ordering::Equal)
+        self.value.total_cmp(&other.value)
     }
 }
 

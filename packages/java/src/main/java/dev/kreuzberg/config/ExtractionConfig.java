@@ -42,6 +42,7 @@ public final class ExtractionConfig {
 	private final HtmlOptions htmlOptions;
 	private final KeywordConfig keywords;
 	private final PageConfig pages;
+	private final LayoutDetectionConfig layout;
 	private final Integer maxConcurrentExtractions;
 	private final Map<String, Object> securityLimits;
 	private final boolean includeDocumentStructure;
@@ -66,6 +67,7 @@ public final class ExtractionConfig {
 		this.htmlOptions = builder.htmlOptions;
 		this.keywords = builder.keywords;
 		this.pages = builder.pages;
+		this.layout = builder.layout;
 		this.maxConcurrentExtractions = builder.maxConcurrentExtractions;
 		this.securityLimits = builder.securityLimits;
 		this.includeDocumentStructure = builder.includeDocumentStructure;
@@ -156,6 +158,16 @@ public final class ExtractionConfig {
 
 	public PageConfig getPages() {
 		return pages;
+	}
+
+	/**
+	 * Get the layout detection configuration.
+	 *
+	 * @return the layout detection configuration, or null if not set
+	 * @since 4.4.0
+	 */
+	public LayoutDetectionConfig getLayout() {
+		return layout;
 	}
 
 	public Integer getMaxConcurrentExtractions() {
@@ -458,6 +470,9 @@ public final class ExtractionConfig {
 		if (pages != null) {
 			map.put("pages", pages.toMap());
 		}
+		if (layout != null) {
+			map.put("layout", layout.toMap());
+		}
 		if (maxConcurrentExtractions != null) {
 			map.put("max_concurrent_extractions", maxConcurrentExtractions);
 		}
@@ -532,6 +547,10 @@ public final class ExtractionConfig {
 		if (pageMap != null) {
 			builder.pages(PageConfig.fromMap(pageMap));
 		}
+		Map<String, Object> layoutMap = asMap(raw.get("layout"));
+		if (layoutMap != null) {
+			builder.layout(LayoutDetectionConfig.fromMap(layoutMap));
+		}
 		if (raw.containsKey("max_concurrent_extractions")) {
 			builder.maxConcurrentExtractions(asInteger(raw.get("max_concurrent_extractions")));
 		}
@@ -603,6 +622,7 @@ public final class ExtractionConfig {
 		private HtmlOptions htmlOptions;
 		private KeywordConfig keywords;
 		private PageConfig pages;
+		private LayoutDetectionConfig layout;
 		private Integer maxConcurrentExtractions;
 		private Map<String, Object> securityLimits;
 
@@ -737,6 +757,19 @@ public final class ExtractionConfig {
 
 		public Builder pages(PageConfig pages) {
 			this.pages = pages;
+			return this;
+		}
+
+		/**
+		 * Set the layout detection configuration.
+		 *
+		 * @param layout
+		 *            the layout detection configuration
+		 * @return this builder for chaining
+		 * @since 4.4.0
+		 */
+		public Builder layout(LayoutDetectionConfig layout) {
+			this.layout = layout;
 			return this;
 		}
 

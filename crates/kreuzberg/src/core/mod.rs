@@ -29,7 +29,7 @@
 //! ```
 
 #[cfg(feature = "tokio-runtime")]
-pub(crate) mod batch_mode;
+pub mod batch_mode;
 #[cfg(feature = "tokio-runtime")]
 pub mod batch_optimizations;
 pub mod config;

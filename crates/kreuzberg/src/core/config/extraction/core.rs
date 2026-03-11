@@ -125,6 +125,18 @@ pub struct ExtractionConfig {
     #[serde(default)]
     pub output_format: OutputFormat,
 
+    /// Layout detection configuration (None = layout detection disabled).
+    ///
+    /// When set, PDF pages and images are analyzed for document structure
+    /// (headings, code, formulas, tables, figures, etc.) using RT-DETR models
+    /// via ONNX Runtime. For PDFs, layout hints override paragraph classification
+    /// in the markdown pipeline. For images, per-region OCR is performed with
+    /// markdown formatting based on detected layout classes.
+    /// Requires the `layout-detection` feature.
+    #[cfg(feature = "layout-detection")]
+    #[serde(default)]
+    pub layout: Option<super::super::layout::LayoutDetectionConfig>,
+
     /// Enable structured document tree output.
     ///
     /// When true, populates the `document` field on `ExtractionResult` with a
@@ -158,6 +170,8 @@ impl Default for ExtractionConfig {
             max_concurrent_extractions: None,
             #[cfg(feature = "archives")]
             security_limits: None,
+            #[cfg(feature = "layout-detection")]
+            layout: None,
             result_format: crate::types::OutputFormat::Unified,
             output_format: OutputFormat::Plain,
             include_document_structure: false,
@@ -182,7 +196,12 @@ impl ExtractionConfig {
 
         let image_extraction_enabled = self.images.as_ref().map(|i| i.extract_images).unwrap_or(false);
 
-        ocr_enabled || image_extraction_enabled
+        #[cfg(feature = "layout-detection")]
+        let layout_enabled = self.layout.is_some();
+        #[cfg(not(feature = "layout-detection"))]
+        let layout_enabled = false;
+
+        ocr_enabled || image_extraction_enabled || layout_enabled
     }
 }
 

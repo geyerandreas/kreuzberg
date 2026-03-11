@@ -25,7 +25,7 @@ impl SentenceSelector {
             })
             .collect();
 
-        scored_sentences.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        scored_sentences.sort_by(|a, b| b.1.total_cmp(&a.1));
 
         let keep_count = ((sentences.len() as f32 * 0.4).ceil() as usize).max(1);
         let mut selected_indices: Vec<usize> = scored_sentences[..keep_count].iter().map(|(i, _, _)| *i).collect();

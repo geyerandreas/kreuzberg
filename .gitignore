@@ -1,4 +1,5 @@
 !benchmarks/baselines/
+tools/benchmark-harness/datasets/
 !vendor/rb-sys/build/
 !vendor/rb-sys/build/**
 *$py.class

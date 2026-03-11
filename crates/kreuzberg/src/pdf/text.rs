@@ -271,12 +271,27 @@ fn extract_text_lazy_fast_path(document: &PdfDocument<'_>) -> Result<PdfTextExtr
     let mut sample_count = 0;
 
     for (page_idx, page) in document.pages().iter().enumerate() {
+        let _t = std::time::Instant::now();
         let text = page
             .text()
             .map_err(|e| PdfError::TextExtractionFailed(format!("Page text extraction failed: {}", e)))?;
+        let load_ms = _t.elapsed().as_secs_f64() * 1000.0;
 
+        let _t2 = std::time::Instant::now();
         let page_text = text.all();
+        let get_ms = _t2.elapsed().as_secs_f64() * 1000.0;
         let page_size = page_text.len();
+
+        if load_ms > 1000.0 || get_ms > 1000.0 {
+            tracing::warn!(
+                "slow page {}/{}: FPDFText_LoadPage={:.0}ms text.all()={:.0}ms chars={}",
+                page_idx + 1,
+                page_count,
+                load_ms,
+                get_ms,
+                page_size
+            );
+        }
 
         if page_idx > 0 {
             content.push_str("\n\n");
@@ -346,12 +361,27 @@ fn extract_text_lazy_with_tracking(
     for (page_idx, page) in document.pages().iter().enumerate() {
         let page_number = page_idx + 1;
 
+        let _t = std::time::Instant::now();
         let text = page
             .text()
             .map_err(|e| PdfError::TextExtractionFailed(format!("Page text extraction failed: {}", e)))?;
+        let load_ms = _t.elapsed().as_secs_f64() * 1000.0;
 
+        let _t2 = std::time::Instant::now();
         let page_text_ref = text.all();
+        let get_ms = _t2.elapsed().as_secs_f64() * 1000.0;
         let page_size = page_text_ref.len();
+
+        if load_ms > 1000.0 || get_ms > 1000.0 {
+            tracing::warn!(
+                "slow page {}/{}: FPDFText_LoadPage={:.0}ms text.all()={:.0}ms chars={}",
+                page_number,
+                document.pages().len(),
+                load_ms,
+                get_ms,
+                page_size
+            );
+        }
 
         if page_idx < 5 {
             total_sample_size += page_size;

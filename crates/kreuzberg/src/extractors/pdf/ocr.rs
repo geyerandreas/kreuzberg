@@ -15,6 +15,20 @@ pub(crate) const MIN_MEANINGFUL_WORD_LEN: usize = 4;
 pub(crate) const MIN_MEANINGFUL_WORDS: usize = 3;
 #[cfg(feature = "ocr")]
 pub(crate) const MIN_ALNUM_RATIO: f64 = 0.3;
+/// Minimum number of Unicode replacement characters (U+FFFD) to trigger OCR fallback.
+#[cfg(feature = "ocr")]
+pub(crate) const MIN_GARBAGE_CHARS: usize = 5;
+/// Maximum fraction of short (1-2 char) words before text is considered fragmented.
+#[cfg(feature = "ocr")]
+pub(crate) const MAX_FRAGMENTED_WORD_RATIO: f64 = 0.6;
+/// Minimum consecutive word repetition ratio to detect column scrambling.
+/// When pdfium reads multi-column text row-by-row, the same words appear as
+/// consecutive duplicates (e.g., "TALK TALK", "of the of the").
+#[cfg(feature = "ocr")]
+pub(crate) const MIN_CONSECUTIVE_REPEAT_RATIO: f64 = 0.08;
+/// Minimum word count before consecutive repetition check is applied.
+#[cfg(feature = "ocr")]
+pub(crate) const MIN_WORDS_FOR_REPEAT_CHECK: usize = 50;
 
 #[cfg(feature = "ocr")]
 pub struct NativeTextStats {
@@ -22,6 +36,14 @@ pub struct NativeTextStats {
     pub alnum: usize,
     pub meaningful_words: usize,
     pub alnum_ratio: f64,
+    /// Count of Unicode replacement characters (U+FFFD) indicating encoding failures.
+    pub garbage_char_count: usize,
+    /// Fraction of whitespace-delimited words that are 1-2 characters (0.0-1.0).
+    /// High values indicate fragmented/garbled text extraction.
+    pub fragmented_word_ratio: f64,
+    /// Fraction of consecutive word pairs that are identical (0.0-1.0).
+    /// High values indicate column scrambling where text is duplicated.
+    pub consecutive_repeat_ratio: f64,
 }
 
 #[cfg(feature = "ocr")]
@@ -37,8 +59,12 @@ impl NativeTextStats {
     pub fn from(text: &str) -> Self {
         let mut non_whitespace = 0usize;
         let mut alnum = 0usize;
+        let mut garbage_char_count = 0usize;
 
         for ch in text.chars() {
+            if ch == '\u{FFFD}' {
+                garbage_char_count += 1;
+            }
             if !ch.is_whitespace() {
                 non_whitespace += 1;
                 if ch.is_alphanumeric() {
@@ -65,11 +91,34 @@ impl NativeTextStats {
             alnum as f64 / non_whitespace as f64
         };
 
+        // Compute fragmented word ratio: fraction of words that are 1-2 chars.
+        // Only meaningful when there are enough words to judge.
+        let words: Vec<&str> = text.split_whitespace().collect();
+        let fragmented_word_ratio = if words.len() >= 10 {
+            let short_count = words.iter().filter(|w| w.len() <= 2).count();
+            short_count as f64 / words.len() as f64
+        } else {
+            0.0
+        };
+
+        // Compute consecutive word repetition ratio: fraction of adjacent word pairs
+        // that are identical. High values indicate column scrambling where pdfium
+        // reads multi-column text row-by-row, duplicating words.
+        let consecutive_repeat_ratio = if words.len() >= MIN_WORDS_FOR_REPEAT_CHECK {
+            let repeat_count = words.windows(2).filter(|pair| pair[0] == pair[1]).count();
+            repeat_count as f64 / (words.len() - 1) as f64
+        } else {
+            0.0
+        };
+
         Self {
             non_whitespace,
             alnum,
             meaningful_words,
             alnum_ratio,
+            garbage_char_count,
+            fragmented_word_ratio,
+            consecutive_repeat_ratio,
         }
     }
 }
@@ -101,6 +150,9 @@ pub fn evaluate_native_text_for_ocr(native_text: &str, page_count: Option<usize>
             alnum: 0,
             meaningful_words: 0,
             alnum_ratio: 0.0,
+            garbage_char_count: 0,
+            fragmented_word_ratio: 0.0,
+            consecutive_repeat_ratio: 0.0,
         };
         return OcrFallbackDecision {
             stats: empty_stats,
@@ -120,6 +172,17 @@ pub fn evaluate_native_text_for_ocr(native_text: &str, page_count: Option<usize>
         && stats.meaningful_words >= MIN_MEANINGFUL_WORDS;
 
     let fallback = if stats.non_whitespace == 0 || stats.alnum == 0 {
+        true
+    } else if stats.garbage_char_count >= MIN_GARBAGE_CHARS {
+        // Many replacement characters indicate encoding failures — OCR is likely better.
+        true
+    } else if stats.fragmented_word_ratio >= MAX_FRAGMENTED_WORD_RATIO && stats.meaningful_words < MIN_MEANINGFUL_WORDS
+    {
+        // Mostly 1-2 char "words" with few meaningful words = garbled extraction.
+        true
+    } else if stats.consecutive_repeat_ratio >= MIN_CONSECUTIVE_REPEAT_RATIO {
+        // High consecutive word repetition indicates column scrambling:
+        // pdfium read multi-column text row-by-row, duplicating words.
         true
     } else if has_substantial_text {
         false
@@ -166,30 +229,75 @@ pub fn evaluate_per_page_ocr(
     document_decision
 }
 
-/// Extract text from PDF using OCR.
+/// Render PDF pages to images for OCR processing.
 ///
-/// Renders all pages to images and processes them with OCR backend.
+/// Returns images at the default OCR DPI (300).
+#[cfg(feature = "ocr")]
+pub(crate) fn render_pages_for_ocr(content: &[u8]) -> crate::Result<Vec<image::DynamicImage>> {
+    use crate::pdf::rendering::{PageRenderOptions, PdfRenderer};
+
+    let render_options = PageRenderOptions::default();
+    let renderer = PdfRenderer::new().map_err(|e| crate::KreuzbergError::Parsing {
+        message: format!("Failed to initialize PDF renderer: {}", e),
+        source: None,
+    })?;
+
+    renderer
+        .render_all_pages(content, &render_options)
+        .map_err(|e| crate::KreuzbergError::Parsing {
+            message: format!("Failed to render PDF pages: {}", e),
+            source: None,
+        })
+}
+
+/// Extract text from PDF using OCR on pre-rendered page images.
+///
+/// When `layout_detections` are provided (pixel-space, from the same images),
+/// uses layout-aware markdown assembly for structured output. Otherwise falls
+/// back to plain OCR text concatenation.
 ///
 /// # Arguments
 ///
-/// * `content` - Raw PDF bytes
+/// * `images` - Pre-rendered page images (shared with layout detection)
+/// * `layout_detections` - Optional pixel-space layout detections per page
 /// * `config` - Extraction configuration including OCR settings
 ///
 /// # Returns
 ///
-/// Concatenated text from all pages, separated by double newlines
+/// Concatenated text from all pages, with markdown structure when layout is available
 #[cfg(feature = "ocr")]
-pub(crate) async fn extract_with_ocr(content: &[u8], config: &ExtractionConfig) -> crate::Result<String> {
-    use crate::pdf::rendering::{PageRenderOptions, PdfRenderer};
+pub(crate) async fn extract_with_ocr(
+    images: &[image::DynamicImage],
+    #[cfg(feature = "layout-detection")] layout_detections: Option<&[crate::layout::DetectionResult]>,
+    config: &ExtractionConfig,
+) -> crate::Result<String> {
     use crate::plugins::registry::get_ocr_backend_registry;
     use image::ImageEncoder;
     use image::codecs::png::PngEncoder;
     use std::io::Cursor;
 
-    let ocr_config = config.ocr.as_ref().ok_or_else(|| crate::KreuzbergError::Parsing {
+    let base_ocr_config = config.ocr.as_ref().ok_or_else(|| crate::KreuzbergError::Parsing {
         message: "OCR config required for force_ocr".to_string(),
         source: None,
     })?;
+
+    // When layout detections are available, ensure OCR produces elements
+    // so the layout assembly module can use them for structured markdown.
+    #[cfg(feature = "layout-detection")]
+    let layout_ocr_config;
+    let ocr_config = {
+        #[cfg(feature = "layout-detection")]
+        if layout_detections.is_some() {
+            layout_ocr_config = ensure_elements_enabled(base_ocr_config);
+            &layout_ocr_config
+        } else {
+            base_ocr_config
+        }
+        #[cfg(not(feature = "layout-detection"))]
+        {
+            base_ocr_config
+        }
+    };
 
     let backend = {
         let registry = get_ocr_backend_registry();
@@ -200,24 +308,17 @@ pub(crate) async fn extract_with_ocr(content: &[u8], config: &ExtractionConfig) 
         registry.get(&ocr_config.backend)?
     };
 
-    let images = {
-        let render_options = PageRenderOptions::default();
-        let renderer = PdfRenderer::new().map_err(|e| crate::KreuzbergError::Parsing {
-            message: format!("Failed to initialize PDF renderer: {}", e),
-            source: None,
-        })?;
-
-        renderer
-            .render_all_pages(content, &render_options)
-            .map_err(|e| crate::KreuzbergError::Parsing {
-                message: format!("Failed to render PDF pages: {}", e),
-                source: None,
-            })?
+    // Initialize SLANet for table structure recognition when layout detection is active
+    #[cfg(feature = "layout-detection")]
+    let mut slanet = if layout_detections.is_some() {
+        init_slanet_model(config)
+    } else {
+        None
     };
 
     let mut page_texts = Vec::with_capacity(images.len());
 
-    for image in images {
+    for (page_idx, image) in images.iter().enumerate() {
         let rgb_image = image.to_rgb8();
         let (width, height) = rgb_image.dimensions();
 
@@ -231,10 +332,40 @@ pub(crate) async fn extract_with_ocr(content: &[u8], config: &ExtractionConfig) 
             })?;
 
         let image_data = image_bytes.into_inner();
-
         let ocr_result = backend.process_image(&image_data, ocr_config).await?;
 
-        page_texts.push(ocr_result.content);
+        // When layout detections are available and OCR produced elements,
+        // use layout-aware markdown assembly instead of plain text.
+        #[cfg(feature = "layout-detection")]
+        if let Some(detections) = layout_detections
+            && let Some(ref elements) = ocr_result.ocr_elements
+            && !elements.is_empty()
+        {
+            let detection = detections.get(page_idx);
+
+            // Run SLANet table recognition if available
+            let recognized_tables = match (detection, slanet.as_mut()) {
+                (Some(det), Some(model)) => {
+                    let rgb = image.to_rgb8();
+                    crate::ocr::layout_assembly::recognize_page_tables(&rgb, det, elements, model)
+                }
+                _ => Vec::new(),
+            };
+
+            let page_md = crate::ocr::layout_assembly::assemble_ocr_markdown(
+                elements,
+                detection,
+                width,
+                height,
+                &recognized_tables,
+            );
+            page_texts.push(page_md);
+            continue;
+        }
+
+        // Fallback: use plain OCR text
+        let _ = page_idx; // used only in layout-detection path above
+        page_texts.push(ocr_result.content.to_string());
     }
 
     let page_marker_cfg = config.pages.as_ref().filter(|p| p.insert_page_markers);
@@ -249,4 +380,180 @@ pub(crate) async fn extract_with_ocr(content: &[u8], config: &ExtractionConfig) 
         result.push_str(text);
     }
     Ok(result)
+}
+
+/// Clone an OCR config with `include_elements` forced to true.
+///
+/// Layout assembly requires OCR elements with bounding geometry. This ensures
+/// the backend produces them regardless of the user's original config.
+#[cfg(all(feature = "ocr", feature = "layout-detection"))]
+fn ensure_elements_enabled(config: &crate::core::config::ocr::OcrConfig) -> crate::core::config::ocr::OcrConfig {
+    let mut config = config.clone();
+    match config.element_config.as_mut() {
+        Some(ec) => ec.include_elements = true,
+        None => {
+            config.element_config = Some(crate::types::OcrElementConfig {
+                include_elements: true,
+                ..Default::default()
+            });
+        }
+    }
+    config
+}
+
+/// Try to initialize SLANet model for table structure recognition.
+///
+/// Returns `None` if the model cannot be loaded (not cached, download failed, etc.)
+/// — table regions will fall back to heuristic grid reconstruction.
+#[cfg(all(feature = "ocr", feature = "layout-detection"))]
+fn init_slanet_model(_config: &ExtractionConfig) -> Option<crate::layout::models::slanet::SlaNetModel> {
+    let manager = crate::layout::LayoutModelManager::new(None);
+
+    let model_path = match manager.ensure_slanet_plus_model() {
+        Ok(p) => p,
+        Err(e) => {
+            tracing::debug!("SLANet model not available, tables will use heuristic: {e}");
+            return None;
+        }
+    };
+
+    match crate::layout::models::slanet::SlaNetModel::from_file(&model_path.to_string_lossy()) {
+        Ok(model) => {
+            tracing::debug!("SLANet-plus table structure recognition initialized");
+            Some(model)
+        }
+        Err(e) => {
+            tracing::warn!("Failed to load SLANet model: {e}");
+            None
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(feature = "ocr")]
+    #[test]
+    fn test_empty_text_triggers_fallback() {
+        let decision = evaluate_native_text_for_ocr("", Some(1));
+        assert!(decision.fallback);
+    }
+
+    #[cfg(feature = "ocr")]
+    #[test]
+    fn test_replacement_chars_trigger_fallback() {
+        let text = "The \u{FFFD}\u{FFFD}\u{FFFD} quick \u{FFFD}\u{FFFD}\u{FFFD} brown fox";
+        let stats = NativeTextStats::from(text);
+        assert_eq!(stats.garbage_char_count, 6);
+        let decision = evaluate_native_text_for_ocr(text, Some(1));
+        assert!(decision.fallback);
+    }
+
+    #[cfg(feature = "ocr")]
+    #[test]
+    fn test_fragmented_words_trigger_fallback() {
+        // Many 1-2 char words = fragmented extraction
+        let text = "T h e q u i c k b r o w n f o x j u m p s";
+        let stats = NativeTextStats::from(text);
+        assert!(stats.fragmented_word_ratio > 0.8);
+        let decision = evaluate_native_text_for_ocr(text, Some(1));
+        assert!(decision.fallback);
+    }
+
+    #[cfg(feature = "ocr")]
+    #[test]
+    fn test_good_text_no_fallback() {
+        let text = "This is a normal paragraph with meaningful words and proper structure. \
+                    It contains multiple sentences that form a coherent text block.";
+        let decision = evaluate_native_text_for_ocr(text, Some(1));
+        assert!(!decision.fallback);
+    }
+
+    #[cfg(feature = "ocr")]
+    #[test]
+    fn test_per_page_single_bad_page_triggers() {
+        use crate::types::PageBoundary;
+
+        let text = "Good text on page one with meaningful content.\x00\x00\x00";
+        let boundaries = vec![
+            PageBoundary {
+                page_number: 1,
+                byte_start: 0,
+                byte_end: 46,
+            },
+            PageBoundary {
+                page_number: 2,
+                byte_start: 46,
+                byte_end: text.len(),
+            },
+        ];
+        let decision = evaluate_per_page_ocr(text, Some(&boundaries), Some(2));
+        // Page 2 has only null bytes → triggers fallback
+        assert!(decision.fallback);
+    }
+
+    #[cfg(feature = "ocr")]
+    #[test]
+    fn test_few_replacement_chars_no_fallback() {
+        // Under the threshold — don't trigger
+        let text = "The quick \u{FFFD} brown fox jumps over the lazy dog repeatedly.";
+        let stats = NativeTextStats::from(text);
+        assert_eq!(stats.garbage_char_count, 1);
+        let decision = evaluate_native_text_for_ocr(text, Some(1));
+        assert!(!decision.fallback);
+    }
+
+    #[cfg(feature = "ocr")]
+    #[test]
+    fn test_consecutive_repeat_detects_column_scrambling() {
+        // Simulated scrambled column text: "TALK TALK of of the the TOWN TOWN"
+        // Build text with enough words (≥50) to trigger the check
+        let mut words = Vec::new();
+        for _ in 0..10 {
+            words.extend_from_slice(&[
+                "TALK", "TALK", "of", "of", "the", "the", "TOWN", "TOWN", "London", "London",
+            ]);
+        }
+        let text = words.join(" ");
+        let stats = NativeTextStats::from(&text);
+        assert!(
+            stats.consecutive_repeat_ratio >= MIN_CONSECUTIVE_REPEAT_RATIO,
+            "ratio {} should be >= {}",
+            stats.consecutive_repeat_ratio,
+            MIN_CONSECUTIVE_REPEAT_RATIO
+        );
+        let decision = evaluate_native_text_for_ocr(&text, Some(1));
+        assert!(decision.fallback, "Scrambled column text should trigger OCR fallback");
+    }
+
+    #[cfg(feature = "ocr")]
+    #[test]
+    fn test_normal_text_no_consecutive_repeat_false_positive() {
+        // Normal text with enough words — should NOT trigger
+        let text = "The quick brown fox jumps over the lazy dog. This is a completely normal \
+                    paragraph of text that forms coherent sentences. It contains multiple \
+                    meaningful words and no unusual patterns of repetition. The text continues \
+                    with more content that demonstrates typical English prose structure and \
+                    vocabulary distribution across several sentences of varying length.";
+        let stats = NativeTextStats::from(text);
+        assert!(
+            stats.consecutive_repeat_ratio < MIN_CONSECUTIVE_REPEAT_RATIO,
+            "Normal text ratio {} should be < {}",
+            stats.consecutive_repeat_ratio,
+            MIN_CONSECUTIVE_REPEAT_RATIO
+        );
+    }
+
+    #[cfg(feature = "ocr")]
+    #[test]
+    fn test_short_words_in_normal_text_no_false_positive() {
+        // Natural text with some short words (a, I, to, of, is) mixed with meaningful words
+        let text = "I am a fan of this document. He is on to something here. \
+                    We do have meaningful words like paragraph and structure throughout.";
+        let stats = NativeTextStats::from(text);
+        assert!(stats.meaningful_words >= MIN_MEANINGFUL_WORDS);
+        let decision = evaluate_native_text_for_ocr(text, Some(1));
+        assert!(!decision.fallback);
+    }
 }

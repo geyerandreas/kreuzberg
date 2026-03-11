@@ -48,7 +48,16 @@ kreuzberg-ffi = { path = "./crates/kreuzberg-ffi", version = "4.4.6" }
 
 # Pinned: fastembed 5.12 requires exact =2.0.0-rc.11, kreuzberg-paddle-ocr must match
 ort = { version = "=2.0.0-rc.11", default-features = false }
-tokio = { version = "1.50.0", features = ["sync", "process", "fs", "io-util"] }
+tokio = { version = "1.50.0", features = [
+    "rt",
+    "rt-multi-thread",
+    "macros",
+    "sync",
+    "process",
+    "fs",
+    "time",
+    "io-util",
+] }
 
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = { version = "1.0.149" }
@@ -106,6 +115,11 @@ strip = true
 [profile.dev]
 opt-level = 0
 debug = true
+
+[profile.profiling]
+inherits = "release"
+debug = true
+strip = false
 
 [profile.release.package.kreuzberg-wasm]
 opt-level = "z"

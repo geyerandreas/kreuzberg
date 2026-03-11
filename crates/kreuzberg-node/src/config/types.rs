@@ -965,6 +965,33 @@ pub struct JsPageConfig {
 }
 
 #[napi(object)]
+pub struct JsLayoutDetectionConfig {
+    pub preset: Option<String>,
+    pub confidence_threshold: Option<f64>,
+    pub apply_heuristics: Option<bool>,
+}
+
+impl From<JsLayoutDetectionConfig> for kreuzberg::core::config::layout::LayoutDetectionConfig {
+    fn from(val: JsLayoutDetectionConfig) -> Self {
+        kreuzberg::core::config::layout::LayoutDetectionConfig {
+            preset: val.preset.unwrap_or_else(|| "fast".to_string()),
+            confidence_threshold: val.confidence_threshold.map(|v| v as f32),
+            apply_heuristics: val.apply_heuristics.unwrap_or(true),
+        }
+    }
+}
+
+impl From<kreuzberg::core::config::layout::LayoutDetectionConfig> for JsLayoutDetectionConfig {
+    fn from(config: kreuzberg::core::config::layout::LayoutDetectionConfig) -> Self {
+        Self {
+            preset: Some(config.preset),
+            confidence_threshold: config.confidence_threshold.map(|v| v as f64),
+            apply_heuristics: Some(config.apply_heuristics),
+        }
+    }
+}
+
+#[napi(object)]
 pub struct JsExtractionConfig {
     pub use_cache: Option<bool>,
     pub enable_quality_processing: Option<bool>,
@@ -986,6 +1013,8 @@ pub struct JsExtractionConfig {
     pub result_format: Option<String>,
     /// Include document structure in extraction result
     pub include_document_structure: Option<bool>,
+    /// Layout detection configuration (None = layout detection disabled)
+    pub layout: Option<JsLayoutDetectionConfig>,
 }
 
 impl TryFrom<JsPageConfig> for kreuzberg::core::config::PageConfig {
@@ -1064,6 +1093,7 @@ impl TryFrom<JsExtractionConfig> for ExtractionConfig {
                 .unwrap_or_default(),
             include_document_structure: val.include_document_structure.unwrap_or(false),
             security_limits: None,
+            layout: val.layout.map(Into::into),
         })
     }
 }
@@ -1208,6 +1238,7 @@ impl TryFrom<ExtractionConfig> for JsExtractionConfig {
                 kreuzberg::types::OutputFormat::ElementBased => "element_based".to_string(),
             }),
             include_document_structure: Some(val.include_document_structure),
+            layout: val.layout.map(JsLayoutDetectionConfig::from),
         })
     }
 }

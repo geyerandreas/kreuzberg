@@ -30,6 +30,126 @@ use extraction::extract_all_from_document;
 use ocr::extract_with_ocr;
 use pages::assign_tables_and_images_to_pages;
 
+/// Run layout detection on PDF bytes and return per-page layout hints.
+///
+/// Returns `None` when layout detection is not configured or fails.
+/// Failures are logged as warnings but do not propagate — extraction
+/// continues without layout hints (graceful degradation).
+/// Layout detection result bundle: hints for markdown pipeline, rendered images, and raw results.
+///
+/// Images and raw results are used by SLANet table recognition in the native path.
+#[cfg(all(feature = "pdf", feature = "layout-detection"))]
+struct LayoutDetectionBundle {
+    hints: Vec<Vec<crate::pdf::markdown::types::LayoutHint>>,
+    images: Vec<image::DynamicImage>,
+    results: Vec<crate::pdf::layout_runner::PageLayoutResult>,
+}
+
+#[cfg(all(feature = "pdf", feature = "layout-detection"))]
+fn run_layout_detection(content: &[u8], config: &ExtractionConfig) -> Option<LayoutDetectionBundle> {
+    let layout_config = config.layout.as_ref()?;
+
+    // Only run for output formats that use the markdown pipeline.
+    let needs_structured = matches!(
+        config.output_format,
+        OutputFormat::Markdown | OutputFormat::Djot | OutputFormat::Html
+    );
+    if !needs_structured {
+        tracing::debug!("Layout detection skipped: output format does not use markdown pipeline");
+        return None;
+    }
+
+    let mut engine = match crate::layout::create_engine(layout_config) {
+        Ok(e) => e,
+        Err(e) => {
+            tracing::warn!("Layout engine init failed, continuing without: {}", e);
+            return None;
+        }
+    };
+
+    match crate::pdf::layout_runner::detect_layout_for_document(content, &mut engine) {
+        Ok((results, timing, images)) => {
+            tracing::info!(
+                total_ms = timing.total_ms,
+                avg_inference_ms = timing.avg_inference_ms(),
+                page_count = results.len(),
+                total_detections = results.iter().map(|r| r.regions.len()).sum::<usize>(),
+                "Layout detection completed"
+            );
+            let hints = extraction::convert_results_to_hints(&results);
+            Some(LayoutDetectionBundle { hints, images, results })
+        }
+        Err(e) => {
+            tracing::warn!("Layout detection failed, continuing without: {}", e);
+            None
+        }
+    }
+}
+
+/// Run layout detection on pre-rendered images, returning pixel-space results.
+///
+/// Used by the OCR path to share rendered images with layout detection.
+/// Returns `None` when layout detection is not configured or fails.
+#[cfg(all(feature = "pdf", feature = "layout-detection", feature = "ocr"))]
+fn run_layout_detection_on_images(
+    images: &[image::DynamicImage],
+    config: &ExtractionConfig,
+) -> Option<Vec<crate::layout::DetectionResult>> {
+    let layout_config = config.layout.as_ref()?;
+
+    let needs_structured = matches!(
+        config.output_format,
+        OutputFormat::Markdown | OutputFormat::Djot | OutputFormat::Html
+    );
+    if !needs_structured {
+        return None;
+    }
+
+    let mut engine = match crate::layout::create_engine(layout_config) {
+        Ok(e) => e,
+        Err(e) => {
+            tracing::warn!("Layout engine init failed for OCR path: {}", e);
+            return None;
+        }
+    };
+
+    match crate::pdf::layout_runner::detect_layout_for_images(images, &mut engine) {
+        Ok(results) => {
+            let total_detections: usize = results.iter().map(|r| r.detections.len()).sum();
+            tracing::info!(
+                page_count = results.len(),
+                total_detections,
+                "Layout detection on OCR images completed"
+            );
+            Some(results)
+        }
+        Err(e) => {
+            tracing::warn!("Layout detection on OCR images failed: {}", e);
+            None
+        }
+    }
+}
+
+/// Render PDF pages, optionally run layout detection, then run OCR.
+///
+/// Renders images once and shares them between layout detection and OCR
+/// to avoid redundant PDF rendering.
+#[cfg(feature = "ocr")]
+async fn run_ocr_with_layout(content: &[u8], config: &ExtractionConfig) -> crate::Result<String> {
+    let images = ocr::render_pages_for_ocr(content)?;
+
+    #[cfg(feature = "layout-detection")]
+    let layout_detections = run_layout_detection_on_images(&images, config);
+
+    extract_with_ocr(
+        &images,
+        #[cfg(feature = "layout-detection")]
+        layout_detections.as_deref(),
+        config,
+    )
+    .await
+}
+
 /// PDF document extractor using pypdfium2 and playa-pdf.
 pub struct PdfExtractor;
 
@@ -117,10 +237,23 @@ impl DocumentExtractor for PdfExtractor {
 
                 let document = load_pdf_from_byte_slice(&pdfium, &content, &config)?;
 
-                extract_all_from_document(&document, config)?
+                extract_all_from_document(&document, config, None, None, None)?
             }
             #[cfg(all(not(target_arch = "wasm32"), feature = "tokio-runtime"))]
             {
+                // Run layout detection on the derotated bytes (shared by all tokio paths).
+                // Layout hints are plain data (Vec/f32/enum), so they are Send and can
+                // be moved into spawn_blocking if needed.
+                #[cfg(feature = "layout-detection")]
+                let layout_bundle = run_layout_detection(content, config);
+                #[cfg(feature = "layout-detection")]
+                let (layout_hints, layout_images, layout_results) = match layout_bundle {
+                    Some(b) => (Some(b.hints), Some(b.images), Some(b.results)),
+                    None => (None, None, None),
+                };
+                #[cfg(not(feature = "layout-detection"))]
+                let layout_hints: Option<Vec<Vec<crate::pdf::markdown::types::LayoutHint>>> = None;
+
                 if crate::core::batch_mode::is_batch_mode() {
                     let content_owned = content.to_vec();
                     let span = tracing::Span::current();
@@ -142,8 +275,20 @@ impl DocumentExtractor for PdfExtractor {
                             pre_rendered_markdown,
                             has_font_encoding_issues,
                             pdf_annotations,
-                        ) = extract_all_from_document(&document, &config_owned)
-                            .map_err(|e| PdfError::ExtractionFailed(e.to_string()))?;
+                        ) = extract_all_from_document(
+                            &document,
+                            &config_owned,
+                            layout_hints.as_deref(),
+                            #[cfg(feature = "layout-detection")]
+                            layout_images.as_deref(),
+                            #[cfg(not(feature = "layout-detection"))]
+                            None,
+                            #[cfg(feature = "layout-detection")]
+                            layout_results.as_deref(),
+                            #[cfg(not(feature = "layout-detection"))]
+                            None,
+                        )
+                        .map_err(|e| PdfError::ExtractionFailed(e.to_string()))?;
 
                         if let Some(page_cfg) = config_owned.pages.as_ref()
                             && page_cfg.extract_pages
@@ -179,24 +324,56 @@ impl DocumentExtractor for PdfExtractor {
 
                     let document = load_pdf_from_byte_slice(&pdfium, content, config)?;
 
-                    extract_all_from_document(&document, config)?
+                    extract_all_from_document(
+                        &document,
+                        config,
+                        layout_hints.as_deref(),
+                        #[cfg(feature = "layout-detection")]
+                        layout_images.as_deref(),
+                        #[cfg(not(feature = "layout-detection"))]
+                        None,
+                        #[cfg(feature = "layout-detection")]
+                        layout_results.as_deref(),
+                        #[cfg(not(feature = "layout-detection"))]
+                        None,
+                    )?
                 }
             }
             #[cfg(all(not(target_arch = "wasm32"), not(feature = "tokio-runtime")))]
             {
+                #[cfg(feature = "layout-detection")]
+                let layout_bundle = run_layout_detection(content, config);
+                #[cfg(feature = "layout-detection")]
+                let (layout_hints, layout_images, layout_results) = match layout_bundle {
+                    Some(b) => (Some(b.hints), Some(b.images), Some(b.results)),
+                    None => (None, None, None),
+                };
+                #[cfg(not(feature = "layout-detection"))]
+                let (layout_hints, layout_images, layout_results): (
+                    Option<Vec<Vec<crate::pdf::markdown::types::LayoutHint>>>,
+                    Option<()>,
+                    Option<()>,
+                ) = (None, None, None);
+
                 let pdfium =
                     crate::pdf::bindings::bind_pdfium(PdfError::MetadataExtractionFailed, "initialize Pdfium")?;
 
-                let document = load_pdf_from_byte_slice(&pdfium, content, config)?;
+                let document = load_pdf_from_byte_slice(&pdfium, &content, &config)?;
 
-                extract_all_from_document(&document, config)?
+                extract_all_from_document(
+                    &document,
+                    config,
+                    layout_hints.as_deref(),
+                    layout_images.as_deref(),
+                    layout_results.as_deref(),
+                )?
             }
         };
 
         #[cfg(feature = "ocr")]
         let (text, used_ocr) = if config.force_ocr {
             if config.ocr.is_some() {
-                (extract_with_ocr(content, config).await?, true)
+                (run_ocr_with_layout(content, config).await?, true)
             } else {
                 (native_text, false)
             }
@@ -223,7 +400,7 @@ impl DocumentExtractor for PdfExtractor {
             }
 
             if decision.fallback || has_font_encoding_issues {
-                (extract_with_ocr(content, config).await?, true)
+                (run_ocr_with_layout(content, config).await?, true)
             } else {
                 (native_text, false)
             }

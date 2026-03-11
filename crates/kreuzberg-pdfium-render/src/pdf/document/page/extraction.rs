@@ -103,10 +103,9 @@ fn extract_via_structure_tree(page: &PdfPage<'_>) -> Result<Option<PageExtractio
         return Ok(None);
     }
 
-    // Build a map from MCID → text content by scanning all text objects on the page.
-    let mcid_text_map = build_mcid_text_map(page)?;
-    // Also build a map from MCID → font properties for style detection.
-    let mcid_style_map = build_mcid_style_map(page)?;
+    // Build maps from MCID → text content and MCID → style in a single pass
+    // over all page objects (avoids iterating the object list twice).
+    let (mcid_text_map, mcid_style_map) = build_mcid_maps(page)?;
 
     if mcid_text_map.is_empty() {
         return Ok(None);
@@ -148,10 +147,18 @@ struct TextStyle {
     bounds: Option<PdfRect>,
 }
 
-/// Builds a mapping from Marked Content ID (MCID) to concatenated text content.
-fn build_mcid_text_map(page: &PdfPage<'_>) -> Result<HashMap<i32, String>, PdfiumError> {
-    let mut map: HashMap<i32, String> = HashMap::new();
+/// Builds both MCID → text and MCID → style maps in a single pass over page objects.
+///
+/// Uses the pre-loaded text page handle to avoid calling `FPDFText_LoadPage` per object
+/// (which was the root cause of multi-second extraction times on complex pages).
+type McidMaps = (HashMap<i32, String>, HashMap<i32, TextStyle>);
+
+fn build_mcid_maps(page: &PdfPage<'_>) -> Result<McidMaps, PdfiumError> {
     let objects = page.objects();
+    let text_page = page.text()?;
+
+    let mut text_map: HashMap<i32, String> = HashMap::new();
+    let mut style_map: HashMap<i32, TextStyle> = HashMap::new();
 
     for i in 0..objects.len() {
         let object = objects.get(i)?;
@@ -159,60 +166,39 @@ fn build_mcid_text_map(page: &PdfPage<'_>) -> Result<HashMap<i32, String>, Pdfiu
         if let Some(text_obj) = object.as_text_object()
             && let Some(mcid) = object.marked_content_id()
         {
-            let text = text_obj.text();
+            // Text: use pre-loaded text page handle (fast path).
+            let text = text_page.for_object(text_obj);
             if !text.is_empty() {
-                map.entry(mcid)
+                text_map
+                    .entry(mcid)
                     .and_modify(|existing| existing.push_str(&text))
                     .or_insert(text);
             }
-        }
-    }
 
-    Ok(map)
-}
-
-/// Builds a mapping from MCID to style information (font size, bold, italic, bounds).
-fn build_mcid_style_map(page: &PdfPage<'_>) -> Result<HashMap<i32, TextStyle>, PdfiumError> {
-    let mut map: HashMap<i32, TextStyle> = HashMap::new();
-    let objects = page.objects();
-
-    for i in 0..objects.len() {
-        let object = objects.get(i)?;
-
-        if let Some(text_obj) = object.as_text_object()
-            && let Some(mcid) = object.marked_content_id()
-        {
-            // Only store the first text object's style per MCID.
-            if map.contains_key(&mcid) {
-                continue;
-            }
-
-            let font = text_obj.font();
-            let is_bold = font.weight().ok().is_some_and(|w| {
-                matches!(
-                    w,
-                    PdfFontWeight::Weight700Bold | PdfFontWeight::Weight800 | PdfFontWeight::Weight900
-                )
-            }) || font.is_bold_reenforced()
-                || font.name().to_ascii_lowercase().contains("bold");
-            let is_italic = font.is_italic();
-            let font_size = text_obj.scaled_font_size().value;
-
-            let bounds = object.bounds().ok().map(|qp| qp.to_rect());
-
-            map.insert(
-                mcid,
+            // Style: only store the first text object's style per MCID.
+            style_map.entry(mcid).or_insert_with(|| {
+                let font = text_obj.font();
+                let is_bold = font.weight().ok().is_some_and(|w| {
+                    matches!(
+                        w,
+                        PdfFontWeight::Weight700Bold | PdfFontWeight::Weight800 | PdfFontWeight::Weight900
+                    )
+                }) || font.is_bold_reenforced()
+                    || font.name().to_ascii_lowercase().contains("bold");
+                let is_italic = font.is_italic();
+                let font_size = text_obj.scaled_font_size().value;
+                let bounds = object.bounds().ok().map(|qp| qp.to_rect());
                 TextStyle {
                     font_size,
                     is_bold,
                     is_italic,
                     bounds,
-                },
-            );
+                }
+            });
         }
     }
 
-    Ok(map)
+    Ok((text_map, style_map))
 }
 
 /// Extracts a single block from a structure element, resolving text via MCID mapping.
@@ -382,14 +368,16 @@ fn is_structural_wrapper(role: &ContentRole) -> bool {
 /// Groups text objects into blocks based on spatial position and font properties.
 fn extract_via_heuristics(page: &PdfPage<'_>) -> Result<PageExtraction, PdfiumError> {
     let objects = page.objects();
+    let text_page = page.text()?;
     let mut text_entries: Vec<TextEntry> = Vec::new();
 
     // Collect all text objects with their properties.
+    // Uses pre-loaded text_page handle to avoid calling FPDFText_LoadPage per object.
     for i in 0..objects.len() {
         let object = objects.get(i)?;
 
         if let Some(text_obj) = object.as_text_object() {
-            let text = text_obj.text();
+            let text = text_page.for_object(text_obj);
             if text.is_empty() {
                 continue;
             }
@@ -480,14 +468,11 @@ fn group_text_into_blocks(entries: Vec<TextEntry>, body_font_size: f32, page_hei
             .as_ref()
             .map(|r| page_height.value - r.top().value)
             .unwrap_or(0.0);
-        a_top
-            .partial_cmp(&b_top)
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then_with(|| {
-                let a_left = a.bounds.as_ref().map(|r| r.left().value).unwrap_or(0.0);
-                let b_left = b.bounds.as_ref().map(|r| r.left().value).unwrap_or(0.0);
-                a_left.partial_cmp(&b_left).unwrap_or(std::cmp::Ordering::Equal)
-            })
+        a_top.total_cmp(&b_top).then_with(|| {
+            let a_left = a.bounds.as_ref().map(|r| r.left().value).unwrap_or(0.0);
+            let b_left = b.bounds.as_ref().map(|r| r.left().value).unwrap_or(0.0);
+            a_left.total_cmp(&b_left)
+        })
     });
 
     // Group entries that are close together vertically.

@@ -151,6 +151,6 @@ pub fn filter_old_cache_entries(cache_times: &[f64], current_time: f64, max_age_
 }
 
 pub fn sort_cache_by_access_time(mut entries: Vec<(String, f64)>) -> Vec<String> {
-    entries.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+    entries.sort_by(|a, b| a.1.total_cmp(&b.1));
     entries.into_iter().map(|(key, _)| key).collect()
 }

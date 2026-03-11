@@ -126,10 +126,105 @@ enum Commands {
         #[arg(long)]
         output: PathBuf,
     },
+
+    /// Compare extraction pipelines on PDF corpus with quality scoring
+    Compare {
+        /// Directory containing fixture JSON files
+        #[arg(short, long)]
+        fixtures: PathBuf,
+
+        /// Pipelines to compare (comma-separated: baseline,layout,tesseract,paddle,docling)
+        #[arg(long, value_delimiter = ',')]
+        pipelines: Option<Vec<String>>,
+
+        /// Dump extraction outputs to /tmp/kreuzberg_compare/
+        #[arg(long)]
+        dump_outputs: bool,
+
+        /// Enable quality guardrails (fail on regressions)
+        #[arg(long)]
+        guardrails: bool,
+
+        /// Only run documents whose name contains this string
+        #[arg(long)]
+        filter: Option<String>,
+    },
+
+    /// Run 6-path pipeline benchmark across the PDF corpus
+    PipelineBenchmark {
+        /// Directory containing fixture JSON files
+        #[arg(short, long)]
+        fixtures: PathBuf,
+
+        /// Pipeline paths to run (comma-separated: baseline,layout,tesseract,tesseract+layout,paddle,paddle+layout)
+        #[arg(long, value_delimiter = ',')]
+        paths: Option<Vec<String>>,
+
+        /// Only run documents whose name contains one of these strings (comma-separated)
+        #[arg(long, value_delimiter = ',')]
+        doc: Option<Vec<String>>,
+
+        /// Dump outputs to /tmp/kreuzberg_pipeline/
+        #[arg(long)]
+        dump_outputs: bool,
+
+        /// Write JSON results to this file
+        #[arg(long)]
+        json_output: Option<PathBuf>,
+
+        /// Sort results by metric for triage (sf1, tf1, time)
+        #[arg(long, default_value = "sf1")]
+        sort_by: String,
+
+        /// Show only the bottom N worst-performing documents
+        #[arg(long)]
+        bottom_n: Option<usize>,
+
+        /// Print per-block-type F1 breakdown for triage
+        #[arg(long)]
+        triage_blocks: bool,
+
+        /// Generate per-pipeline flamegraph SVGs in this directory
+        #[arg(long)]
+        profile_dir: Option<PathBuf>,
+    },
+
+    /// Corpus-wide extraction survey with stats
+    Survey {
+        /// Directory containing fixture JSON files
+        #[arg(short, long)]
+        fixtures: PathBuf,
+
+        /// File types to include (comma-separated, e.g. pdf,docx)
+        #[arg(long, value_delimiter = ',')]
+        types: Option<Vec<String>>,
+    },
+
+    /// Layout model A/B comparison benchmark
+    ModelBenchmark {
+        /// Directory containing fixture JSON files
+        #[arg(short, long)]
+        fixtures: PathBuf,
+
+        /// First model preset name
+        #[arg(long, default_value = "fast")]
+        model_a: String,
+
+        /// Second model preset name
+        #[arg(long, default_value = "accurate")]
+        model_b: String,
+    },
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // Initialize tracing with env-filter support.
+    // Use RUST_LOG=benchmark_harness::markdown_quality=debug for scoring diagnostics.
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_writer(std::io::stderr)
+        .init();
+
     let cli = Cli::parse();
 
     match cli.command {
@@ -512,6 +607,149 @@ async fn main() -> Result<()> {
             std::fs::write(&output_file, json).map_err(benchmark_harness::Error::Io)?;
             println!("\nResults written to: {}", output_file.display());
 
+            Ok(())
+        }
+
+        Commands::Compare {
+            fixtures,
+            pipelines,
+            dump_outputs,
+            guardrails,
+            filter,
+        } => {
+            use benchmark_harness::comparison::{ComparisonConfig, Pipeline, run_with_guardrails};
+
+            let selected_pipelines = match pipelines {
+                Some(names) => names.iter().filter_map(|n| Pipeline::parse(n)).collect(),
+                None => vec![Pipeline::Baseline, Pipeline::Layout],
+            };
+
+            let config = ComparisonConfig {
+                fixtures_dir: fixtures,
+                pipelines: selected_pipelines,
+                dump_outputs,
+                guardrails,
+                name_filter: filter,
+            };
+
+            let exit_code = run_with_guardrails(&config).await?;
+            if exit_code != 0 {
+                std::process::exit(exit_code);
+            }
+            Ok(())
+        }
+
+        Commands::PipelineBenchmark {
+            fixtures,
+            paths,
+            doc,
+            dump_outputs,
+            json_output,
+            sort_by,
+            bottom_n,
+            triage_blocks,
+            profile_dir,
+        } => {
+            use benchmark_harness::comparison::Pipeline;
+            use benchmark_harness::pipeline_benchmark::{
+                PipelineBenchmarkConfig, SortMetric, default_paths, print_pipeline_table, print_triage_blocks,
+                run_pipeline_benchmark, write_json_output,
+            };
+
+            let selected_paths = match paths {
+                Some(names) => names.iter().filter_map(|n| Pipeline::parse(n)).collect(),
+                None => default_paths(),
+            };
+
+            let sort_metric = SortMetric::parse(&sort_by).unwrap_or_default();
+
+            // Per-pipeline profiling: run each pipeline separately with its own ProfileGuard
+            if let Some(ref prof_dir) = profile_dir {
+                use benchmark_harness::profiling::ProfileGuard;
+
+                std::fs::create_dir_all(prof_dir).map_err(benchmark_harness::Error::Io)?;
+
+                for &pipeline in &selected_paths {
+                    let svg_path = prof_dir.join(format!("{}.svg", pipeline.name()));
+                    eprintln!("\nProfiling pipeline: {} → {}", pipeline.name(), svg_path.display());
+
+                    let config = PipelineBenchmarkConfig {
+                        fixtures_dir: fixtures.clone(),
+                        paths: vec![pipeline],
+                        doc_filter: doc.clone().unwrap_or_default(),
+                        dump_outputs,
+                        json_output: None,
+                        sort_by: sort_metric,
+                        bottom_n: None,
+                        triage_blocks: false,
+                    };
+
+                    let guard = ProfileGuard::new(1000)?;
+                    let results = run_pipeline_benchmark(&config).await?;
+                    let profiling_result = guard.finish()?;
+                    profiling_result.generate_flamegraph(&svg_path)?;
+
+                    // Print summary for this pipeline
+                    print_pipeline_table(&results, sort_metric, None);
+                }
+
+                return Ok(());
+            }
+
+            let config = PipelineBenchmarkConfig {
+                fixtures_dir: fixtures,
+                paths: selected_paths,
+                doc_filter: doc.unwrap_or_default(),
+                dump_outputs,
+                json_output: json_output.clone(),
+                sort_by: sort_metric,
+                bottom_n,
+                triage_blocks,
+            };
+
+            let results = run_pipeline_benchmark(&config).await?;
+            print_pipeline_table(&results, sort_metric, bottom_n);
+
+            if triage_blocks {
+                print_triage_blocks(&results, sort_metric, bottom_n.unwrap_or(10));
+            }
+
+            if let Some(ref path) = json_output {
+                write_json_output(&results, path)?;
+            }
+
+            Ok(())
+        }
+
+        Commands::Survey { fixtures, types } => {
+            use benchmark_harness::survey::{SurveyConfig, print_survey_table, run_survey};
+
+            let config = SurveyConfig {
+                fixtures_dir: fixtures,
+                file_types: types,
+            };
+
+            let results = run_survey(&config).await?;
+            print_survey_table(&results);
+            Ok(())
+        }
+
+        Commands::ModelBenchmark {
+            fixtures,
+            model_a,
+            model_b,
+        } => {
+            use benchmark_harness::model_benchmark::{ModelBenchmarkConfig, print_model_table, run_model_benchmark};
+
+            let config = ModelBenchmarkConfig {
+                fixtures_dir: fixtures,
+                model_a: model_a.clone(),
+                model_b: model_b.clone(),
+                ..Default::default()
+            };
+
+            let results = run_model_benchmark(&config).await?;
+            print_model_table(&results, &model_a, &model_b);
             Ok(())
         }
 
