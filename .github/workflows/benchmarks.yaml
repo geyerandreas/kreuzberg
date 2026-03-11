@@ -113,7 +113,7 @@ jobs:
           build-profile: release
 
       - name: Build FFI library
-        uses: ./.github/actions/build-rust-ffi
+        uses: kreuzberg-dev/actions/build-rust-ffi@v1
         with:
           crate-name: kreuzberg-ffi
           build-profile: release
