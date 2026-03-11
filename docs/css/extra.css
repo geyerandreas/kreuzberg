@@ -1430,3 +1430,61 @@ body:has(.full-width-iframe) article {
 	background-color: #1e4a2e;
 	color: #50fa7b;
 }
+
+/* =====================================================
+   Homepage Styles
+   ===================================================== */
+
+/* Hero badges - centered CTA row */
+.hero-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 12px;
+	margin: 1.5rem 0 0.5rem;
+}
+
+.hero-badges .md-button {
+	font-size: 0.9rem;
+	padding: 0.6em 1.4em;
+}
+
+/* Grid cards polish */
+.md-typeset .grid.cards > ul > li,
+.md-typeset .grid.cards > ol > li {
+	border: 1px solid rgba(0, 0, 0, 0.08);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.md-typeset .grid.cards > ul > li:hover,
+.md-typeset .grid.cards > ol > li:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .grid.cards > ul > li,
+[data-md-color-scheme="slate"] .md-typeset .grid.cards > ol > li {
+	border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .grid.cards > ul > li:hover,
+[data-md-color-scheme="slate"] .md-typeset .grid.cards > ol > li:hover {
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+}
+
+/* Card icon accent color */
+.md-typeset .grid.cards .twemoji,
+.md-typeset .grid.cards .emojione,
+.md-typeset .grid.cards .middle {
+	color: #da2ae0;
+}
+
+[data-md-color-scheme="slate"] .md-typeset .grid.cards .twemoji,
+[data-md-color-scheme="slate"] .md-typeset .grid.cards .emojione,
+[data-md-color-scheme="slate"] .md-typeset .grid.cards .middle {
+	color: #58fbda;
+}
+
+/* Tighten spacing on homepage h1 */
+.md-typeset h1:first-child {
+	margin-bottom: 0.4rem;
+}

@@ -9,7 +9,7 @@ Get up and running with Kreuzberg in minutes.
     - **`@kreuzberg/node`** – Use for Node.js servers and CLI tools (native performance, 100% speed)
     - **`@kreuzberg/wasm`** – Use for browsers, Cloudflare Workers, Deno, Bun, and serverless (60-80% speed, cross-platform)
 
-    The examples below show both. Pick the one matching your runtime. See [Platform Overview](../index.md#choosing-between-typescript-packages) for detailed guidance.
+    The examples below show both. Pick the one matching your runtime. See [Platform Overview](../index.md#language-support) for detailed guidance.
 
 ## Basic Extraction
 

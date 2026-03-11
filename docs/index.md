@@ -1,93 +1,155 @@
+---
+description: "Kreuzberg – Extract text, tables, and metadata from 75+ file formats with a Rust core and native bindings for 12 languages. No GPU required."
+---
+
 # Kreuzberg Documentation
+
 Kreuzberg is a document intelligence platform with a high‑performance Rust core and native bindings for Python, TypeScript/Node.js, C#, Ruby, Go, Elixir, and Rust itself. Use it as an SDK, CLI, Docker image, REST API server, or MCP tool to extract text, tables, and metadata from 75+ file formats (PDF, Office, images, HTML, XML, archives, email, and more) with optional OCR and post-processing pipelines.
 
-## What You Can Do
 
-- **Single API across languages** – Binding idioms follow each ecosystem, but features (extraction, OCR, chunking, embeddings, plugins) map 1:1.
-- **Structured extraction** – Convert PDFs, Office docs, images, emails, HTML, XML, and archives into clean Markdown/JSON, preserving tables and metadata.
-- **Multi-engine OCR** – Built-in Tesseract and PaddleOCR support in all bindings, with EasyOCR extension for Python.
-- **Plugin ecosystem** – Register post-processors, validators, OCR backends, and run them from any binding or via the CLI/API server.
-- **Deployment flexibility** – Ship as a library, run the CLI, or host the API server/MCP adapter inside containers.
-- **AI coding assistant support** – Ships with an [Agent Skill](https://agentskills.io) for Claude Code, Codex, Gemini CLI, Cursor, and other AI tools.
+<div class="hero-badges" markdown>
 
-## Documentation Map
+[:material-lightning-bolt: Quick Start](getting-started/quickstart.md){ .md-button .md-button--primary }
+[:material-package-variant: Installation](getting-started/installation.md){ .md-button }
+[:fontawesome-brands-discord: Join our Community](https://discord.gg/xt9WY3GnKR){ .md-button }
 
-- **[Getting Started](getting-started/quickstart.md)** – First extraction in each language.
-- **[Installation](getting-started/installation.md)** – Dependency matrix for Rust, Python, Ruby, Node.js, CLI, and Docker users.
-- **[Guides](guides/extraction.md)** – How to configure extraction, OCR, advanced features, plugins, and Docker/API deployments.
-- **[Concepts](concepts/architecture.md)** – Architecture, extraction pipeline, MIME detection, plugin runtime, and performance strategies.
-- **[Features directory](features.md)** – Exhaustive capability list per format/binding plus OCR and chunking options.
-- **[Reference](reference/api-python.md)** – API references for all supported languages, configuration schema, supported formats, types, and errors.
-- **[CLI](cli/usage.md)** – Command syntax, flags, exit codes, and automation tips.
-- **[API Server](guides/api-server.md)** – Running the REST service and integrating with MCP.
-- **[AI Coding Assistants](guides/agent-skills.md)** – Agent Skill for Claude Code, Codex, Gemini CLI, Cursor, and more.
-- **[Migration](migration/v3-to-v4.md)** and **[Changelog](CHANGELOG.md)** – Track breaking changes and release history.
+</div>
 
-## Supported Platforms
+---
 
-| Binding / Interface | Package | Use Case | Docs |
-|-------|---------|---------|------|
-| Python             | `pip install kreuzberg` | Server-side, data processing | [Python API Reference](reference/api-python.md) |
-| **TypeScript/Node.js (Native)** <span class="version-badge">v4.0.0</span> | `npm install @kreuzberg/node` | **Node.js servers, command-line tools, native performance** | **[TypeScript API Reference](reference/api-typescript.md)** |
-| **WebAssembly (WASM)** <span class="version-badge">v4.0.0</span> | `npm install @kreuzberg/wasm` | **Browsers, Cloudflare Workers, Deno, serverless** | **[WASM API Reference](reference/api-wasm.md)** |
-| Java <span class="version-badge">v4.0.0</span> | `dev.kreuzberg:kreuzberg` (Maven) | Server-side Java, FFM API | [Java API Reference](reference/api-java.md) |
-| C# <span class="version-badge unreleased">Unreleased</span> | `dotnet add package Kreuzberg` | .NET applications, Windows servers | [C# API Reference](reference/api-csharp.md) |
-| PHP <span class="version-badge unreleased">Unreleased</span> | `kreuzberg/kreuzberg` (Composer) | PHP applications, ext-ffi | [PHP API Reference](reference/api-php.md) |
-| Ruby <span class="version-badge">v4.0.0</span> | `gem install kreuzberg` | Server-side, Rails applications | [Ruby API Reference](reference/api-ruby.md) |
-| Go <span class="version-badge">v4.0.0</span> | `go get github.com/kreuzberg-dev/kreuzberg/packages/go/v4@latest` | Server-side, systems tools | [Go API Reference](reference/api-go.md) |
-| Elixir <span class="version-badge">v4.0.0</span> | `{:kreuzberg, "~> 4.0"}` | BEAM applications, Phoenix apps | [Elixir API Reference](reference/api-elixir.md) |
-| Rust               | `cargo add kreuzberg` | System libraries, performance-critical | [Rust API Reference](reference/api-rust.md) |
-| CLI                | `brew install kreuzberg-dev/tap/kreuzberg` or `cargo install kreuzberg-cli` | Terminal automation, scripting | [CLI Usage](cli/usage.md) |
-| API Server / MCP   | Docker image `ghcr.io/kreuzberg-dev/kreuzberg:core` | Containerized services, MCP integration | [API Server Guide](guides/api-server.md) |
+## Why Kreuzberg ?
+ 
+<div class="grid cards" markdown>
 
-### Choosing Between TypeScript Packages
+-   :material-flash:{ .lg .middle } **High Performance**
 
-Kreuzberg provides **two distinct TypeScript packages** optimized for different runtimes:
+    ---
 
-#### Native TypeScript/Node.js (`@kreuzberg/node`)
+    Rust core with native PDFium, SIMD optimizations, and full parallelism. Process thousands of documents per minute without a GPU.
 
-Use **`@kreuzberg/node`** if you're targeting:
+-   :material-file-document-multiple:{ .lg .middle } **75+ File Formats**
 
-- **Node.js** servers and applications
-- **Command-line tools** and scripts
-- Environments requiring **maximum performance** (near-native speeds)
-- Server-side batch processing and data pipelines
+    ---
 
-Native bindings compile to C++ N-API and deliver the best performance across all platforms.
+    PDF, DOCX, XLSX, PPTX, images, HTML, XML, emails, archives, academic formats — one API handles them all.
 
-```bash title="Terminal"
-npm install @kreuzberg/node
-```
+-   :material-eye:{ .lg .middle } **Multi-Engine OCR**
 
-#### WebAssembly (`@kreuzberg/wasm`)
+    ---
 
-Use **`@kreuzberg/wasm`** if you're targeting:
+    Built-in Tesseract, PaddleOCR, and EasyOCR support. 100+ languages, table detection, and automatic fallback.
 
-- **Web browsers** (Chrome, Firefox, Safari, Edge)
-- **Cloudflare Workers** and other edge computing platforms
-- **Deno** and other JavaScript runtimes
-- Serverless environments (AWS Lambda, Vercel, etc.)
-- In-browser document processing without server dependencies
+-   :material-translate:{ .lg .middle } **12 Language Bindings**
 
-WASM bindings run entirely in WebAssembly and work in any JavaScript runtime with WASM support. See [Performance](#performance-comparison) for tradeoffs.
+    ---
 
-```bash title="Terminal"
-npm install @kreuzberg/wasm
-```
+    Native bindings for Python, TypeScript, Rust, Go, Java, C#, Ruby, PHP, Elixir, R, C, and WebAssembly.
 
-### Performance Comparison
+-   :material-puzzle:{ .lg .middle } **Plugin System**
 
-| Binding | Speed Relative to Native | Memory | Platform Support | Use Case |
-|---------|-------------------------|--------|------------------|----------|
-| **Native (`@kreuzberg/node`)** | **100% (baseline)** | Efficient | Node.js only | Server-side, high-performance |
-| **WASM (`@kreuzberg/wasm`)** | **60-80%** | Higher | Browsers, Workers, Deno, Bun | In-browser, edge, serverless |
+    ---
 
-WASM provides broad platform compatibility at the cost of performance. For server-side Node.js applications, always use native `@kreuzberg/node`.
+    Extend with custom extractors, OCR backends, post-processors, and validators — all hot-pluggable at runtime.
+
+-   :material-server:{ .lg .middle } **Flexible Deployment**
+
+    ---
+
+    Use as a library, CLI tool, REST API server, MCP server, or Docker container. Pick what fits your stack.
+
+</div>
+
+→ **[See all features](features.md)**
+
+---
+
+## Language Support
+
+Precompiled binaries for Linux (x86_64 & aarch64), macOS (Apple Silicon), and Windows (x64).
+
+| Language | Package | Docs |
+|:---------|:--------|:-----|
+| **Python** | `pip install kreuzberg` | [API Reference](reference/api-python.md) |
+| **TypeScript (Native)** | `npm install @kreuzberg/node` | [API Reference](reference/api-typescript.md) |
+| **TypeScript (WASM)** | `npm install @kreuzberg/wasm` | [API Reference](reference/api-wasm.md) |
+| **Rust** | `cargo add kreuzberg` | [API Reference](reference/api-rust.md) |
+| **Go** | `go get .../kreuzberg/packages/go/v4` | [API Reference](reference/api-go.md) |
+| **Java** | Maven Central `dev.kreuzberg:kreuzberg` | [API Reference](reference/api-java.md) |
+| **C#** | `dotnet add package Kreuzberg` | [API Reference](reference/api-csharp.md) |
+| **Ruby** | `gem install kreuzberg` | [API Reference](reference/api-ruby.md) |
+| **PHP** | `composer require kreuzberg/kreuzberg` | [API Reference](reference/api-php.md) |
+| **Elixir** | `{:kreuzberg, "~> 4.0"}` | [API Reference](reference/api-elixir.md) |
+| **R** | r-universe `kreuzberg` | [API Reference](reference/api-r.md) |
+| **C (FFI)** | Shared library + header | [API Reference](reference/api-c.md) |
+| **CLI** | `brew install kreuzberg-dev/tap/kreuzberg` | [CLI Guide](cli/usage.md) |
+| **Docker** | `ghcr.io/kreuzberg-dev/kreuzberg` | [Docker Guide](guides/docker.md) |
+
+!!! tip "Choosing Between TypeScript Packages"
+
+    **`@kreuzberg/node`** — Use for Node.js servers and CLI tools. Native performance (100% speed).
+
+    **`@kreuzberg/wasm`** — Use for browsers, Cloudflare Workers, Deno, Bun, and serverless environments (60-80% speed, cross-platform).
+
+---
+
+## Explore the Docs
+
+<div class="grid cards" markdown>
+
+-   :material-rocket-launch:{ .lg .middle } **Getting Started**
+
+    ---
+
+    Install Kreuzberg and extract your first document in minutes.
+
+    [:octicons-arrow-right-24: Quick Start](getting-started/quickstart.md)
+
+-   :material-book-open-variant:{ .lg .middle } **Guides**
+
+    ---
+
+    Configuration, OCR setup, Docker deployment, plugins, and more.
+
+    [:octicons-arrow-right-24: All Guides](guides/extraction.md)
+
+-   :material-puzzle-outline:{ .lg .middle } **Concepts**
+
+    ---
+
+    Architecture, extraction pipeline, MIME detection, and performance.
+
+    [:octicons-arrow-right-24: Architecture](concepts/architecture.md)
+
+-   :material-api:{ .lg .middle } **API Reference**
+
+    ---
+
+    Complete API docs for every language binding, types, and errors.
+
+    [:octicons-arrow-right-24: References](reference/api-python.md)
+
+-   :material-console:{ .lg .middle } **CLI & Servers**
+
+    ---
+
+    Command-line tool, REST API server, and MCP server for AI agents.
+
+    [:octicons-arrow-right-24: CLI Usage](cli/usage.md)
+
+-   :material-swap-horizontal:{ .lg .middle } **Migration**
+
+    ---
+
+    Upgrade from v3 to v4, or migrate from Unstructured.
+
+    [:octicons-arrow-right-24: Migration Guide](migration/v3-to-v4.md)
+
+</div>
+
+---
 
 ## Getting Help
 
-- **Questions / bugs**: open an issue at [github.com/kreuzberg-dev/kreuzberg](https://github.com/kreuzberg-dev/kreuzberg).
-- **Chat**: join the community Discord (invite in README).
-- **Contributing**: see [Contributing](contributing.md) for coding standards, environment setup, and testing instructions.
-
-Happy extracting!
+- **Bugs & feature requests** — [Open an issue on GitHub](https://github.com/kreuzberg-dev/kreuzberg/issues)
+- **Community chat** — [Join the Discord](https://discord.gg/xt9WY3GnKR)
+- **Contributing** — [Read the contributor guide](contributing.md)
