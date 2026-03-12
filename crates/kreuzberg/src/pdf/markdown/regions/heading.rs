@@ -147,8 +147,10 @@ fn apply_heading_region(
         let heading_cluster_count = heading_map.iter().filter(|(_, level)| level.is_some()).count();
 
         let inferred_level = match (text_level, font_level) {
-            // Font-size says H1 AND there are 2+ heading clusters → trust it
-            (_, Some(1)) if heading_cluster_count >= 2 => 1,
+            // Font-size says H1 AND there are 2+ heading clusters → trust it,
+            // but only for Title regions. SectionHeader at font H1 should stay H2
+            // to avoid over-promoting section headers that happen to use a large font.
+            (_, Some(1)) if heading_cluster_count >= 2 && hint.class == LayoutHintClass::Title => 1,
             // Title promotion: on the first page, font-size says H1 and is
             // significantly larger than body text (≥1.5×). A heading at 2×+
             // body size is almost certainly a document title, even when the
@@ -228,7 +230,7 @@ fn apply_heading_region(
             let t = text.trim();
             // Extra guards for italic-only (not bold): filter affiliations/emails
             let italic_ok = if is_italic && !para.is_bold {
-                !t.contains('@') && !t.contains(',') && t.chars().next().is_some_and(|c| c.is_ascii_uppercase())
+                !t.contains('@') && !t.contains(',') && t.chars().next().is_some_and(|c| c.is_uppercase())
             } else {
                 true
             };
@@ -260,8 +262,8 @@ pub(in crate::pdf::markdown) fn looks_like_figure_label(text: &str) -> bool {
     // Concatenated labels: same word appears 3+ times (e.g., "nut" in figure parts)
     if words.len() >= 5 {
         for w in &words {
-            let lw = w.to_ascii_lowercase();
-            if words.iter().filter(|x| x.to_ascii_lowercase() == lw).count() >= 3 {
+            let lw = w.to_lowercase();
+            if words.iter().filter(|x| x.to_lowercase() == lw).count() >= 3 {
                 return true;
             }
         }
@@ -287,23 +289,41 @@ fn split_multi_heading_paragraphs(paragraphs: &mut Vec<PdfParagraph>) {
             continue;
         }
 
-        // Check that each line is short enough to be a heading
-        let all_lines_short = para.lines.iter().all(|line| {
-            let word_count: usize = line.segments.iter().map(|s| s.text.split_whitespace().count()).sum();
-            word_count <= MAX_HEADING_WORD_COUNT
-        });
+        // Find the longest prefix of consecutive short lines (heading candidates).
+        // Lines after the first long line become body text in a separate paragraph.
+        // This handles cases where a heading + body text are merged into one paragraph.
+        let prefix_len = para
+            .lines
+            .iter()
+            .take_while(|line| {
+                let word_count: usize = line.segments.iter().map(|s| s.text.split_whitespace().count()).sum();
+                word_count <= MAX_HEADING_WORD_COUNT
+            })
+            .count();
 
-        if !all_lines_short {
+        if prefix_len == 0 {
             i += 1;
             continue;
         }
 
-        // Split: replace this paragraph with one paragraph per line
+        // Split: heading prefix lines become individual paragraphs,
+        // remaining lines become a single body paragraph.
         let original = paragraphs.remove(i);
-        for (j, line) in original.lines.into_iter().enumerate() {
+        let mut lines_iter = original.lines.into_iter();
+        let layout_class = original.layout_class;
+
+        for j in 0..prefix_len {
+            let line = lines_iter.next().unwrap();
             let mut new_para = crate::pdf::markdown::paragraphs::finalize_paragraph(vec![line]);
-            new_para.layout_class = original.layout_class;
+            new_para.layout_class = layout_class;
             paragraphs.insert(i + j, new_para);
+        }
+
+        // Remaining lines become a body paragraph (no layout class override)
+        let remaining: Vec<_> = lines_iter.collect();
+        if !remaining.is_empty() {
+            let body_para = crate::pdf::markdown::paragraphs::finalize_paragraph(remaining);
+            paragraphs.insert(i + prefix_len, body_para);
         }
 
         i += 1; // Move past the first split paragraph (others will be processed next)

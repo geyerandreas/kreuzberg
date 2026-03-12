@@ -115,7 +115,10 @@ fn ends_with_sentence_terminator(para: &PdfParagraph) -> bool {
         .and_then(|l| l.segments.last())
         .map(|s| s.text.trim_end())
         .unwrap_or("");
-    matches!(last_text.chars().last(), Some('.' | '?' | '!' | ':' | ';'))
+    matches!(
+        last_text.chars().last(),
+        Some('.' | '?' | '!' | ':' | ';' | '\u{3002}' | '\u{FF1F}' | '\u{FF01}')
+    )
 }
 
 /// Demote code blocks that don't contain actual code.
@@ -179,4 +182,113 @@ fn looks_like_non_code(text: &str) -> bool {
 
     // Require at least 3% syntax density for code
     code_chars * 100 < total_chars * 3
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::pdf::hierarchy::SegmentData;
+    use crate::pdf::markdown::types::{LayoutHintClass, PdfLine, PdfParagraph};
+
+    fn make_segment(text: &str) -> SegmentData {
+        SegmentData {
+            text: text.to_string(),
+            x: 0.0,
+            y: 700.0,
+            width: 50.0,
+            height: 12.0,
+            font_size: 12.0,
+            is_bold: false,
+            is_italic: false,
+            is_monospace: false,
+            baseline_y: 700.0,
+        }
+    }
+
+    fn make_line_with_text(text: &str) -> PdfLine {
+        PdfLine {
+            segments: vec![make_segment(text)],
+            baseline_y: 700.0,
+            dominant_font_size: 12.0,
+            is_bold: false,
+            is_monospace: false,
+        }
+    }
+
+    fn body_para_with_text(text: &str, class: Option<LayoutHintClass>) -> PdfParagraph {
+        PdfParagraph {
+            lines: vec![make_line_with_text(text)],
+            dominant_font_size: 12.0,
+            heading_level: None,
+            is_bold: false,
+            is_list_item: false,
+            is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: class,
+            caption_for: None,
+        }
+    }
+
+    /// Two consecutive body paragraphs with the same layout class will be merged
+    /// if the first does NOT end with a sentence terminator.
+    #[test]
+    fn test_cjk_sentence_terminator() {
+        // Chinese period (U+3002) at the end of the first paragraph should
+        // prevent merging into the second paragraph.
+        let first_text = "这是第一句。"; // ends with Chinese period U+3002
+        let second_text = "这是第二句";
+
+        let mut paragraphs = vec![
+            body_para_with_text(first_text, Some(LayoutHintClass::Text)),
+            body_para_with_text(second_text, Some(LayoutHintClass::Text)),
+        ];
+
+        merge_continuation_paragraphs_region_aware(&mut paragraphs);
+
+        // Should NOT have been merged because the first ends with 。
+        assert_eq!(
+            paragraphs.len(),
+            2,
+            "paragraphs should NOT be merged when first ends with 。"
+        );
+    }
+
+    #[test]
+    fn test_fullwidth_question_mark() {
+        // Fullwidth question mark (U+FF1F) should act as sentence terminator,
+        // preventing the two paragraphs from merging.
+        let first_text = "Is this correct？"; // ends with U+FF1F
+        let second_text = "yes it is";
+
+        let mut paragraphs = vec![
+            body_para_with_text(first_text, Some(LayoutHintClass::Text)),
+            body_para_with_text(second_text, Some(LayoutHintClass::Text)),
+        ];
+
+        merge_continuation_paragraphs_region_aware(&mut paragraphs);
+
+        assert_eq!(
+            paragraphs.len(),
+            2,
+            "paragraphs should NOT be merged when first ends with ？"
+        );
+    }
+
+    /// Sanity check: two paragraphs without sentence terminators ARE merged.
+    #[test]
+    fn test_paragraphs_without_terminator_are_merged() {
+        let mut paragraphs = vec![
+            body_para_with_text("continuation without terminator", Some(LayoutHintClass::Text)),
+            body_para_with_text("second paragraph", Some(LayoutHintClass::Text)),
+        ];
+
+        merge_continuation_paragraphs_region_aware(&mut paragraphs);
+
+        assert_eq!(
+            paragraphs.len(),
+            1,
+            "paragraphs SHOULD be merged when first has no sentence terminator"
+        );
+    }
 }

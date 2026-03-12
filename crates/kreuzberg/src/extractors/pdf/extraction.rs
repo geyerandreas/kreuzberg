@@ -187,6 +187,7 @@ pub(crate) fn convert_results_to_hints(
                         LayoutClass::Formula => LayoutHintClass::Formula,
                         LayoutClass::ListItem => LayoutHintClass::ListItem,
                         LayoutClass::Caption => LayoutHintClass::Caption,
+                        LayoutClass::Footnote => LayoutHintClass::Footnote,
                         LayoutClass::PageHeader => LayoutHintClass::PageHeader,
                         LayoutClass::PageFooter => LayoutHintClass::PageFooter,
                         LayoutClass::Table => LayoutHintClass::Table,

@@ -50,15 +50,28 @@ pub(super) fn assemble_region_paragraphs(
     extracted_table_bboxes: &[crate::types::BoundingBox],
 ) -> Vec<PdfParagraph> {
     let (mut regions, unassigned_indices) =
-        assignment::assign_segments_to_regions(&segments, hints, min_confidence, extracted_table_bboxes);
+        assignment::assign_segments_to_regions_refined(&segments, hints, min_confidence, extracted_table_bboxes);
 
     if regions.is_empty() {
-        // No confident hints matched — fall through to standard pipeline
+        tracing::trace!(page = page_index, "no layout regions — using fallback pipeline");
         return assemble_fallback(segments, heading_map);
     }
 
+    tracing::trace!(
+        page = page_index,
+        regions = regions.len(),
+        unassigned = unassigned_indices.len(),
+        "layout regions assigned"
+    );
+
     // Determine page height for reading order (from segment extents)
     let page_height = segments.iter().map(|s| s.y + s.height).fold(0.0_f32, f32::max);
+
+    // Pre-merge fragmented Title/SectionHeader regions before reading order.
+    // The layout model sometimes splits a single semantic element (e.g., a multi-line
+    // title) into multiple overlapping regions. Merging prevents the reading order
+    // from interleaving them with unrelated regions.
+    merge_fragmented_regions(&mut regions);
 
     reading_order::order_regions_reading_order(&mut regions, page_height);
 
@@ -88,6 +101,33 @@ pub(super) fn assemble_region_paragraphs(
                 merged_lines.extend(para.lines);
             }
             paragraphs.push(super::paragraphs::finalize_paragraph(merged_lines));
+        }
+
+        // Text quality gate: skip regions with garbled/non-text content.
+        // Music sheets, embedded images, and other non-text regions produce
+        // paragraphs where < 30% of characters are alphanumeric/whitespace.
+        {
+            let region_text: String = paragraphs
+                .iter()
+                .flat_map(|p| p.lines.iter())
+                .flat_map(|l| l.segments.iter())
+                .map(|s| s.text.as_str())
+                .collect::<Vec<_>>()
+                .join("");
+            let total = region_text.chars().count();
+            let alnum = region_text
+                .chars()
+                .filter(|c| c.is_alphanumeric() || c.is_whitespace())
+                .count();
+            if total >= 10 && (alnum as f32 / total as f32) < 0.3 {
+                tracing::trace!(
+                    class = ?region.hint.class,
+                    total_chars = total,
+                    alnum_chars = alnum,
+                    "skipping garbled region"
+                );
+                continue;
+            }
         }
 
         heading::apply_region_class(
@@ -123,7 +163,192 @@ pub(super) fn assemble_region_paragraphs(
     // Merge list item continuations (layout model may split one reference across bboxes)
     merge::merge_list_continuations(&mut all_paragraphs);
 
+    // Associate captions with their parent table/picture elements
+    associate_captions(&mut all_paragraphs);
+
+    // Associate footnotes with their preceding table/picture elements
+    associate_footnotes(&mut all_paragraphs);
+
     all_paragraphs
+}
+
+/// Maximum gap (in points) between regions to consider them adjacent for merging.
+const MERGE_GAP_THRESHOLD: f32 = 5.0;
+
+/// Merge adjacent/overlapping Title and SectionHeader regions.
+///
+/// When the layout model fragments a single semantic element (e.g., a multi-line
+/// title) into multiple regions, the reading order can interleave them with
+/// unrelated regions. This merges same-class regions that overlap or are within
+/// a small gap, producing a single region with the union bbox and combined segments.
+fn merge_fragmented_regions(regions: &mut Vec<LayoutRegion>) {
+    if regions.len() < 2 {
+        return;
+    }
+
+    let mut merged_count = 0;
+    let mut i = 0;
+    while i < regions.len() {
+        // Only merge Title and SectionHeader regions
+        if !matches!(
+            regions[i].hint.class,
+            LayoutHintClass::Title | LayoutHintClass::SectionHeader
+        ) {
+            i += 1;
+            continue;
+        }
+
+        let mut j = i + 1;
+        while j < regions.len() {
+            if regions[j].hint.class != regions[i].hint.class {
+                j += 1;
+                continue;
+            }
+
+            // Check if bboxes overlap or are within gap threshold
+            let h_gap = (regions[j].hint.left - regions[i].hint.right)
+                .max(regions[i].hint.left - regions[j].hint.right)
+                .max(0.0);
+            let v_gap = (regions[j].hint.bottom - regions[i].hint.top)
+                .max(regions[i].hint.bottom - regions[j].hint.top)
+                .max(0.0);
+
+            // Check Y-band proximity: vertical centers within 50% of the smaller region's height
+            let i_height = regions[i].hint.top - regions[i].hint.bottom;
+            let j_height = regions[j].hint.top - regions[j].hint.bottom;
+            let min_height = i_height.min(j_height);
+            let i_cy = (regions[i].hint.top + regions[i].hint.bottom) / 2.0;
+            let j_cy = (regions[j].hint.top + regions[j].hint.bottom) / 2.0;
+            let cy_gap = (i_cy - j_cy).abs();
+
+            let in_same_band = cy_gap <= min_height.max(1.0) * 0.5;
+            let close_enough = h_gap <= MERGE_GAP_THRESHOLD && v_gap <= MERGE_GAP_THRESHOLD;
+
+            if close_enough || (in_same_band && (h_gap <= MERGE_GAP_THRESHOLD || v_gap <= MERGE_GAP_THRESHOLD)) {
+                // Merge j into i: take segment indices
+                let j_segments = std::mem::take(&mut regions[j].segment_indices);
+                regions[i].segment_indices.extend(j_segments);
+                regions.remove(j);
+                merged_count += 1;
+                // Don't increment j — check next element at same index
+            } else {
+                j += 1;
+            }
+        }
+        i += 1;
+    }
+
+    if merged_count > 0 {
+        tracing::trace!(merged = merged_count, "merged fragmented Title/SectionHeader regions");
+    }
+}
+
+/// Associate CAPTION paragraphs with their nearest TABLE or PICTURE parent.
+///
+/// Scans backward and forward from each caption for adjacent table/picture
+/// elements. Unambiguous cases (only one direction) are assigned first;
+/// ambiguous cases prefer the closer element by index distance.
+fn associate_captions(paragraphs: &mut [PdfParagraph]) {
+    // First pass: collect caption indices
+    let caption_indices: Vec<usize> = paragraphs
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| p.layout_class == Some(LayoutHintClass::Caption))
+        .map(|(i, _)| i)
+        .collect();
+
+    if caption_indices.is_empty() {
+        return;
+    }
+
+    // For each caption, find nearest table/picture in both directions
+    for &cap_idx in &caption_indices {
+        let backward = find_parent_backward(paragraphs, cap_idx);
+        let forward = find_parent_forward(paragraphs, cap_idx);
+
+        let parent_idx = match (backward, forward) {
+            (Some(b), None) => Some(b),
+            (None, Some(f)) => Some(f),
+            (Some(b), Some(f)) => {
+                // Prefer the closer one by index distance
+                if (cap_idx - b) <= (f - cap_idx) {
+                    Some(b)
+                } else {
+                    Some(f)
+                }
+            }
+            (None, None) => None, // No parent found — leave as body text
+        };
+
+        if let Some(pi) = parent_idx {
+            paragraphs[cap_idx].caption_for = Some(pi);
+        }
+    }
+}
+
+/// Scan backward from `cap_idx` for the nearest table/picture paragraph.
+/// Skips other captions but stops at any non-caption, non-table, non-picture element.
+fn find_parent_backward(paragraphs: &[PdfParagraph], cap_idx: usize) -> Option<usize> {
+    for i in (0..cap_idx).rev() {
+        let class = paragraphs[i].layout_class;
+        if class == Some(LayoutHintClass::Table) || class == Some(LayoutHintClass::Picture) {
+            return Some(i);
+        }
+        if class == Some(LayoutHintClass::Caption) {
+            continue; // Skip other captions
+        }
+        break; // Non-caption, non-parent element — stop
+    }
+    None
+}
+
+/// Scan forward from `cap_idx` for the nearest table/picture paragraph.
+fn find_parent_forward(paragraphs: &[PdfParagraph], cap_idx: usize) -> Option<usize> {
+    for i in (cap_idx + 1)..paragraphs.len() {
+        let class = paragraphs[i].layout_class;
+        if class == Some(LayoutHintClass::Table) || class == Some(LayoutHintClass::Picture) {
+            return Some(i);
+        }
+        if class == Some(LayoutHintClass::Caption) {
+            continue;
+        }
+        break;
+    }
+    None
+}
+
+/// Associate FOOTNOTE paragraphs with their preceding TABLE or PICTURE parent.
+///
+/// For each table/picture, scans forward for consecutive footnote paragraphs
+/// (skipping captions) and associates them. Footnotes are rendered after
+/// the parent element and its captions.
+fn associate_footnotes(paragraphs: &mut [PdfParagraph]) {
+    // Collect indices of table/picture paragraphs
+    let parent_indices: Vec<usize> = paragraphs
+        .iter()
+        .enumerate()
+        .filter(|(_, p)| {
+            matches!(
+                p.layout_class,
+                Some(LayoutHintClass::Table) | Some(LayoutHintClass::Picture)
+            )
+        })
+        .map(|(i, _)| i)
+        .collect();
+
+    for &parent_idx in &parent_indices {
+        // Scan forward from the parent for consecutive footnotes
+        for i in (parent_idx + 1)..paragraphs.len() {
+            let class = paragraphs[i].layout_class;
+            if class == Some(LayoutHintClass::Footnote) {
+                paragraphs[i].caption_for = Some(parent_idx);
+            } else if class == Some(LayoutHintClass::Caption) {
+                continue; // Skip captions (already associated)
+            } else {
+                break; // Non-footnote, non-caption — stop
+            }
+        }
+    }
 }
 
 /// Standard pipeline fallback for segments not covered by layout regions.
@@ -458,5 +683,340 @@ mod tests {
         assert!(regions[1].hint.left < 260.0); // left col
         assert!(regions[2].hint.left >= 260.0); // right col
         assert!(regions[3].hint.left >= 260.0); // right col
+    }
+
+    // ── Reading Order Tests ──────────────────────────────────────────────────
+
+    #[test]
+    fn test_dag_reading_order_three_columns() {
+        // Three columns: left (x=10-100), middle (x=150-240), right (x=290-380).
+        // Two rows of regions per column so the DAG path has >= 4 body regions total.
+        let hints = [
+            make_hint(LayoutHintClass::Text, 0.9, 10.0, 400.0, 100.0, 700.0), // left top
+            make_hint(LayoutHintClass::Text, 0.9, 150.0, 400.0, 240.0, 700.0), // mid top
+            make_hint(LayoutHintClass::Text, 0.9, 290.0, 400.0, 380.0, 700.0), // right top
+            make_hint(LayoutHintClass::Text, 0.9, 10.0, 100.0, 100.0, 390.0), // left bot
+            make_hint(LayoutHintClass::Text, 0.9, 150.0, 100.0, 240.0, 390.0), // mid bot
+            make_hint(LayoutHintClass::Text, 0.9, 290.0, 100.0, 380.0, 390.0), // right bot
+        ];
+        let mut regions: Vec<LayoutRegion> = hints
+            .iter()
+            .map(|h| LayoutRegion {
+                hint: h,
+                segment_indices: Vec::new(),
+            })
+            .collect();
+        reading_order::order_regions_reading_order(&mut regions, 800.0);
+
+        // Left column should appear before middle, middle before right.
+        let left_positions: Vec<usize> = regions
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.hint.left < 120.0)
+            .map(|(i, _)| i)
+            .collect();
+        let mid_positions: Vec<usize> = regions
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.hint.left >= 120.0 && r.hint.left < 260.0)
+            .map(|(i, _)| i)
+            .collect();
+        let right_positions: Vec<usize> = regions
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.hint.left >= 260.0)
+            .map(|(i, _)| i)
+            .collect();
+
+        assert_eq!(left_positions.len(), 2);
+        assert_eq!(mid_positions.len(), 2);
+        assert_eq!(right_positions.len(), 2);
+
+        // All left positions come before all mid positions
+        assert!(left_positions.iter().all(|&lp| mid_positions.iter().all(|&mp| lp < mp)));
+        // All mid positions come before all right positions
+        assert!(
+            mid_positions
+                .iter()
+                .all(|&mp| right_positions.iter().all(|&rp| mp < rp))
+        );
+    }
+
+    #[test]
+    fn test_dag_reading_order_header_footer_separation() {
+        // PageHeader, two body regions, PageFooter.
+        // Headers must come first, footers last, body in the middle.
+        let hints = [
+            make_hint(LayoutHintClass::Text, 0.9, 10.0, 200.0, 550.0, 600.0), // body 1
+            make_hint(LayoutHintClass::PageFooter, 0.9, 10.0, 10.0, 550.0, 80.0), // footer
+            make_hint(LayoutHintClass::PageHeader, 0.9, 10.0, 720.0, 550.0, 790.0), // header
+            make_hint(LayoutHintClass::Text, 0.9, 10.0, 100.0, 550.0, 190.0), // body 2
+        ];
+        let mut regions: Vec<LayoutRegion> = hints
+            .iter()
+            .map(|h| LayoutRegion {
+                hint: h,
+                segment_indices: Vec::new(),
+            })
+            .collect();
+        reading_order::order_regions_reading_order(&mut regions, 800.0);
+
+        assert_eq!(regions[0].hint.class, LayoutHintClass::PageHeader);
+        assert_eq!(regions[3].hint.class, LayoutHintClass::PageFooter);
+        // The two middle positions should be the body Text regions
+        assert_eq!(regions[1].hint.class, LayoutHintClass::Text);
+        assert_eq!(regions[2].hint.class, LayoutHintClass::Text);
+    }
+
+    #[test]
+    fn test_dag_reading_order_asymmetric_columns() {
+        // Narrow sidebar (x=10-80) with 2 regions and wide body (x=120-500) with 3 regions.
+        // We need >= 4 body regions total for DAG path to be exercised; 5 total qualifies.
+        let hints = [
+            make_hint(LayoutHintClass::Text, 0.9, 10.0, 500.0, 80.0, 700.0), // sidebar top
+            make_hint(LayoutHintClass::Text, 0.9, 120.0, 500.0, 500.0, 700.0), // body top
+            make_hint(LayoutHintClass::Text, 0.9, 120.0, 300.0, 500.0, 490.0), // body mid
+            make_hint(LayoutHintClass::Text, 0.9, 10.0, 300.0, 80.0, 490.0), // sidebar bot
+            make_hint(LayoutHintClass::Text, 0.9, 120.0, 100.0, 500.0, 290.0), // body bot
+        ];
+        let mut regions: Vec<LayoutRegion> = hints
+            .iter()
+            .map(|h| LayoutRegion {
+                hint: h,
+                segment_indices: Vec::new(),
+            })
+            .collect();
+        reading_order::order_regions_reading_order(&mut regions, 800.0);
+
+        // Sidebar regions (left < 100) should all precede wide body regions (left >= 100)
+        let sidebar_pos: Vec<usize> = regions
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.hint.left < 100.0)
+            .map(|(i, _)| i)
+            .collect();
+        let body_pos: Vec<usize> = regions
+            .iter()
+            .enumerate()
+            .filter(|(_, r)| r.hint.left >= 100.0)
+            .map(|(i, _)| i)
+            .collect();
+
+        assert_eq!(sidebar_pos.len(), 2);
+        assert_eq!(body_pos.len(), 3);
+        assert!(sidebar_pos.iter().all(|&sp| body_pos.iter().all(|&bp| sp < bp)));
+    }
+
+    #[test]
+    fn test_dag_reading_order_single_column() {
+        // 4 regions in a single column — must come out top-to-bottom.
+        let hints = [
+            make_hint(LayoutHintClass::Text, 0.9, 10.0, 550.0, 550.0, 700.0),
+            make_hint(LayoutHintClass::Text, 0.9, 10.0, 400.0, 550.0, 540.0),
+            make_hint(LayoutHintClass::Text, 0.9, 10.0, 250.0, 550.0, 390.0),
+            make_hint(LayoutHintClass::Text, 0.9, 10.0, 100.0, 550.0, 240.0),
+        ];
+        let mut regions: Vec<LayoutRegion> = hints
+            .iter()
+            .map(|h| LayoutRegion {
+                hint: h,
+                segment_indices: Vec::new(),
+            })
+            .collect();
+        reading_order::order_regions_reading_order(&mut regions, 800.0);
+
+        // Each region's top (upper Y) should be strictly decreasing (reading top-to-bottom)
+        for i in 0..regions.len() - 1 {
+            assert!(
+                regions[i].hint.top > regions[i + 1].hint.top,
+                "region {} top={} should be above region {} top={}",
+                i,
+                regions[i].hint.top,
+                i + 1,
+                regions[i + 1].hint.top
+            );
+        }
+    }
+
+    #[test]
+    fn test_reading_order_few_regions_fallback() {
+        // 3 body regions — below MIN_REGIONS_FOR_DAG threshold, uses simple Y-sort.
+        let hints = [
+            make_hint(LayoutHintClass::Text, 0.9, 10.0, 100.0, 550.0, 300.0), // bottom
+            make_hint(LayoutHintClass::Text, 0.9, 10.0, 500.0, 550.0, 700.0), // top
+            make_hint(LayoutHintClass::Text, 0.9, 10.0, 310.0, 550.0, 490.0), // middle
+        ];
+        let mut regions: Vec<LayoutRegion> = hints
+            .iter()
+            .map(|h| LayoutRegion {
+                hint: h,
+                segment_indices: Vec::new(),
+            })
+            .collect();
+        reading_order::order_regions_reading_order(&mut regions, 800.0);
+
+        // Should be sorted top-to-bottom: top (500-700) → middle (310-490) → bottom (100-300)
+        assert!(regions[0].hint.bottom > regions[1].hint.bottom);
+        assert!(regions[1].hint.bottom > regions[2].hint.bottom);
+    }
+
+    // ── Bbox Refinement Tests ────────────────────────────────────────────────
+
+    #[test]
+    fn test_bbox_refinement_shrinks_oversized_region() {
+        // Large hint bbox (0,0 to 600,800) contains one small segment (50,700 to 90,712).
+        // A second hint (200,695 to 400,715) covers text at x=250.
+        // Without refinement both segments might go to the large region.
+        // After refinement the large region bbox shrinks so the x=250 segment
+        // should be captured by the tighter region.
+        let segments = vec![
+            make_segment("inside_large", 50.0, 700.0, 40.0, 12.0),
+            make_segment("near_small", 250.0, 700.0, 60.0, 12.0),
+        ];
+        let hints = vec![
+            make_hint(LayoutHintClass::Text, 0.9, 0.0, 0.0, 600.0, 800.0), // huge
+            make_hint(LayoutHintClass::Code, 0.9, 200.0, 695.0, 400.0, 715.0), // tight
+        ];
+        // With refinement the tight region should claim the "near_small" segment
+        let (regions, _) = assignment::assign_segments_to_regions_refined(&segments, &hints, 0.5, &[]);
+        // The Code region (index 1) should have at least the segment near_small
+        let code_region = regions.iter().find(|r| r.hint.class == LayoutHintClass::Code);
+        assert!(code_region.is_some(), "Code region should exist");
+        assert!(
+            !code_region.unwrap().segment_indices.is_empty(),
+            "Code region should contain at least one segment"
+        );
+    }
+
+    #[test]
+    fn test_bbox_refinement_preserves_original_class() {
+        // After refinement the returned regions reference original hints, so
+        // class and confidence should be unchanged.
+        let segments = vec![make_segment("text", 50.0, 700.0, 40.0, 12.0)];
+        let hints = vec![make_hint(
+            LayoutHintClass::SectionHeader,
+            0.85,
+            0.0,
+            690.0,
+            200.0,
+            720.0,
+        )];
+        let (regions, _) = assignment::assign_segments_to_regions_refined(&segments, &hints, 0.5, &[]);
+        assert_eq!(regions.len(), 1);
+        assert_eq!(regions[0].hint.class, LayoutHintClass::SectionHeader);
+        assert!((regions[0].hint.confidence - 0.85).abs() < 1e-4);
+    }
+
+    // ── Caption Association Tests ────────────────────────────────────────────
+
+    fn make_paragraph(layout_class: Option<LayoutHintClass>) -> super::super::types::PdfParagraph {
+        super::super::types::PdfParagraph {
+            lines: vec![],
+            dominant_font_size: 12.0,
+            heading_level: None,
+            is_bold: false,
+            is_list_item: false,
+            is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class,
+            caption_for: None,
+        }
+    }
+
+    #[test]
+    fn test_caption_association_below_table() {
+        // [Text, Table, Caption, Text] — Caption should point to the Table (index 1).
+        let mut paragraphs = vec![
+            make_paragraph(Some(LayoutHintClass::Text)),
+            make_paragraph(Some(LayoutHintClass::Table)),
+            make_paragraph(Some(LayoutHintClass::Caption)),
+            make_paragraph(Some(LayoutHintClass::Text)),
+        ];
+        associate_captions(&mut paragraphs);
+        assert_eq!(paragraphs[2].caption_for, Some(1));
+        // Other paragraphs unaffected
+        assert_eq!(paragraphs[0].caption_for, None);
+        assert_eq!(paragraphs[1].caption_for, None);
+        assert_eq!(paragraphs[3].caption_for, None);
+    }
+
+    #[test]
+    fn test_caption_association_above_figure() {
+        // [Caption, Picture, Text] — Caption is above Picture, forward search finds Picture (index 1).
+        let mut paragraphs = vec![
+            make_paragraph(Some(LayoutHintClass::Caption)),
+            make_paragraph(Some(LayoutHintClass::Picture)),
+            make_paragraph(Some(LayoutHintClass::Text)),
+        ];
+        associate_captions(&mut paragraphs);
+        assert_eq!(paragraphs[0].caption_for, Some(1));
+    }
+
+    #[test]
+    fn test_caption_no_parent() {
+        // [Text, Caption, Text] — no adjacent Table/Picture, so caption_for stays None.
+        let mut paragraphs = vec![
+            make_paragraph(Some(LayoutHintClass::Text)),
+            make_paragraph(Some(LayoutHintClass::Caption)),
+            make_paragraph(Some(LayoutHintClass::Text)),
+        ];
+        associate_captions(&mut paragraphs);
+        assert_eq!(paragraphs[1].caption_for, None);
+    }
+
+    #[test]
+    fn test_caption_ambiguous_prefers_closer() {
+        // [Table, Text, Text, Caption, Picture]
+        // Table is at index 0, Picture at index 4.
+        // Distance from caption (index 3): Table distance = 3, Picture distance = 1.
+        // Picture is closer, so caption should associate with Picture.
+        let mut paragraphs = vec![
+            make_paragraph(Some(LayoutHintClass::Table)),
+            make_paragraph(Some(LayoutHintClass::Text)),
+            make_paragraph(Some(LayoutHintClass::Text)),
+            make_paragraph(Some(LayoutHintClass::Caption)),
+            make_paragraph(Some(LayoutHintClass::Picture)),
+        ];
+        associate_captions(&mut paragraphs);
+        assert_eq!(paragraphs[3].caption_for, Some(4));
+    }
+
+    // ── Footnote Association Tests ───────────────────────────────────────────
+
+    #[test]
+    fn test_footnote_after_table() {
+        // [Text, Table, Footnote, Footnote, Text]
+        // Both footnotes should be associated with the Table (index 1).
+        let mut paragraphs = vec![
+            make_paragraph(Some(LayoutHintClass::Text)),
+            make_paragraph(Some(LayoutHintClass::Table)),
+            make_paragraph(Some(LayoutHintClass::Footnote)),
+            make_paragraph(Some(LayoutHintClass::Footnote)),
+            make_paragraph(Some(LayoutHintClass::Text)),
+        ];
+        associate_footnotes(&mut paragraphs);
+        assert_eq!(paragraphs[2].caption_for, Some(1));
+        assert_eq!(paragraphs[3].caption_for, Some(1));
+        // Non-footnote paragraphs unaffected
+        assert_eq!(paragraphs[0].caption_for, None);
+        assert_eq!(paragraphs[4].caption_for, None);
+    }
+
+    #[test]
+    fn test_footnote_stops_at_non_footnote() {
+        // [Table, Footnote, Text, Footnote]
+        // Only the first Footnote (index 1) should be associated with Table.
+        // The second Footnote (index 3) is separated by a Text paragraph and
+        // should NOT be associated (no adjacent Table/Picture before it).
+        let mut paragraphs = vec![
+            make_paragraph(Some(LayoutHintClass::Table)),
+            make_paragraph(Some(LayoutHintClass::Footnote)),
+            make_paragraph(Some(LayoutHintClass::Text)),
+            make_paragraph(Some(LayoutHintClass::Footnote)),
+        ];
+        associate_footnotes(&mut paragraphs);
+        assert_eq!(paragraphs[1].caption_for, Some(0));
+        assert_eq!(paragraphs[3].caption_for, None);
     }
 }

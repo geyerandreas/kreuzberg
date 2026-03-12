@@ -164,6 +164,10 @@ enum Commands {
         #[arg(long, value_delimiter = ',')]
         doc: Option<Vec<String>>,
 
+        /// Run a named benchmark group (tables, structure, multicolumn, text-quality, ocr-fallback)
+        #[arg(long)]
+        group: Option<String>,
+
         /// Dump outputs to /tmp/kreuzberg_pipeline/
         #[arg(long)]
         dump_outputs: bool,
@@ -643,6 +647,7 @@ async fn main() -> Result<()> {
             fixtures,
             paths,
             doc,
+            group,
             dump_outputs,
             json_output,
             sort_by,
@@ -663,6 +668,24 @@ async fn main() -> Result<()> {
 
             let sort_metric = SortMetric::parse(&sort_by).unwrap_or_default();
 
+            // Resolve --group into doc filter (merges with --doc if both provided)
+            let doc_filter = {
+                let mut patterns: Vec<String> = doc.unwrap_or_default();
+                if let Some(ref group_name) = group {
+                    use benchmark_harness::groups::{find_group, group_names};
+                    let g = find_group(group_name).ok_or_else(|| {
+                        benchmark_harness::Error::Config(format!(
+                            "Unknown group '{}'. Available: {}",
+                            group_name,
+                            group_names().join(", ")
+                        ))
+                    })?;
+                    eprintln!("Group '{}': {} ({} docs)", g.name, g.description, g.docs.len());
+                    patterns.extend(g.docs.iter().map(|s| s.to_string()));
+                }
+                patterns
+            };
+
             // Per-pipeline profiling: run each pipeline separately with its own ProfileGuard
             if let Some(ref prof_dir) = profile_dir {
                 use benchmark_harness::profiling::ProfileGuard;
@@ -676,7 +699,7 @@ async fn main() -> Result<()> {
                     let config = PipelineBenchmarkConfig {
                         fixtures_dir: fixtures.clone(),
                         paths: vec![pipeline],
-                        doc_filter: doc.clone().unwrap_or_default(),
+                        doc_filter: doc_filter.clone(),
                         dump_outputs,
                         json_output: None,
                         sort_by: sort_metric,
@@ -699,7 +722,7 @@ async fn main() -> Result<()> {
             let config = PipelineBenchmarkConfig {
                 fixtures_dir: fixtures,
                 paths: selected_paths,
-                doc_filter: doc.unwrap_or_default(),
+                doc_filter: doc_filter.clone(),
                 dump_outputs,
                 json_output: json_output.clone(),
                 sort_by: sort_metric,

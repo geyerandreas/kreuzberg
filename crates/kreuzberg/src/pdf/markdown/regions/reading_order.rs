@@ -1,225 +1,428 @@
-//! Reading order sorting for layout regions.
+//! DAG-based reading order sorting for layout regions.
+//!
+//! Builds a predecessor/successor directed acyclic graph from spatial relationships
+//! between layout regions, then resolves reading order via DFS traversal.
+//! Handles arbitrary column layouts (2+, asymmetric, mixed).
+//!
+//! Inspired by Docling's rule-based ReadingOrderPredictor, adapted to work with
+//! Kreuzberg's layout region types and PDF coordinate system (y=0 at bottom).
 
 use super::LayoutRegion;
 use crate::pdf::markdown::constants::REGION_SAME_ROW_FRACTION;
 use crate::pdf::markdown::types::LayoutHintClass;
 
-/// Fraction of content width above which a region is considered "full-width"
-/// and should not be assigned to a column.
-const FULLWIDTH_FRACTION: f32 = 0.7;
+/// Epsilon for "strictly above" comparison (in points).
+const STRICTLY_ABOVE_EPS: f32 = 1e-3;
 
-/// Sort regions in reading order: top-to-bottom, left-to-right within same row.
+/// X-padding when querying for predecessor/successor candidates (in points).
+const HORIZONTAL_OVERLAP_PADDING: f32 = 0.1;
+
+/// X-padding for the interruption corridor (in points).
+const INTERRUPTION_CORRIDOR_PADDING: f32 = 1.0;
+
+/// Maximum horizontal dilation as a fraction of page width.
+const MAX_DILATION_FRACTION: f32 = 0.15;
+
+/// Minimum number of body regions to use DAG ordering (below this, use simple sort).
+const MIN_REGIONS_FOR_DAG: usize = 4;
+
+/// Sort regions in reading order using a DAG-based algorithm.
 ///
-/// First detects if the page has a multi-column layout by analyzing horizontal
-/// gaps between region bounding boxes. If columns are detected, full-width
-/// regions (spanning >70% of content width) are interleaved at their Y positions
-/// between column groups. Narrow regions are processed column-by-column
-/// (left column first, then right column). Otherwise falls back to simple
-/// Y-ordering with same-row left-to-right sorting.
+/// 1. Separates PAGE_HEADER/PAGE_FOOTER from body regions (ordered independently).
+/// 2. Builds a predecessor/successor DAG based on vertical adjacency with horizontal overlap.
+/// 3. Applies horizontal dilation to strengthen column links.
+/// 4. Resolves reading order via DFS with upward ancestor traversal.
+/// 5. Falls back to Y-quantized sort for simple pages (< 4 body regions).
 pub(in crate::pdf::markdown) fn order_regions_reading_order(regions: &mut [LayoutRegion], page_height: f32) {
-    if regions.is_empty() {
+    if regions.len() < 2 {
         return;
     }
 
-    // Compute content width from region extents
-    let content_left = regions.iter().map(|r| r.hint.left).fold(f32::MAX, f32::min);
-    let content_right = regions.iter().map(|r| r.hint.right).fold(f32::MIN, f32::max);
-    let content_width = content_right - content_left;
+    // Separate furniture from body regions
+    let mut header_indices: Vec<usize> = Vec::new();
+    let mut footer_indices: Vec<usize> = Vec::new();
+    let mut body_indices: Vec<usize> = Vec::new();
 
-    if let Some(split_x) = detect_region_column_split_narrow(regions, content_width) {
-        // Partition into full-width and narrow regions (by index)
-        let mut fullwidth_indices: Vec<usize> = Vec::new();
-        let mut narrow_indices: Vec<usize> = Vec::new();
-
-        for (i, r) in regions.iter().enumerate() {
-            let region_width = r.hint.right - r.hint.left;
-            if content_width > 0.0 && region_width / content_width >= FULLWIDTH_FRACTION {
-                fullwidth_indices.push(i);
-            } else {
-                narrow_indices.push(i);
-            }
+    for (i, r) in regions.iter().enumerate() {
+        match r.hint.class {
+            LayoutHintClass::PageHeader => header_indices.push(i),
+            LayoutHintClass::PageFooter => footer_indices.push(i),
+            _ => body_indices.push(i),
         }
+    }
 
-        // If no full-width regions, just do column sort on everything (original behavior)
-        if fullwidth_indices.is_empty() {
-            sort_by_columns(regions, split_x);
-            return;
-        }
+    // Sort headers/footers by Y (top-first for headers, bottom-first for footers)
+    header_indices.sort_by(|&a, &b| {
+        let a_cy = (regions[a].hint.top + regions[a].hint.bottom) / 2.0;
+        let b_cy = (regions[b].hint.top + regions[b].hint.bottom) / 2.0;
+        b_cy.total_cmp(&a_cy)
+    });
+    footer_indices.sort_by(|&a, &b| {
+        let a_cy = (regions[a].hint.top + regions[a].hint.bottom) / 2.0;
+        let b_cy = (regions[b].hint.top + regions[b].hint.bottom) / 2.0;
+        b_cy.total_cmp(&a_cy)
+    });
 
-        // Build ordered index list: interleave full-width at Y positions between column groups
-        // First, sort narrow indices by column then Y
-        narrow_indices.sort_by(|&a, &b| {
-            let a_cx = (regions[a].hint.left + regions[a].hint.right) / 2.0;
-            let b_cx = (regions[b].hint.left + regions[b].hint.right) / 2.0;
-            let a_col = if a_cx < split_x { 0u8 } else { 1 };
-            let b_col = if b_cx < split_x { 0u8 } else { 1 };
-
-            if a_col != b_col {
-                return a_col.cmp(&b_col);
-            }
-            let a_cy = (regions[a].hint.top + regions[a].hint.bottom) / 2.0;
-            let b_cy = (regions[b].hint.top + regions[b].hint.bottom) / 2.0;
-            b_cy.total_cmp(&a_cy)
-        });
-
-        // Sort full-width indices by Y (top first)
-        fullwidth_indices.sort_by(|&a, &b| {
-            let a_cy = (regions[a].hint.top + regions[a].hint.bottom) / 2.0;
-            let b_cy = (regions[b].hint.top + regions[b].hint.bottom) / 2.0;
-            b_cy.total_cmp(&a_cy)
-        });
-
-        // Interleave: process full-width regions at their Y positions relative to column groups.
-        // A full-width region is placed before the first column region whose center Y is below it.
-        let mut ordered: Vec<usize> = Vec::with_capacity(regions.len());
-        let mut fw_iter = fullwidth_indices.iter().peekable();
-
-        // Split narrow into left-column and right-column groups
-        let mut left_col: Vec<usize> = Vec::new();
-        let mut right_col: Vec<usize> = Vec::new();
-        for &idx in &narrow_indices {
-            let cx = (regions[idx].hint.left + regions[idx].hint.right) / 2.0;
-            if cx < split_x {
-                left_col.push(idx);
-            } else {
-                right_col.push(idx);
-            }
-        }
-        // Both are already sorted top-to-bottom within column
-
-        // Walk through Y bands: for each Y band, emit full-width regions above it,
-        // then the column pair (left column group, right column group) for that band.
-        // Strategy: collect all regions with their Y centers and a type tag,
-        // then build reading order.
-
-        // Simpler approach: iterate top-to-bottom. At each step, pick the highest-Y
-        // unprocessed region. If it's full-width, emit it. If it's a column region,
-        // emit all left-column regions above the next full-width boundary, then
-        // all right-column regions above the same boundary.
-
-        let mut left_pos = 0;
-        let mut right_pos = 0;
-
-        while fw_iter.peek().is_some() || left_pos < left_col.len() || right_pos < right_col.len() {
-            // Find the next full-width region's Y center (if any)
-            let fw_y = fw_iter
-                .peek()
-                .map(|&&idx| (regions[idx].hint.top + regions[idx].hint.bottom) / 2.0);
-
-            // Find the next column region's Y center
-            let col_y = {
-                let left_y = left_col
-                    .get(left_pos)
-                    .map(|&idx| (regions[idx].hint.top + regions[idx].hint.bottom) / 2.0);
-                let right_y = right_col
-                    .get(right_pos)
-                    .map(|&idx| (regions[idx].hint.top + regions[idx].hint.bottom) / 2.0);
-                match (left_y, right_y) {
-                    (Some(ly), Some(ry)) => Some(ly.max(ry)),
-                    (Some(ly), None) => Some(ly),
-                    (None, Some(ry)) => Some(ry),
-                    (None, None) => None,
-                }
-            };
-
-            match (fw_y, col_y) {
-                (Some(fy), Some(cy)) if fy >= cy => {
-                    // Full-width region is above (or same level as) next column content → emit it
-                    ordered.push(*fw_iter.next().unwrap());
-                }
-                (Some(_fy), Some(_cy)) => {
-                    // Column content is above next full-width → emit column regions down to the full-width Y
-                    let boundary_y = _fy;
-                    // Emit left column regions above the boundary
-                    while left_pos < left_col.len() {
-                        let idx = left_col[left_pos];
-                        let y = (regions[idx].hint.top + regions[idx].hint.bottom) / 2.0;
-                        if y > boundary_y {
-                            ordered.push(idx);
-                            left_pos += 1;
-                        } else {
-                            break;
-                        }
-                    }
-                    // Emit right column regions above the boundary
-                    while right_pos < right_col.len() {
-                        let idx = right_col[right_pos];
-                        let y = (regions[idx].hint.top + regions[idx].hint.bottom) / 2.0;
-                        if y > boundary_y {
-                            ordered.push(idx);
-                            right_pos += 1;
-                        } else {
-                            break;
-                        }
-                    }
-                }
-                (Some(_), None) => {
-                    // Only full-width left
-                    ordered.push(*fw_iter.next().unwrap());
-                }
-                (None, Some(_)) => {
-                    // Only column content left — emit remaining left then right
-                    while left_pos < left_col.len() {
-                        ordered.push(left_col[left_pos]);
-                        left_pos += 1;
-                    }
-                    while right_pos < right_col.len() {
-                        ordered.push(right_col[right_pos]);
-                        right_pos += 1;
-                    }
-                }
-                (None, None) => break,
-            }
-        }
-
-        // Reorder regions in-place using the computed order
-        reorder_by_indices(regions, &ordered);
+    // Order body regions
+    let body_order = if body_indices.len() < MIN_REGIONS_FOR_DAG {
+        tracing::trace!(
+            body_regions = body_indices.len(),
+            "reading order: simple Y-sort (below DAG threshold)"
+        );
+        sort_simple(&body_indices, regions, page_height)
     } else {
-        let y_tolerance = page_height * REGION_SAME_ROW_FRACTION;
+        tracing::trace!(body_regions = body_indices.len(), "reading order: DAG-based");
+        dag_reading_order(&body_indices, regions, page_height)
+    };
 
-        // Bucket into rows using y_tolerance, then sort within rows by x.
-        // A direct sort_by with tolerance can violate transitivity.
-        regions.sort_by(|a, b| {
-            let a_cy = (a.hint.top + a.hint.bottom) / 2.0;
-            let b_cy = (b.hint.top + b.hint.bottom) / 2.0;
-            // Quantize to row buckets to ensure transitivity
+    // Assemble final order: headers, body, footers
+    let mut final_order: Vec<usize> = Vec::with_capacity(regions.len());
+    final_order.extend(&header_indices);
+    final_order.extend(&body_order);
+    final_order.extend(&footer_indices);
+
+    reorder_by_indices(regions, &final_order);
+}
+
+/// Simple Y-quantized sort for pages with few regions.
+fn sort_simple(indices: &[usize], regions: &[LayoutRegion], page_height: f32) -> Vec<usize> {
+    let y_tolerance = page_height * REGION_SAME_ROW_FRACTION;
+    let mut sorted = indices.to_vec();
+    if y_tolerance > 0.0 {
+        sorted.sort_by(|&a, &b| {
+            let a_cy = (regions[a].hint.top + regions[a].hint.bottom) / 2.0;
+            let b_cy = (regions[b].hint.top + regions[b].hint.bottom) / 2.0;
             let a_row = (a_cy / y_tolerance).round() as i64;
             let b_row = (b_cy / y_tolerance).round() as i64;
-            // Higher row number = lower on page in PDF coords → comes later
-            b_row.cmp(&a_row).then_with(|| a.hint.left.total_cmp(&b.hint.left))
+            b_row
+                .cmp(&a_row)
+                .then_with(|| regions[a].hint.left.total_cmp(&regions[b].hint.left))
         });
+    }
+    sorted
+}
+
+/// DAG-based reading order for body regions.
+///
+/// Builds a predecessor/successor graph, applies horizontal dilation to
+/// strengthen column links, then resolves via DFS with upward traversal.
+fn dag_reading_order(body_indices: &[usize], regions: &[LayoutRegion], _page_height: f32) -> Vec<usize> {
+    let n = body_indices.len();
+
+    // Extract bboxes for the body regions (in PDF coords: y=0 at bottom)
+    let bboxes: Vec<RegionBbox> = body_indices
+        .iter()
+        .map(|&idx| RegionBbox {
+            left: regions[idx].hint.left,
+            bottom: regions[idx].hint.bottom,
+            right: regions[idx].hint.right,
+            top: regions[idx].hint.top,
+        })
+        .collect();
+
+    // Compute page width for dilation threshold
+    let page_left = bboxes.iter().map(|b| b.left).fold(f32::MAX, f32::min);
+    let page_right = bboxes.iter().map(|b| b.right).fold(f32::MIN, f32::max);
+    let page_width = page_right - page_left;
+
+    // Phase 1: Build initial DAG on original bboxes
+    let (up_map, dn_map) = build_dag(&bboxes);
+
+    // Phase 2: Horizontal dilation — expand bboxes toward predecessors/successors,
+    // then re-build DAG on dilated bboxes
+    let dilated_bboxes = apply_dilation(&bboxes, &up_map, &dn_map, page_width);
+    let (_up_map_d, dn_map_d) = build_dag(&dilated_bboxes);
+
+    // Phase 3: Find head nodes (no predecessors in the dilated DAG)
+    let up_map_d = {
+        let mut up: Vec<Vec<usize>> = vec![Vec::new(); n];
+        for (i, succs) in dn_map_d.iter().enumerate() {
+            for &j in succs {
+                up[j].push(i);
+            }
+        }
+        up
+    };
+
+    let mut heads: Vec<usize> = (0..n).filter(|&i| up_map_d[i].is_empty()).collect();
+
+    // Sort heads: top-to-bottom (higher Y first in PDF coords), then left-to-right
+    heads.sort_by(|&a, &b| {
+        let a_cy = (bboxes[a].top + bboxes[a].bottom) / 2.0;
+        let b_cy = (bboxes[b].top + bboxes[b].bottom) / 2.0;
+        b_cy.total_cmp(&a_cy)
+            .then_with(|| bboxes[a].left.total_cmp(&bboxes[b].left))
+    });
+
+    // Sort each node's successors list
+    let mut sorted_dn: Vec<Vec<usize>> = dn_map_d;
+    for succs in &mut sorted_dn {
+        succs.sort_by(|&a, &b| {
+            let a_cy = (bboxes[a].top + bboxes[a].bottom) / 2.0;
+            let b_cy = (bboxes[b].top + bboxes[b].bottom) / 2.0;
+            b_cy.total_cmp(&a_cy)
+                .then_with(|| bboxes[a].left.total_cmp(&bboxes[b].left))
+        });
+    }
+
+    // Phase 4: DFS traversal with upward ancestor resolution
+    let order = dfs_reading_order(&heads, &sorted_dn, &up_map_d, n);
+
+    // Map local indices back to region indices
+    order.iter().map(|&local| body_indices[local]).collect()
+}
+
+/// Bounding box for DAG computation.
+#[derive(Clone)]
+struct RegionBbox {
+    left: f32,
+    bottom: f32,
+    right: f32,
+    top: f32,
+}
+
+/// Build predecessor/successor DAG from bounding box spatial relationships.
+///
+/// For each pair (i, j) where i is strictly above j and they have horizontal overlap,
+/// checks that no interrupting element exists in the corridor between them.
+fn build_dag(bboxes: &[RegionBbox]) -> (Vec<Vec<usize>>, Vec<Vec<usize>>) {
+    let n = bboxes.len();
+    let mut up_map: Vec<Vec<usize>> = vec![Vec::new(); n];
+    let mut dn_map: Vec<Vec<usize>> = vec![Vec::new(); n];
+
+    for j in 0..n {
+        for i in 0..n {
+            if i == j {
+                continue;
+            }
+
+            // i must be strictly above j (in PDF coords: i.bottom > j.top)
+            if bboxes[i].bottom + STRICTLY_ABOVE_EPS <= bboxes[j].top {
+                continue;
+            }
+
+            // Must have horizontal overlap (with small padding)
+            let x_overlap = (bboxes[i].right + HORIZONTAL_OVERLAP_PADDING)
+                .min(bboxes[j].right + HORIZONTAL_OVERLAP_PADDING)
+                - (bboxes[i].left - HORIZONTAL_OVERLAP_PADDING).max(bboxes[j].left - HORIZONTAL_OVERLAP_PADDING);
+            if x_overlap <= 0.0 {
+                continue;
+            }
+
+            // Check no interrupting element between i and j
+            if has_interruption(bboxes, i, j) {
+                continue;
+            }
+
+            // i is a predecessor of j
+            if !up_map[j].contains(&i) {
+                up_map[j].push(i);
+            }
+            if !dn_map[i].contains(&j) {
+                dn_map[i].push(j);
+            }
+        }
+    }
+
+    (up_map, dn_map)
+}
+
+/// Check if any element w interrupts the vertical corridor between i (above) and j (below).
+fn has_interruption(bboxes: &[RegionBbox], i: usize, j: usize) -> bool {
+    // Corridor: horizontal range = union of i and j (with padding), vertical = between j.top and i.bottom
+    let corridor_left = bboxes[i].left.min(bboxes[j].left) - INTERRUPTION_CORRIDOR_PADDING;
+    let corridor_right = bboxes[i].right.max(bboxes[j].right) + INTERRUPTION_CORRIDOR_PADDING;
+    let corridor_bottom = bboxes[j].top; // top of j (lower element)
+    let corridor_top = bboxes[i].bottom; // bottom of i (upper element)
+
+    if corridor_bottom >= corridor_top {
+        return false; // No vertical space between them
+    }
+
+    for (w, bbox_w) in bboxes.iter().enumerate() {
+        if w == i || w == j {
+            continue;
+        }
+
+        // w must horizontally overlap the corridor (union of i and j, with padding)
+        let overlaps_corridor = bbox_w.right > corridor_left && bbox_w.left < corridor_right;
+
+        if !overlaps_corridor {
+            continue;
+        }
+
+        // w must be strictly below i and strictly above j (i.e., w is between them vertically)
+        let below_i = bboxes[i].bottom + STRICTLY_ABOVE_EPS > bbox_w.top;
+        let above_j = bbox_w.bottom + STRICTLY_ABOVE_EPS > bboxes[j].top;
+
+        if below_i && above_j {
+            return true;
+        }
+    }
+
+    false
+}
+
+/// Apply horizontal dilation to bboxes to strengthen column links.
+///
+/// For each element, expands its x-extent toward its predecessor/successor's extent,
+/// but only if the expansion is less than 15% of page width per side and doesn't
+/// overlap any other element.
+fn apply_dilation(
+    bboxes: &[RegionBbox],
+    up_map: &[Vec<usize>],
+    dn_map: &[Vec<usize>],
+    page_width: f32,
+) -> Vec<RegionBbox> {
+    let threshold = page_width * MAX_DILATION_FRACTION;
+    let mut dilated = bboxes.to_vec();
+
+    for i in 0..bboxes.len() {
+        let mut target_left = bboxes[i].left;
+        let mut target_right = bboxes[i].right;
+
+        // Expand toward predecessors
+        for &pred in &up_map[i] {
+            target_left = target_left.min(bboxes[pred].left);
+            target_right = target_right.max(bboxes[pred].right);
+        }
+
+        // Expand toward successors
+        for &succ in &dn_map[i] {
+            target_left = target_left.min(bboxes[succ].left);
+            target_right = target_right.max(bboxes[succ].right);
+        }
+
+        // Check dilation amount doesn't exceed threshold on either side
+        let left_dilation = bboxes[i].left - target_left;
+        let right_dilation = target_right - bboxes[i].right;
+
+        if left_dilation > threshold || right_dilation > threshold {
+            continue; // Skip dilation for this element
+        }
+
+        // Check dilated box doesn't overlap any other original element
+        let candidate = RegionBbox {
+            left: target_left,
+            bottom: bboxes[i].bottom,
+            right: target_right,
+            top: bboxes[i].top,
+        };
+
+        let overlaps_other = bboxes.iter().enumerate().any(|(j, other)| {
+            if j == i {
+                return false;
+            }
+            // 2D overlap check
+            candidate.left < other.right
+                && candidate.right > other.left
+                && candidate.bottom < other.top
+                && candidate.top > other.bottom
+        });
+
+        if !overlaps_other {
+            dilated[i] = candidate;
+        }
+    }
+
+    dilated
+}
+
+/// DFS traversal with upward ancestor resolution.
+///
+/// Before visiting a node, walks up the predecessor chain to find the topmost
+/// unvisited ancestor, ensuring column predecessors are visited first.
+fn dfs_reading_order(heads: &[usize], dn_map: &[Vec<usize>], up_map: &[Vec<usize>], n: usize) -> Vec<usize> {
+    let mut visited = vec![false; n];
+    let mut order: Vec<usize> = Vec::with_capacity(n);
+
+    for &head in heads {
+        if visited[head] {
+            continue;
+        }
+        dfs_visit(head, dn_map, up_map, &mut visited, &mut order);
+    }
+
+    // Catch any orphan nodes not reachable from heads
+    for i in 0..n {
+        if !visited[i] {
+            dfs_visit(i, dn_map, up_map, &mut visited, &mut order);
+        }
+    }
+
+    order
+}
+
+/// DFS visit with explicit stack (no recursion) and upward ancestor resolution.
+fn dfs_visit(start: usize, dn_map: &[Vec<usize>], up_map: &[Vec<usize>], visited: &mut [bool], order: &mut Vec<usize>) {
+    // Find topmost unvisited ancestor of start
+    let root = find_topmost_unvisited(start, up_map, visited);
+    if visited[root] {
+        return;
+    }
+
+    // Explicit DFS stack: (successors_list, offset_into_list)
+    visited[root] = true;
+    order.push(root);
+
+    let mut stack: Vec<(&[usize], usize)> = vec![(dn_map[root].as_slice(), 0)];
+
+    while let Some(frame) = stack.last_mut() {
+        if frame.1 >= frame.0.len() {
+            stack.pop();
+            continue;
+        }
+
+        let candidate = frame.0[frame.1];
+        frame.1 += 1;
+
+        // Walk up to find topmost unvisited ancestor
+        let target = find_topmost_unvisited(candidate, up_map, visited);
+
+        if !visited[target] {
+            visited[target] = true;
+            order.push(target);
+            stack.push((dn_map[target].as_slice(), 0));
+        }
     }
 }
 
-/// Simple column sort: left column first (top-to-bottom), then right column (top-to-bottom).
-fn sort_by_columns(regions: &mut [LayoutRegion], split_x: f32) {
-    regions.sort_by(|a, b| {
-        let a_cx = (a.hint.left + a.hint.right) / 2.0;
-        let b_cx = (b.hint.left + b.hint.right) / 2.0;
-        let a_col = if a_cx < split_x { 0u8 } else { 1 };
-        let b_col = if b_cx < split_x { 0u8 } else { 1 };
+/// Walk up the predecessor chain to find the topmost unvisited ancestor.
+fn find_topmost_unvisited(start: usize, up_map: &[Vec<usize>], visited: &[bool]) -> usize {
+    let mut current = start;
+    let mut changed = true;
 
-        if a_col != b_col {
-            return a_col.cmp(&b_col);
+    // Iterate until no unvisited predecessors found (with cycle protection)
+    while changed {
+        changed = false;
+        for &pred in &up_map[current] {
+            if !visited[pred] {
+                current = pred;
+                changed = true;
+                break;
+            }
         }
+    }
 
-        // Same column: higher Y = top of page → comes first
-        let a_cy = (a.hint.top + a.hint.bottom) / 2.0;
-        let b_cy = (b.hint.top + b.hint.bottom) / 2.0;
-        b_cy.total_cmp(&a_cy)
-    });
+    current
 }
 
 /// Reorder a slice in-place according to the given index order.
 fn reorder_by_indices<T>(slice: &mut [T], order: &[usize]) {
     debug_assert_eq!(slice.len(), order.len());
-    // Build inverse permutation and apply via swaps
     let mut perm: Vec<usize> = vec![0; slice.len()];
     for (new_pos, &old_pos) in order.iter().enumerate() {
         perm[new_pos] = old_pos;
     }
 
-    // Apply permutation in-place using cycle decomposition
+    // Apply permutation in-place using cycle decomposition.
+    //
+    // perm[new_pos] = old_pos means result[new_pos] should hold what was at old_pos.
+    // We follow each cycle: starting from position i, swap(i, perm[i]) to bring the
+    // correct element to position i. After each swap perm[i] is marked done (set to i).
+    // Repeat for the next position in the chain until we close the cycle (next == i).
+    // No final extra swap is needed since the last element in the cycle is already
+    // placed by the preceding swaps.
     let mut visited = vec![false; slice.len()];
     for i in 0..slice.len() {
         if visited[i] || perm[i] == i {
@@ -231,132 +434,12 @@ fn reorder_by_indices<T>(slice: &mut [T], order: &[usize]) {
             let next = perm[j];
             visited[j] = true;
             if next == i {
+                // Cycle is closed; element at j already sits in its correct slot.
                 break;
             }
             slice.swap(j, next);
-            // Update perm to reflect the swap
             perm[j] = j;
             j = next;
         }
-        // Final element in cycle: swap it into place
-        slice.swap(j, i);
-        perm[j] = j;
     }
-}
-
-/// Minimum absolute gap (in points) between region columns.
-const MIN_REGION_COLUMN_GAP: f32 = 5.0;
-
-/// Minimum vertical extent (fraction) that each column must span.
-const MIN_COLUMN_VERTICAL_FRACTION: f32 = 0.3;
-
-/// Detect if layout regions form two distinct columns, considering only narrow regions.
-///
-/// Returns the x-position to split at, or None if no column layout detected.
-/// Excludes PageHeader/PageFooter and full-width regions from column detection.
-fn detect_region_column_split_narrow(regions: &[LayoutRegion], content_width: f32) -> Option<f32> {
-    if regions.len() < 4 {
-        return None;
-    }
-
-    // Collect horizontal edges of narrow content regions only
-    let mut edges: Vec<(f32, f32)> = regions
-        .iter()
-        .filter(|r| !matches!(r.hint.class, LayoutHintClass::PageHeader | LayoutHintClass::PageFooter))
-        .filter(|r| {
-            let w = r.hint.right - r.hint.left;
-            content_width <= 0.0 || w / content_width < FULLWIDTH_FRACTION
-        })
-        .map(|r| (r.hint.left, r.hint.right))
-        .collect();
-
-    if edges.len() < 4 {
-        return None;
-    }
-
-    edges.sort_by(|a, b| a.0.total_cmp(&b.0));
-
-    // Find the largest horizontal gap
-    let mut max_right = f32::MIN;
-    let mut best_gap = 0.0_f32;
-    let mut best_split: Option<f32> = None;
-
-    for &(left, right) in &edges {
-        if max_right > f32::MIN {
-            let gap = left - max_right;
-            if gap > best_gap {
-                best_gap = gap;
-                best_split = Some((max_right + left) / 2.0);
-            }
-        }
-        max_right = max_right.max(right);
-    }
-
-    if best_gap < MIN_REGION_COLUMN_GAP {
-        return None;
-    }
-
-    let split_x = best_split?;
-
-    // Validate: both sides have at least 2 narrow content regions
-    let narrow_regions: Vec<&LayoutRegion> = regions
-        .iter()
-        .filter(|r| {
-            let w = r.hint.right - r.hint.left;
-            content_width <= 0.0 || w / content_width < FULLWIDTH_FRACTION
-        })
-        .collect();
-
-    let left_count = narrow_regions
-        .iter()
-        .filter(|r| (r.hint.left + r.hint.right) / 2.0 < split_x)
-        .count();
-    let right_count = narrow_regions
-        .iter()
-        .filter(|r| (r.hint.left + r.hint.right) / 2.0 >= split_x)
-        .count();
-
-    if left_count < 2 || right_count < 2 {
-        return None;
-    }
-
-    // Validate: both columns span a significant portion of vertical extent
-    let y_min = narrow_regions.iter().map(|r| r.hint.bottom).fold(f32::MAX, f32::min);
-    let y_max = narrow_regions.iter().map(|r| r.hint.top).fold(f32::MIN, f32::max);
-    let y_span = y_max - y_min;
-
-    if y_span < 1.0 {
-        return None;
-    }
-
-    let left_y_span = {
-        let mut lo = f32::MAX;
-        let mut hi = f32::MIN;
-        for r in narrow_regions
-            .iter()
-            .filter(|r| (r.hint.left + r.hint.right) / 2.0 < split_x)
-        {
-            lo = lo.min(r.hint.bottom);
-            hi = hi.max(r.hint.top);
-        }
-        hi - lo
-    };
-    let right_y_span = {
-        let mut lo = f32::MAX;
-        let mut hi = f32::MIN;
-        for r in narrow_regions
-            .iter()
-            .filter(|r| (r.hint.left + r.hint.right) / 2.0 >= split_x)
-        {
-            lo = lo.min(r.hint.bottom);
-            hi = hi.max(r.hint.top);
-        }
-        hi - lo
-    };
-
-    if left_y_span < y_span * MIN_COLUMN_VERTICAL_FRACTION || right_y_span < y_span * MIN_COLUMN_VERTICAL_FRACTION {
-        return None;
-    }
-
-    Some(split_x)
 }

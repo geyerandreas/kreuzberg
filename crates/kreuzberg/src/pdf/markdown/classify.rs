@@ -67,7 +67,7 @@ pub(super) fn classify_paragraphs(paragraphs: &mut [PdfParagraph], heading_map: 
             // Italic-only paragraphs need extra guards: academic papers use italic
             // for author names, affiliations, emails which shouldn't be headings.
             let italic_ok = if is_italic && !para.is_bold {
-                !t.contains('@') && !t.contains(',') && t.chars().next().is_some_and(|c| c.is_ascii_uppercase())
+                !t.contains('@') && !t.contains(',') && t.chars().next().is_some_and(|c| c.is_uppercase())
             } else {
                 true
             };
@@ -457,6 +457,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         }
     }
 
@@ -578,6 +579,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         }];
         // 3 segments × 6 words = 18 words > MAX_HEADING_WORD_COUNT
         let heading_map = vec![(18.0, Some(1)), (12.0, None)];

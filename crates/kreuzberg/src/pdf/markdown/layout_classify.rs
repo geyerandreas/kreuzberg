@@ -618,6 +618,7 @@ fn make_paragraph_from_lines(
         is_formula: false,
         is_page_furniture: false,
         layout_class: None,
+        caption_for: None,
     }
 }
 
@@ -792,6 +793,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         }
     }
 
@@ -955,6 +957,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         }];
 
         // SectionHeader hint covers line 1 area: baseline 700, extends to 714
@@ -1000,6 +1003,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         }];
 
         let hints = vec![make_hint(
@@ -1037,6 +1041,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         }];
 
         // Low confidence hint — should be ignored
@@ -1070,6 +1075,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         }];
 
         // Hint is far away from both lines
@@ -1103,6 +1109,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         }];
 
         let hints = vec![make_hint(
@@ -1197,6 +1204,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         }];
         let hints = vec![make_hint(
             LayoutHintClass::SectionHeader,
@@ -1233,6 +1241,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         }];
         let hints = vec![make_hint(
             LayoutHintClass::SectionHeader,
@@ -1264,6 +1273,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         }];
 
         // Title hint should NOT be applied via proportional matching

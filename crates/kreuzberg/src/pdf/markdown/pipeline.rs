@@ -437,6 +437,8 @@ pub fn render_document_as_markdown_with_tables(
     // Build per-page index of successfully extracted table bounding boxes.
     // This tells assign_segments_to_regions which Table bboxes actually produced
     // output, so it only suppresses segments for those — not for failed extractions.
+    // Include BOTH layout-detected tables and heuristic tables (from extraction.rs)
+    // to prevent text duplication when a table is extracted by the heuristic path.
     let extracted_table_bboxes_by_page: std::collections::HashMap<usize, Vec<crate::types::BoundingBox>> = {
         let mut map: std::collections::HashMap<usize, Vec<crate::types::BoundingBox>> =
             std::collections::HashMap::new();
@@ -446,6 +448,21 @@ pub fn render_document_as_markdown_with_tables(
                 map.entry(table.page_number.saturating_sub(1)).or_default().push(*bb);
             }
         }
+        // Also include heuristic tables from extraction.rs — these have bboxes
+        // but weren't previously used for segment suppression, causing text
+        // duplication on pages where heuristic extraction finds a table.
+        for table in tables {
+            if let Some(ref bb) = table.bounding_box {
+                map.entry(table.page_number.saturating_sub(1)).or_default().push(*bb);
+            }
+        }
+        tracing::debug!(
+            layout_tables = layout_tables.len(),
+            heuristic_tables = tables.len(),
+            pages_with_bboxes = map.len(),
+            total_bboxes = map.values().map(|v| v.len()).sum::<usize>(),
+            "table bbox suppression map built"
+        );
         map
     };
 
@@ -492,6 +509,46 @@ pub fn render_document_as_markdown_with_tables(
                 )
             } else {
                 // Standard pipeline: XY-Cut → lines → paragraphs → classify
+                // First, suppress segments that overlap with successfully extracted tables
+                // to prevent text duplication (table content appearing as both a table and body text).
+                let page_table_bboxes = extracted_table_bboxes_by_page
+                    .get(&i)
+                    .map(|v| v.as_slice())
+                    .unwrap_or(&[]);
+                if !page_table_bboxes.is_empty() {
+                    tracing::debug!(
+                        page = i,
+                        table_bboxes = page_table_bboxes.len(),
+                        segments = page_segments.len(),
+                        bbox_0 = ?page_table_bboxes.first().map(|b| (b.x0, b.y0, b.x1, b.y1)),
+                        seg_0 = ?page_segments.first().map(|s| (s.x, s.y, s.width, s.height)),
+                        "standard pipeline: table suppression active"
+                    );
+                }
+                let page_segments = if !page_table_bboxes.is_empty() {
+                    page_segments
+                        .into_iter()
+                        .filter(|seg| {
+                            let seg_area = seg.width * seg.height;
+                            if seg_area <= 0.0 || seg.text.trim().is_empty() {
+                                return true; // Keep zero-area/empty segments
+                            }
+                            !page_table_bboxes.iter().any(|bb| {
+                                let inter_left = seg.x.max(bb.x0 as f32);
+                                let inter_right = (seg.x + seg.width).min(bb.x1 as f32);
+                                let inter_bottom = seg.y.max(bb.y0 as f32);
+                                let inter_top = (seg.y + seg.height).min(bb.y1 as f32);
+                                if inter_left >= inter_right || inter_bottom >= inter_top {
+                                    return false;
+                                }
+                                let inter_area = (inter_right - inter_left) * (inter_top - inter_bottom);
+                                inter_area / seg_area >= 0.5
+                            })
+                        })
+                        .collect::<Vec<_>>()
+                } else {
+                    page_segments
+                };
                 let column_groups = split_segments_into_columns(&page_segments);
                 let mut paras: Vec<PdfParagraph> = if column_groups.len() <= 1 {
                     let lines = segments_to_lines(page_segments);
@@ -612,6 +669,13 @@ pub fn render_document_as_markdown_with_tables(
             .collect();
         inject_image_placeholders(&markdown, &image_metadata)
     };
+
+    // Stage 6: Final document-level normalization.
+    // Apply ligature repair and Unicode normalization to the fully assembled
+    // markdown so that any text that bypassed per-segment processing (e.g.
+    // OCR results, table cells, injected image captions) is also cleaned up.
+    let final_markdown = repair_contextual_ligatures(&final_markdown);
+    let final_markdown = normalize_unicode_text(&final_markdown);
 
     Ok((final_markdown, has_font_encoding_issues))
 }
@@ -995,6 +1059,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         }
     }
 
@@ -1175,6 +1240,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         }
     }
 

@@ -9,6 +9,12 @@ use crate::pdf::markdown::types::{LayoutHint, LayoutHintClass};
 /// Matches docling's threshold of 0.2 (20% of the segment's area must overlap).
 const MIN_IOS_THRESHOLD: f32 = 0.2;
 
+/// Padding (in points) added to each side of the tight bbox during refinement.
+const BBOX_REFINEMENT_PADDING: f32 = 2.0;
+
+/// Maximum number of assign→shrink→re-assign iterations.
+const MAX_REFINEMENT_ITERATIONS: usize = 3;
+
 /// Assign each segment to its best-matching layout region.
 ///
 /// Uses intersection-over-self (IoS): the fraction of the segment's bounding box
@@ -59,6 +65,8 @@ pub(in crate::pdf::markdown) fn assign_segments_to_regions<'a>(
 
     let mut unassigned: Vec<usize> = Vec::new();
 
+    let mut suppressed_count = 0_usize;
+
     for (seg_idx, seg) in segments.iter().enumerate() {
         if seg.text.trim().is_empty() {
             continue; // Skip whitespace-only segments
@@ -68,19 +76,28 @@ pub(in crate::pdf::markdown) fn assign_segments_to_regions<'a>(
         let seg_right = seg.x + seg.width;
         let seg_bottom = seg.y;
         let seg_top = seg.y + seg.height;
-        let cx = seg.x + seg.width / 2.0;
-        let cy = seg.y + seg.height / 2.0;
+        let seg_area = seg.width * seg.height;
 
-        // Check if this segment falls within a successfully extracted table.
-        let in_extracted_table = suppress_bboxes
-            .iter()
-            .any(|bb| (cx as f64) >= bb.x0 && (cx as f64) <= bb.x1 && (cy as f64) >= bb.y0 && (cy as f64) <= bb.y1);
+        // Check if this segment overlaps a successfully extracted table.
+        // Use IoS (intersection-over-self) instead of center-point to catch
+        // segments that straddle the table boundary.
+        let in_extracted_table = suppress_bboxes.iter().any(|bb| {
+            intersection_over_self(
+                seg_left,
+                seg_bottom,
+                seg_right,
+                seg_top,
+                seg_area,
+                bb.x0 as f32,
+                bb.y0 as f32,
+                bb.x1 as f32,
+                bb.y1 as f32,
+            ) >= 0.5
+        });
         if in_extracted_table {
+            suppressed_count += 1;
             continue;
         }
-
-        // Find the region with highest intersection-over-self (IoS)
-        let seg_area = seg.width * seg.height;
         let mut best_hint_idx: Option<usize> = None;
         let mut best_ios = 0.0_f32;
         let mut best_area = f32::MAX;
@@ -114,7 +131,158 @@ pub(in crate::pdf::markdown) fn assign_segments_to_regions<'a>(
         }
     }
 
+    tracing::trace!(
+        confident_hints = confident_hints.len(),
+        segments = segments.len(),
+        suppressed = suppressed_count,
+        assigned_to_regions = regions.iter().map(|r| r.segment_indices.len()).sum::<usize>(),
+        unassigned = unassigned.len(),
+        "segment-to-region assignment complete"
+    );
+
     (regions, unassigned)
+}
+
+/// Assign segments to regions with iterative bounding box refinement.
+///
+/// After the initial assignment, each region's bbox is shrunk to tightly fit its
+/// assigned segments (plus padding). Then segments are re-assigned using the refined
+/// bboxes. This prevents over-large model bboxes from "stealing" text from adjacent
+/// regions. Repeats up to 3 iterations or until assignments stabilize.
+pub(in crate::pdf::markdown) fn assign_segments_to_regions_refined<'a>(
+    segments: &[SegmentData],
+    hints: &'a [LayoutHint],
+    min_confidence: f32,
+    extracted_table_bboxes: &[crate::types::BoundingBox],
+) -> (Vec<LayoutRegion<'a>>, Vec<usize>) {
+    // First pass: assign with original bboxes
+    let (regions, unassigned) = assign_segments_to_regions(segments, hints, min_confidence, extracted_table_bboxes);
+
+    if regions.is_empty() {
+        return (regions, unassigned);
+    }
+
+    // Compute refined bboxes from assigned segments
+    let refined_hints: Vec<LayoutHint> = compute_refined_hints(&regions, segments, hints);
+
+    if refined_hints.is_empty() {
+        return (regions, unassigned);
+    }
+
+    // Iterate: re-assign with refined bboxes, re-shrink, repeat
+    let mut current_hints = refined_hints;
+    let mut prev_assignments: Vec<Vec<usize>> = regions.iter().map(|r| r.segment_indices.clone()).collect();
+
+    for _ in 1..MAX_REFINEMENT_ITERATIONS {
+        let (new_regions, _) =
+            assign_segments_to_regions(segments, &current_hints, min_confidence, extracted_table_bboxes);
+
+        // Check if assignments changed
+        let new_assignments: Vec<Vec<usize>> = new_regions.iter().map(|r| r.segment_indices.clone()).collect();
+        if new_assignments == prev_assignments {
+            break; // Stable — stop iterating
+        }
+
+        prev_assignments = new_assignments;
+        current_hints = compute_refined_hints(&new_regions, segments, &current_hints);
+    }
+
+    // Final assignment with the last refined hints, but we need to return regions
+    // that reference the original hints (for class/confidence), with the refined assignments
+    let (final_regions_refined, final_unassigned) =
+        assign_segments_to_regions(segments, &current_hints, min_confidence, extracted_table_bboxes);
+
+    // Map refined regions back to original hints by matching class + position
+    let mut result_regions: Vec<LayoutRegion<'a>> = Vec::new();
+    let confident_original: Vec<(usize, &'a LayoutHint)> = hints
+        .iter()
+        .enumerate()
+        .filter(|(_, h)| h.confidence >= min_confidence)
+        .filter(|(_, h)| !matches!(h.class, LayoutHintClass::Table | LayoutHintClass::Picture))
+        .collect();
+
+    for (ri, refined_region) in final_regions_refined.iter().enumerate() {
+        if ri < confident_original.len() {
+            result_regions.push(LayoutRegion {
+                hint: confident_original[ri].1,
+                segment_indices: refined_region.segment_indices.clone(),
+            });
+        }
+    }
+
+    (result_regions, final_unassigned)
+}
+
+/// Compute refined hints by shrinking each region's bbox to tightly fit its segments.
+///
+/// Each region's `hint` field already points to the correct original hint for that
+/// region (set when the region was created in `assign_segments_to_regions`), so we
+/// use it directly as the base for clamping. The `source_hints` parameter is unused
+/// but retained for API symmetry with the iterative caller.
+fn compute_refined_hints(
+    regions: &[LayoutRegion],
+    segments: &[SegmentData],
+    _source_hints: &[LayoutHint],
+) -> Vec<LayoutHint> {
+    let mut refined = Vec::with_capacity(regions.len());
+
+    for region in regions.iter() {
+        let base_hint = region.hint;
+
+        if region.segment_indices.is_empty() {
+            // No segments — keep original bbox
+            refined.push(base_hint.clone());
+            continue;
+        }
+
+        // Compute tight bbox from assigned segments
+        let mut tight_left = f32::MAX;
+        let mut tight_bottom = f32::MAX;
+        let mut tight_right = f32::MIN;
+        let mut tight_top = f32::MIN;
+
+        for &idx in &region.segment_indices {
+            let seg = &segments[idx];
+            tight_left = tight_left.min(seg.x);
+            tight_bottom = tight_bottom.min(seg.y);
+            tight_right = tight_right.max(seg.x + seg.width);
+            tight_top = tight_top.max(seg.y + seg.height);
+        }
+
+        // Sparsity guard: if segments fill < 15% of the tight bbox area,
+        // the layout is sparse (e.g., TOC with dot leaders). Refinement
+        // would fragment the line across regions — keep original bbox.
+        let tight_area = (tight_right - tight_left) * (tight_top - tight_bottom);
+        if tight_area > 0.0 {
+            let seg_area_sum: f32 = region
+                .segment_indices
+                .iter()
+                .map(|&idx| segments[idx].width * segments[idx].height)
+                .sum();
+            let fill_ratio = seg_area_sum / tight_area;
+            if fill_ratio < 0.15 {
+                tracing::trace!(
+                    class = ?base_hint.class,
+                    fill_ratio,
+                    "refinement skipped: sparse layout"
+                );
+                refined.push(base_hint.clone());
+                continue;
+            }
+        }
+
+        // Apply padding and clamp to original bbox (never expand beyond model prediction)
+        refined.push(LayoutHint {
+            class: base_hint.class,
+            confidence: base_hint.confidence,
+            left: (tight_left - BBOX_REFINEMENT_PADDING).max(base_hint.left),
+            bottom: (tight_bottom - BBOX_REFINEMENT_PADDING).max(base_hint.bottom),
+            right: (tight_right + BBOX_REFINEMENT_PADDING).min(base_hint.right),
+            top: (tight_top + BBOX_REFINEMENT_PADDING).min(base_hint.top),
+        });
+    }
+
+    refined
 }
 
 /// Compute intersection-over-self: the fraction of the segment's area that

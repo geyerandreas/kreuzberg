@@ -1,6 +1,6 @@
 //! Final markdown assembly from classified paragraphs, with optional table interleaving.
 
-use super::render::render_paragraph_to_output;
+use super::render::{escape_html_entities, render_paragraph_to_output};
 use super::types::PdfParagraph;
 
 /// Assemble markdown with tables interleaved at their correct reading-order positions.
@@ -41,6 +41,10 @@ pub(super) fn assemble_markdown_with_tables(
             assemble_page_with_tables(&mut output, paragraphs, &tables);
         } else {
             for (para_idx, para) in paragraphs.iter().enumerate() {
+                // Skip captions — they are rendered after their parent element
+                if para.caption_for.is_some() {
+                    continue;
+                }
                 if para_idx > 0 {
                     // Use single newline between consecutive list items
                     let prev_is_list = paragraphs[para_idx - 1].is_list_item;
@@ -51,6 +55,8 @@ pub(super) fn assemble_markdown_with_tables(
                     }
                 }
                 render_paragraph_to_output(para, &mut output);
+                // Emit any captions associated with this paragraph
+                emit_captions_for(&mut output, paragraphs, para_idx);
             }
         }
     }
@@ -100,6 +106,7 @@ fn assemble_page_with_tables(output: &mut String, paragraphs: &[PdfParagraph], t
     struct Element<'a> {
         y_pos: f32,
         content: ElementContent<'a>,
+        para_idx: Option<usize>,
     }
     enum ElementContent<'a> {
         Paragraph(&'a PdfParagraph),
@@ -108,11 +115,16 @@ fn assemble_page_with_tables(output: &mut String, paragraphs: &[PdfParagraph], t
 
     let mut elements: Vec<Element> = Vec::new();
 
-    for para in paragraphs {
+    for (idx, para) in paragraphs.iter().enumerate() {
+        // Skip captions — they are emitted after their parent
+        if para.caption_for.is_some() {
+            continue;
+        }
         let y_pos = para.lines.first().map(|l| l.baseline_y).unwrap_or(0.0);
         elements.push(Element {
             y_pos,
             content: ElementContent::Paragraph(para),
+            para_idx: Some(idx),
         });
     }
 
@@ -120,6 +132,7 @@ fn assemble_page_with_tables(output: &mut String, paragraphs: &[PdfParagraph], t
         elements.push(Element {
             y_pos: *y_pos,
             content: ElementContent::Table(md),
+            para_idx: None,
         });
     }
 
@@ -141,6 +154,10 @@ fn assemble_page_with_tables(output: &mut String, paragraphs: &[PdfParagraph], t
             ElementContent::Paragraph(para) => {
                 prev_was_list_item = para.is_list_item;
                 render_paragraph_to_output(para, output);
+                // Emit captions associated with this paragraph
+                if let Some(idx) = elem.para_idx {
+                    emit_captions_for(output, paragraphs, idx);
+                }
             }
             ElementContent::Table(md) => {
                 prev_was_list_item = false;
@@ -155,6 +172,33 @@ fn assemble_page_with_tables(output: &mut String, paragraphs: &[PdfParagraph], t
             output.push_str("\n\n");
         }
         output.push_str(md);
+    }
+}
+
+/// Emit any caption paragraphs associated with the parent at `parent_idx`.
+///
+/// Captions are rendered in italics. The text is HTML-escaped before wrapping
+/// to prevent `&`, `<`, `>`, and `_` from appearing raw in markdown output.
+fn emit_captions_for(output: &mut String, paragraphs: &[PdfParagraph], parent_idx: usize) {
+    for para in paragraphs {
+        if para.caption_for == Some(parent_idx) {
+            output.push('\n');
+            // Collect raw text, escape HTML entities, then wrap in italics
+            let text: String = para
+                .lines
+                .iter()
+                .flat_map(|l| l.segments.iter())
+                .map(|s| s.text.as_str())
+                .collect::<Vec<_>>()
+                .join(" ");
+            let trimmed = text.trim();
+            if !trimmed.is_empty() {
+                let escaped = escape_html_entities(trimmed);
+                output.push('*');
+                output.push_str(&escaped);
+                output.push('*');
+            }
+        }
     }
 }
 
@@ -204,6 +248,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         }
     }
 

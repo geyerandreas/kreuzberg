@@ -387,7 +387,8 @@ impl DocumentExtractor for PdfExtractor {
             if std::env::var("KREUZBERG_DEBUG_OCR").is_ok() {
                 eprintln!(
                     "[kreuzberg::pdf::ocr] fallback={} font_encoding_issues={} non_whitespace={} alnum={} meaningful_words={} \
-                     avg_non_whitespace={:.2} avg_alnum={:.2} alnum_ratio={:.3}",
+                     avg_non_whitespace={:.2} avg_alnum={:.2} alnum_ratio={:.3} fragmented_word_ratio={:.3} \
+                     avg_word_length={:.2} word_count={} consecutive_repeat_ratio={:.3}",
                     decision.fallback,
                     has_font_encoding_issues,
                     decision.stats.non_whitespace,
@@ -395,7 +396,11 @@ impl DocumentExtractor for PdfExtractor {
                     decision.stats.meaningful_words,
                     decision.avg_non_whitespace,
                     decision.avg_alnum,
-                    decision.stats.alnum_ratio
+                    decision.stats.alnum_ratio,
+                    decision.stats.fragmented_word_ratio,
+                    decision.stats.avg_word_length,
+                    decision.stats.word_count,
+                    decision.stats.consecutive_repeat_ratio
                 );
             }
 

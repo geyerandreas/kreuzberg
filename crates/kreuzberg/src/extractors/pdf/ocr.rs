@@ -21,6 +21,16 @@ pub(crate) const MIN_GARBAGE_CHARS: usize = 5;
 /// Maximum fraction of short (1-2 char) words before text is considered fragmented.
 #[cfg(feature = "ocr")]
 pub(crate) const MAX_FRAGMENTED_WORD_RATIO: f64 = 0.6;
+/// Critical fragmentation threshold: triggers OCR regardless of meaningful word count.
+/// Normal English text has ~20-30% short words. 80%+ is definitive garbage.
+#[cfg(feature = "ocr")]
+pub(crate) const CRITICAL_FRAGMENTED_WORD_RATIO: f64 = 0.80;
+/// Minimum average word length. Below this with enough words indicates garbled extraction.
+#[cfg(feature = "ocr")]
+pub(crate) const MIN_AVG_WORD_LENGTH: f64 = 2.0;
+/// Minimum word count before average word length check applies.
+#[cfg(feature = "ocr")]
+pub(crate) const MIN_WORDS_FOR_AVG_LENGTH_CHECK: usize = 50;
 /// Minimum consecutive word repetition ratio to detect column scrambling.
 /// When pdfium reads multi-column text row-by-row, the same words appear as
 /// consecutive duplicates (e.g., "TALK TALK", "of the of the").
@@ -44,6 +54,10 @@ pub struct NativeTextStats {
     /// Fraction of consecutive word pairs that are identical (0.0-1.0).
     /// High values indicate column scrambling where text is duplicated.
     pub consecutive_repeat_ratio: f64,
+    /// Average word length (by chars). Very low values indicate garbled extraction.
+    pub avg_word_length: f64,
+    /// Total word count (whitespace-delimited).
+    pub word_count: usize,
 }
 
 #[cfg(feature = "ocr")]
@@ -111,6 +125,12 @@ impl NativeTextStats {
             0.0
         };
 
+        let avg_word_length = if words.is_empty() {
+            0.0
+        } else {
+            words.iter().map(|w| w.len()).sum::<usize>() as f64 / words.len() as f64
+        };
+
         Self {
             non_whitespace,
             alnum,
@@ -119,6 +139,8 @@ impl NativeTextStats {
             garbage_char_count,
             fragmented_word_ratio,
             consecutive_repeat_ratio,
+            avg_word_length,
+            word_count: words.len(),
         }
     }
 }
@@ -153,6 +175,8 @@ pub fn evaluate_native_text_for_ocr(native_text: &str, page_count: Option<usize>
             garbage_char_count: 0,
             fragmented_word_ratio: 0.0,
             consecutive_repeat_ratio: 0.0,
+            avg_word_length: 0.0,
+            word_count: 0,
         };
         return OcrFallbackDecision {
             stats: empty_stats,
@@ -179,6 +203,13 @@ pub fn evaluate_native_text_for_ocr(native_text: &str, page_count: Option<usize>
     } else if stats.fragmented_word_ratio >= MAX_FRAGMENTED_WORD_RATIO && stats.meaningful_words < MIN_MEANINGFUL_WORDS
     {
         // Mostly 1-2 char "words" with few meaningful words = garbled extraction.
+        true
+    } else if stats.fragmented_word_ratio >= CRITICAL_FRAGMENTED_WORD_RATIO {
+        // ≥80% single-char words is garbled text regardless of meaningful word count.
+        // Normal English has ~20-30% short words; 80%+ is definitive garbage.
+        true
+    } else if stats.avg_word_length < MIN_AVG_WORD_LENGTH && stats.word_count >= MIN_WORDS_FOR_AVG_LENGTH_CHECK {
+        // Average word length below 2.0 with enough words indicates per-character extraction.
         true
     } else if stats.consecutive_repeat_ratio >= MIN_CONSECUTIVE_REPEAT_RATIO {
         // High consecutive word repetition indicates column scrambling:
@@ -542,6 +573,80 @@ mod tests {
             "Normal text ratio {} should be < {}",
             stats.consecutive_repeat_ratio,
             MIN_CONSECUTIVE_REPEAT_RATIO
+        );
+    }
+
+    #[cfg(feature = "ocr")]
+    #[test]
+    fn test_critical_fragmentation_triggers_fallback() {
+        // 80%+ single-char words WITH some meaningful words — should still trigger.
+        // This simulates senate-expenditures: per-character extraction where random
+        // fragments occasionally form 4+ char tokens.
+        let mut words: Vec<&str> = Vec::new();
+        // 90 single-char "words"
+        for _ in 0..90 {
+            words.push("A");
+        }
+        // 10 meaningful words (enough to pass meaningful_words >= 3)
+        for _ in 0..10 {
+            words.push("document");
+        }
+        let text = words.join(" ");
+        let stats = NativeTextStats::from(&text);
+        assert!(
+            stats.fragmented_word_ratio >= CRITICAL_FRAGMENTED_WORD_RATIO,
+            "fragmented ratio {} should be >= {}",
+            stats.fragmented_word_ratio,
+            CRITICAL_FRAGMENTED_WORD_RATIO
+        );
+        assert!(stats.meaningful_words >= MIN_MEANINGFUL_WORDS);
+        let decision = evaluate_native_text_for_ocr(&text, Some(1));
+        assert!(
+            decision.fallback,
+            "Critical fragmentation should trigger OCR even with meaningful words"
+        );
+    }
+
+    #[cfg(feature = "ocr")]
+    #[test]
+    fn test_low_avg_word_length_triggers_fallback() {
+        // Average word length < 2.0 with 50+ words — garbled extraction
+        let mut words: Vec<&str> = Vec::new();
+        for _ in 0..55 {
+            words.push("x");
+        }
+        // Add a few meaningful words so meaningful_words >= 3
+        words.push("hello");
+        words.push("world");
+        words.push("testing");
+        let text = words.join(" ");
+        let stats = NativeTextStats::from(&text);
+        assert!(stats.avg_word_length < MIN_AVG_WORD_LENGTH);
+        assert!(stats.word_count >= MIN_WORDS_FOR_AVG_LENGTH_CHECK);
+        let decision = evaluate_native_text_for_ocr(&text, Some(1));
+        assert!(decision.fallback, "Low avg word length should trigger OCR fallback");
+    }
+
+    #[cfg(feature = "ocr")]
+    #[test]
+    fn test_normal_text_with_articles_no_false_positive() {
+        // Text with many natural short words (a, I, to, of, is, it, an, or) should NOT trigger
+        let text = "I am a fan of it. It is an old or new idea. A to do list is on my desk. \
+                    He is in on it. We do go to it. I am at it. Is it so? He or I do it. \
+                    The paragraph contains meaningful content with proper structure and sentences.";
+        let stats = NativeTextStats::from(text);
+        // Verify it has meaningful words and isn't falsely flagged
+        assert!(stats.meaningful_words >= MIN_MEANINGFUL_WORDS);
+        assert!(
+            stats.fragmented_word_ratio < CRITICAL_FRAGMENTED_WORD_RATIO,
+            "Normal text fragmentation {} should be < {}",
+            stats.fragmented_word_ratio,
+            CRITICAL_FRAGMENTED_WORD_RATIO
+        );
+        let decision = evaluate_native_text_for_ocr(text, Some(1));
+        assert!(
+            !decision.fallback,
+            "Normal text with short words should not trigger OCR"
         );
     }
 

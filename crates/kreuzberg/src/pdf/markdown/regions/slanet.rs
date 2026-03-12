@@ -1,5 +1,6 @@
 //! SLANet-based table recognition for native PDF pages.
 
+use crate::pdf::markdown::render::escape_html_entities;
 use crate::pdf::markdown::types::{LayoutHint, LayoutHintClass};
 use crate::types::Table;
 
@@ -325,7 +326,9 @@ fn render_grid_as_markdown(grid: &[Vec<String>]) -> String {
         md.push('|');
         for col in 0..max_cols {
             let cell = row.get(col).map(|s| s.as_str()).unwrap_or("");
-            let escaped = cell.replace('|', "\\|");
+            // Escape pipe characters first, then HTML entities
+            let pipe_escaped = cell.replace('|', "\\|");
+            let escaped = escape_html_entities(&pipe_escaped);
             md.push(' ');
             md.push_str(escaped.trim());
             md.push_str(" |");

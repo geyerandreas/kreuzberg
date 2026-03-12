@@ -221,6 +221,7 @@ fn convert_blocks(blocks: &[ExtractedBlock], _body_font_size: f32, paragraphs: &
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         });
     }
 }

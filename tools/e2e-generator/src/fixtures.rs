@@ -637,12 +637,13 @@ pub fn load_fixtures(fixtures_dir: &Utf8Path) -> Result<Vec<Fixture>> {
 pub fn should_include_for_wasm(fixture: &Fixture, target: WasmTarget) -> bool {
     // PaddleOCR and layout detection require ONNX Runtime which is not available in WASM
     // Embeddings and keywords require native libraries not available in WASM
-    if fixture
-        .skip()
-        .requires_feature
-        .iter()
-        .any(|f| f == "paddle-ocr" || f == "layout-detection" || f == "embeddings" || f.starts_with("keywords") || f == "chunking-tokenizers")
-    {
+    if fixture.skip().requires_feature.iter().any(|f| {
+        f == "paddle-ocr"
+            || f == "layout-detection"
+            || f == "embeddings"
+            || f.starts_with("keywords")
+            || f == "chunking-tokenizers"
+    }) {
         return false;
     }
 

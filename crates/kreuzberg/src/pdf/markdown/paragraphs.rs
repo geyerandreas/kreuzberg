@@ -110,6 +110,7 @@ pub(super) fn finalize_paragraph(lines: Vec<PdfLine>) -> PdfParagraph {
         is_formula: false,
         is_page_furniture: false,
         layout_class: None,
+        caption_for: None,
         lines,
     }
 }
@@ -162,7 +163,10 @@ fn ends_with_sentence_terminator(para: &PdfParagraph) -> bool {
         .and_then(|l| l.segments.last())
         .map(|s| s.text.trim_end())
         .unwrap_or("");
-    matches!(last_text.chars().last(), Some('.' | '?' | '!' | ':' | ';'))
+    matches!(
+        last_text.chars().last(),
+        Some('.' | '?' | '!' | ':' | ';' | '\u{3002}' | '\u{FF1F}' | '\u{FF01}')
+    )
 }
 
 /// Split paragraphs that contain embedded bullet characters (e.g. `•`) into separate list items.
@@ -251,6 +255,7 @@ fn text_to_paragraph(text: &str, font_size: f32, is_bold: bool, is_list_item: bo
         is_formula: false,
         is_page_furniture: false,
         layout_class: None,
+        caption_for: None,
     }
 }
 
@@ -395,5 +400,48 @@ mod tests {
         )];
         let paragraphs = lines_to_paragraphs(lines);
         assert!(!paragraphs[0].is_list_item);
+    }
+
+    // ── CJK Sentence Terminator Tests ────────────────────────────────────────
+
+    #[test]
+    fn test_cjk_sentence_terminator() {
+        // Two body paragraphs where the first ends with Chinese period (U+3002).
+        // They should NOT be merged by merge_continuation_paragraphs.
+        let mut paragraphs = vec![
+            // First paragraph ends with 。(U+3002)
+            finalize_paragraph(vec![make_line(
+                vec![plain_segment("这是第一句。", 10.0, 700.0, 80.0, 12.0)],
+                700.0,
+                12.0,
+            )]),
+            finalize_paragraph(vec![make_line(
+                vec![plain_segment("这是第二句", 10.0, 686.0, 80.0, 12.0)],
+                686.0,
+                12.0,
+            )]),
+        ];
+        merge_continuation_paragraphs(&mut paragraphs);
+        assert_eq!(paragraphs.len(), 2, "Chinese period should prevent merging");
+    }
+
+    #[test]
+    fn test_fullwidth_question_mark() {
+        // Two body paragraphs where the first ends with fullwidth question mark (U+FF1F).
+        // They should NOT be merged.
+        let mut paragraphs = vec![
+            finalize_paragraph(vec![make_line(
+                vec![plain_segment("Is this correct？", 10.0, 700.0, 100.0, 12.0)],
+                700.0,
+                12.0,
+            )]),
+            finalize_paragraph(vec![make_line(
+                vec![plain_segment("yes it is", 10.0, 686.0, 60.0, 12.0)],
+                686.0,
+                12.0,
+            )]),
+        ];
+        merge_continuation_paragraphs(&mut paragraphs);
+        assert_eq!(paragraphs.len(), 2, "Fullwidth question mark should prevent merging");
     }
 }

@@ -13,6 +13,7 @@ pub mod consolidate;
 pub mod corpus;
 pub mod error;
 pub mod fixture;
+pub mod groups;
 pub mod markdown_quality;
 pub mod model_benchmark;
 pub mod monitoring;

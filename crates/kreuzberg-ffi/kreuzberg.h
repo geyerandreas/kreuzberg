@@ -906,22 +906,6 @@ int32_t kreuzberg_config_builder_set_include_document_structure(struct ConfigBui
                                                                 int32_t include);
 
 /**
- * Set the force_ocr field.
- *
- * # Arguments
- *
- * * `builder` - Non-null pointer to ConfigBuilder
- * * `force` - 1 for true, 0 for false
- *
- * # Returns
- *
- * 0 on success, -1 on error (NULL builder)
- */
-KREUZBERG_EXPORT
-int32_t kreuzberg_config_builder_set_force_ocr(struct ConfigBuilder *builder,
-                                               int32_t force);
-
-/**
  * Set OCR configuration from JSON.
  *
  * # Arguments
@@ -968,22 +952,6 @@ int32_t kreuzberg_config_builder_set_ocr(struct ConfigBuilder *builder,
 KREUZBERG_EXPORT
 int32_t kreuzberg_config_builder_set_pdf(struct ConfigBuilder *builder,
                                          const char *pdf_json);
-
-/**
- * Set token reduction configuration from JSON.
- *
- * # Arguments
- *
- * * `builder` - Non-null pointer to ConfigBuilder
- * * `tr_json` - JSON string for token reduction config
- *
- * # Returns
- *
- * 0 on success, -1 on error
- */
-KREUZBERG_EXPORT
-int32_t kreuzberg_config_builder_set_token_reduction(struct ConfigBuilder *builder,
-                                                     const char *tr_json);
 
 /**
  * Set chunking configuration from JSON.
@@ -1082,116 +1050,28 @@ int32_t kreuzberg_config_builder_set_language_detection(struct ConfigBuilder *bu
                                                         const char *ld_json);
 
 /**
- * Set pages configuration from JSON.
+ * Set layout detection configuration from JSON.
  *
  * # Arguments
  *
  * * `builder` - Non-null pointer to ConfigBuilder
- * * `pages_json` - JSON string for pages config
+ * * `layout_json` - JSON string like `{"preset": "fast", "apply_heuristics": true}`
  *
  * # Returns
  *
- * 0 on success, -1 on error
+ * 0 on success, -1 on error (check kreuzberg_last_error)
+ *
+ * # Safety
+ *
+ * This function is meant to be called from C/FFI code. The caller must ensure:
+ * - `builder` must be a valid, non-null pointer previously returned by `kreuzberg_config_builder_new`
+ * - The pointer must be properly aligned and point to a valid ConfigBuilder instance
+ * - `layout_json` must be a valid, non-null pointer to a null-terminated UTF-8 string
+ * - The string pointer must remain valid for the duration of the function call
  */
 KREUZBERG_EXPORT
-int32_t kreuzberg_config_builder_set_pages(struct ConfigBuilder *builder,
-                                           const char *pages_json);
-
-/**
- * Set keywords configuration from JSON.
- *
- * # Arguments
- *
- * * `builder` - Non-null pointer to ConfigBuilder
- * * `keywords_json` - JSON string for keywords config
- *
- * # Returns
- *
- * 0 on success, -1 on error
- */
-KREUZBERG_EXPORT
-int32_t kreuzberg_config_builder_set_keywords(struct ConfigBuilder *builder,
-                                              const char *keywords_json);
-
-/**
- * Set HTML conversion options from JSON.
- *
- * # Arguments
- *
- * * `builder` - Non-null pointer to ConfigBuilder
- * * `html_json` - JSON string for HTML options
- *
- * # Returns
- *
- * 0 on success, -1 on error
- */
-KREUZBERG_EXPORT
-int32_t kreuzberg_config_builder_set_html_options(struct ConfigBuilder *builder,
-                                                  const char *html_json);
-
-/**
- * Set the maximum concurrent extractions.
- *
- * # Arguments
- *
- * * `builder` - Non-null pointer to ConfigBuilder
- * * `max` - Maximum concurrent extractions (0 for default)
- *
- * # Returns
- *
- * 0 on success, -1 on error
- */
-KREUZBERG_EXPORT
-int32_t kreuzberg_config_builder_set_max_concurrent_extractions(struct ConfigBuilder *builder,
-                                                                uintptr_t max);
-
-/**
- * Set the result format.
- *
- * # Arguments
- *
- * * `builder` - Non-null pointer to ConfigBuilder
- * * `format_str` - Format name ("Unified" or "ElementBased")
- *
- * # Returns
- *
- * 0 on success, -1 on error
- */
-KREUZBERG_EXPORT
-int32_t kreuzberg_config_builder_set_result_format(struct ConfigBuilder *builder,
-                                                   const char *format_str);
-
-/**
- * Set security limits for archive extraction from JSON.
- *
- * # Arguments
- *
- * * `builder` - Non-null pointer to ConfigBuilder
- * * `security_json` - JSON string for security limits
- *
- * # Returns
- *
- * 0 on success, -1 on error
- */
-KREUZBERG_EXPORT
-int32_t kreuzberg_config_builder_set_security_limits(struct ConfigBuilder *builder,
-                                                     const char *security_json);
-
-/**
- * Set the output format.
- *
- * # Arguments
- *
- * * `builder` - Non-null pointer to ConfigBuilder
- * * `format_str` - Format name ("Plain", "Markdown", "Djot", "Html")
- *
- * # Returns
- *
- * 0 on success, -1 on error
- */
-KREUZBERG_EXPORT
-int32_t kreuzberg_config_builder_set_output_format(struct ConfigBuilder *builder,
-                                                   const char *format_str);
+int32_t kreuzberg_config_builder_set_layout(struct ConfigBuilder *builder,
+                                            const char *layout_json);
 
 /**
  * Build the final ExtractionConfig and consume the builder.

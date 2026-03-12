@@ -24,6 +24,8 @@ pub(super) struct PdfParagraph {
     pub is_formula: bool,
     pub is_page_furniture: bool,
     pub layout_class: Option<LayoutHintClass>,
+    /// Index of the parent element this caption is associated with (tables/pictures).
+    pub caption_for: Option<usize>,
 }
 
 /// Simplified layout class for the markdown pipeline.
@@ -39,6 +41,7 @@ pub(crate) enum LayoutHintClass {
     Formula,
     ListItem,
     Caption,
+    Footnote,
     PageHeader,
     PageFooter,
     Table,

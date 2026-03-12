@@ -9,7 +9,7 @@ use super::types::{PdfLine, PdfParagraph};
 pub(super) fn render_paragraph_to_output(para: &PdfParagraph, output: &mut String) {
     if let Some(level) = para.heading_level {
         let prefix = "#".repeat(level as usize);
-        let text = join_line_texts(&para.lines);
+        let text = escape_html_entities(&join_line_texts(&para.lines));
         output.push_str(&prefix);
         output.push(' ');
         output.push_str(&text);
@@ -160,10 +160,31 @@ fn should_dehyphenate(prev: &str, next: &str) -> bool {
     next.chars().next().is_some_and(|c| c.is_lowercase())
 }
 
+/// Escape HTML entities in text for safe markdown output.
+///
+/// Replacements applied in order (`&` first to avoid double-escaping):
+/// - `&` → `&amp;`
+/// - `<` → `&lt;`
+/// - `>` → `&gt;`
+///
+/// Also escapes `_` as `\_` unless the text contains `://` (to preserve URLs).
+///
+/// Visibility is `pub(in crate::pdf::markdown)` so child modules such as
+/// `crate::pdf::markdown::regions::slanet` can import it.
+pub(in crate::pdf::markdown) fn escape_html_entities(text: &str) -> String {
+    let mut s = text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+    // Escape underscores only when not a URL (URLs contain "://")
+    if !s.contains("://") {
+        s = s.replace('_', "\\_");
+    }
+    s
+}
+
 /// Render an entire body paragraph with inline bold/italic markup.
 fn render_paragraph_with_inline_markup(para: &PdfParagraph) -> String {
     let all_segments: Vec<&SegmentData> = para.lines.iter().flat_map(|l| l.segments.iter()).collect();
-    render_segment_refs_with_markup(&all_segments)
+    let rendered = render_segment_refs_with_markup(&all_segments);
+    escape_html_entities(&rendered)
 }
 
 /// Core inline markup renderer working on segment references.
@@ -278,6 +299,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -296,6 +318,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -317,6 +340,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -335,6 +359,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -353,6 +378,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -375,6 +401,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -403,6 +430,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -426,6 +454,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -455,6 +484,7 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
@@ -498,9 +528,151 @@ mod tests {
             is_formula: false,
             is_page_furniture: false,
             layout_class: None,
+            caption_for: None,
         };
         let mut output = String::new();
         render_paragraph_to_output(&para, &mut output);
         assert_eq!(output, "# Chapter One Title");
+    }
+
+    #[test]
+    fn test_escape_html_entities_ampersand() {
+        assert_eq!(escape_html_entities("a & b"), "a &amp; b");
+    }
+
+    #[test]
+    fn test_escape_html_entities_lt_gt() {
+        assert_eq!(escape_html_entities("a < b > c"), "a &lt; b &gt; c");
+    }
+
+    #[test]
+    fn test_escape_html_entities_no_double_escape() {
+        // & must be replaced first so &lt; doesn't become &amp;lt;
+        assert_eq!(escape_html_entities("a & b < c"), "a &amp; b &lt; c");
+    }
+
+    #[test]
+    fn test_escape_html_entities_underscore() {
+        assert_eq!(escape_html_entities("foo_bar"), "foo\\_bar");
+    }
+
+    #[test]
+    fn test_escape_html_entities_url_preserves_underscore() {
+        // URLs with :// should not have underscores escaped
+        assert_eq!(
+            escape_html_entities("https://example.com/foo_bar"),
+            "https://example.com/foo_bar"
+        );
+    }
+
+    #[test]
+    fn test_render_paragraph_html_entities_escaped() {
+        let para = PdfParagraph {
+            lines: vec![make_line(vec![make_segment("a & b < c > d", false, false)])],
+            dominant_font_size: 12.0,
+            heading_level: None,
+            is_bold: false,
+            is_list_item: false,
+            is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
+            caption_for: None,
+        };
+        let mut output = String::new();
+        render_paragraph_to_output(&para, &mut output);
+        assert_eq!(output, "a &amp; b &lt; c &gt; d");
+    }
+
+    #[test]
+    fn test_render_code_block_no_html_escaping() {
+        // Code blocks must NOT have HTML entities escaped
+        let para = PdfParagraph {
+            lines: vec![make_line(vec![make_segment("a & b < c", false, false)])],
+            dominant_font_size: 12.0,
+            heading_level: None,
+            is_bold: false,
+            is_list_item: false,
+            is_code_block: true,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
+            caption_for: None,
+        };
+        let mut output = String::new();
+        render_paragraph_to_output(&para, &mut output);
+        assert_eq!(output, "```\na & b < c\n```");
+    }
+
+    #[test]
+    fn test_render_formula_no_html_escaping() {
+        // Formula blocks must NOT have HTML entities escaped
+        let para = PdfParagraph {
+            lines: vec![make_line(vec![make_segment("x < y & z > w", false, false)])],
+            dominant_font_size: 12.0,
+            heading_level: None,
+            is_bold: false,
+            is_list_item: false,
+            is_code_block: false,
+            is_formula: true,
+            is_page_furniture: false,
+            layout_class: None,
+            caption_for: None,
+        };
+        let mut output = String::new();
+        render_paragraph_to_output(&para, &mut output);
+        assert_eq!(output, "$$\nx < y & z > w\n$$");
+    }
+
+    #[test]
+    fn test_escape_html_entities_basic() {
+        // & → &amp;, < → &lt;, > → &gt;
+        assert_eq!(escape_html_entities("a & b"), "a &amp; b");
+        assert_eq!(escape_html_entities("x < y"), "x &lt; y");
+        assert_eq!(escape_html_entities("p > q"), "p &gt; q");
+        // All three together
+        assert_eq!(escape_html_entities("a & b < c > d"), "a &amp; b &lt; c &gt; d");
+    }
+
+    #[test]
+    fn test_escape_underscores() {
+        // Underscores are escaped to \_ when the text does not contain "://"
+        assert_eq!(escape_html_entities("foo_bar"), "foo\\_bar");
+        assert_eq!(escape_html_entities("a_b_c"), "a\\_b\\_c");
+        // Plain text without underscores is unchanged
+        assert_eq!(escape_html_entities("no underscores here"), "no underscores here");
+    }
+
+    #[test]
+    fn test_escape_preserves_urls() {
+        // URLs containing "://" must NOT have underscores escaped
+        let url = "https://example.com/path_to_resource";
+        assert_eq!(escape_html_entities(url), url);
+        // Protocol-relative URL also counts
+        let proto = "ftp://host/file_name.txt";
+        assert_eq!(escape_html_entities(proto), proto);
+    }
+
+    #[test]
+    fn test_heading_text_is_escaped() {
+        // A heading with "<" in its text should produce "&lt;" in the rendered output
+
+        let para = PdfParagraph {
+            lines: vec![make_line(vec![make_segment("Result <unknown>", false, false)])],
+            dominant_font_size: 18.0,
+            heading_level: Some(2),
+            is_bold: false,
+            is_list_item: false,
+            is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
+            caption_for: None,
+        };
+        let mut output = String::new();
+        render_paragraph_to_output(&para, &mut output);
+        assert!(output.contains("&lt;"), "heading should contain &lt; but got: {output}");
+        assert!(output.contains("&gt;"), "heading should contain &gt; but got: {output}");
+        assert!(!output.contains('<'), "raw < should not appear in heading output");
     }
 }

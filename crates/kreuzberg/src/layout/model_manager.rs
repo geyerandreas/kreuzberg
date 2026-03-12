@@ -32,7 +32,7 @@ const MODELS: &[ModelDefinition] = &[
         hf_repo_id: "Kreuzberg/layout-models",
         remote_filename: "slanet-plus/model.onnx",
         local_filename: "slanet-plus.onnx",
-        sha256_checksum: "e0bff8da087f9b83629f1e1a6e0f8252fc2de85a7d80415b3510fc521338da3d",
+        sha256_checksum: "a7024cc76213586c74fcf33757bf909a83cf9c76d93cdb326515de5bccfbb697",
     },
 ];
 
