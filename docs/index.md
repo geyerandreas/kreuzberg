@@ -3,7 +3,7 @@ description: "Kreuzberg – Extract text, tables, and metadata from 75+ file for
 ---
 
 <div class="hero-banner" markdown>
-![Kreuzberg](assets/Docs-banner.png)
+![Kreuzberg](assets/Kreuzberg.svg)
 </div>
 
 # Kreuzberg
