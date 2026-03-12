@@ -58,6 +58,25 @@ pub fn assemble_ocr_markdown(
         _ => return plain_text_join(elements),
     };
 
+    // Page-level text quality gate: if the overall OCR text is mostly non-alphanumeric
+    // (e.g., music notation, symbol-heavy content), the layout model's regions are
+    // likely to produce garbled output. Fall back to plain text join.
+    let all_text: String = elements.iter().map(|e| e.text.as_str()).collect::<Vec<_>>().join("");
+    let total_chars = all_text.chars().count();
+    let alnum_chars = all_text
+        .chars()
+        .filter(|c| c.is_alphanumeric() || c.is_whitespace())
+        .count();
+    if total_chars >= 20 && (alnum_chars as f32 / total_chars as f32) < 0.4 {
+        tracing::trace!(
+            total_chars,
+            alnum_chars,
+            ratio = alnum_chars as f32 / total_chars as f32,
+            "OCR page text is mostly non-alphanumeric — skipping layout-guided assembly"
+        );
+        return plain_text_join(elements);
+    }
+
     let (regions, unassigned) = assign_elements_to_regions(elements, &detection.detections, img_width, img_height);
 
     let mut ordered_regions = regions;
@@ -356,6 +375,26 @@ fn heuristic_table_from_elements(elements: &[&OcrElement]) -> String {
 
     // Determine column count from max elements per line
     let max_cols = lines.iter().map(|l| l.len()).max().unwrap_or(1);
+
+    // Reject degenerate heuristic tables: too many empty-ish cells or single-row.
+    // False-positive Table hints (e.g., in RTL documents) produce tables where
+    // content doesn't truly form a grid, hurting TF1 with markdown table syntax.
+    let total_cells = lines.iter().map(|_| max_cols).sum::<usize>();
+    let filled_cells: usize = lines
+        .iter()
+        .map(|line| line.iter().filter(|e| !e.text.trim().is_empty()).count())
+        .sum();
+    let empty_cells = total_cells.saturating_sub(filled_cells);
+    if total_cells > 0 && empty_cells as f64 / total_cells as f64 > 0.4 {
+        // Too many empty cells — not a real table, return as plain text
+        let text = elements
+            .iter()
+            .map(|e| e.text.trim())
+            .filter(|t| !t.is_empty())
+            .collect::<Vec<_>>()
+            .join(" ");
+        return text;
+    }
 
     let mut md = String::new();
     for (row_idx, line) in lines.iter().enumerate() {

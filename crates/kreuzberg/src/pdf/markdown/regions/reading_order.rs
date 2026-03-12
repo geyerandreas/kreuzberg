@@ -151,22 +151,53 @@ fn dag_reading_order(body_indices: &[usize], regions: &[LayoutRegion], _page_hei
 
     let mut heads: Vec<usize> = (0..n).filter(|&i| up_map_d[i].is_empty()).collect();
 
-    // Sort heads: top-to-bottom (higher Y first in PDF coords), then left-to-right
+    // Sort heads: when heads are in different columns, left-to-right first;
+    // within the same column, top-to-bottom.
     heads.sort_by(|&a, &b| {
-        let a_cy = (bboxes[a].top + bboxes[a].bottom) / 2.0;
-        let b_cy = (bboxes[b].top + bboxes[b].bottom) / 2.0;
-        b_cy.total_cmp(&a_cy)
-            .then_with(|| bboxes[a].left.total_cmp(&bboxes[b].left))
+        let a_left = bboxes[a].left;
+        let a_right = bboxes[a].right;
+        let b_left = bboxes[b].left;
+        let b_right = bboxes[b].right;
+
+        let h_overlap = a_right.min(b_right) - a_left.max(b_left);
+        let min_width = (a_right - a_left).min(b_right - b_left);
+        let different_columns = h_overlap < min_width * 0.3;
+
+        if different_columns {
+            a_left.total_cmp(&b_left)
+        } else {
+            let a_cy = (bboxes[a].top + bboxes[a].bottom) / 2.0;
+            let b_cy = (bboxes[b].top + bboxes[b].bottom) / 2.0;
+            b_cy.total_cmp(&a_cy).then_with(|| a_left.total_cmp(&b_left))
+        }
     });
 
-    // Sort each node's successors list
+    // Sort each node's successors list.
+    // When successors span different columns (non-overlapping horizontally),
+    // prioritize left-to-right to read the left column before the right.
+    // Within the same column (overlapping horizontally), sort top-to-bottom.
     let mut sorted_dn: Vec<Vec<usize>> = dn_map_d;
     for succs in &mut sorted_dn {
         succs.sort_by(|&a, &b| {
-            let a_cy = (bboxes[a].top + bboxes[a].bottom) / 2.0;
-            let b_cy = (bboxes[b].top + bboxes[b].bottom) / 2.0;
-            b_cy.total_cmp(&a_cy)
-                .then_with(|| bboxes[a].left.total_cmp(&bboxes[b].left))
+            let a_left = bboxes[a].left;
+            let a_right = bboxes[a].right;
+            let b_left = bboxes[b].left;
+            let b_right = bboxes[b].right;
+
+            // Check if a and b are in different columns (no horizontal overlap)
+            let h_overlap = a_right.min(b_right) - a_left.max(b_left);
+            let min_width = (a_right - a_left).min(b_right - b_left);
+            let different_columns = h_overlap < min_width * 0.3;
+
+            if different_columns {
+                // Different columns: left-to-right first
+                a_left.total_cmp(&b_left)
+            } else {
+                // Same column: top-to-bottom (higher Y first in PDF coords)
+                let a_cy = (bboxes[a].top + bboxes[a].bottom) / 2.0;
+                let b_cy = (bboxes[b].top + bboxes[b].bottom) / 2.0;
+                b_cy.total_cmp(&a_cy).then_with(|| a_left.total_cmp(&b_left))
+            }
         });
     }
 

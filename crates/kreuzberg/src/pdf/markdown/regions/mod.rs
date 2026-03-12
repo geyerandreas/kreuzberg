@@ -60,6 +60,59 @@ pub(super) fn assemble_region_paragraphs(
     page_index: usize,
     extracted_table_bboxes: &[crate::types::BoundingBox],
 ) -> Vec<PdfParagraph> {
+    // Page-level text quality gate: if the overall page text is mostly non-alphanumeric
+    // (e.g., music notation, symbol-heavy content), the layout model's regions are
+    // likely to produce garbled output. Fall back to standard pipeline.
+    let all_text: String = segments.iter().map(|s| s.text.as_str()).collect::<Vec<_>>().join("");
+    let total_chars = all_text.chars().count();
+    let alnum_chars = all_text
+        .chars()
+        .filter(|c| c.is_alphanumeric() || c.is_whitespace())
+        .count();
+    if total_chars >= 20 && (alnum_chars as f32 / total_chars as f32) < 0.4 {
+        tracing::trace!(
+            page = page_index,
+            total_chars,
+            alnum_chars,
+            ratio = alnum_chars as f32 / total_chars as f32,
+            "page text is mostly non-alphanumeric — skipping layout-guided assembly"
+        );
+        return assemble_fallback(segments, heading_map);
+    }
+
+    // Pre-assignment quality gate: detect multi-column pages where the layout
+    // model produces many narrow Text hints (each ~single-column width).
+    // On such pages, the assignment step clips text segments at region boundaries,
+    // losing words near the column gutter. The baseline XY-Cut pipeline handles
+    // two-column layouts correctly, so redirect the entire page to fallback.
+    {
+        let page_left_pre = segments.iter().map(|s| s.x).fold(f32::MAX, f32::min);
+        let page_right_pre = segments.iter().map(|s| s.x + s.width).fold(0.0_f32, f32::max);
+        let page_width_pre = page_right_pre - page_left_pre;
+        let is_multicol = detect_page_multicolumn(&segments, page_width_pre, page_left_pre);
+        if is_multicol && page_width_pre > 0.0 {
+            let confident_text_hints: Vec<&LayoutHint> = hints
+                .iter()
+                .filter(|h| h.confidence >= min_confidence && h.class == LayoutHintClass::Text)
+                .collect();
+            if confident_text_hints.len() >= 4 {
+                let narrow_count = confident_text_hints
+                    .iter()
+                    .filter(|h| (h.right - h.left) < page_width_pre * 0.55)
+                    .count();
+                if narrow_count as f32 / confident_text_hints.len() as f32 >= 0.75 {
+                    tracing::trace!(
+                        page = page_index,
+                        text_hints = confident_text_hints.len(),
+                        narrow_count,
+                        "multi-column page with narrow Text hints — skipping layout assembly"
+                    );
+                    return assemble_fallback(segments, heading_map);
+                }
+            }
+        }
+    }
+
     let (mut regions, unassigned_indices) =
         assignment::assign_segments_to_regions_refined(&segments, hints, min_confidence, extracted_table_bboxes);
 
@@ -91,9 +144,17 @@ pub(super) fn assemble_region_paragraphs(
     // 1. Oversized regions (>= 30% page area and wide) — likely full-page blocks.
     // 2. Multi-column regions — wide regions where segments cluster into two
     //    distinct X-bands, indicating they span a column gutter.
+    // Page-level multi-column detection: if the page's segments cluster into
+    // two distinct X-bands, ALL wide Text regions should use the fallback
+    // pipeline (XY-Cut column splitting) regardless of per-region segment count.
+    // This prevents text interleaving when the layout model creates regions
+    // that span both columns of a 2-column page.
+    let page_is_multicolumn = detect_page_multicolumn(&segments, page_width, page_left);
+
     let mut extra_unassigned: Vec<usize> = Vec::new();
     if page_width > 0.0 && page_height > 0.0 {
         let page_area = page_width * page_height;
+
         for region in regions.iter_mut() {
             if region.hint.class != LayoutHintClass::Text || region.segment_indices.len() < 4 {
                 continue;
@@ -103,8 +164,11 @@ pub(super) fn assemble_region_paragraphs(
             let region_height = region.hint.top - region.hint.bottom;
             let region_area = region_width * region_height;
 
-            // Check 1: oversized region (area-based)
-            if region_area >= page_area * 0.30 && region_width >= page_width * 0.65 {
+            // Check 1: oversized region (area-based).
+            // A Text region covering >= 25% of page area and >= 65% of page width
+            // is likely a TOC, multi-paragraph block, or full-page text that the
+            // fallback XY-Cut pipeline handles more accurately.
+            if region_area >= page_area * 0.25 && region_width >= page_width * 0.65 {
                 tracing::trace!(
                     page = page_index,
                     segments = region.segment_indices.len(),
@@ -115,7 +179,41 @@ pub(super) fn assemble_region_paragraphs(
                 continue;
             }
 
-            // Check 2: multi-column detection for wide regions.
+            // Check 1b: dense Text region — many segments in a wide region.
+            // Regions with >= 15 segments spanning >= 50% of page width are
+            // likely TOC pages, dense lists, or multi-paragraph blocks where
+            // segment-to-line assembly within a single region merges entries
+            // that should stay separate. The fallback pipeline's column
+            // splitting preserves the correct line breaks.
+            if region.segment_indices.len() >= 15 && region_width >= page_width * 0.50 {
+                tracing::trace!(
+                    page = page_index,
+                    segments = region.segment_indices.len(),
+                    region_width,
+                    page_width,
+                    "dense Text region detected — redirecting to fallback pipeline"
+                );
+                extra_unassigned.append(&mut region.segment_indices);
+                continue;
+            }
+
+            // Check 2: multi-column page with wide region.
+            // On pages detected as multi-column, any Text region spanning >= 55%
+            // of page width likely covers both columns. Redirect to fallback where
+            // XY-Cut column splitting handles the layout correctly.
+            if page_is_multicolumn && region_width >= page_width * 0.55 {
+                tracing::trace!(
+                    page = page_index,
+                    segments = region.segment_indices.len(),
+                    region_width,
+                    page_width,
+                    "wide Text region on multi-column page — redirecting to fallback pipeline"
+                );
+                extra_unassigned.append(&mut region.segment_indices);
+                continue;
+            }
+
+            // Check 3: multi-column detection for wide regions (per-region check).
             // A region wider than 55% of page width with >= 6 segments might span
             // two columns. Check if segments cluster into left/right halves.
             if region.segment_indices.len() >= 6 && region_width >= page_width * 0.55 {
@@ -255,6 +353,62 @@ pub(super) fn assemble_region_paragraphs(
     associate_footnotes(&mut all_paragraphs);
 
     all_paragraphs
+}
+
+/// Detect whether a page has a multi-column layout by analyzing segment positions.
+///
+/// Checks if segments cluster into two or more distinct horizontal bands with a
+/// clear gutter between them. A page is considered multi-column if:
+/// 1. There are enough segments to detect columns (>= 8).
+/// 2. Segments form two distinct X-position clusters with a gap > 10% of page width.
+/// 3. Both clusters have a meaningful number of segments (>= 20% each).
+fn detect_page_multicolumn(segments: &[SegmentData], page_width: f32, page_left: f32) -> bool {
+    if segments.len() < 8 || page_width <= 0.0 {
+        return false;
+    }
+
+    // Collect left-edge x positions of all segments (relative to page left)
+    let mut x_positions: Vec<f32> = segments
+        .iter()
+        .filter(|s| !s.text.trim().is_empty() && s.width > 0.0)
+        .map(|s| s.x - page_left)
+        .collect();
+
+    if x_positions.len() < 8 {
+        return false;
+    }
+
+    x_positions.sort_by(|a, b| a.total_cmp(b));
+
+    // Look for a gap in the distribution of x positions that indicates a column gutter.
+    // The gutter should be:
+    // - At least 10% of page width
+    // - Located roughly in the middle half of the page (25%-75%)
+    // - Dividing segments into two groups of at least 20% each
+    let n = x_positions.len();
+    let min_group_size = (n as f32 * 0.20).ceil() as usize;
+    let gutter_threshold = page_width * 0.10;
+
+    for i in min_group_size..n.saturating_sub(min_group_size) {
+        let gap = x_positions[i] - x_positions[i - 1];
+        if gap >= gutter_threshold {
+            // Check that the gap is in the middle half of the page
+            let gap_center = (x_positions[i] + x_positions[i - 1]) / 2.0;
+            let relative_position = gap_center / page_width;
+            if (0.25..=0.75).contains(&relative_position) {
+                tracing::trace!(
+                    gap,
+                    gap_center,
+                    left_count = i,
+                    right_count = n - i,
+                    "page multi-column detection: gutter found"
+                );
+                return true;
+            }
+        }
+    }
+
+    false
 }
 
 /// Maximum gap (in points) between regions to consider them adjacent for merging.
@@ -706,14 +860,14 @@ mod tests {
     }
 
     #[test]
-    fn test_picture_regions_excluded_from_regions_but_unassigned() {
-        // Picture regions are excluded from region assignment but segments
-        // go to unassigned (no separate text extraction for pictures).
+    fn test_picture_regions_excluded_and_segments_suppressed() {
+        // Picture regions are excluded from region assignment and segments
+        // inside them are suppressed (IoS >= 0.5) to avoid OCR artifacts.
         let segments = vec![make_segment("text", 10.0, 700.0, 40.0, 12.0)];
         let hints = vec![make_hint(LayoutHintClass::Picture, 0.9, 0.0, 690.0, 200.0, 720.0)];
         let (regions, unassigned) = assignment::assign_segments_to_regions(&segments, &hints, 0.5, &[]);
         assert!(regions.is_empty());
-        assert_eq!(unassigned.len(), 1); // still goes to fallback
+        assert_eq!(unassigned.len(), 0); // suppressed, not fallback
     }
 
     #[test]

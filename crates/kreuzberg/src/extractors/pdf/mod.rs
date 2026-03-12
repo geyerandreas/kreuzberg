@@ -404,7 +404,58 @@ impl DocumentExtractor for PdfExtractor {
                 );
             }
 
-            if decision.fallback || has_font_encoding_issues {
+            // When pre-rendered markdown is available, the native text pipeline
+            // has already produced structured output with layout guidance, heading
+            // detection, table extraction, etc. OCR fallback on such documents
+            // often DEGRADES quality because:
+            // 1. OCR struggles with dot leaders (TOC pages), producing garbled text.
+            // 2. OCR on multi-column pages can interleave columns.
+            // 3. The per-page OCR trigger fires on a single weak page even when
+            //    most pages have excellent native text.
+            //
+            // Skip OCR when pre-rendered markdown exists with substantive content,
+            // UNLESS the native text is critically broken (font encoding issues
+            // with mostly non-textual content, indicating the PDF has no real text layer).
+            let total_chars = native_text.chars().count();
+            let alnum_ws_chars = native_text
+                .chars()
+                .filter(|c| c.is_alphanumeric() || c.is_whitespace())
+                .count();
+            let alnum_ws_ratio = if total_chars > 0 {
+                alnum_ws_chars as f64 / total_chars as f64
+            } else {
+                1.0
+            };
+
+            // Pre-rendered markdown is substantive if it has reasonable length
+            // and the native text has meaningful alphanumeric content.
+            let has_substantive_markdown =
+                pre_rendered_markdown.is_some() && total_chars >= 100 && alnum_ws_ratio >= 0.4;
+
+            let skip_ocr_for_non_text = pre_rendered_markdown.is_some() && total_chars >= 20 && alnum_ws_ratio < 0.4;
+
+            if skip_ocr_for_non_text {
+                tracing::debug!(
+                    alnum_ws_ratio,
+                    total_chars,
+                    alnum_ws_chars,
+                    "Skipping OCR: font encoding issues but content is non-textual and pre-rendered markdown available"
+                );
+                (native_text, false)
+            } else if has_substantive_markdown {
+                // Pre-rendered markdown exists with good native text — skip OCR.
+                // The markdown pipeline already applies ligature repair for font
+                // encoding issues, so OCR would only degrade quality (especially
+                // on multi-column documents where tesseract interleaves columns).
+                tracing::debug!(
+                    total_chars,
+                    alnum_ws_ratio,
+                    ocr_fallback = decision.fallback,
+                    has_font_encoding_issues,
+                    "Skipping OCR: pre-rendered markdown available with substantive native text"
+                );
+                (native_text, false)
+            } else if decision.fallback || has_font_encoding_issues {
                 (run_ocr_with_layout(content, config).await?, true)
             } else {
                 (native_text, false)

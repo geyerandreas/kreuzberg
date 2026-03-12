@@ -582,15 +582,9 @@ mod tests {
         // 80%+ single-char words WITH some meaningful words — should still trigger.
         // This simulates senate-expenditures: per-character extraction where random
         // fragments occasionally form 4+ char tokens.
-        let mut words: Vec<&str> = Vec::new();
-        // 90 single-char "words"
-        for _ in 0..90 {
-            words.push("A");
-        }
-        // 10 meaningful words (enough to pass meaningful_words >= 3)
-        for _ in 0..10 {
-            words.push("document");
-        }
+        // 90 single-char "words" + 10 meaningful words
+        let mut words: Vec<&str> = vec!["A"; 90];
+        words.extend(vec!["document"; 10]);
         let text = words.join(" ");
         let stats = NativeTextStats::from(&text);
         assert!(
@@ -611,10 +605,7 @@ mod tests {
     #[test]
     fn test_low_avg_word_length_triggers_fallback() {
         // Average word length < 2.0 with 50+ words — garbled extraction
-        let mut words: Vec<&str> = Vec::new();
-        for _ in 0..55 {
-            words.push("x");
-        }
+        let mut words: Vec<&str> = vec!["x"; 55];
         // Add a few meaningful words so meaningful_words >= 3
         words.push("hello");
         words.push("world");

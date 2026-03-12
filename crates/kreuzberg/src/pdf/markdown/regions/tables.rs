@@ -101,6 +101,17 @@ pub(in crate::pdf::markdown) fn extract_tables_from_layout_hints(
             }
         };
 
+        // Reject single-row tables — these are almost always false positives
+        // from the layout model (e.g., a line of text misclassified as Table).
+        if table_cells.len() <= 1 {
+            tracing::trace!(
+                page = page_index,
+                rows = table_cells.len(),
+                "table has <=1 row — skipping likely false-positive Table hint"
+            );
+            continue;
+        }
+
         // Reject degenerate tables with too many empty cells.
         // False-positive Table hints (e.g. in RTL documents) often produce
         // tables where most cells are empty because the content is not truly
@@ -112,17 +123,64 @@ pub(in crate::pdf::markdown) fn extract_tables_from_layout_hints(
             .flat_map(|row| row.iter())
             .filter(|cell| cell.trim().is_empty())
             .count();
-        if total_cells > 0 && empty_cells as f64 / total_cells as f64 > 0.5 {
+        if total_cells > 0 && empty_cells as f64 / total_cells as f64 > 0.4 {
             tracing::trace!(
                 page = page_index,
                 total_cells,
                 empty_cells,
-                "table has >50% empty cells — skipping degenerate table"
+                "table has >40% empty cells — skipping degenerate table"
             );
             continue;
         }
 
+        // Reject tables where total text content is very short relative to
+        // the number of cells. This catches false positives where a small
+        // amount of text is spread across a table grid.
+        let total_text_len: usize = table_cells
+            .iter()
+            .flat_map(|row| row.iter())
+            .map(|cell| cell.trim().len())
+            .sum();
+        if total_cells > 4 && total_text_len < total_cells * 2 {
+            tracing::trace!(
+                page = page_index,
+                total_cells,
+                total_text_len,
+                "table text content too sparse — skipping degenerate table"
+            );
+            continue;
+        }
+
+        // Reject tables where most rows have only 1 filled cell.
+        // This pattern indicates non-tabular content forced into a grid
+        // (e.g., RTL text where each line becomes a "row" with one cell).
+        if table_cells.len() >= 3 {
+            let single_cell_rows = table_cells
+                .iter()
+                .filter(|row| row.iter().filter(|c| !c.trim().is_empty()).count() <= 1)
+                .count();
+            if single_cell_rows as f64 / table_cells.len() as f64 > 0.5 {
+                tracing::trace!(
+                    page = page_index,
+                    rows = table_cells.len(),
+                    single_cell_rows,
+                    "table has >50% single-cell rows — skipping likely false-positive"
+                );
+                continue;
+            }
+        }
+
         let markdown = table_to_markdown(&table_cells);
+
+        tracing::trace!(
+            page = page_index,
+            rows = table_cells.len(),
+            total_cells,
+            empty_cells,
+            total_text_len,
+            markdown_len = markdown.len(),
+            "table accepted"
+        );
 
         tables.push(Table {
             cells: table_cells,

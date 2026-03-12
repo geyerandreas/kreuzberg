@@ -380,6 +380,15 @@ pub fn render_document_as_markdown_with_tables(
         };
 
         for &page_idx in &heuristic_pages {
+            // Skip heuristic table extraction for pages where the structure tree
+            // already succeeded. The structure tree path handles all content for
+            // these pages; adding a heuristically-extracted table would duplicate
+            // content and produce garbled markdown (especially for RTL documents
+            // where column detection is unreliable).
+            if struct_tree_results.get(page_idx).is_some_and(|r| r.is_some()) {
+                continue;
+            }
+
             let Some(hints) = hints_pages.get(page_idx) else {
                 continue;
             };

@@ -43,7 +43,15 @@ pub(in crate::pdf::markdown) fn assign_segments_to_regions<'a>(
     // the unassigned pool so text isn't silently lost.
     let suppress_bboxes = extracted_table_bboxes;
 
-    if confident_hints.is_empty() && suppress_bboxes.is_empty() {
+    // Collect Picture region bounding boxes for suppression.
+    // Segments within Picture regions are OCR artifacts (text rendered inside
+    // images) and should not appear in the extracted text output.
+    let picture_hints: Vec<&LayoutHint> = hints
+        .iter()
+        .filter(|h| h.confidence >= min_confidence && h.class == LayoutHintClass::Picture)
+        .collect();
+
+    if confident_hints.is_empty() && suppress_bboxes.is_empty() && picture_hints.is_empty() {
         let all_indices: Vec<usize> = (0..segments.len()).collect();
         return (Vec::new(), all_indices);
     }
@@ -99,6 +107,20 @@ pub(in crate::pdf::markdown) fn assign_segments_to_regions<'a>(
             suppressed_count += 1;
             continue;
         }
+
+        // Also suppress segments inside Picture regions. These are typically
+        // OCR artifacts from embedded images (garbled hex, figure labels, etc.)
+        // that should not appear in the text output.
+        let in_picture = picture_hints.iter().any(|ph| {
+            intersection_over_self(
+                seg_left, seg_bottom, seg_right, seg_top, seg_area, ph.left, ph.bottom, ph.right, ph.top,
+            ) >= 0.5
+        });
+        if in_picture {
+            suppressed_count += 1;
+            continue;
+        }
+
         let mut best_hint_idx: Option<usize> = None;
         let mut best_ios = 0.0_f32;
         let mut best_area = f32::MAX;
@@ -170,8 +192,19 @@ pub(in crate::pdf::markdown) fn assign_segments_to_regions_refined<'a>(
         return (regions, unassigned);
     }
 
+    // Collect Picture hints from the original hints to carry through iterations.
+    // The refined hints only contain text-bearing regions (non-Table/non-Picture),
+    // but Picture bboxes must remain available for segment suppression.
+    let picture_hints: Vec<LayoutHint> = hints
+        .iter()
+        .filter(|h| h.confidence >= min_confidence && h.class == LayoutHintClass::Picture)
+        .cloned()
+        .collect();
+
     // Iterate: re-assign with refined bboxes, re-shrink, repeat
     let mut current_hints = refined_hints;
+    // Append Picture hints so they're available for suppression in each iteration
+    current_hints.extend(picture_hints.iter().cloned());
     let mut prev_assignments: Vec<Vec<usize>> = regions.iter().map(|r| r.segment_indices.clone()).collect();
 
     for _ in 1..MAX_REFINEMENT_ITERATIONS {
@@ -185,7 +218,9 @@ pub(in crate::pdf::markdown) fn assign_segments_to_regions_refined<'a>(
         }
 
         prev_assignments = new_assignments;
-        current_hints = compute_refined_hints(&new_regions, segments, &current_hints);
+        let mut new_refined = compute_refined_hints(&new_regions, segments, &current_hints);
+        new_refined.extend(picture_hints.iter().cloned());
+        current_hints = new_refined;
     }
 
     // Final assignment with the last refined hints, but we need to return regions
