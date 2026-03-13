@@ -374,7 +374,7 @@ pub fn render_document_as_markdown_with_tables(
         // Try SLANet for neural table structure recognition when layout images are available.
         #[cfg(feature = "layout-detection")]
         let mut slanet_model = if layout_images.is_some() {
-            init_slanet_model()
+            crate::layout::take_or_create_slanet()
         } else {
             None
         };
@@ -440,6 +440,12 @@ pub fn render_document_as_markdown_with_tables(
                 page_height,
                 0.5,
             ));
+        }
+
+        // Return SLANet model to global cache for reuse by future extractions
+        #[cfg(feature = "layout-detection")]
+        if let Some(model) = slanet_model.take() {
+            crate::layout::return_slanet(model);
         }
     }
 
@@ -1048,34 +1054,6 @@ fn has_font_size_variation(paragraphs: &[PdfParagraph]) -> bool {
         }
     }
     false
-}
-
-/// Try to initialize SLANet model for table structure recognition.
-///
-/// Returns `None` if the model cannot be loaded (not cached, download failed, etc.)
-/// — table regions will fall back to heuristic grid reconstruction.
-#[cfg(feature = "layout-detection")]
-fn init_slanet_model() -> Option<crate::layout::models::slanet::SlaNetModel> {
-    let manager = crate::layout::LayoutModelManager::new(None);
-
-    let model_path = match manager.ensure_slanet_plus_model() {
-        Ok(p) => p,
-        Err(e) => {
-            tracing::debug!("SLANet model not available for native path, tables will use heuristic: {e}");
-            return None;
-        }
-    };
-
-    match crate::layout::models::slanet::SlaNetModel::from_file(&model_path.to_string_lossy()) {
-        Ok(model) => {
-            tracing::debug!("SLANet-plus table structure recognition initialized for native PDF path");
-            Some(model)
-        }
-        Err(e) => {
-            tracing::warn!("Failed to load SLANet model for native path: {e}");
-            None
-        }
-    }
 }
 
 #[cfg(test)]

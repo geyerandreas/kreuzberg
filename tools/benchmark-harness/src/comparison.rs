@@ -180,21 +180,23 @@ async fn run_pipeline(
 ) -> PipelineResult {
     let (content, time_ms) = match pipeline {
         Pipeline::Docling => {
-            // Docling: read vendored (pre-computed) output — no meaningful extraction time
-            let docling_dir = doc
-                .document_path
-                .parent()
-                .and_then(|p| p.parent())
-                .map(|p| p.join("vendored/docling/md"));
+            // Docling: read vendored output + cached timing if available
+            let fixtures_dir = doc.document_path.parent().and_then(|p| p.parent());
 
-            let md = if let Some(dir) = docling_dir {
+            let (md, time) = if let Some(base) = fixtures_dir {
                 let md_name = doc.document_path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-                let md_path = dir.join(format!("{}.md", md_name));
-                std::fs::read_to_string(&md_path).unwrap_or_default()
+                let md_path = base.join("vendored/docling/md").join(format!("{}.md", md_name));
+                let timing_path = base.join("vendored/docling/timing").join(format!("{}.ms", md_name));
+                let md = std::fs::read_to_string(&md_path).unwrap_or_default();
+                let cached_ms = std::fs::read_to_string(&timing_path)
+                    .ok()
+                    .and_then(|s| s.trim().parse::<f64>().ok())
+                    .unwrap_or(f64::NAN);
+                (md, cached_ms)
             } else {
-                String::new()
+                (String::new(), f64::NAN)
             };
-            (md, f64::NAN)
+            (md, time)
         }
         _ => {
             let t = Instant::now();

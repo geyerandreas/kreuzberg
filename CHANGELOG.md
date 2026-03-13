@@ -11,20 +11,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Layout-enhanced heading detection for structure tree PDFs**: When layout detection is enabled, the layout model's SectionHeader and Title regions are now used to detect headings in tagged (structure tree) PDF pages that lack heading metadata. Previously, layout hints were only used for page furniture (headers/footers) on structure tree pages.
-- **Language-agnostic section pattern recognition**: Headings ending with a period are now allowed when they match structural patterns — section symbol (§), all-caps short text, or numbered sections (e.g., "3.2. Methods", "ARTICLE IV."). This improves heading detection for legal, academic, and multilingual documents.
+- **ONNX-based layout detection**: New `layout` config field enables document layout analysis using RT-DETR v2 (Docling Heron) with 17 document element classes. Supports `"fast"` and `"accurate"` presets. Models are auto-downloaded from HuggingFace on first use. Available across all language bindings (Python, Node, Ruby, Go, Java, C#, PHP, WASM).
+- **SLANet table structure recognition**: When layout detection is active, detected Table regions are processed by SLANet-plus for neural HTML structure recovery with cell bounding boxes — producing accurate markdown tables with colspan/rowspan support.
+- **Layout-enhanced heading detection**: The layout model's SectionHeader and Title regions guide heading detection in both structure tree and heuristic PDF extraction paths. High-confidence layout hints (≥0.7) can override font-size-based heading classification and demote false headings.
+- **Language-agnostic section pattern recognition**: Headings ending with a period are now allowed when they match structural patterns — section symbol (§), all-caps short text, or numbered sections (e.g., "3.2. Methods", "ARTICLE IV."). Improves heading detection for legal, academic, and multilingual documents.
+- **Multi-backend OCR pipeline**: New `OcrPipelineConfig` enables quality-based fallback across OCR backends (e.g., Tesseract → PaddleOCR). Each stage has configurable priority, language, and backend-specific settings. Default pipeline auto-constructed when `paddle-ocr` feature is enabled.
+- **OCR quality thresholds**: New `OcrQualityThresholds` config with 16 tunable parameters for OCR output quality assessment and fallback decisions.
+- **OCR auto-rotate**: New `OcrConfig.auto_rotate` flag (default: false) for automatic page rotation detection using Tesseract's orientation analysis. Handles 0/90/180/270 degree rotations.
+- **ChunkSizing configuration**: `sizing_type`, `sizing_model`, and `sizing_cache_dir` fields exposed in `ChunkingConfig` across all language bindings for control over token counting strategy.
+- **Chunk heading context**: New `HeadingContext` type in `ChunkMetadata` providing heading level and text for better chunk context awareness.
 
 ### Fixed
 
 - **PDF structure tree heading trust**: Structure tree heading tags (H1–H6) are now trusted as author-intent metadata with only a word-count guard. Previously, font-size validation rejected valid headings when the font was close to body size.
 - **PDF structure tree extraction performance**: MCID text and style maps are now built in a single pass over page objects (was two passes). Uses the pre-loaded `FPDFText` page handle instead of calling `FPDFText_LoadPage` per text object, eliminating multi-second extraction times on complex pages.
-- **OCR layout: Picture regions no longer suppress text**: Layout-detected Picture regions (diagrams, figures) now preserve any embedded text as plain paragraphs instead of silently dropping it.
+- **OCR layout: Picture regions no longer suppress text**: Layout-detected Picture regions (diagrams, figures) now preserve any embedded text as plain paragraphs instead of silently dropping it. Uses content-aware `is_substantive_text()` heuristic to distinguish real text from OCR artifacts.
 - **Non-transitive sort comparators**: Fixed multiple sort comparators across the codebase that used tolerance-based "same row" grouping (non-transitive). All spatial reading-order sorts now quantize coordinates into discrete row buckets, ensuring correct and stable ordering.
 - **Float comparison soundness**: Replaced all `partial_cmp().unwrap_or(Equal)` patterns with `total_cmp()` across layout, PDF hierarchy, cache, keyword extraction, and token reduction modules. Eliminates undefined ordering for NaN values.
+- **Page furniture over-stripping**: Added 30% bulk and 80-char per-paragraph guards to prevent aggressive furniture stripping from removing legitimate content.
+- **`KREUZBERG_CACHE_DIR` not respected by all caches**: Embeddings, OCR result cache, and document extraction cache now honor the `KREUZBERG_CACHE_DIR` environment variable, matching layout and PaddleOCR cache resolution.
 
 ### Changed
 
 - **Layout pipeline no longer forces heuristic extraction**: When layout detection is enabled, structure tree extraction proceeds normally instead of being forced into the heuristic path. Proportional matching applies layout hints to structure tree paragraphs, preserving text quality.
+- **Global ONNX model caching**: Layout detection engine and SLANet table recognition model are now cached globally and reused across document extractions, avoiding expensive ONNX session recreation in batch processing scenarios.
 
 ---
 

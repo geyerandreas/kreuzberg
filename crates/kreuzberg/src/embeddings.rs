@@ -181,6 +181,10 @@ pub fn get_or_init_model(
     cache_dir: Option<std::path::PathBuf>,
 ) -> crate::Result<CachedEmbedding> {
     let cache_directory = cache_dir.unwrap_or_else(|| {
+        // Use KREUZBERG_CACHE_DIR if set, matching layout/paddle-ocr cache resolution
+        if let Ok(env_path) = std::env::var("KREUZBERG_CACHE_DIR") {
+            return std::path::PathBuf::from(env_path).join("embeddings");
+        }
         let mut path = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
         path.push(".kreuzberg");
         path.push("embeddings");

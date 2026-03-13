@@ -107,13 +107,16 @@ impl ImageExtractor {
         })?;
         let rgb = img.to_rgb8();
 
-        // 2. Run layout detection
-        let mut engine = crate::layout::create_engine(layout_config)
+        // 2. Run layout detection (reuse cached engine when available)
+        let mut engine = crate::layout::take_or_create_engine(layout_config)
             .map_err(|e| crate::KreuzbergError::Other(format!("Layout engine init failed: {e}")))?;
 
         let detection = engine
             .detect(&rgb)
             .map_err(|e| crate::KreuzbergError::Other(format!("Layout detection failed: {e}")))?;
+
+        // Return engine to cache immediately — we're done with inference
+        crate::layout::return_engine(engine);
 
         tracing::info!(
             detections = detection.detections.len(),

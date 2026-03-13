@@ -59,7 +59,7 @@ fn run_layout_detection(content: &[u8], config: &ExtractionConfig) -> Option<Lay
         return None;
     }
 
-    let mut engine = match crate::layout::create_engine(layout_config) {
+    let mut engine = match crate::layout::take_or_create_engine(layout_config) {
         Ok(e) => e,
         Err(e) => {
             tracing::warn!("Layout engine init failed, continuing without: {}", e);
@@ -67,7 +67,7 @@ fn run_layout_detection(content: &[u8], config: &ExtractionConfig) -> Option<Lay
         }
     };
 
-    match crate::pdf::layout_runner::detect_layout_for_document(content, &mut engine) {
+    let result = match crate::pdf::layout_runner::detect_layout_for_document(content, &mut engine) {
         Ok((results, timing, images)) => {
             tracing::info!(
                 total_ms = timing.total_ms,
@@ -83,7 +83,11 @@ fn run_layout_detection(content: &[u8], config: &ExtractionConfig) -> Option<Lay
             tracing::warn!("Layout detection failed, continuing without: {}", e);
             None
         }
-    }
+    };
+
+    // Return engine to cache for reuse by subsequent extractions
+    crate::layout::return_engine(engine);
+    result
 }
 
 /// Run layout detection on pre-rendered images, returning pixel-space results.
@@ -105,7 +109,7 @@ fn run_layout_detection_on_images(
         return None;
     }
 
-    let mut engine = match crate::layout::create_engine(layout_config) {
+    let mut engine = match crate::layout::take_or_create_engine(layout_config) {
         Ok(e) => e,
         Err(e) => {
             tracing::warn!("Layout engine init failed for OCR path: {}", e);
@@ -113,7 +117,7 @@ fn run_layout_detection_on_images(
         }
     };
 
-    match crate::pdf::layout_runner::detect_layout_for_images(images, &mut engine) {
+    let result = match crate::pdf::layout_runner::detect_layout_for_images(images, &mut engine) {
         Ok(results) => {
             let total_detections: usize = results.iter().map(|r| r.detections.len()).sum();
             tracing::info!(
@@ -127,7 +131,11 @@ fn run_layout_detection_on_images(
             tracing::warn!("Layout detection on OCR images failed: {}", e);
             None
         }
-    }
+    };
+
+    // Return engine to cache for reuse by subsequent extractions
+    crate::layout::return_engine(engine);
+    result
 }
 
 /// Render PDF pages, optionally run layout detection, then run OCR.

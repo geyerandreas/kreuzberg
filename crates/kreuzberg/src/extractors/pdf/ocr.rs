@@ -343,7 +343,7 @@ pub(crate) async fn extract_with_ocr(
     // Initialize SLANet for table structure recognition when layout detection is active
     #[cfg(feature = "layout-detection")]
     let mut slanet = if layout_detections.is_some() {
-        init_slanet_model(config)
+        crate::layout::take_or_create_slanet()
     } else {
         None
     };
@@ -411,6 +411,12 @@ pub(crate) async fn extract_with_ocr(
         // Fallback: use plain OCR text
         let _ = page_idx; // used only in layout-detection path above
         page_texts.push(ocr_result.content.to_string());
+    }
+
+    // Return SLANet model to global cache for reuse
+    #[cfg(feature = "layout-detection")]
+    if let Some(model) = slanet.take() {
+        crate::layout::return_slanet(model);
     }
 
     // Compute average mean_text_conf across all pages, normalized to 0.0-1.0.
@@ -593,34 +599,6 @@ fn ensure_elements_enabled(config: &crate::core::config::ocr::OcrConfig) -> crat
         }
     }
     config
-}
-
-/// Try to initialize SLANet model for table structure recognition.
-///
-/// Returns `None` if the model cannot be loaded (not cached, download failed, etc.)
-/// — table regions will fall back to heuristic grid reconstruction.
-#[cfg(all(feature = "ocr", feature = "layout-detection"))]
-fn init_slanet_model(_config: &ExtractionConfig) -> Option<crate::layout::models::slanet::SlaNetModel> {
-    let manager = crate::layout::LayoutModelManager::new(None);
-
-    let model_path = match manager.ensure_slanet_plus_model() {
-        Ok(p) => p,
-        Err(e) => {
-            tracing::debug!("SLANet model not available, tables will use heuristic: {e}");
-            return None;
-        }
-    };
-
-    match crate::layout::models::slanet::SlaNetModel::from_file(&model_path.to_string_lossy()) {
-        Ok(model) => {
-            tracing::debug!("SLANet-plus table structure recognition initialized");
-            Some(model)
-        }
-        Err(e) => {
-            tracing::warn!("Failed to load SLANet model: {e}");
-            None
-        }
-    }
 }
 
 #[cfg(test)]

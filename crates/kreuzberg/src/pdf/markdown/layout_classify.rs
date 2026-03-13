@@ -294,13 +294,21 @@ pub(super) fn apply_hint_to_paragraph(para: &mut PdfParagraph, hint: &LayoutHint
 
     match hint.class {
         LayoutHintClass::Title => {
-            if para.heading_level.is_none() && !is_sep {
-                para.heading_level = Some(1);
+            if !is_sep {
+                // Layout model says Title — set heading level 1.
+                // Override font-size classification when layout has high confidence.
+                if para.heading_level.is_none() || hint.confidence >= 0.7 {
+                    para.heading_level = Some(1);
+                }
             }
         }
         LayoutHintClass::SectionHeader => {
-            if para.heading_level.is_none() && !is_sep {
-                para.heading_level = Some(2);
+            if !is_sep {
+                // Layout model says SectionHeader — set heading level 2.
+                // Override font-size classification when layout has high confidence.
+                if para.heading_level.is_none() || hint.confidence >= 0.7 {
+                    para.heading_level = Some(2);
+                }
             }
         }
         LayoutHintClass::Code => {
@@ -316,6 +324,19 @@ pub(super) fn apply_hint_to_paragraph(para: &mut PdfParagraph, hint: &LayoutHint
         }
         LayoutHintClass::PageHeader | LayoutHintClass::PageFooter => {
             para.is_page_furniture = true;
+        }
+        LayoutHintClass::Text | LayoutHintClass::Caption | LayoutHintClass::Footnote => {
+            // Layout model says this is body text, not a heading.
+            // Demote font-size-classified headings when layout has high confidence.
+            if para.heading_level.is_some() && hint.confidence >= 0.7 {
+                tracing::trace!(
+                    ?hint.class,
+                    hint_confidence = hint.confidence,
+                    old_heading_level = ?para.heading_level,
+                    "Demoting heading: layout model classifies as body text"
+                );
+                para.heading_level = None;
+            }
         }
         _ => {}
     }
@@ -491,7 +512,8 @@ mod tests {
     }
 
     #[test]
-    fn test_existing_heading_preserved() {
+    fn test_existing_heading_overridden_by_high_confidence() {
+        // High-confidence layout model overrides font-size heading level
         let mut paragraphs = vec![make_para(50.0, 750.0, 500.0, 20.0)];
         paragraphs[0].heading_level = Some(3);
         let hints = vec![make_hint(
@@ -503,7 +525,24 @@ mod tests {
             775.0,
         )];
         apply_layout_overrides(&mut paragraphs, &hints, 0.5, 0.5);
-        assert_eq!(paragraphs[0].heading_level, Some(3));
+        assert_eq!(paragraphs[0].heading_level, Some(2)); // SectionHeader → H2
+    }
+
+    #[test]
+    fn test_existing_heading_preserved_low_confidence() {
+        // Low-confidence layout model does NOT override existing heading
+        let mut paragraphs = vec![make_para(50.0, 750.0, 500.0, 20.0)];
+        paragraphs[0].heading_level = Some(3);
+        let hints = vec![make_hint(
+            LayoutHintClass::SectionHeader,
+            0.6, // Below 0.7 threshold
+            40.0,
+            745.0,
+            560.0,
+            775.0,
+        )];
+        apply_layout_overrides(&mut paragraphs, &hints, 0.5, 0.5);
+        assert_eq!(paragraphs[0].heading_level, Some(3)); // Preserved
     }
 
     #[test]

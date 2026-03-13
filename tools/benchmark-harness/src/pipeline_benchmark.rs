@@ -186,6 +186,145 @@ fn build_config(pipeline: Pipeline) -> kreuzberg::ExtractionConfig {
 /// Per-doc extraction timeout (seconds).
 const DOC_TIMEOUT_SECS: u64 = 60;
 
+/// Read docling vendored markdown + cached timing for a single document.
+/// Returns (content, time_ms) where time_ms is NaN if no cached timing exists.
+fn read_docling_cached(doc_name: &str, fixtures_dir: &Path) -> (String, f64) {
+    let vendored_md_path = fixtures_dir
+        .join("vendored/docling/md")
+        .join(format!("{}.md", doc_name));
+    let timing_path = fixtures_dir
+        .join("vendored/docling/timing")
+        .join(format!("{}.ms", doc_name));
+
+    let md = std::fs::read_to_string(&vendored_md_path).unwrap_or_default();
+    let cached_ms = std::fs::read_to_string(&timing_path)
+        .ok()
+        .and_then(|s| s.trim().parse::<f64>().ok())
+        .unwrap_or(f64::NAN);
+
+    (md, cached_ms)
+}
+
+/// Python script that batch-processes PDFs with docling, writing per-doc timing.
+/// Loads docling models once, then processes each PDF individually with timing.
+const DOCLING_BATCH_SCRIPT: &str = r#"
+import sys, os, time, json
+
+# Ensure docling is importable
+try:
+    from docling.document_converter import DocumentConverter
+except ImportError:
+    print(json.dumps({"error": "docling not installed"}))
+    sys.exit(1)
+
+input_data = json.loads(sys.stdin.read())
+pdf_paths = input_data["pdfs"]  # list of {"name": str, "path": str}
+output_dir = input_data["output_dir"]
+timing_dir = input_data["timing_dir"]
+
+os.makedirs(output_dir, exist_ok=True)
+os.makedirs(timing_dir, exist_ok=True)
+
+# Load converter once (includes model loading)
+converter = DocumentConverter()
+results = []
+
+for item in pdf_paths:
+    name = item["name"]
+    path = item["path"]
+    try:
+        t0 = time.monotonic()
+        result = converter.convert(path)
+        elapsed_ms = (time.monotonic() - t0) * 1000.0
+        md = result.document.export_to_markdown()
+
+        # Write outputs
+        md_path = os.path.join(output_dir, f"{name}.md")
+        with open(md_path, "w") as f:
+            f.write(md)
+
+        timing_path = os.path.join(timing_dir, f"{name}.ms")
+        with open(timing_path, "w") as f:
+            f.write(f"{elapsed_ms:.1f}")
+
+        results.append({"name": name, "time_ms": elapsed_ms, "ok": True})
+        print(f"  {name}: {elapsed_ms:.0f}ms", file=sys.stderr)
+    except Exception as e:
+        results.append({"name": name, "time_ms": 0, "ok": False, "error": str(e)})
+        print(f"  {name}: ERROR {e}", file=sys.stderr)
+
+print(json.dumps({"results": results}))
+"#;
+
+/// Run docling batch extraction for all documents that don't have cached timing.
+/// This loads docling models once and processes all uncached PDFs.
+pub fn run_docling_batch(docs: &[CorpusDocument], fixtures_dir: &Path) {
+    let python = "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3";
+
+    // Find docs that need docling extraction (no cached timing)
+    let uncached: Vec<_> = docs
+        .iter()
+        .filter(|doc| {
+            let timing_path = fixtures_dir
+                .join("vendored/docling/timing")
+                .join(format!("{}.ms", doc.name));
+            !timing_path.exists()
+        })
+        .collect();
+
+    if uncached.is_empty() {
+        eprintln!("Docling: all {} documents have cached timing", docs.len());
+        return;
+    }
+
+    eprintln!(
+        "Docling: running live extraction for {}/{} uncached documents...",
+        uncached.len(),
+        docs.len()
+    );
+
+    let input = serde_json::json!({
+        "pdfs": uncached.iter().map(|doc| serde_json::json!({
+            "name": doc.name,
+            "path": doc.document_path.to_str().unwrap(),
+        })).collect::<Vec<_>>(),
+        "output_dir": fixtures_dir.join("vendored/docling/md").to_str().unwrap(),
+        "timing_dir": fixtures_dir.join("vendored/docling/timing").to_str().unwrap(),
+    });
+
+    let mut child = match std::process::Command::new(python)
+        .args(["-c", DOCLING_BATCH_SCRIPT])
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::inherit())
+        .spawn()
+    {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Docling: failed to start Python: {}", e);
+            return;
+        }
+    };
+
+    if let Some(ref mut stdin) = child.stdin {
+        let _ = serde_json::to_writer(stdin, &input);
+    }
+    // Close stdin so docling starts processing
+    child.stdin.take();
+
+    match child.wait() {
+        Ok(status) if status.success() => {
+            eprintln!("Docling: batch extraction complete");
+        }
+        Ok(status) => {
+            eprintln!("Docling: batch extraction failed with exit code {}", status);
+        }
+        Err(e) => {
+            eprintln!("Docling: failed to wait for Python process: {}", e);
+        }
+    }
+}
+
 async fn extract_and_score(
     pipeline: Pipeline,
     doc: &CorpusDocument,
@@ -194,23 +333,9 @@ async fn extract_and_score(
     fixtures_dir: &Path,
 ) -> PipelineResult {
     let (content, time_ms) = if pipeline == Pipeline::Docling {
-        // Docling: read vendored (pre-computed) output — no extraction timing
-        let vendored_path = fixtures_dir
-            .join("vendored/docling/md")
-            .join(format!("{}.md", doc.name));
-        let md = match std::fs::read_to_string(&vendored_path) {
-            Ok(md) => md,
-            Err(_) => {
-                eprintln!(
-                    "  SKIP {}/docling: no vendored output at {}",
-                    doc.name,
-                    vendored_path.display()
-                );
-                String::new()
-            }
-        };
-        // Report NaN for vendored output — no meaningful extraction time
-        (md, f64::NAN)
+        // Docling results are pre-computed by run_docling_batch() before the main loop.
+        // Read cached markdown + timing from vendored/docling/{md,timing}/.
+        read_docling_cached(&doc.name, fixtures_dir)
     } else {
         let t = Instant::now();
         let config = build_config(pipeline);
@@ -299,6 +424,12 @@ pub async fn run_pipeline_benchmark(config: &PipelineBenchmarkConfig) -> Result<
         docs.len(),
         config.paths.len()
     );
+
+    // If docling is in the pipeline list, run batch extraction upfront
+    // (loads models once, processes all uncached docs)
+    if config.paths.contains(&Pipeline::Docling) {
+        run_docling_batch(&docs, &config.fixtures_dir);
+    }
 
     let dump_dir = if config.dump_outputs {
         let dir = PathBuf::from("/tmp/kreuzberg_pipeline");
