@@ -62,7 +62,10 @@ use clap::{Parser, Subcommand};
 use commands::mcp_command;
 #[cfg(feature = "api")]
 use commands::serve_command;
-use commands::{apply_extraction_overrides, batch_command, clear_command, extract_command, load_config, stats_command};
+use commands::{
+    apply_extraction_overrides, batch_command, clear_command, extract_command, load_config, manifest_command,
+    stats_command, warm_command,
+};
 use kreuzberg::{OutputFormat as ContentOutputFormat, detect_mime_type};
 use serde_json::json;
 use std::path::{Path, PathBuf};
@@ -339,6 +342,43 @@ enum CacheCommands {
         /// Output format (text or json)
         #[arg(short, long, default_value = "text")]
         format: OutputFormat,
+    },
+
+    /// Output model manifest (expected model files, checksums, sizes)
+    ///
+    /// Outputs a JSON manifest of all model files required by kreuzberg,
+    /// including their relative paths, SHA256 checksums, and sizes.
+    /// Used for pre-populating model caches in containerized deployments.
+    Manifest {
+        /// Output format (text or json)
+        #[arg(short, long, default_value = "json")]
+        format: OutputFormat,
+    },
+
+    /// Download all models eagerly
+    ///
+    /// Downloads all PaddleOCR and layout detection models for all supported
+    /// languages. Unlike normal operation which downloads lazily on first use,
+    /// this ensures all models are present in the cache directory.
+    ///
+    /// Use --all-embeddings to also download all 4 embedding model presets,
+    /// or --embedding-model <preset> to download a specific one.
+    Warm {
+        /// Cache directory (default: .kreuzberg in current directory, or KREUZBERG_CACHE_DIR)
+        #[arg(short, long)]
+        cache_dir: Option<PathBuf>,
+
+        /// Output format (text or json)
+        #[arg(short, long, default_value = "text")]
+        format: OutputFormat,
+
+        /// Download all embedding model presets (fast, balanced, quality, multilingual)
+        #[arg(long)]
+        all_embeddings: bool,
+
+        /// Download a specific embedding model preset
+        #[arg(long, value_name = "PRESET")]
+        embedding_model: Option<String>,
     },
 }
 
@@ -758,6 +798,17 @@ fn main() -> Result<()> {
             }
             CacheCommands::Clear { cache_dir, format } => {
                 clear_command(cache_dir, format)?;
+            }
+            CacheCommands::Manifest { format } => {
+                manifest_command(format)?;
+            }
+            CacheCommands::Warm {
+                cache_dir,
+                format,
+                all_embeddings,
+                embedding_model,
+            } => {
+                warm_command(cache_dir, format, all_embeddings, embedding_model)?;
             }
         },
     }

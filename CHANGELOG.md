@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OCR auto-rotate**: New `OcrConfig.auto_rotate` flag (default: false) for automatic page rotation detection using Tesseract's orientation analysis. Handles 0/90/180/270 degree rotations.
 - **ChunkSizing configuration**: `sizing_type`, `sizing_model`, and `sizing_cache_dir` fields exposed in `ChunkingConfig` across all language bindings for control over token counting strategy.
 - **Chunk heading context**: New `HeadingContext` type in `ChunkMetadata` providing heading level and text for better chunk context awareness.
+- **CLI `cache warm` command**: Eagerly downloads all PaddleOCR and layout detection models for all supported languages. Supports optional `--all-embeddings` to download all 4 embedding presets, or `--embedding-model <preset>` for a specific one. Useful for pre-populating caches in containerized or offline deployments.
+- **CLI `cache manifest` command**: Outputs a JSON manifest of all expected model files with SHA256 checksums, sizes, and HuggingFace source URLs. Enables scripted cache verification and pre-population.
+- **`ModelManifestEntry` type**: New public type for model cache manifest entries with `relative_path`, `sha256`, `size_bytes`, and `source_url` fields.
+- **`ModelManager::manifest()` / `LayoutModelManager::manifest()`**: Static methods returning the full manifest of expected model files for each model manager.
+- **`ModelManager::ensure_all_models()` / `LayoutModelManager::ensure_all_models()`**: Eagerly download all models (all 11 PaddleOCR script families + layout models), unlike the lazy per-use defaults.
 
 ### Fixed
 
@@ -35,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Layout pipeline no longer forces heuristic extraction**: When layout detection is enabled, structure tree extraction proceeds normally instead of being forced into the heuristic path. Proportional matching applies layout hints to structure tree paragraphs, preserving text quality.
 - **Global ONNX model caching**: Layout detection engine and SLANet table recognition model are now cached globally and reused across document extractions, avoiding expensive ONNX session recreation in batch processing scenarios.
+- **Docker model pre-download uses `cache warm`**: The `Dockerfile.full` now uses `kreuzberg cache warm` instead of manual curl-based download scripts, simplifying the build and ensuring consistency with the CLI's model management.
 
 ---
 

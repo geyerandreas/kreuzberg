@@ -292,6 +292,16 @@ pub fn get_or_init_model(
     }
 }
 
+/// Eagerly download and cache an embedding model without returning the handle.
+///
+/// This triggers the same download as `get_or_init_model` but discards the
+/// result, making it suitable for cache-warming scenarios where the caller
+/// doesn't need to use the model immediately.
+#[cfg(feature = "embeddings")]
+pub fn warm_model(model: EmbeddingModel, cache_dir: Option<std::path::PathBuf>) -> crate::Result<()> {
+    get_or_init_model(model, cache_dir).map(|_| ())
+}
+
 /// Preset configurations for common RAG use cases.
 ///
 /// Each preset combines chunk size, overlap, and embedding model

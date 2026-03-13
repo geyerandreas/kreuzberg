@@ -24,7 +24,14 @@ tracing = { workspace = true }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 [features]
-default = ["bundled-pdfium", "embeddings", "ocr", "paddle-ocr", "chunking-tokenizers"]
+default = [
+    "bundled-pdfium",
+    "embeddings",
+    "ocr",
+    "paddle-ocr",
+    "layout-detection",
+    "chunking-tokenizers",
+]
 
 bundled-pdfium = ["kreuzberg/bundled-pdfium"]
 static-pdfium = ["kreuzberg/static-pdfium"]
@@ -36,6 +43,7 @@ mcp = ["kreuzberg/mcp"]
 mcp-http = ["kreuzberg/mcp-http"]
 embeddings = ["kreuzberg/embeddings"]
 paddle-ocr = ["kreuzberg/paddle-ocr"]
+layout-detection = ["kreuzberg/layout-detection"]
 chunking-tokenizers = ["kreuzberg/chunking-tokenizers"]
 all = ["default", "api", "mcp", "mcp-http", "chunking-tokenizers"]
 

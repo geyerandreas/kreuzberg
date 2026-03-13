@@ -17,10 +17,6 @@ path = "src/main.rs"
 name = "kreuzberg-extract"
 path = "src/bin/kreuzberg_extract.rs"
 
-[[bin]]
-name = "pdfium-hang-test"
-path = "src/bin/pdfium_hang_test.rs"
-
 [lib]
 name = "benchmark_harness"
 path = "src/lib.rs"

@@ -139,4 +139,4 @@ pub use plugins::registry::{
 };
 
 #[cfg(feature = "embeddings")]
-pub use embeddings::{EMBEDDING_PRESETS, EmbeddingPreset, get_preset, list_presets};
+pub use embeddings::{EMBEDDING_PRESETS, EmbeddingPreset, get_preset, list_presets, warm_model};

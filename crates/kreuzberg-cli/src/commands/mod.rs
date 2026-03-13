@@ -13,7 +13,7 @@ pub mod extract;
 pub mod server;
 
 // Re-export command functions for convenience
-pub use cache::{clear_command, stats_command};
+pub use cache::{clear_command, manifest_command, stats_command, warm_command};
 pub use config::load_config;
 pub use extract::{apply_extraction_overrides, batch_command, extract_command};
 #[cfg(feature = "mcp")]

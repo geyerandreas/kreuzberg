@@ -123,6 +123,49 @@ PaddleOCR is available as a native Rust backend in all non-WASM bindings via the
 - **Image preprocessing**: Automatic contrast, deskew, and noise reduction
 - **Multi-language detection**: Process documents with mixed languages
 
+### Multi-Backend OCR Pipeline <span class="version-badge">v4.5.0</span>
+
+Chain multiple OCR backends with quality-based fallback. If the primary backend produces low-quality output, the pipeline automatically falls back to the next backend.
+
+**Features:**
+- Configurable priority order across backends (e.g., Tesseract → PaddleOCR)
+- Per-stage language and backend-specific settings
+- 16 tunable quality threshold parameters for fallback decisions
+- Auto-rotate support for page orientation detection (0/90/180/270 degrees)
+- Default pipeline auto-constructed when `paddle-ocr` feature is enabled
+
+## Layout Detection <span class="version-badge">v4.5.0</span>
+
+Detect and classify document regions (tables, figures, headers, text blocks, etc.) using ONNX-based deep learning models. See the [Layout Detection Guide](guides/layout-detection.md) for full documentation.
+
+**Model Presets:**
+
+| Preset       | Model      | Classes | Best For                                    |
+| ------------ | ---------- | ------- | ------------------------------------------- |
+| `"fast"`     | YOLO       | 11      | High-throughput pipelines, general documents |
+| `"accurate"` | RT-DETR v2 | 17      | Complex layouts, forms, mixed-content pages  |
+
+**Capabilities:**
+- 17 document element classes (Text, Table, Picture, SectionHeader, Title, Code, Form, etc.)
+- SLANet table structure recognition for accurate HTML table recovery with colspan/rowspan
+- Layout-enhanced heading detection with confidence-based overrides
+- Automatic model download and caching from HuggingFace
+- GPU acceleration via ONNX Runtime (CUDA, CoreML, TensorRT)
+- Available across all language bindings (Python, Node, Ruby, Go, Java, C#, PHP, WASM)
+
+**Configuration:**
+```python title="layout_config.py"
+from kreuzberg import ExtractionConfig, LayoutDetectionConfig
+
+config = ExtractionConfig(
+    layout=LayoutDetectionConfig(
+        preset="accurate",
+        confidence_threshold=0.5,
+        apply_heuristics=True,
+    )
+)
+```
+
 ## Advanced Processing Features
 
 ### Language Detection

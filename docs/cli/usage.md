@@ -651,6 +651,41 @@ kreuzberg cache clear --cache-dir /path/to/cache
 kreuzberg cache clear --format json
 ```
 
+### Warm Model Cache <span class="version-badge">v4.5.0</span>
+
+Pre-download all ML models (PaddleOCR and layout detection) so they are ready
+for offline use. This is especially useful for containerized deployments.
+
+```bash title="Terminal"
+# Download all OCR and layout models eagerly
+kreuzberg cache warm
+
+# Download to a specific cache directory
+kreuzberg cache warm --cache-dir /path/to/cache
+
+# Also download all 4 embedding model presets (fast, balanced, quality, multilingual)
+kreuzberg cache warm --all-embeddings
+
+# Download a specific embedding model preset
+kreuzberg cache warm --embedding-model balanced
+
+# Output download results as JSON
+kreuzberg cache warm --format json
+```
+
+### Model Manifest <span class="version-badge">v4.5.0</span>
+
+Output a manifest of all expected model files with their SHA256 checksums and sizes.
+Useful for verifying cache integrity or scripting model pre-population.
+
+```bash title="Terminal"
+# Output manifest as JSON (default)
+kreuzberg cache manifest
+
+# Output manifest as human-readable text
+kreuzberg cache manifest --format text
+```
+
 ## Getting Help
 
 ### CLI Help
@@ -669,6 +704,8 @@ kreuzberg mcp --help
 kreuzberg cache --help
 kreuzberg cache stats --help
 kreuzberg cache clear --help
+kreuzberg cache warm --help
+kreuzberg cache manifest --help
 ```
 
 ### Version Information
