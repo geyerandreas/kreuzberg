@@ -416,7 +416,13 @@ impl DocumentExtractor for DocxExtractor {
         config: &ExtractionConfig,
     ) -> Result<ExtractionResult> {
         let include_doc_structure = config.include_document_structure;
-        let output_format = config.output_format;
+        // When image extraction is enabled, force Markdown output so that
+        // image placeholders (![](image)) are included in the text.
+        let output_format = if config.images.as_ref().is_some_and(|i| i.extract_images) {
+            crate::core::config::OutputFormat::Markdown
+        } else {
+            config.output_format
+        };
 
         let (text, tables, page_boundaries, drawings, image_rels, doc_structure) = {
             #[cfg(feature = "tokio-runtime")]
@@ -1695,6 +1701,61 @@ mod tests {
         );
         assert!(md.contains("Before image."), "Should have text before");
         assert!(md.contains("After image."), "Should have text after");
+    }
+
+    /// Regression test for issue #484: image placeholders must appear even with
+    /// default (Plain) output format when extract_images is enabled.
+    #[tokio::test]
+    async fn test_image_placeholder_with_default_output_format() {
+        let document_xml = r#"<?xml version="1.0" encoding="UTF-8"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+            xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+            xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"
+            xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"
+            xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <w:body>
+    <w:p><w:r><w:t>Text before image.</w:t></w:r></w:p>
+    <w:p><w:r>
+      <w:drawing>
+        <wp:inline>
+          <wp:extent cx="914400" cy="914400"/>
+          <wp:docPr id="1" name="Picture 1" descr="Test image"/>
+          <a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+            <pic:pic><pic:blipFill><a:blip r:embed="rId5"/></pic:blipFill></pic:pic>
+          </a:graphicData></a:graphic>
+        </wp:inline>
+      </w:drawing>
+    </w:r></w:p>
+    <w:p><w:r><w:t>Text after image.</w:t></w:r></w:p>
+  </w:body>
+</w:document>"#;
+
+        let docx_bytes = build_test_docx(document_xml);
+
+        // Use default config (Plain output format) with extract_images enabled
+        let config = ExtractionConfig {
+            images: Some(crate::core::config::ImageExtractionConfig {
+                extract_images: true,
+                ..Default::default()
+            }),
+            ..Default::default()
+        };
+
+        let extractor = DocxExtractor::new();
+        let result = extractor
+            .extract_bytes(
+                &docx_bytes,
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                &config,
+            )
+            .await
+            .unwrap();
+
+        assert!(
+            result.content.contains("!["),
+            "Output should contain image placeholder when extract_images is enabled. Got: {}",
+            result.content
+        );
     }
 
     #[tokio::test]

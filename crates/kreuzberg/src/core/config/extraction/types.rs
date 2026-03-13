@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Image extraction configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ImageExtractionConfig {
     /// Extract images from documents
     #[serde(default = "default_true")]

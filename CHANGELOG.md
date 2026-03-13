@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Hangul Word Processor (.hwp/.hwpx) support**: Extract text content from HWP 5.0 documents (standard Korean document format).
 - **Office template/macro format variants**: Added support for `.docm`, `.dotx`, `.dotm`, `.dot` (Word), `.potx`, `.potm`, `.pot` (PowerPoint), `.xltx`, `.xlt` (Excel) formats.
 
+### Fixed
+
+- **DOCX image placeholders missing (#484)**: Extracting `.docx` files with `extract_images=True` no longer produced `![](image)` placeholders in the output. The default plain text output path was stripping image references. Image extraction now forces markdown output so placeholders are always included.
+
 ### Changed
 
 - **Format count updated to 88+**: Documentation across all READMEs, docs, and package manifests updated to reflect expanded format support (previously 75+).
