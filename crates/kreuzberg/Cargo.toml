@@ -195,7 +195,7 @@ org = { version = "0.3", optional = true }
 dbase = { workspace = true, optional = true }
 hwpers = { workspace = true, optional = true }
 
-kreuzberg-tesseract = { path = "../kreuzberg-tesseract", version = "4.4.5", optional = true }
+kreuzberg-tesseract = { path = "../kreuzberg-tesseract", version = "4.4.6", optional = true }
 image = { workspace = true, default-features = false, features = [
     "png",
     "jpeg",
@@ -256,7 +256,7 @@ image = { workspace = true, default-features = false, features = ["png"] }
 [target.'cfg(all(not(target_os = "windows"), not(target_arch = "wasm32")))'.dependencies]
 pprof = { version = "0.15.0", features = ["flamegraph"], optional = true }
 # PaddleOCR via ONNX Runtime - not available on WASM (vendored from paddle-ocr-rs)
-kreuzberg-paddle-ocr = { path = "../kreuzberg-paddle-ocr", version = "4.4.5", optional = true }
+kreuzberg-paddle-ocr = { path = "../kreuzberg-paddle-ocr", version = "4.4.6", optional = true }
 # Use rustls on non-Windows platforms (Linux, macOS)
 # Blocking feature needed for model downloads
 reqwest = { workspace = true, default-features = false, features = [
@@ -276,7 +276,7 @@ ureq = { version = "3.2", default-features = false, features = ["rustls", "json"
 # Use native-tls on Windows to avoid aws-lc-sys CMake build issues with MinGW
 [target.'cfg(all(target_os = "windows", not(target_arch = "wasm32")))'.dependencies]
 # PaddleOCR via ONNX Runtime - not available on WASM (vendored from paddle-ocr-rs)
-kreuzberg-paddle-ocr = { path = "../kreuzberg-paddle-ocr", version = "4.4.5", optional = true }
+kreuzberg-paddle-ocr = { path = "../kreuzberg-paddle-ocr", version = "4.4.6", optional = true }
 # Blocking feature needed for model downloads
 reqwest = { workspace = true, default-features = false, features = [
     "json",
