@@ -100,7 +100,7 @@ jobs:
             matrix-index: 4
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         id: checkout
 
       - name: Serialize matrix job execution (prevent cache API rate limits)
@@ -147,16 +147,16 @@ jobs:
 
       - name: Free disk space before setup
         if: startsWith(matrix.os, 'ubuntu')
-        uses: kreuzberg-dev/actions/free-disk-space-linux@v1
+        uses: kreuzberg-dev/actions/free-disk-space-linux@v1.0.0 # v1.0.0
         with:
           show-initial: "true"
           show-final: "true"
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: node-${{ matrix.platform }}
           target: ${{ matrix.target }}
@@ -169,7 +169,7 @@ jobs:
         run: cargo clippy -p kreuzberg-node -- -D warnings
 
       - name: Setup Node
-        uses: kreuzberg-dev/actions/setup-node-workspace@v1
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1.0.0 # v1.0.0
 
       - name: Cache PDFium
         uses: ./.github/actions/cache-pdfium
@@ -192,11 +192,11 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Build or restore Node bindings from cache
         id: node
-        uses: kreuzberg-dev/actions/build-and-cache-binding@v1
+        uses: kreuzberg-dev/actions/build-and-cache-binding@v1.0.0 # v1.0.0
         with:
           binding-name: node
           platform: ${{ matrix.platform }}
@@ -233,7 +233,7 @@ jobs:
         run: scripts/ci/node/verify-ts-artifacts.sh
 
       - name: Upload Node bindings
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: napi-${{ matrix.target }}
           path: |
@@ -245,7 +245,7 @@ jobs:
 
       - name: Cleanup Rust cache
         if: always() && steps.checkout.outcome == 'success'
-        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
+        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1.0.0 # v1.0.0
 
       - name: Smoke test Node.js bindings
         uses: ./.github/actions/smoke-node
@@ -292,7 +292,7 @@ jobs:
             coverage: false
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         id: checkout
 
       - name: Dump system information (test job)
@@ -322,14 +322,14 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Node
-        uses: kreuzberg-dev/actions/setup-node-workspace@v1
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1.0.0 # v1.0.0
 
       - name: Setup Bun
         if: matrix.runtime == 'bun'
-        uses: oven-sh/setup-bun@v2
+        uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: latest
 
@@ -369,7 +369,7 @@ jobs:
         uses: ./.github/actions/cache-hf-fastembed
 
       - name: Download Node bindings
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: napi-${{ matrix.target }}
           path: crates/kreuzberg-node/
@@ -382,7 +382,7 @@ jobs:
           set +x
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Build TypeScript wrapper
         shell: bash

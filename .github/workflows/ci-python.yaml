@@ -89,7 +89,7 @@ jobs:
             platform: windows-x86_64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         id: checkout
 
       - name: Install system dependencies
@@ -97,16 +97,16 @@ jobs:
 
       - name: Free disk space before setup
         if: startsWith(matrix.os, 'ubuntu')
-        uses: kreuzberg-dev/actions/free-disk-space-linux@v1
+        uses: kreuzberg-dev/actions/free-disk-space-linux@v1.0.0 # v1.0.0
         with:
           show-initial: "true"
           show-final: "true"
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: python-${{ matrix.platform }}
           target: ${{ matrix.target }}
@@ -119,7 +119,7 @@ jobs:
         run: cargo clippy -p kreuzberg-py -- -D warnings
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.13"
           cache-prefix: wheels-${{ matrix.platform }}
@@ -149,7 +149,7 @@ jobs:
         run: scripts/ci/python/clean-artifacts.sh
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Build CLI with features
         shell: bash
@@ -199,7 +199,7 @@ jobs:
           fi
 
       - name: Upload wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: wheels-${{ matrix.platform }}
           path: target/wheels/*.whl
@@ -207,7 +207,7 @@ jobs:
 
       - name: Cleanup Rust cache
         if: always() && steps.checkout.outcome == 'success'
-        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
+        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1.0.0 # v1.0.0
 
       - name: Smoke test wheel
         shell: bash
@@ -219,30 +219,30 @@ jobs:
     timeout-minutes: 180
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Rust
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: python-sdist
           use-sccache: 'true'
           report-stats: 'true'
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.13"
           cache-prefix: sdist
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Build sdist
         shell: bash
         run: task python:build:sdist
 
       - name: Upload sdist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: python-sdist
           path: target/wheels/*.tar.gz
@@ -271,7 +271,7 @@ jobs:
       TRANSFORMERS_CACHE: ~/.cache/huggingface
       RUSTC_WRAPPER: ''
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         id: checkout
 
       - name: Install system dependencies
@@ -283,7 +283,7 @@ jobs:
         run: scripts/ci/python/free-disk-space.sh
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.13"
           cache-prefix: test-py-3.13
@@ -292,7 +292,7 @@ jobs:
         uses: ./.github/actions/cache-hf-fastembed
 
       - name: Download wheels
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ matrix.os == 'ubuntu-latest' && 'wheels-linux-x86_64' || matrix.os == 'ubuntu-24.04-arm' && 'wheels-linux-arm64' || matrix.os == 'macos-latest' && 'wheels-macos-arm64' || 'wheels-windows-x86_64' }}
           path: dist/
@@ -324,7 +324,7 @@ jobs:
         uses: ./.github/actions/setup-paddle-ocr-models
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Setup Tesseract tessdata (Windows)
         if: runner.os == 'Windows'

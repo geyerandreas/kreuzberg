@@ -46,12 +46,12 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: "3.11"
 
@@ -68,7 +68,7 @@ jobs:
     outputs:
       artifact-name: benchmarks-target
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -82,10 +82,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: benchmarks-setup
           use-sccache: 'true'
@@ -105,7 +105,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Cache benchmark harness
         uses: ./.github/actions/cache-benchmark-harness
@@ -113,7 +113,7 @@ jobs:
           build-profile: release
 
       - name: Build FFI library
-        uses: kreuzberg-dev/actions/build-rust-ffi@v1
+        uses: kreuzberg-dev/actions/build-rust-ffi@v1.0.0 # v1.0.0
         with:
           crate-name: kreuzberg-ffi
           build-profile: release
@@ -125,7 +125,7 @@ jobs:
         run: scripts/ci/validate/show-disk-space.sh "Disk space before artifact upload"
 
       - name: Upload build artifacts (harness binary + FFI shared lib)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-target
           path: |
@@ -139,7 +139,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload benchmark harness binary (for third-party jobs)
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmark-harness-binary
           path: |
@@ -161,7 +161,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -172,17 +172,17 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust toolchain
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: benchmarks-native
           use-sccache: 'true'
           report-stats: 'true'
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.setup.outputs.artifact-name }}
           path: target/release
@@ -205,7 +205,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-kreuzberg-rust-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -223,7 +223,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -234,17 +234,17 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust toolchain
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: benchmarks-native-paddle
           use-sccache: 'true'
           report-stats: 'true'
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.setup.outputs.artifact-name }}
           path: target/release
@@ -270,7 +270,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-kreuzberg-rust-paddle-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -288,7 +288,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -299,17 +299,17 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust toolchain
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: benchmarks-python
           use-sccache: 'true'
           report-stats: 'true'
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.setup.outputs.artifact-name }}
           path: target/release
@@ -318,7 +318,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.11"
           cache-prefix: benchmark-python
@@ -329,7 +329,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Install Rust toolchain
         run: |
@@ -349,7 +349,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-kreuzberg-python-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -367,7 +367,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -378,17 +378,17 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust toolchain
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: benchmarks-node
           use-sccache: 'false'
           report-stats: 'true'
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.setup.outputs.artifact-name }}
           path: target/release
@@ -397,7 +397,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Node
-        uses: kreuzberg-dev/actions/setup-node-workspace@v1
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1.0.0 # v1.0.0
 
       - name: Verify Node setup
         run: scripts/ci/benchmarks/verify-node-setup.sh "Node setup (async)"
@@ -408,7 +408,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Build Node bindings and install locally
         env:
@@ -425,7 +425,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-kreuzberg-node-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -443,7 +443,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -454,17 +454,17 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust toolchain
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: benchmarks-wasm
           use-sccache: 'true'
           report-stats: 'true'
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.setup.outputs.artifact-name }}
           path: target/release
@@ -473,13 +473,13 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Node
-        uses: kreuzberg-dev/actions/setup-node-workspace@v1
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1.0.0 # v1.0.0
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Install WASI SDK
-        uses: kreuzberg-dev/actions/install-wasi-sdk@v1
+        uses: kreuzberg-dev/actions/install-wasi-sdk@v1.0.0 # v1.0.0
 
       - name: Build WASM bindings
         run: task wasm:build:bindings
@@ -494,7 +494,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-kreuzberg-wasm-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -512,7 +512,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -523,17 +523,17 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust toolchain
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: benchmarks-ruby
           use-sccache: 'true'
           report-stats: 'true'
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.setup.outputs.artifact-name }}
           path: target/release
@@ -547,7 +547,7 @@ jobs:
           sudo chmod 777 /opt/hostedtoolcache
 
       - name: Setup Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@4eb9f110bac952a8b68ecf92e3b5c7a987594ba6 # v1.292.0
         with:
           ruby-version: "3.2"
 
@@ -579,7 +579,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Build FFI library
         id: ffi
@@ -618,7 +618,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-kreuzberg-ruby-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -636,7 +636,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -647,17 +647,17 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust toolchain
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: benchmarks-r
           use-sccache: 'true'
           report-stats: 'true'
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.setup.outputs.artifact-name }}
           path: target/release
@@ -671,7 +671,7 @@ jobs:
           sudo chmod 777 /opt/hostedtoolcache
 
       - name: Setup R
-        uses: r-lib/actions/setup-r@v2
+        uses: r-lib/actions/setup-r@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590 # v2.11.4
         with:
           r-version: '4.3'
 
@@ -686,7 +686,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Install Rust toolchain
         run: |
@@ -709,7 +709,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-kreuzberg-r-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -727,7 +727,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -738,17 +738,17 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust toolchain
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: benchmarks-go
           use-sccache: 'true'
           report-stats: 'true'
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.setup.outputs.artifact-name }}
           path: target/release
@@ -757,7 +757,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
         with:
           go-version: "1.25.x"
           cache-dependency-path: packages/go/v4/go.sum
@@ -768,7 +768,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Build FFI library
         id: ffi
@@ -806,7 +806,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-kreuzberg-go-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -824,7 +824,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -835,17 +835,17 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust toolchain
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: benchmarks-java
           use-sccache: 'true'
           report-stats: 'true'
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.setup.outputs.artifact-name }}
           path: target/release
@@ -854,14 +854,14 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         id: setup-java
         with:
           distribution: 'temurin'
           java-version: '25'
 
       - name: Setup Maven
-        uses: kreuzberg-dev/actions/setup-maven@v1
+        uses: kreuzberg-dev/actions/setup-maven@v1.0.0 # v1.0.0
 
       - name: Setup ONNX Runtime
         uses: ./.github/actions/setup-onnx-runtime
@@ -869,7 +869,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Build FFI library
         id: ffi
@@ -898,7 +898,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-kreuzberg-java-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -916,7 +916,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -927,17 +927,17 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust toolchain
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: benchmarks-csharp
           use-sccache: 'true'
           report-stats: 'true'
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.setup.outputs.artifact-name }}
           path: target/release
@@ -949,7 +949,7 @@ jobs:
         run: mkdir -p /tmp/dotnet
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           dotnet-version: "10.0.x"
         env:
@@ -961,7 +961,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Build FFI library
         id: ffi
@@ -990,7 +990,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-kreuzberg-csharp-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1008,7 +1008,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1019,17 +1019,17 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust toolchain
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: benchmarks-elixir
           use-sccache: 'true'
           report-stats: 'true'
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.setup.outputs.artifact-name }}
           path: target/release
@@ -1038,7 +1038,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Elixir
-        uses: erlef/setup-beam@v1
+        uses: erlef/setup-beam@9d5b75ddfda22fb979d2270283237aef8aa68d6b # v1.22.0
         with:
           elixir-version: "1.17.0"
           otp-version: "27.0"
@@ -1049,7 +1049,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Build Elixir bindings
         env:
@@ -1067,7 +1067,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-kreuzberg-elixir-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1085,7 +1085,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1096,17 +1096,17 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust toolchain
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: benchmarks-php
           use-sccache: 'true'
           report-stats: 'true'
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.setup.outputs.artifact-name }}
           path: target/release
@@ -1115,7 +1115,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup PHP
-        uses: shivammathur/setup-php@v2
+        uses: shivammathur/setup-php@44454db4f0199b8b9685a5d763dc37cbf79108e1 # 2.36.0
         with:
           php-version: "8.5"
           extensions: ffi
@@ -1155,7 +1155,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Build FFI library
         id: ffi
@@ -1188,7 +1188,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-kreuzberg-php-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1206,7 +1206,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1217,17 +1217,17 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Rust toolchain
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: benchmarks-c
           use-sccache: 'true'
           report-stats: 'true'
 
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: ${{ needs.setup.outputs.artifact-name }}
           path: target/release
@@ -1250,7 +1250,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-kreuzberg-c-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1269,7 +1269,7 @@ jobs:
         mode: [single-file, batch]
         shard: [1, 2, 3]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1277,7 +1277,7 @@ jobs:
         run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download benchmark harness binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: benchmark-harness-binary
           path: target/release
@@ -1286,7 +1286,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.11"
           cache-prefix: benchmark-docling
@@ -1311,7 +1311,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-docling-${{ matrix.mode }}-shard${{ matrix.shard }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1330,7 +1330,7 @@ jobs:
         mode: [single-file, batch]
         shard: [1, 2, 3]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1338,7 +1338,7 @@ jobs:
         run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download benchmark harness binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: benchmark-harness-binary
           path: target/release
@@ -1347,7 +1347,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.11"
           cache-prefix: benchmark-markitdown
@@ -1373,7 +1373,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-markitdown-${{ matrix.mode }}-shard${{ matrix.shard }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1391,7 +1391,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1399,7 +1399,7 @@ jobs:
         run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download benchmark harness binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: benchmark-harness-binary
           path: target/release
@@ -1408,7 +1408,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.11"
           cache-prefix: benchmark-pandoc
@@ -1431,7 +1431,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-pandoc-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1450,7 +1450,7 @@ jobs:
         mode: [single-file, batch]
         shard: [1, 2, 3, 4]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1458,7 +1458,7 @@ jobs:
         run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download benchmark harness binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: benchmark-harness-binary
           path: target/release
@@ -1472,7 +1472,7 @@ jobs:
           sudo apt-get install -y tesseract-ocr tesseract-ocr-eng libmagic-dev poppler-utils libreoffice pandoc build-essential pkg-config
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.11"
           cache-prefix: benchmark-unstructured
@@ -1492,7 +1492,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-unstructured-${{ matrix.mode }}-shard${{ matrix.shard }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1511,7 +1511,7 @@ jobs:
         mode: [single-file, batch]
         shard: [1, 2, 3]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1519,7 +1519,7 @@ jobs:
         run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download benchmark harness binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: benchmark-harness-binary
           path: target/release
@@ -1528,7 +1528,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         id: setup-java
         with:
           distribution: 'temurin'
@@ -1545,7 +1545,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-tika-${{ matrix.mode }}-shard${{ matrix.shard }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1564,7 +1564,7 @@ jobs:
         mode: [single-file, batch]
         shard: [1, 2, 3]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1572,7 +1572,7 @@ jobs:
         run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download benchmark harness binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: benchmark-harness-binary
           path: target/release
@@ -1586,7 +1586,7 @@ jobs:
           sudo apt-get install -y tesseract-ocr tesseract-ocr-eng libjpeg-dev libpng-dev libtiff-dev build-essential pkg-config
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.11"
           cache-prefix: benchmark-pymupdf4llm
@@ -1607,7 +1607,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-pymupdf4llm-${{ matrix.mode }}-shard${{ matrix.shard }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1625,7 +1625,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1633,7 +1633,7 @@ jobs:
         run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download benchmark harness binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: benchmark-harness-binary
           path: target/release
@@ -1642,7 +1642,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.11"
           cache-prefix: benchmark-pdfplumber
@@ -1667,7 +1667,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-pdfplumber-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1686,7 +1686,7 @@ jobs:
         mode: [single-file, batch]
         shard: [1, 2, 3]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1694,7 +1694,7 @@ jobs:
         run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download benchmark harness binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: benchmark-harness-binary
           path: target/release
@@ -1703,7 +1703,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.11"
           cache-prefix: benchmark-mineru
@@ -1728,7 +1728,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-mineru-${{ matrix.mode }}-shard${{ matrix.shard }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1746,7 +1746,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1754,7 +1754,7 @@ jobs:
         run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download benchmark harness binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: benchmark-harness-binary
           path: target/release
@@ -1763,7 +1763,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.11"
           cache-prefix: benchmark-pypdf
@@ -1788,7 +1788,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-pypdf-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1806,7 +1806,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1814,7 +1814,7 @@ jobs:
         run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download benchmark harness binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: benchmark-harness-binary
           path: target/release
@@ -1823,7 +1823,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.11"
           cache-prefix: benchmark-pdfminer
@@ -1848,7 +1848,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-pdfminer-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1866,7 +1866,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1874,7 +1874,7 @@ jobs:
         run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download benchmark harness binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: benchmark-harness-binary
           path: target/release
@@ -1888,7 +1888,7 @@ jobs:
           sudo apt-get install -y libpoppler-cpp-dev build-essential pkg-config
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.11"
           cache-prefix: benchmark-pdftotext
@@ -1908,7 +1908,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-pdftotext-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1926,7 +1926,7 @@ jobs:
       matrix:
         mode: [single-file, batch]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
 
@@ -1934,7 +1934,7 @@ jobs:
         run: scripts/ci/benchmarks/free-disk-space.sh
 
       - name: Download benchmark harness binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: benchmark-harness-binary
           path: target/release
@@ -1943,7 +1943,7 @@ jobs:
         run: scripts/benchmarks/restore-binary-permissions.sh
 
       - name: Setup Python
-        uses: kreuzberg-dev/actions/setup-python-env@v1
+        uses: kreuzberg-dev/actions/setup-python-env@v1.0.0 # v1.0.0
         with:
           python-version: "3.11"
           cache-prefix: benchmark-playa-pdf
@@ -1968,7 +1968,7 @@ jobs:
 
       - name: Upload artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: benchmarks-playa-pdf-${{ matrix.mode }}-${{ github.run_id }}
           path: benchmark-results/
@@ -1982,7 +1982,7 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install build dependencies
         run: |
@@ -1990,12 +1990,12 @@ jobs:
           sudo apt-get install -y build-essential cmake pkg-config libssl-dev
 
       - name: Setup Rust
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: aggregate
 
       - name: Download all benchmark artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: "benchmarks-*"
           path: benchmark-artifacts/

@@ -99,7 +99,7 @@ jobs:
           - os: windows-latest
             matrix-index: 3
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         id: checkout
 
       - name: Serialize matrix job execution (prevent cache API rate limits)
@@ -116,10 +116,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Install WASI SDK
-        uses: kreuzberg-dev/actions/install-wasi-sdk@v1
+        uses: kreuzberg-dev/actions/install-wasi-sdk@v1.0.0 # v1.0.0
 
       - name: Setup Rust
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: wasm-test-${{ matrix.os }}
           use-sccache: 'true'
@@ -132,14 +132,14 @@ jobs:
         run: cargo clippy -p kreuzberg-wasm --target wasm32-unknown-unknown -- -D warnings
 
       - name: Setup Node
-        uses: kreuzberg-dev/actions/setup-node-workspace@v1
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1.0.0 # v1.0.0
 
       - name: Install wasm-pack
         shell: bash
         run: scripts/ci/wasm/install-wasm-pack.sh
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Run WASM tests
         shell: bash
@@ -150,7 +150,7 @@ jobs:
 
       - name: Cleanup Rust cache
         if: always() && steps.checkout.outcome == 'success'
-        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
+        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1.0.0 # v1.0.0
 
 
   build-wasm-targets:
@@ -178,7 +178,7 @@ jobs:
             target: x86_64-pc-windows-msvc
             matrix-index: 3
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         id: checkout
 
       - name: Serialize matrix job execution (prevent cache API rate limits)
@@ -195,10 +195,10 @@ jobs:
         uses: ./.github/actions/install-system-deps
 
       - name: Install WASI SDK
-        uses: kreuzberg-dev/actions/install-wasi-sdk@v1
+        uses: kreuzberg-dev/actions/install-wasi-sdk@v1.0.0 # v1.0.0
 
       - name: Setup Rust
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: wasm-build-${{ matrix.target }}
           use-sccache: 'true'
@@ -206,18 +206,18 @@ jobs:
           target: wasm32-unknown-unknown
 
       - name: Setup Node
-        uses: kreuzberg-dev/actions/setup-node-workspace@v1
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1.0.0 # v1.0.0
 
       - name: Install wasm-pack
         shell: bash
         run: scripts/ci/wasm/install-wasm-pack.sh
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Build or restore WASM bindings from cache
         id: wasm
-        uses: kreuzberg-dev/actions/build-and-cache-binding@v1
+        uses: kreuzberg-dev/actions/build-and-cache-binding@v1.0.0 # v1.0.0
         with:
           binding-name: wasm
           platform: ${{ matrix.os }}
@@ -233,7 +233,7 @@ jobs:
             crates/kreuzberg-wasm/Cargo.toml
 
       - name: Upload WASM artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: wasm-${{ matrix.target }}
           path: |
@@ -245,7 +245,7 @@ jobs:
 
       - name: Cleanup Rust cache
         if: always() && steps.checkout.outcome == 'success'
-        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
+        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1.0.0 # v1.0.0
 
 
   type-definitions:
@@ -256,14 +256,14 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         id: checkout
 
       - name: Install WASI SDK
-        uses: kreuzberg-dev/actions/install-wasi-sdk@v1
+        uses: kreuzberg-dev/actions/install-wasi-sdk@v1.0.0 # v1.0.0
 
       - name: Setup Rust
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: wasm-types
           use-sccache: 'true'
@@ -271,14 +271,14 @@ jobs:
           target: wasm32-unknown-unknown
 
       - name: Setup Node
-        uses: kreuzberg-dev/actions/setup-node-workspace@v1
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1.0.0 # v1.0.0
 
       - name: Install wasm-pack
         shell: bash
         run: scripts/ci/wasm/install-wasm-pack.sh
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Build WASM (required for type generation)
         shell: bash
@@ -296,7 +296,7 @@ jobs:
 
       - name: Cleanup Rust cache
         if: always() && steps.checkout.outcome == 'success'
-        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
+        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1.0.0 # v1.0.0
 
 
   integration-tests-node:
@@ -312,21 +312,21 @@ jobs:
       matrix:
         node-version: ["22"]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Node
-        uses: kreuzberg-dev/actions/setup-node-workspace@v1
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1.0.0 # v1.0.0
         with:
           node-version: ${{ matrix.node-version }}
 
       - name: Download WASM artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: wasm-x86_64-unknown-linux-gnu
           path: crates/kreuzberg-wasm/pkg/
 
       - name: Setup Rust
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: wasm-test-ubuntu
           use-sccache: 'true'
@@ -338,7 +338,7 @@ jobs:
         run: scripts/ci/wasm/install-wasm-pack.sh
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Run WASM tests
         shell: bash
@@ -360,17 +360,17 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         id: checkout
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
 
       - name: Install WASI SDK
-        uses: kreuzberg-dev/actions/install-wasi-sdk@v1
+        uses: kreuzberg-dev/actions/install-wasi-sdk@v1.0.0 # v1.0.0
 
       - name: Setup Rust
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: wasm-deno-ubuntu
           use-sccache: 'true'
@@ -378,17 +378,17 @@ jobs:
           target: wasm32-unknown-unknown
 
       - name: Setup Node (for wasm-pack and build tools)
-        uses: kreuzberg-dev/actions/setup-node-workspace@v1
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1.0.0 # v1.0.0
 
       - name: Install wasm-pack
         shell: bash
         run: scripts/ci/wasm/install-wasm-pack.sh
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Install Deno
-        uses: denoland/setup-deno@v2
+        uses: denoland/setup-deno@e95548e56dfa95d4e1a28d6f422fafe75c4c26fb # v2.0.3
         with:
           deno-version: "2.x"
 
@@ -414,7 +414,7 @@ jobs:
 
       - name: Cleanup Rust cache
         if: always() && steps.checkout.outcome == 'success'
-        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
+        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1.0.0 # v1.0.0
 
 
   workers-tests:
@@ -425,17 +425,17 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         id: checkout
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
 
       - name: Install WASI SDK
-        uses: kreuzberg-dev/actions/install-wasi-sdk@v1
+        uses: kreuzberg-dev/actions/install-wasi-sdk@v1.0.0 # v1.0.0
 
       - name: Setup Rust
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: wasm-workers
           use-sccache: 'true'
@@ -443,13 +443,13 @@ jobs:
           target: wasm32-unknown-unknown
 
       - name: Setup Node
-        uses: kreuzberg-dev/actions/setup-node-workspace@v1
+        uses: kreuzberg-dev/actions/setup-node-workspace@v1.0.0 # v1.0.0
 
       - name: Install wasm-pack
         run: scripts/ci/wasm/install-wasm-pack.sh
 
       - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
+        uses: kreuzberg-dev/actions/install-task@v1.0.0 # v1.0.0
 
       - name: Build WASM (all targets for E2E)
         run: task wasm:build:all
@@ -462,4 +462,4 @@ jobs:
 
       - name: Cleanup Rust cache
         if: always() && steps.checkout.outcome == 'success'
-        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
+        uses: kreuzberg-dev/actions/cleanup-rust-cache@v1.0.0 # v1.0.0

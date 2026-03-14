@@ -37,7 +37,7 @@ runs:
 
     - name: Restore PaddleOCR models from cache
       if: inputs.cache-enabled == 'true'
-      uses: actions/cache@v4
+      uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
       id: cache-models
       with:
         path: ~/.cache/kreuzberg/paddle-ocr

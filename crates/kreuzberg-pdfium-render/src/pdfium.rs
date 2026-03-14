@@ -502,7 +502,7 @@ impl Pdfium {
         if handle.is_null() {
             // Retrieve the error code of the last error recorded by Pdfium.
 
-            if let Some(error) = match bindings.FPDF_GetLastError() as u32 {
+            if let Some(error) = match bindings.FPDF_GetLastError() {
                 crate::bindgen::FPDF_ERR_SUCCESS => None,
                 crate::bindgen::FPDF_ERR_UNKNOWN => Some(PdfiumInternalError::Unknown),
                 crate::bindgen::FPDF_ERR_FILE => Some(PdfiumInternalError::FileError),

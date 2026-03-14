@@ -147,6 +147,21 @@ namespace Kreuzberg.E2E.Pdf
         }
 
         [SkippableFact]
+        public void PdfLayoutDetection()
+        {
+            TestHelpers.SkipIfFeatureUnavailable("layout-detection");
+            TestHelpers.SkipIfLegacyOfficeDisabled("pdf/docling.pdf");
+            TestHelpers.SkipIfOfficeTestOnWindows("pdf/docling.pdf");
+            var documentPath = TestHelpers.EnsureDocument("pdf/docling.pdf", true);
+            var config = TestHelpers.BuildConfig("{\"layout\":{\"preset\":\"fast\"},\"output_format\":\"markdown\"}");
+
+            var result = KreuzbergClient.ExtractFileSync(documentPath, config);
+            TestHelpers.AssertExpectedMime(result, new[] { "application/pdf" });
+            TestHelpers.AssertMinContentLength(result, 100);
+            TestHelpers.AssertContentNotEmpty(result);
+        }
+
+        [SkippableFact]
         public void PdfNonEnglishGerman()
         {
             TestHelpers.SkipIfLegacyOfficeDisabled("pdf/5_level_paging_and_5_level_ept_intel_revision_1_1_may_2017.pdf");

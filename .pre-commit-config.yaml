@@ -80,7 +80,7 @@ repos:
             "--exclude=benchmark-harness",
             "--exclude=kreuzberg-e2e-generator",
             "--exclude=snippet-runner",
-            "--exclude=kreuzberg-e2e-rust",
+            "--exclude=e2e-rust",
             "--all-features",
             "--all-targets",
             "--",
@@ -104,7 +104,7 @@ repos:
 
   # JavaScript/TypeScript/JSON/CSS: biome (formatting + linting with autofixes)
   - repo: https://github.com/biomejs/pre-commit
-    rev: v2.4.6
+    rev: v2.4.7
     hooks:
       - id: biome-format
         exclude: ^tools/benchmark-harness/fixtures/

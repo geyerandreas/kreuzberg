@@ -76,7 +76,7 @@ impl<'a> PdfPermissions<'a> {
     /// Returns the raw permissions bitflags for the containing [PdfDocument].
     #[inline]
     fn get_permissions_bits(&self) -> FpdfPermissions {
-        FpdfPermissions::from_bits_truncate(self.bindings().FPDF_GetDocPermissions(self.document_handle) as u32)
+        FpdfPermissions::from_bits_truncate(self.bindings().FPDF_GetDocPermissions(self.document_handle))
     }
 
     /// Returns the revision of the standard security handler used by the containing [PdfDocument].

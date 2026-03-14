@@ -89,7 +89,7 @@ public static class TestHelpers
         {
             if (skipIfMissing)
             {
-                throw new XunitException($"Missing document {path}");
+                throw new Xunit.SkipException($"Document not available: {path}");
             }
             throw new FileNotFoundException($"Document unavailable: {path}");
         }

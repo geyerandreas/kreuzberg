@@ -72,17 +72,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Free up disk space
         shell: bash
         run: scripts/ci/docker/free-disk-space.sh
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Build Docker image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           context: .
           file: docker/Dockerfile.${{ matrix.variant }}
@@ -128,7 +128,7 @@ jobs:
 
       - name: Upload Docker image artifact
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: docker-image-${{ matrix.variant }}
           path: /tmp/kreuzberg-${{ matrix.variant }}.tar.gz
@@ -137,7 +137,7 @@ jobs:
 
       - name: Upload test results
         if: always() && !inputs.skip_tests && hashFiles('/tmp/kreuzberg-docker-test-results.json') != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: docker-test-results-${{ matrix.variant }}
           path: /tmp/kreuzberg-docker-test-results.json
@@ -150,7 +150,7 @@ jobs:
 
       - name: Upload Docker logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: docker-logs-${{ matrix.variant }}
           path: /tmp/docker-logs/
@@ -176,17 +176,17 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Free up disk space
         shell: bash
         run: scripts/ci/docker/free-disk-space.sh
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Build Docker CLI image
-        uses: docker/build-push-action@v7
+        uses: docker/build-push-action@d08e5c354a6adb9ed34480a06d141179aa583294 # v7.0.0
         with:
           context: .
           file: docker/Dockerfile.cli
@@ -219,7 +219,7 @@ jobs:
 
       - name: Upload Docker image artifact
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: docker-image-cli
           path: /tmp/kreuzberg-cli.tar.gz
@@ -228,7 +228,7 @@ jobs:
 
       - name: Upload test results
         if: always() && !inputs.skip_tests && hashFiles('/tmp/kreuzberg-docker-cli-test-results.json') != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: docker-test-results-cli
           path: /tmp/kreuzberg-docker-cli-test-results.json
@@ -241,7 +241,7 @@ jobs:
 
       - name: Upload Docker logs
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: docker-logs-cli
           path: /tmp/docker-logs/

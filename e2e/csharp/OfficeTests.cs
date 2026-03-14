@@ -38,6 +38,21 @@ namespace Kreuzberg.E2E.Office
         }
 
         [SkippableFact]
+        public void OfficeDbfBasic()
+        {
+            TestHelpers.SkipIfFeatureUnavailable("office");
+            TestHelpers.SkipIfLegacyOfficeDisabled("dbf/stations.dbf");
+            TestHelpers.SkipIfOfficeTestOnWindows("dbf/stations.dbf");
+            var documentPath = TestHelpers.EnsureDocument("dbf/stations.dbf", true);
+            var config = TestHelpers.BuildConfig(null);
+
+            var result = KreuzbergClient.ExtractFileSync(documentPath, config);
+            TestHelpers.AssertExpectedMime(result, new[] { "application/x-dbf" });
+            TestHelpers.AssertMinContentLength(result, 10);
+            TestHelpers.AssertContentContainsAny(result, new[] { "|" });
+        }
+
+        [SkippableFact]
         public void OfficeDjotBasic()
         {
             TestHelpers.SkipIfLegacyOfficeDisabled("markdown/tables.djot");
@@ -206,6 +221,34 @@ namespace Kreuzberg.E2E.Office
 
             var result = KreuzbergClient.ExtractFileSync(documentPath, config);
             TestHelpers.AssertExpectedMime(result, new[] { "application/x-fictionbook+xml", "application/x-fictionbook" });
+            TestHelpers.AssertMinContentLength(result, 10);
+        }
+
+        [SkippableFact]
+        public void OfficeHwpBasic()
+        {
+            TestHelpers.SkipIfFeatureUnavailable("office");
+            TestHelpers.SkipIfLegacyOfficeDisabled("hwp/converted_output.hwp");
+            TestHelpers.SkipIfOfficeTestOnWindows("hwp/converted_output.hwp");
+            var documentPath = TestHelpers.EnsureDocument("hwp/converted_output.hwp", true);
+            var config = TestHelpers.BuildConfig(null);
+
+            var result = KreuzbergClient.ExtractFileSync(documentPath, config);
+            TestHelpers.AssertExpectedMime(result, new[] { "application/x-hwp" });
+            TestHelpers.AssertMinContentLength(result, 10);
+        }
+
+        [SkippableFact]
+        public void OfficeHwpStyled()
+        {
+            TestHelpers.SkipIfFeatureUnavailable("office");
+            TestHelpers.SkipIfLegacyOfficeDisabled("hwp/styled_document.hwp");
+            TestHelpers.SkipIfOfficeTestOnWindows("hwp/styled_document.hwp");
+            var documentPath = TestHelpers.EnsureDocument("hwp/styled_document.hwp", true);
+            var config = TestHelpers.BuildConfig(null);
+
+            var result = KreuzbergClient.ExtractFileSync(documentPath, config);
+            TestHelpers.AssertExpectedMime(result, new[] { "application/x-hwp" });
             TestHelpers.AssertMinContentLength(result, 10);
         }
 

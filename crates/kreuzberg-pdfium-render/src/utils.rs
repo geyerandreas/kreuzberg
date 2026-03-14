@@ -219,8 +219,8 @@ pub(crate) mod utf16le {
             // functionality; if that doesn't work, fall back to using the same WString method
             // used in non-WASM builds.
 
-            if let Ok(decoder) = TextDecoder::new_with_label("utf-16le") {
-                if let Ok(result) = decoder.decode_with_u8_array(&mut buffer) {
+            if let Ok(decoder) = TextDecoder::new_with_label("utf-16le")
+                && let Ok(result) = decoder.decode_with_u8_array(&buffer) {
                     let result = result.trim_end_matches(char::from(0));
 
                     if !result.is_empty() {
@@ -229,7 +229,6 @@ pub(crate) mod utf16le {
                         return None;
                     }
                 }
-            }
         }
 
         if let Ok(string) = WString::<LittleEndian>::from_utf16(buffer) {

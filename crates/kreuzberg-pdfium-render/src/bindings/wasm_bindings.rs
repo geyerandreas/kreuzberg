@@ -45,7 +45,7 @@ enum JsFunctionArgumentType {
 /// the exported [initialize_pdfium_render()] function from Javascript. It is essential that this
 /// function is called _before_ initializing `pdfium-render` from within Rust code. For an example, see:
 /// <https://github.com/ajrcarey/pdfium-render/blob/master/examples/index.html>
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub(crate) struct PdfiumRenderWasmState {
     pdfium_wasm_module: Option<Object>,
     local_wasm_module: Option<Object>,
@@ -218,14 +218,13 @@ impl PdfiumRenderWasmState {
         // Once we have the function table, we scan it for function signatures that take 4 arguments.
 
         for index in 1..table.length() {
-            if let Ok(function) = table.get(index) {
-                if function.length() == 4 {
+            if let Ok(function) = table.get(index)
+                && function.length() == 4 {
                     // We've found a viable patch function candidate.
 
                     self.file_access_callback_function_table_entry = self.file_write_callback_function_table_entry;
                     self.file_write_callback_function_table_entry = index as usize;
                 }
-            }
         }
 
         log::debug!(
@@ -393,7 +392,7 @@ impl PdfiumRenderWasmState {
                 JsValue::from(
                     arg_types
                         .into_iter()
-                        .map(|arg_type| js_value_from_argument_type(arg_type))
+                        .map(js_value_from_argument_type)
                         .collect::<Array>(),
                 )
             }
@@ -776,9 +775,7 @@ impl PdfiumRenderWasmState {
             }
         };
 
-        let file_access_ptr = self.copy_struct_to_pdfium(&file_access_with_callback);
-
-        file_access_ptr
+        self.copy_struct_to_pdfium(&file_access_with_callback)
     }
 
     /// Copies the give `FPDF_FILEWRITE` struct into Pdfium's WASM heap, returning a
@@ -849,7 +846,7 @@ impl PdfiumRenderWasmState {
         let local_module = self.local_wasm_module.as_ref().unwrap();
 
         let local_function = Function::from(
-            self.get_value_from_browser_object(&local_module, local_function_name)
+            self.get_value_from_browser_object(local_module, local_function_name)
                 .map_err(|_| PdfiumError::JsSysErrorRetrievingFunction(JsValue::UNDEFINED))?,
         );
 
@@ -947,23 +944,6 @@ impl PdfiumRenderWasmState {
         );
 
         value
-    }
-}
-
-impl Default for PdfiumRenderWasmState {
-    fn default() -> Self {
-        PdfiumRenderWasmState {
-            pdfium_wasm_module: None,
-            local_wasm_module: None,
-            wasm_table: None,
-            malloc_js_fn: None,
-            free_js_fn: None,
-            call_js_fn: None,
-            debug: false,
-            file_access_callback_function_table_entry: 0, // These sentinel values will be replaced with actual values...
-            file_write_callback_function_table_entry: 0, // ... during the first call to PdfiumRenderWasmState::bind_to_pdfium().
-            state: HashMap::new(),
-        }
     }
 }
 
@@ -4734,8 +4714,8 @@ impl PdfiumLibraryBindings for WasmPdfiumBindings {
                 ]),
                 Some(&JsValue::from(Array::of3(
                     &Self::js_value_from_page(page),
-                    &Self::js_value_from_offset(matrix_ptr as usize),
-                    &Self::js_value_from_offset(clipRect_ptr as usize),
+                    &Self::js_value_from_offset(matrix_ptr),
+                    &Self::js_value_from_offset(clipRect_ptr),
                 ))),
             )
             .as_f64()
@@ -5470,7 +5450,7 @@ impl PdfiumLibraryBindings for WasmPdfiumBindings {
 
         let state = PdfiumRenderWasmState::lock();
 
-        let points_ptr = state.copy_ptr_with_len_to_pdfium(points, point_count as usize * size_of::<FS_POINTF>());
+        let points_ptr = state.copy_ptr_with_len_to_pdfium(points, point_count * size_of::<FS_POINTF>());
 
         let result = state
             .call(
@@ -7109,7 +7089,7 @@ impl PdfiumLibraryBindings for WasmPdfiumBindings {
         let state = PdfiumRenderWasmState::lock();
 
         let subtypes_ptr =
-            state.copy_ptr_with_len_to_pdfium(subtypes, count as usize * size_of::<FPDF_ANNOTATION_SUBTYPE>());
+            state.copy_ptr_with_len_to_pdfium(subtypes, count * size_of::<FPDF_ANNOTATION_SUBTYPE>());
 
         let result = state
             .call(
@@ -7160,7 +7140,7 @@ impl PdfiumLibraryBindings for WasmPdfiumBindings {
 
         let state = PdfiumRenderWasmState::lock();
 
-        let buffer_length = count as usize * size_of::<FPDF_ANNOTATION_SUBTYPE>();
+        let buffer_length = count * size_of::<FPDF_ANNOTATION_SUBTYPE>();
 
         let subtypes_ptr = if buffer_length > 0 {
             log::debug!(
@@ -10008,10 +9988,10 @@ impl PdfiumLibraryBindings for WasmPdfiumBindings {
                 ]),
                 Some(&JsValue::from(Array::of5(
                     &Self::js_value_from_text_page(text_page),
-                    &JsValue::from_f64(x as f64),
-                    &JsValue::from_f64(y as f64),
-                    &JsValue::from_f64(xTolerance as f64),
-                    &JsValue::from_f64(yTolerance as f64),
+                    &JsValue::from_f64(x),
+                    &JsValue::from_f64(y),
+                    &JsValue::from_f64(xTolerance),
+                    &JsValue::from_f64(yTolerance),
                 ))),
             )
             .as_f64()
@@ -11308,7 +11288,7 @@ impl PdfiumLibraryBindings for WasmPdfiumBindings {
 
         let state = PdfiumRenderWasmState::lock();
 
-        let ptr_charcodes = state.copy_ptr_with_len_to_pdfium(charcodes, size_of::<c_uint>() * count as usize);
+        let ptr_charcodes = state.copy_ptr_with_len_to_pdfium(charcodes, size_of::<c_uint>() * count);
 
         let result = state
             .call(
@@ -13017,7 +12997,7 @@ impl PdfiumLibraryBindings for WasmPdfiumBindings {
                     .unwrap_or(0);
 
                 if *out_buflen > 0 {
-                    state.copy_struct_from_pdfium(buffer_ptr, *out_buflen as usize, buffer);
+                    state.copy_struct_from_pdfium(buffer_ptr, *out_buflen, buffer);
                 }
             }
         }
@@ -13642,7 +13622,7 @@ impl PdfiumLibraryBindings for WasmPdfiumBindings {
 
         let state = PdfiumRenderWasmState::lock();
 
-        let buffer_len = size_of::<c_float>() * dash_count as usize;
+        let buffer_len = size_of::<c_float>() * dash_count;
 
         log::debug!(
             "pdfium-render::PdfiumLibraryBindings::FPDFPageObj_GetDashArray(): allocating buffer of {} bytes in Pdfium's WASM heap",
@@ -13696,7 +13676,7 @@ impl PdfiumLibraryBindings for WasmPdfiumBindings {
 
         let state = PdfiumRenderWasmState::lock();
 
-        let buffer_ptr = state.copy_ptr_with_len_to_pdfium(dash_array, size_of::<c_float>() * dash_count as usize);
+        let buffer_ptr = state.copy_ptr_with_len_to_pdfium(dash_array, size_of::<c_float>() * dash_count);
 
         let result = state
             .call(
@@ -13983,7 +13963,7 @@ impl PdfiumLibraryBindings for WasmPdfiumBindings {
                     .unwrap_or(0);
 
                 if *out_buflen > 0 {
-                    state.copy_struct_from_pdfium(buffer_ptr, *out_buflen as usize, buffer);
+                    state.copy_struct_from_pdfium(buffer_ptr, *out_buflen, buffer);
                 }
             }
         }

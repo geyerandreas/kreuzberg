@@ -69,20 +69,20 @@ jobs:
         os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Install system dependencies
         uses: ./.github/actions/install-system-deps
 
       - name: Free disk space before setup
         if: startsWith(matrix.os, 'ubuntu')
-        uses: kreuzberg-dev/actions/free-disk-space-linux@v1
+        uses: kreuzberg-dev/actions/free-disk-space-linux@v1.0.0 # v1.0.0
         with:
           show-initial: "true"
           show-final: "true"
 
       - name: Setup Rust
-        uses: kreuzberg-dev/actions/setup-rust@v1
+        uses: kreuzberg-dev/actions/setup-rust@v1.0.0 # v1.0.0
         with:
           cache-key-prefix: cli-${{ matrix.os }}
           use-sccache: true
@@ -108,7 +108,7 @@ jobs:
           ort-version: ${{ env.ORT_VERSION }}
 
       - name: Setup OpenSSL
-        uses: kreuzberg-dev/actions/setup-openssl@v1
+        uses: kreuzberg-dev/actions/setup-openssl@v1.0.0 # v1.0.0
 
       - name: Setup Tesseract cache
         id: tesseract-cache
@@ -173,7 +173,7 @@ jobs:
 
       - name: Upload CLI binary (artifact)
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: cli-${{ matrix.os }}-${{ github.sha }}
           path: |
