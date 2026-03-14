@@ -143,6 +143,13 @@ pub struct Pix {
     ptr: *mut c_void,
 }
 
+#[cfg(any(feature = "build-tesseract", feature = "build-tesseract-wasm"))]
+impl std::fmt::Debug for Pix {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Pix").field("ptr", &self.ptr).finish()
+    }
+}
+
 // SAFETY: A Pix owns a uniquely heap-allocated Leptonica PIX. There is no
 // interior mutability shared across thread boundaries, so transferring
 // ownership to another thread is safe.

@@ -1543,7 +1543,7 @@ body:has(.full-width-iframe) article {
 	margin-bottom: 0.25rem !important;
 }
 
-.cli-hero>p:first-of-type {
+.cli-hero > p:first-of-type {
 	margin-top: 0;
 	margin-bottom: 1rem;
 	opacity: 0.7;
@@ -1629,14 +1629,14 @@ body:has(.full-width-iframe) article {
 }
 
 /* ── Installation cards (Figma design) ── */
-.md-typeset .install-cards.grid.cards>ul,
-.md-typeset .install-cards.grid.cards>ol {
+.md-typeset .install-cards.grid.cards > ul,
+.md-typeset .install-cards.grid.cards > ol {
 	row-gap: 48px !important;
 	column-gap: 48px !important;
 }
 
-.md-typeset .install-cards.grid.cards>ul>li,
-.md-typeset .install-cards.grid.cards>ol>li {
+.md-typeset .install-cards.grid.cards > ul > li,
+.md-typeset .install-cards.grid.cards > ol > li {
 	border-radius: 16px;
 	border: 1.5px solid #ddd8e8;
 	background: #ffffff;
@@ -1646,20 +1646,20 @@ body:has(.full-width-iframe) article {
 	flex-direction: column;
 }
 
-.md-typeset .install-cards.grid.cards>ul>li:hover,
-.md-typeset .install-cards.grid.cards>ol>li:hover {
+.md-typeset .install-cards.grid.cards > ul > li:hover,
+.md-typeset .install-cards.grid.cards > ol > li:hover {
 	transform: none;
 	box-shadow: none;
 	border-color: #c5b8d9;
 }
 
-.md-typeset .install-cards.grid.cards>ul>li hr,
-.md-typeset .install-cards.grid.cards>ol>li hr {
+.md-typeset .install-cards.grid.cards > ul > li hr,
+.md-typeset .install-cards.grid.cards > ol > li hr {
 	display: none;
 }
 
-.md-typeset .install-cards.grid.cards>ul>li>p:first-child,
-.md-typeset .install-cards.grid.cards>ol>li>p:first-child {
+.md-typeset .install-cards.grid.cards > ul > li > p:first-child,
+.md-typeset .install-cards.grid.cards > ol > li > p:first-child {
 	margin-bottom: 0.2rem;
 	font-size: 1rem;
 }
@@ -1752,14 +1752,14 @@ body:has(.full-width-iframe) article {
 }
 
 /* Dark mode */
-[data-md-color-scheme="slate"] .md-typeset .install-cards.grid.cards>ul>li,
-[data-md-color-scheme="slate"] .md-typeset .install-cards.grid.cards>ol>li {
+[data-md-color-scheme="slate"] .md-typeset .install-cards.grid.cards > ul > li,
+[data-md-color-scheme="slate"] .md-typeset .install-cards.grid.cards > ol > li {
 	background: #2a2838;
 	border-color: rgba(88, 251, 218, 0.12);
 }
 
-[data-md-color-scheme="slate"] .md-typeset .install-cards.grid.cards>ul>li:hover,
-[data-md-color-scheme="slate"] .md-typeset .install-cards.grid.cards>ol>li:hover {
+[data-md-color-scheme="slate"] .md-typeset .install-cards.grid.cards > ul > li:hover,
+[data-md-color-scheme="slate"] .md-typeset .install-cards.grid.cards > ol > li:hover {
 	border-color: rgba(88, 251, 218, 0.25);
 }
 
