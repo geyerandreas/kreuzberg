@@ -4,7 +4,7 @@ use crate::pdf::hierarchy::SegmentData;
 
 /// A line of text composed of segments sharing a common baseline.
 #[derive(Debug, Clone)]
-pub(super) struct PdfLine {
+pub(crate) struct PdfLine {
     pub segments: Vec<SegmentData>,
     pub baseline_y: f32,
     pub dominant_font_size: f32,
@@ -14,7 +14,7 @@ pub(super) struct PdfLine {
 
 /// A paragraph composed of lines, with optional heading classification.
 #[derive(Debug, Clone)]
-pub(super) struct PdfParagraph {
+pub(crate) struct PdfParagraph {
     pub lines: Vec<PdfLine>,
     pub dominant_font_size: f32,
     pub heading_level: Option<u8>,
