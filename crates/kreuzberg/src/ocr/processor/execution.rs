@@ -705,14 +705,50 @@ pub(super) fn perform_ocr(
 
     apply_tesseract_variables(&api, config)?;
 
-    api.set_image(
-        &image_data,
-        width as i32,
-        height as i32,
-        bytes_per_pixel as i32,
-        bytes_per_line as i32,
-    )
-    .map_err(|e| OcrError::ProcessingFailed(format!("Failed to set image: {}", e)))?;
+    // Attempt Leptonica preprocessing for improved OCR quality.
+    // This normalizes background, sharpens text, and converts to grayscale.
+    // Falls back to raw RGB if Leptonica processing fails.
+    //
+    // IMPORTANT: `pix_guard` must remain alive until AFTER `api.recognize()` completes
+    // because `TessBaseAPISetImage2` borrows the Pix pointer without taking ownership.
+    // Dropping the Pix while Tesseract holds the pointer would cause a use-after-free.
+    let pix_guard: Option<kreuzberg_tesseract::Pix> = {
+        match kreuzberg_tesseract::Pix::from_raw_rgb(&image_data, width, height) {
+            Ok(pix) => {
+                // Pipeline: background normalization → unsharp mask → grayscale.
+                // No binarization — Tesseract performs its own internal thresholding.
+                let processed = pix
+                    .background_normalize()
+                    .and_then(|p| p.unsharp_mask(3, 0.5))
+                    .and_then(|p| p.to_grayscale());
+                match processed {
+                    Ok(p) => Some(p),
+                    Err(e) => {
+                        tracing::debug!("Leptonica preprocessing failed, using raw image: {}", e);
+                        None
+                    }
+                }
+            }
+            Err(e) => {
+                tracing::debug!("Leptonica Pix creation failed, using raw image: {}", e);
+                None
+            }
+        }
+    };
+
+    if let Some(ref pix) = pix_guard {
+        api.set_image_2(pix.as_ptr())
+            .map_err(|e| OcrError::ProcessingFailed(format!("Failed to set preprocessed image: {}", e)))?;
+    } else {
+        api.set_image(
+            &image_data,
+            width as i32,
+            height as i32,
+            bytes_per_pixel as i32,
+            bytes_per_line as i32,
+        )
+        .map_err(|e| OcrError::ProcessingFailed(format!("Failed to set image: {}", e)))?;
+    }
 
     // Tell tesseract the source resolution based on our DPI normalization calculation.
     api.set_source_resolution(source_dpi)
