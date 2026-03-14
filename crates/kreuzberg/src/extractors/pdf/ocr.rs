@@ -397,13 +397,37 @@ pub(crate) async fn extract_with_ocr(
                 _ => Vec::new(),
             };
 
-            let page_md = crate::ocr::layout_assembly::assemble_ocr_markdown(
+            // Convert OcrElements to PageContent via unified adapter.
+            let mut page_content = crate::pdf::markdown::adapters::from_ocr_elements(
                 elements,
-                detection,
-                width,
-                height,
-                &recognized_tables,
+                width as f32,
+                height as f32,
+                page_idx + 1,
             );
+
+            // Reorder for multi-column reading order.
+            crate::pdf::markdown::reorder_elements_reading_order(&mut page_content.elements);
+
+            // Convert to paragraphs via the unified pipeline.
+            let paragraphs = crate::pdf::markdown::content_to_paragraphs(&page_content);
+
+            // Filter page furniture (headers/footers).
+            let paragraphs: Vec<_> =
+                paragraphs.into_iter().filter(|p| !p.is_page_furniture).collect();
+
+            // Render paragraphs to markdown.
+            let mut page_md = crate::pdf::markdown::render_paragraphs_to_string(&paragraphs);
+
+            // Append SLANet-recognized table markdown at the end of the page.
+            for rt in &recognized_tables {
+                if !rt.markdown.is_empty() {
+                    if !page_md.is_empty() {
+                        page_md.push_str("\n\n");
+                    }
+                    page_md.push_str(&rt.markdown);
+                }
+            }
+
             page_texts.push(page_md);
             continue;
         }

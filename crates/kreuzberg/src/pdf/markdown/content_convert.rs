@@ -27,13 +27,9 @@ const LINE_Y_TOLERANCE_FRACTION: f32 = 0.5;
 /// For word-level OCR content (majority of elements are `ElementLevel::Word`),
 /// spatially proximate words are grouped into lines and then into paragraphs.
 /// For block/line-level content, each element becomes its own paragraph.
-pub(super) fn content_to_paragraphs(page: &PageContent) -> Vec<PdfParagraph> {
+pub(crate) fn content_to_paragraphs(page: &PageContent) -> Vec<PdfParagraph> {
     // Check if the majority of elements are word-level.
-    let word_count = page
-        .elements
-        .iter()
-        .filter(|e| e.level == ElementLevel::Word)
-        .count();
+    let word_count = page.elements.iter().filter(|e| e.level == ElementLevel::Word).count();
     let total = page.elements.len();
 
     if total > 0 && word_count > total / 2 {
@@ -82,9 +78,7 @@ fn group_words_to_paragraphs(elements: &[ContentElement]) -> Vec<PdfParagraph> {
     //             Elements without a bbox cannot be spatially placed, so we skip
     //             them entirely; they would corrupt the running y-average used in
     //             line grouping (they'd all land at y=0.0). ---
-    let mut sorted_indices: Vec<usize> = (0..elements.len())
-        .filter(|&i| elements[i].bbox.is_some())
-        .collect();
+    let mut sorted_indices: Vec<usize> = (0..elements.len()).filter(|&i| elements[i].bbox.is_some()).collect();
     sorted_indices.sort_by(|&a, &b| {
         let y_a = elements[a].bbox.map_or(0.0, |r| r.y_min);
         let y_b = elements[b].bbox.map_or(0.0, |r| r.y_min);
@@ -277,15 +271,9 @@ fn group_words_to_paragraphs(elements: &[ContentElement]) -> Vec<PdfParagraph> {
 }
 
 /// Build a single `PdfParagraph` from a group of lines (each line is a slice of element indices).
-fn build_paragraph_from_lines(
-    line_groups: &[&Vec<usize>],
-    elements: &[ContentElement],
-) -> Option<PdfParagraph> {
+fn build_paragraph_from_lines(line_groups: &[&Vec<usize>], elements: &[ContentElement]) -> Option<PdfParagraph> {
     // Use the first line's first element for semantic properties.
-    let first_elem = line_groups
-        .first()
-        .and_then(|l| l.first())
-        .map(|&i| &elements[i]);
+    let first_elem = line_groups.first().and_then(|l| l.first()).map(|&i| &elements[i]);
 
     // Compute dominant (most common) font size across all words.
     let dominant_font_size = {
@@ -397,13 +385,19 @@ fn build_paragraph_from_lines(
             }
 
             let heading_level = match elem.semantic_role {
-                Some(SemanticRole::Heading { level }) if total_word_count <= MAX_HEADING_WORD_COUNT => {
-                    Some(level)
-                }
+                Some(SemanticRole::Heading { level }) if total_word_count <= MAX_HEADING_WORD_COUNT => Some(level),
                 _ => None,
             };
 
-            (heading_level, is_list, is_code, is_formula, elem.is_bold, is_page_furniture, elem.layout_class)
+            (
+                heading_level,
+                is_list,
+                is_code,
+                is_formula,
+                elem.is_bold,
+                is_page_furniture,
+                elem.layout_class,
+            )
         } else {
             (None, false, false, false, false, false, None)
         };
@@ -563,7 +557,7 @@ fn element_to_paragraph(elem: &ContentElement) -> Option<PdfParagraph> {
 /// 7. If valid: partition elements into left/right groups, sort each top-to-bottom,
 ///    concatenate left then right.
 /// 8. If no valid split: leave elements in their current order.
-pub(super) fn reorder_elements_reading_order(elements: &mut Vec<ContentElement>) {
+pub(crate) fn reorder_elements_reading_order(elements: &mut Vec<ContentElement>) {
     if elements.len() < MIN_ELEMENTS_PER_COLUMN * 2 {
         return;
     }
@@ -873,7 +867,12 @@ mod tests {
         };
         let paras = content_to_paragraphs(&page);
         assert_eq!(paras.len(), 1, "expected 1 paragraph, got {}", paras.len());
-        assert_eq!(paras[0].lines.len(), 2, "expected 2 lines, got {}", paras[0].lines.len());
+        assert_eq!(
+            paras[0].lines.len(),
+            2,
+            "expected 2 lines, got {}",
+            paras[0].lines.len()
+        );
         // First line should have 3 segments in left-to-right order.
         assert_eq!(paras[0].lines[0].segments.len(), 3);
         assert_eq!(paras[0].lines[0].segments[0].text, "Hello");
@@ -1011,8 +1010,12 @@ mod tests {
         ];
         reorder_elements_reading_order(&mut elements);
         let texts: Vec<_> = elements.iter().map(|e| e.text.clone()).collect();
-        assert_eq!(texts, vec!["L1", "L2", "L3", "R1", "R2"],
-            "two-column layout should be reordered left-then-right, got: {:?}", texts);
+        assert_eq!(
+            texts,
+            vec!["L1", "L2", "L3", "R1", "R2"],
+            "two-column layout should be reordered left-then-right, got: {:?}",
+            texts
+        );
     }
 
     #[test]

@@ -6,7 +6,7 @@ use super::lines::needs_space_between;
 use super::types::{LayoutHintClass, PdfLine, PdfParagraph};
 
 /// Render a single paragraph to the output string.
-pub(super) fn render_paragraph_to_output(para: &PdfParagraph, output: &mut String) {
+pub(crate) fn render_paragraph_to_output(para: &PdfParagraph, output: &mut String) {
     if let Some(level) = para.heading_level {
         let prefix = "#".repeat(level as usize);
         let text = escape_html_entities(&join_line_texts(&para.lines));
@@ -45,6 +45,21 @@ pub(super) fn render_paragraph_to_output(para: &PdfParagraph, output: &mut Strin
         let text = render_paragraph_with_inline_markup(para);
         output.push_str(&text);
     }
+}
+
+/// Render a slice of paragraphs into a single markdown string.
+///
+/// Paragraphs are separated by double newlines. Returns an empty string when
+/// `paragraphs` is empty.
+pub(crate) fn render_paragraphs_to_string(paragraphs: &[PdfParagraph]) -> String {
+    let mut output = String::new();
+    for para in paragraphs {
+        if !output.is_empty() {
+            output.push_str("\n\n");
+        }
+        render_paragraph_to_output(para, &mut output);
+    }
+    output
 }
 
 /// Inject image placeholders into markdown based on page numbers.
