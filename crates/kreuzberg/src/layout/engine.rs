@@ -280,7 +280,7 @@ impl LayoutEngine {
         let postprocess_start = Instant::now();
         let mut results = Vec::with_capacity(images.len());
 
-        for (img, mut detections) in images.iter().zip(per_image_detections.into_iter()) {
+        for (img, mut detections) in images.iter().zip(per_image_detections) {
             let page_width = img.width();
             let page_height = img.height();
 

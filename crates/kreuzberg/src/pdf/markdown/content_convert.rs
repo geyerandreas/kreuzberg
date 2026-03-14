@@ -270,10 +270,10 @@ fn group_words_to_paragraphs(elements: &[ContentElement]) -> Vec<PdfParagraph> {
         });
     }
 
-    if !current_para_lines.is_empty() {
-        if let Some(para) = build_paragraph_from_lines(&current_para_lines, elements) {
-            paragraphs.push(para);
-        }
+    if !current_para_lines.is_empty()
+        && let Some(para) = build_paragraph_from_lines(&current_para_lines, elements)
+    {
+        paragraphs.push(para);
     }
 
     paragraphs

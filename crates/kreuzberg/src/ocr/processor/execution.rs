@@ -33,7 +33,7 @@ thread_local! {
     /// Per-thread cache of an initialized `TesseractAPI`. Each thread owns at most one
     /// cached instance. Because Tesseract is not thread-safe, the thread-local pattern
     /// guarantees exclusive access without locking.
-    static CACHED_TESSERACT_API: RefCell<Option<CachedApi>> = RefCell::new(None);
+    static CACHED_TESSERACT_API: RefCell<Option<CachedApi>> = const { RefCell::new(None) };
 }
 
 /// Returns an initialized `TesseractAPI` for the given `(tessdata_path, language)` pair.
@@ -49,11 +49,12 @@ fn get_or_init_api(tessdata_path: &str, language: &str) -> Result<TesseractAPI, 
     // Try to take the cached API out for reuse.
     let maybe_cached = CACHED_TESSERACT_API.with(|cell| {
         let mut slot = cell.borrow_mut();
-        if let Some(cached) = slot.as_ref() {
-            if cached.tessdata_path == tessdata_path && cached.language == language {
-                // Cache hit: take the API out so the caller owns it.
-                return slot.take();
-            }
+        if let Some(cached) = slot.as_ref()
+            && cached.tessdata_path == tessdata_path
+            && cached.language == language
+        {
+            // Cache hit: take the API out so the caller owns it.
+            return slot.take();
         }
         // Cache miss or key mismatch: drop the old entry.
         *slot = None;
@@ -422,25 +423,6 @@ fn build_content_with_inline_tables(tsv_data: &str, tables: &[OcrTable], min_con
 /// Minimum confidence for accepting orientation detection results.
 const MIN_ORIENTATION_CONFIDENCE: f32 = 0.5;
 
-/// Perform OCR on an image using Tesseract.
-///
-/// This function handles the complete OCR pipeline:
-/// 1. Image loading and preprocessing
-/// 2. Tesseract initialization and configuration
-/// 3. Text recognition
-/// 4. Output formatting (text, markdown, hOCR, or TSV)
-/// 5. Optional table detection
-///
-/// # Arguments
-///
-/// * `image_bytes` - Raw image data
-/// * `config` - OCR configuration
-/// * `extraction_config` - Optional extraction config for output format (markdown vs djot)
-///
-/// # Returns
-///
-/// OCR extraction result containing text and optional tables
-
 /// Check whether a center point (x, y) lies within a bounding box.
 fn point_in_bbox(x: i32, y: i32, left: i32, top: i32, right: i32, bottom: i32) -> bool {
     x >= left && x <= right && y >= top && y <= bottom
@@ -518,10 +500,10 @@ fn extract_elements_via_iterator(
         let block_type = parent_block.map(|b| b.block_type);
 
         // Skip words in non-text block types.
-        if let Some(bt) = block_type {
-            if skip_block_types.contains(&bt) {
-                continue;
-            }
+        if let Some(bt) = block_type
+            && skip_block_types.contains(&bt)
+        {
+            continue;
         }
 
         // Find parent paragraph for justification/list metadata.
@@ -536,6 +518,24 @@ fn extract_elements_via_iterator(
     Ok(elements)
 }
 
+/// Perform OCR on an image using Tesseract.
+///
+/// This function handles the complete OCR pipeline:
+/// 1. Image loading and preprocessing
+/// 2. Tesseract initialization and configuration
+/// 3. Text recognition
+/// 4. Output formatting (text, markdown, hOCR, or TSV)
+/// 5. Optional table detection
+///
+/// # Arguments
+///
+/// * `image_bytes` - Raw image data
+/// * `config` - OCR configuration
+/// * `extraction_config` - Optional extraction config for output format (markdown vs djot)
+///
+/// # Returns
+///
+/// OCR extraction result containing text and optional tables
 pub(super) fn perform_ocr(
     image_bytes: &[u8],
     config: &TesseractConfig,

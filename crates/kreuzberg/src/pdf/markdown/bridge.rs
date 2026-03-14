@@ -304,6 +304,9 @@ fn filter_sidebar_characters(char_infos: &mut Vec<CharInfo>, page_width: f32) {
         keep[idx] = false;
     }
     let mut write = 0;
+    // The swap-compact pattern requires index-based access; an iterator cannot simultaneously
+    // provide the read index and mutably borrow `char_infos` for `swap`.
+    #[allow(clippy::needless_range_loop)]
     for read in 0..char_infos.len() {
         if keep[read] {
             char_infos.swap(write, read);

@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use image::RgbImage;
-use ndarray::{Array, Array2, Array4, s};
+use ndarray::{Array, Array2, Array4};
 use ort::{inputs, session::Session, value::Tensor};
 
 use crate::layout::error::LayoutError;
@@ -198,8 +198,7 @@ impl RtDetrModel {
         let images_tensor = Tensor::from_array(images_array)?;
 
         // Build [N, 2] orig_target_sizes tensor — each row is [640, 640].
-        let sizes_flat: Vec<i64> = std::iter::repeat([INPUT_SIZE as i64, INPUT_SIZE as i64])
-            .take(batch)
+        let sizes_flat: Vec<i64> = std::iter::repeat_n([INPUT_SIZE as i64, INPUT_SIZE as i64], batch)
             .flatten()
             .collect();
         let sizes_array = Array2::from_shape_vec((batch, 2), sizes_flat)
@@ -269,8 +268,7 @@ impl RtDetrModel {
         // --- Split outputs by batch index ---
         let mut results: Vec<Vec<LayoutDetection>> = Vec::with_capacity(batch);
 
-        for b in 0..batch {
-            let (orig_width, orig_height, scale, pad_x, pad_y) = metas[b];
+        for (b, &(orig_width, orig_height, scale, pad_x, pad_y)) in metas.iter().enumerate() {
             let inv_scale = 1.0 / scale;
             let pad_x_f = pad_x as f32;
             let pad_y_f = pad_y as f32;

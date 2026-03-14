@@ -343,6 +343,7 @@ pub(crate) async fn extract_with_ocr(
     // Encode all page images to PNG bytes in parallel (CPU-bound).
     // Each element is (page_idx, image_data, width, height).
     use rayon::prelude::*;
+    #[allow(clippy::type_complexity)]
     let encoded_pages: crate::Result<Vec<(usize, Vec<u8>, u32, u32)>> = images
         .par_iter()
         .enumerate()
