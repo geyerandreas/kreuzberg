@@ -1143,6 +1143,14 @@ pub(super) fn perform_ocr(
         }
     }
 
+    // SAFETY: Drop the Pix before returning the API to the cache. Although the current
+    // declaration order already guarantees this (pix_guard is declared after api, so Rust
+    // drops it first), the explicit drop makes the intent clear and guards against future
+    // refactoring that reorders locals. Freeing the Pix here ensures Tesseract's internal
+    // image reference is severed before the API re-enters the cache; the next caller's
+    // get_or_init_api invokes clear() to fully reset state.
+    drop(pix_guard);
+
     // The ApiGuard's Drop impl returns the API to the thread-local cache automatically
     // on all exit paths (success and error). Drop explicitly here for clarity.
     drop(api);

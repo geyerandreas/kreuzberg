@@ -415,18 +415,56 @@ pub(crate) async fn extract_with_ocr(
             let paragraphs: Vec<_> =
                 paragraphs.into_iter().filter(|p| !p.is_page_furniture).collect();
 
-            // Render paragraphs to markdown.
-            let mut page_md = crate::pdf::markdown::render_paragraphs_to_string(&paragraphs);
-
-            // Append SLANet-recognized table markdown at the end of the page.
-            for rt in &recognized_tables {
-                if !rt.markdown.is_empty() {
-                    if !page_md.is_empty() {
-                        page_md.push_str("\n\n");
-                    }
-                    page_md.push_str(&rt.markdown);
+            // Interleave paragraphs and SLANet tables by vertical position.
+            //
+            // Paragraphs have baseline_y in PDF space (y=0 at bottom; higher = top of page).
+            // RecognizedTable.detection_bbox is in image space (y=0 at top; smaller = top of page).
+            // Convert table positions to PDF space: pdf_y = page_height - bbox.y1.
+            let page_md = {
+                struct Block {
+                    /// Vertical position in PDF space (higher = earlier in reading order).
+                    y_pos: f32,
+                    text: String,
                 }
-            }
+
+                let mut blocks: Vec<Block> = paragraphs
+                    .iter()
+                    .filter_map(|p| {
+                        // Render a single paragraph by borrowing render_paragraphs_to_string
+                        // with a one-element slice.
+                        let text = crate::pdf::markdown::render_paragraphs_to_string(std::slice::from_ref(p));
+                        if text.trim().is_empty() {
+                            return None;
+                        }
+                        let y_pos = p.lines.first().map(|l| l.baseline_y).unwrap_or(0.0);
+                        Some(Block { y_pos, text })
+                    })
+                    .collect();
+
+                for rt in &recognized_tables {
+                    if rt.markdown.is_empty() {
+                        continue;
+                    }
+                    // Convert image-space y1 (top of bbox) to PDF space.
+                    let y_pos = height as f32 - rt.detection_bbox.y1;
+                    blocks.push(Block {
+                        y_pos,
+                        text: rt.markdown.clone(),
+                    });
+                }
+
+                // Sort descending: highest PDF y (top of page) first.
+                blocks.sort_by(|a, b| b.y_pos.total_cmp(&a.y_pos));
+
+                let mut output = String::new();
+                for block in &blocks {
+                    if !output.is_empty() {
+                        output.push_str("\n\n");
+                    }
+                    output.push_str(block.text.trim());
+                }
+                output
+            };
 
             page_texts.push(page_md);
             continue;
