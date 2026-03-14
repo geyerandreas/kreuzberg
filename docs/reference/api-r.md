@@ -26,6 +26,210 @@ remotes::install_github("kreuzberg-dev/kreuzberg", subdir = "packages/r")
 
 ## Core Functions
 
+### batch_extract_bytes()
+
+Extract content from multiple raw byte arrays (asynchronous via Tokio runtime).
+
+**Signature:**
+
+```r title="R"
+batch_extract_bytes(data_list, mime_types, config = NULL) -> list of kreuzberg_result
+```
+
+**Parameters:**
+
+Same as [`batch_extract_bytes_sync()`](#batch_extract_bytes_sync).
+
+**Returns:**
+
+- List of `kreuzberg_result` objects
+
+---
+
+### batch_extract_bytes_sync()
+
+Extract content from multiple raw byte arrays (synchronous).
+
+**Signature:**
+
+```r title="R"
+batch_extract_bytes_sync(data_list, mime_types, config = NULL) -> list of kreuzberg_result
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `data_list` | list of raw | List of binary data (raw vectors) |
+| `mime_types` | character | MIME types corresponding to each byte array |
+| `config` | list, NULL | Extraction configuration |
+
+**Returns:**
+
+- List of `kreuzberg_result` objects
+
+**Example:**
+
+```r title="R"
+library(kreuzberg)
+
+pdf_data <- readBin("invoice.pdf", what = "raw", n = file.size("invoice.pdf"))
+docx_data <- readBin("report.docx", what = "raw", n = file.size("report.docx"))
+
+data_list <- list(pdf_data, docx_data)
+mime_types <- c("application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
+results <- batch_extract_bytes_sync(data_list, mime_types)
+
+for (i in seq_along(results)) {
+  cat(sprintf("Document %d: %d characters\n", i, nchar(results[[i]]$content)))
+}
+```
+
+---
+
+### batch_extract_files()
+
+Extract content from multiple files in parallel (asynchronous via Tokio runtime).
+
+**Signature:**
+
+```r title="R"
+batch_extract_files(paths, config = NULL) -> list of kreuzberg_result
+```
+
+**Parameters:**
+
+Same as [`batch_extract_files_sync()`](#batch_extract_files_sync).
+
+**Returns:**
+
+- List of `kreuzberg_result` objects
+
+---
+
+### batch_extract_files_sync()
+
+Extract content from multiple files in parallel (synchronous).
+
+**Signature:**
+
+```r title="R"
+batch_extract_files_sync(paths, config = NULL) -> list of kreuzberg_result
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `paths` | character | Vector of file paths to extract |
+| `config` | list, NULL | Extraction configuration applied to all files |
+
+**Returns:**
+
+- List of `kreuzberg_result` objects
+
+**Example:**
+
+```r title="R"
+library(kreuzberg)
+
+paths <- c("doc1.pdf", "doc2.docx", "doc3.xlsx")
+results <- batch_extract_files_sync(paths)
+
+for (i in seq_along(results)) {
+  cat(sprintf("%s: %d characters\n", paths[i], nchar(results[[i]]$content)))
+}
+```
+
+---
+
+### extract_bytes()
+
+Extract content from raw bytes (asynchronous via Tokio runtime).
+
+**Signature:**
+
+```r title="R"
+extract_bytes(data, mime_type, config = NULL) -> kreuzberg_result
+```
+
+**Parameters:**
+
+Same as [`extract_bytes_sync()`](#extract_bytes_sync).
+
+**Returns:**
+
+- `kreuzberg_result`: Extraction result object
+
+---
+
+### extract_bytes_sync()
+
+Extract content from raw bytes (synchronous).
+
+**Signature:**
+
+```r title="R"
+extract_bytes_sync(data, mime_type, config = NULL) -> kreuzberg_result
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `data` | raw | Binary data to extract (raw vector) |
+| `mime_type` | character | MIME type of the data (required for format detection) |
+| `config` | list, NULL | Extraction configuration |
+
+**Returns:**
+
+- `kreuzberg_result`: Extraction result object
+
+**Example:**
+
+```r title="R"
+library(kreuzberg)
+
+data <- readBin("document.pdf", what = "raw", n = file.size("document.pdf"))
+result <- extract_bytes_sync(data, "application/pdf")
+cat(result$content)
+```
+
+---
+
+### extract_file()
+
+Extract content from a file (asynchronous via Tokio runtime).
+
+**Note:** R does not have native async/await. This function internally uses a blocking Tokio runtime. For background processing, run in a separate R process or use a thread pool.
+
+**Signature:**
+
+```r title="R"
+extract_file(path, mime_type = NULL, config = NULL) -> kreuzberg_result
+```
+
+**Parameters:**
+
+Same as [`extract_file_sync()`](#extract_file_sync).
+
+**Returns:**
+
+- `kreuzberg_result`: Extraction result object
+
+**Example:**
+
+```r title="R"
+library(kreuzberg)
+
+# Equivalent to extract_file_sync in R
+result <- extract_file("document.pdf")
+cat(result$content)
+```
+
+---
+
 ### extract_file_sync()
 
 Extract content from a file (synchronous).
@@ -87,308 +291,7 @@ result <- extract_file_sync("document.pdf", mime_type = "application/pdf")
 
 ---
 
-### extract_file()
-
-Extract content from a file (asynchronous via Tokio runtime).
-
-**Note:** R does not have native async/await. This function internally uses a blocking Tokio runtime. For background processing, run in a separate R process or use a thread pool.
-
-**Signature:**
-
-```r title="R"
-extract_file(path, mime_type = NULL, config = NULL) -> kreuzberg_result
-```
-
-**Parameters:**
-
-Same as [`extract_file_sync()`](#extract_file_sync).
-
-**Returns:**
-
-- `kreuzberg_result`: Extraction result object
-
-**Example:**
-
-```r title="R"
-library(kreuzberg)
-
-# Equivalent to extract_file_sync in R
-result <- extract_file("document.pdf")
-cat(result$content)
-```
-
----
-
-### extract_bytes_sync()
-
-Extract content from raw bytes (synchronous).
-
-**Signature:**
-
-```r title="R"
-extract_bytes_sync(data, mime_type, config = NULL) -> kreuzberg_result
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `data` | raw | Binary data to extract (raw vector) |
-| `mime_type` | character | MIME type of the data (required for format detection) |
-| `config` | list, NULL | Extraction configuration |
-
-**Returns:**
-
-- `kreuzberg_result`: Extraction result object
-
-**Example:**
-
-```r title="R"
-library(kreuzberg)
-
-data <- readBin("document.pdf", what = "raw", n = file.size("document.pdf"))
-result <- extract_bytes_sync(data, "application/pdf")
-cat(result$content)
-```
-
----
-
-### extract_bytes()
-
-Extract content from raw bytes (asynchronous via Tokio runtime).
-
-**Signature:**
-
-```r title="R"
-extract_bytes(data, mime_type, config = NULL) -> kreuzberg_result
-```
-
-**Parameters:**
-
-Same as [`extract_bytes_sync()`](#extract_bytes_sync).
-
-**Returns:**
-
-- `kreuzberg_result`: Extraction result object
-
----
-
-### batch_extract_files_sync()
-
-Extract content from multiple files in parallel (synchronous).
-
-**Signature:**
-
-```r title="R"
-batch_extract_files_sync(paths, config = NULL) -> list of kreuzberg_result
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `paths` | character | Vector of file paths to extract |
-| `config` | list, NULL | Extraction configuration applied to all files |
-
-**Returns:**
-
-- List of `kreuzberg_result` objects
-
-**Example:**
-
-```r title="R"
-library(kreuzberg)
-
-paths <- c("doc1.pdf", "doc2.docx", "doc3.xlsx")
-results <- batch_extract_files_sync(paths)
-
-for (i in seq_along(results)) {
-  cat(sprintf("%s: %d characters\n", paths[i], nchar(results[[i]]$content)))
-}
-```
-
----
-
-### batch_extract_files()
-
-Extract content from multiple files in parallel (asynchronous via Tokio runtime).
-
-**Signature:**
-
-```r title="R"
-batch_extract_files(paths, config = NULL) -> list of kreuzberg_result
-```
-
-**Parameters:**
-
-Same as [`batch_extract_files_sync()`](#batch_extract_files_sync).
-
-**Returns:**
-
-- List of `kreuzberg_result` objects
-
----
-
-### batch_extract_bytes_sync()
-
-Extract content from multiple raw byte arrays (synchronous).
-
-**Signature:**
-
-```r title="R"
-batch_extract_bytes_sync(data_list, mime_types, config = NULL) -> list of kreuzberg_result
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `data_list` | list of raw | List of binary data (raw vectors) |
-| `mime_types` | character | MIME types corresponding to each byte array |
-| `config` | list, NULL | Extraction configuration |
-
-**Returns:**
-
-- List of `kreuzberg_result` objects
-
-**Example:**
-
-```r title="R"
-library(kreuzberg)
-
-pdf_data <- readBin("invoice.pdf", what = "raw", n = file.size("invoice.pdf"))
-docx_data <- readBin("report.docx", what = "raw", n = file.size("report.docx"))
-
-data_list <- list(pdf_data, docx_data)
-mime_types <- c("application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-
-results <- batch_extract_bytes_sync(data_list, mime_types)
-
-for (i in seq_along(results)) {
-  cat(sprintf("Document %d: %d characters\n", i, nchar(results[[i]]$content)))
-}
-```
-
----
-
-### batch_extract_bytes()
-
-Extract content from multiple raw byte arrays (asynchronous via Tokio runtime).
-
-**Signature:**
-
-```r title="R"
-batch_extract_bytes(data_list, mime_types, config = NULL) -> list of kreuzberg_result
-```
-
-**Parameters:**
-
-Same as [`batch_extract_bytes_sync()`](#batch_extract_bytes_sync).
-
-**Returns:**
-
-- List of `kreuzberg_result` objects
-
----
-
 ## Configuration
-
-### extraction_config()
-
-Create an extraction configuration object.
-
-**Signature:**
-
-```r title="R"
-extraction_config(
-  force_ocr = FALSE,
-  ocr = NULL,
-  chunking = NULL,
-  output_format = NULL,
-  result_format = NULL,
-  use_cache = NULL,
-  include_document_structure = NULL,
-  enable_quality_processing = NULL,
-  language_detection = NULL,
-  keywords = NULL,
-  token_reduction = NULL,
-  images = NULL,
-  pages = NULL,
-  pdf_options = NULL,
-  html_options = NULL,
-  postprocessor = NULL,
-  security_limits = NULL,
-  max_concurrent_extractions = NULL,
-  ...
-) -> list
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `ocr` | list, NULL | OCR configuration (see `ocr_config()`) |
-| `chunking` | list, NULL | Text chunking options (see `chunking_config()`) |
-| `use_cache` | logical, NULL | Enable result caching |
-| `language_detection` | list, NULL | Language detection options |
-| `images` | list, NULL | Image extraction options |
-| `pages` | list, NULL | Page extraction options |
-| `pdf_options` | list, NULL | PDF-specific options |
-| `html_options` | list, NULL | HTML-specific options |
-| `postprocessor` | character, NULL | Post-processor name |
-| `security_limits` | list, NULL | Security limit options |
-| Other options | | Additional configuration parameters |
-
-**Returns:**
-
-- Named list with configuration options
-
-**Example:**
-
-```r title="R"
-config <- extraction_config(
-  ocr = ocr_config(backend = "tesseract", language = "eng"),
-  chunking = chunking_config(max_characters = 1000L, overlap = 200L),
-  use_cache = TRUE
-)
-
-result <- extract_file_sync("document.pdf", config = config)
-```
-
----
-
-### ocr_config()
-
-Create OCR configuration.
-
-**Signature:**
-
-```r title="R"
-ocr_config(backend = "tesseract", language = "eng", dpi = NULL, ...) -> list
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `backend` | character | OCR backend ("tesseract" or "paddle-ocr"). Default: "tesseract" |
-| `language` | character | Language code (ISO 639-3). Default: "eng" |
-| `dpi` | integer, NULL | DPI for OCR processing |
-| ... | | Additional OCR options |
-
-**Returns:**
-
-- Named list with OCR configuration
-
-**Example:**
-
-```r title="R"
-config <- extraction_config(
-  ocr = ocr_config(backend = "paddle-ocr", language = "eng")
-)
-```
-
----
 
 ### chunking_config()
 
@@ -447,6 +350,80 @@ if (!is.null(config)) {
 
 ---
 
+### extraction_config()
+
+Create an extraction configuration object.
+
+**Signature:**
+
+```r title="R"
+extraction_config(
+  chunking = NULL,
+  enable_quality_processing = NULL,
+  force_ocr = FALSE,
+  html_options = NULL,
+  images = NULL,
+  include_document_structure = NULL,
+  keywords = NULL,
+  language_detection = NULL,
+  layout = NULL,
+  max_concurrent_extractions = NULL,
+  ocr = NULL,
+  output_format = NULL,
+  pages = NULL,
+  pdf_options = NULL,
+  postprocessor = NULL,
+  result_format = NULL,
+  security_limits = NULL,
+  token_reduction = NULL,
+  use_cache = NULL,
+  ...
+) -> list
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `chunking` | list, NULL | Text chunking options (see `chunking_config()`) |
+| `enable_quality_processing` | logical, NULL | Enable quality processing enhancements |
+| `force_ocr` | logical | Force OCR on all documents regardless of document type |
+| `html_options` | list, NULL | HTML-specific options |
+| `images` | list, NULL | Image extraction options |
+| `include_document_structure` | logical, NULL | Include hierarchical document structure in results |
+| `keywords` | list, NULL | Keyword extraction options |
+| `language_detection` | list, NULL | Language detection options |
+| `layout` | list, NULL | Layout detection options |
+| `max_concurrent_extractions` | integer, NULL | Maximum concurrent extractions for batch operations |
+| `ocr` | list, NULL | OCR configuration (see `ocr_config()`) |
+| `output_format` | character, NULL | Output format for extracted content ('plain', 'markdown', 'djot', 'html') |
+| `pages` | list, NULL | Page extraction options |
+| `pdf_options` | list, NULL | PDF-specific options |
+| `postprocessor` | character, NULL | Post-processor name |
+| `result_format` | character, NULL | Result format ('unified', 'element_based') |
+| `security_limits` | list, NULL | Security limit options |
+| `token_reduction` | list, NULL | Token reduction options |
+| `use_cache` | logical, NULL | Enable extraction result caching |
+| Other options | | Additional configuration parameters |
+
+**Returns:**
+
+- Named list with configuration options
+
+**Example:**
+
+```r title="R"
+config <- extraction_config(
+  ocr = ocr_config(backend = "tesseract", language = "eng"),
+  chunking = chunking_config(max_characters = 1000L, overlap = 200L),
+  use_cache = TRUE
+)
+
+result <- extract_file_sync("document.pdf", config = config)
+```
+
+---
+
 ### from_file()
 
 Load configuration from a TOML, YAML, or JSON file.
@@ -476,6 +453,72 @@ result <- extract_file_sync("document.pdf", config = config)
 
 ---
 
+### layout_detection_config()
+
+Create a layout detection configuration.
+
+**Signature:**
+
+```r title="R"
+layout_detection_config(preset = "fast", confidence_threshold = NULL, apply_heuristics = TRUE, ...) -> list
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `apply_heuristics` | logical | Whether to apply heuristic post-processing to refine layout regions. Default: TRUE |
+| `confidence_threshold` | numeric, NULL | Minimum confidence threshold for detected regions (0.0-1.0). Default: NULL |
+| `preset` | character | Model preset controlling accuracy vs speed trade-off ("fast" or "accurate"). Default: "fast" |
+| ... | | Additional layout detection options |
+
+**Returns:**
+
+- Named list with layout detection configuration
+
+**Example:**
+
+```r title="R"
+config <- extraction_config(
+  layout = layout_detection_config(preset = "accurate", apply_heuristics = TRUE)
+)
+```
+
+---
+
+### ocr_config()
+
+Create OCR configuration.
+
+**Signature:**
+
+```r title="R"
+ocr_config(backend = "tesseract", language = "eng", dpi = NULL, ...) -> list
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `backend` | character | OCR backend ("tesseract" or "paddle-ocr"). Default: "tesseract" |
+| `dpi` | integer, NULL | DPI for OCR processing |
+| `language` | character | Language code (ISO 639-3). Default: "eng" |
+| ... | | Additional OCR options |
+
+**Returns:**
+
+- Named list with OCR configuration
+
+**Example:**
+
+```r title="R"
+config <- extraction_config(
+  ocr = ocr_config(backend = "paddle-ocr", language = "eng")
+)
+```
+
+---
+
 ## Results & Types
 
 ### kreuzberg_result
@@ -486,17 +529,22 @@ Result object returned by all extraction functions. Inherits from list with name
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `content` | character | Extracted text content |
-| `mime_type` | character | MIME type of the processed document |
-| `pages` | list, NULL | Per-page extracted content (if page extraction enabled) |
-| `tables` | list, NULL | Array of extracted tables |
+| `annotations` | list, NULL | PDF annotations (links, highlights, notes) |
 | `chunks` | list, NULL | Text chunks (if chunking enabled) |
-| `images` | list, NULL | Extracted images |
-| `elements` | list, NULL | Document elements |
-| `keywords` | character, NULL | Extracted keywords |
-| `quality_score` | numeric, NULL | Quality score (0.0-1.0) |
+| `content` | character | Extracted text content |
 | `detected_language` | character, NULL | Detected language code (ISO 639-1) |
+| `djot_content` | list, NULL | Structured Djot content |
+| `document` | list, NULL | Hierarchical document structure |
+| `elements` | list, NULL | Document semantic elements |
+| `extracted_keywords` | list, NULL | Extracted keywords with scores |
+| `images` | list, NULL | Extracted images |
 | `metadata` | list | Document metadata |
+| `mime_type` | character | MIME type of the processed document |
+| `ocr_elements` | list, NULL | OCR elements with positioning and confidence |
+| `pages` | list, NULL | Per-page extracted content (if page extraction enabled) |
+| `processing_warnings` | list, NULL | Non-fatal processing warnings |
+| `quality_score` | numeric, NULL | Quality score (0.0-1.0) |
+| `tables` | list, NULL | Array of extracted tables |
 
 **Example:**
 
@@ -514,46 +562,19 @@ cat("Language:", detected_language(result), "\n")
 
 ### S3 Methods for kreuzberg_result
 
-#### print()
+#### chunk_count()
 
-Print a brief summary of the result.
+Get the number of text chunks.
 
 ```r title="R"
-print(x)
+chunk_count(x) -> integer
 ```
 
 **Example:**
 
 ```r title="R"
-result <- extract_file_sync("document.pdf")
-print(result)  # Displays summary
-```
-
----
-
-#### summary()
-
-Summarize the extraction result.
-
-```r title="R"
-summary(object)
-```
-
-**Example:**
-
-```r title="R"
-result <- extract_file_sync("document.pdf")
-summary(result)
-```
-
----
-
-#### format()
-
-Format the result as a string.
-
-```r title="R"
-format(x)
+result <- extract_file_sync("document.pdf", config = extraction_config(chunking = chunking_config()))
+chunks <- chunk_count(result)
 ```
 
 ---
@@ -571,6 +592,65 @@ content(x) -> character
 ```r title="R"
 result <- extract_file_sync("document.pdf")
 text <- content(result)
+```
+
+---
+
+#### detected_language()
+
+Get the detected language code.
+
+```r title="R"
+detected_language(x) -> character or NULL
+```
+
+**Example:**
+
+```r title="R"
+result <- extract_file_sync("document.pdf")
+lang <- detected_language(result)
+if (!is.null(lang)) {
+  cat("Language:", lang, "\n")
+}
+```
+
+---
+
+#### format()
+
+Format the result as a string.
+
+```r title="R"
+format(x)
+```
+
+---
+
+#### metadata_field()
+
+Extract a specific metadata field by name.
+
+```r title="R"
+metadata_field(x, name) -> value or NULL
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `x` | kreuzberg_result | Result object |
+| `name` | character | Field name |
+
+**Returns:**
+
+- Field value or NULL if not present
+
+**Example:**
+
+```r title="R"
+result <- extract_file_sync("document.pdf")
+title <- metadata_field(result, "title")
+author <- metadata_field(result, "author")
 ```
 
 ---
@@ -609,68 +689,36 @@ pages <- page_count(result)
 
 ---
 
-#### chunk_count()
+#### print()
 
-Get the number of text chunks.
-
-```r title="R"
-chunk_count(x) -> integer
-```
-
-**Example:**
+Print a brief summary of the result.
 
 ```r title="R"
-result <- extract_file_sync("document.pdf", config = extraction_config(chunking = chunking_config()))
-chunks <- chunk_count(result)
-```
-
----
-
-#### detected_language()
-
-Get the detected language code.
-
-```r title="R"
-detected_language(x) -> character or NULL
+print(x)
 ```
 
 **Example:**
 
 ```r title="R"
 result <- extract_file_sync("document.pdf")
-lang <- detected_language(result)
-if (!is.null(lang)) {
-  cat("Language:", lang, "\n")
-}
+print(result)  # Displays summary
 ```
 
 ---
 
-#### metadata_field()
+#### summary()
 
-Extract a specific metadata field by name.
+Summarize the extraction result.
 
 ```r title="R"
-metadata_field(x, name) -> value or NULL
+summary(object)
 ```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `x` | kreuzberg_result | Result object |
-| `name` | character | Field name |
-
-**Returns:**
-
-- Field value or NULL if not present
 
 **Example:**
 
 ```r title="R"
 result <- extract_file_sync("document.pdf")
-title <- metadata_field(result, "title")
-author <- metadata_field(result, "author")
+summary(result)
 ```
 
 ---
@@ -683,23 +731,19 @@ Document metadata with format-specific fields.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `language` | character | Document language (ISO 639-1 code) |
+| `authors` | character | Document authors |
+| `created_at` | character | Creation date (ISO 8601) |
+| `created_by` | character | Creator/application name |
+| `custom` | list | Additional custom metadata from postprocessors |
 | `date` | character | Document date (ISO 8601 format) |
-| `subject` | character | Document subject |
 | `format_type` | character | Format discriminator ("pdf", "excel", "email", etc.) |
-
-**PDF-Specific Fields** (when `format_type == "pdf"`):
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `title` | character | PDF title |
-| `author` | character | PDF author |
+| `keywords` | character | Document keywords |
+| `language` | character | Document language (ISO 639-1 code) |
+| `modified_at` | character | Modification date (ISO 8601) |
 | `page_count` | integer | Number of pages |
-| `creation_date` | character | Creation date (ISO 8601) |
-| `modification_date` | character | Modification date (ISO 8601) |
-| `creator` | character | Creator application |
-| `producer` | character | Producer application |
-| `keywords` | character | PDF keywords |
+| `producer` | character | Producer/generator |
+| `subject` | character | Document subject |
+| `title` | character | Document title |
 
 **Example:**
 
@@ -709,7 +753,7 @@ metadata <- result$metadata
 
 if (metadata$format_type == "pdf") {
   cat("Title:", metadata$title, "\n")
-  cat("Author:", metadata$author, "\n")
+  cat("Author:", metadata$authors, "\n")
   cat("Pages:", metadata$page_count, "\n")
 }
 ```
@@ -767,25 +811,7 @@ tryCatch(
 
 ## Cache Management
 
-### clear_cache()
-
-Clear the extraction cache.
-
-**Signature:**
-
-```r title="R"
-clear_cache() -> invisible(NULL)
-```
-
-**Example:**
-
-```r title="R"
-library(kreuzberg)
-
-clear_cache()
-```
-
----
+## Cache Management
 
 ### cache_stats()
 
@@ -815,7 +841,87 @@ cat("Cache size:", stats$total_size_bytes, "bytes\n")
 
 ---
 
+### clear_cache()
+
+Clear the extraction cache.
+
+**Signature:**
+
+```r title="R"
+clear_cache() -> invisible(NULL)
+```
+
+**Example:**
+
+```r title="R"
+library(kreuzberg)
+
+clear_cache()
+```
+
+---
+
 ## Validation
+
+### validate_language_code()
+
+Validate language code.
+
+**Signature:**
+
+```r title="R"
+validate_language_code(code) -> logical
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `code` | character | Language code (ISO 639-3 or 639-1) |
+
+**Returns:**
+
+- Logical: TRUE if valid, FALSE otherwise
+
+**Example:**
+
+```r title="R"
+library(kreuzberg)
+
+is_valid <- validate_language_code("eng")
+```
+
+---
+
+### validate_mime_type()
+
+Validate MIME type.
+
+**Signature:**
+
+```r title="R"
+validate_mime_type(mime_type) -> logical
+```
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `mime_type` | character | MIME type to validate |
+
+**Returns:**
+
+- Logical: TRUE if valid, FALSE otherwise
+
+**Example:**
+
+```r title="R"
+library(kreuzberg)
+
+is_valid <- validate_mime_type("application/pdf")
+```
+
+---
 
 ### validate_ocr_backend_name()
 
@@ -846,36 +952,6 @@ is_valid <- validate_ocr_backend_name("tesseract")
 if (!is_valid) {
   cat("Invalid OCR backend\n")
 }
-```
-
----
-
-### validate_language_code()
-
-Validate language code.
-
-**Signature:**
-
-```r title="R"
-validate_language_code(code) -> logical
-```
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `code` | character | Language code (ISO 639-3 or 639-1) |
-
-**Returns:**
-
-- Logical: TRUE if valid, FALSE otherwise
-
-**Example:**
-
-```r title="R"
-library(kreuzberg)
-
-is_valid <- validate_language_code("eng")
 ```
 
 ---
@@ -998,39 +1074,46 @@ cat("PDF extensions:", paste(extensions, collapse = ", "), "\n")
 
 ---
 
-### validate_mime_type()
+## Plugins
 
-Validate MIME type.
+### OCR Backends
+
+#### clear_ocr_backends()
+
+Clear all registered OCR backends.
 
 **Signature:**
 
 ```r title="R"
-validate_mime_type(mime_type) -> logical
+clear_ocr_backends() -> invisible(NULL)
 ```
 
-**Parameters:**
+---
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `mime_type` | character | MIME type to validate |
+#### list_ocr_backends()
+
+List all registered OCR backends.
+
+**Signature:**
+
+```r title="R"
+list_ocr_backends() -> character
+```
 
 **Returns:**
 
-- Logical: TRUE if valid, FALSE otherwise
+- Character vector: Names of registered backends
 
 **Example:**
 
 ```r title="R"
 library(kreuzberg)
 
-is_valid <- validate_mime_type("application/pdf")
+backends <- list_ocr_backends()
+cat("Available OCR backends:", paste(backends, collapse = ", "), "\n")
 ```
 
 ---
-
-## Plugins
-
-### OCR Backends
 
 #### register_ocr_backend()
 
@@ -1063,44 +1146,35 @@ unregister_ocr_backend(name) -> invisible(NULL)
 
 ---
 
-#### list_ocr_backends()
+### Post-Processors
 
-List all registered OCR backends.
+#### clear_post_processors()
+
+Clear all registered post-processors.
 
 **Signature:**
 
 ```r title="R"
-list_ocr_backends() -> character
+clear_post_processors() -> invisible(NULL)
+```
+
+---
+
+#### list_post_processors()
+
+List all registered post-processors.
+
+**Signature:**
+
+```r title="R"
+list_post_processors() -> character
 ```
 
 **Returns:**
 
-- Character vector: Names of registered backends
-
-**Example:**
-
-```r title="R"
-library(kreuzberg)
-
-backends <- list_ocr_backends()
-cat("Available OCR backends:", paste(backends, collapse = ", "), "\n")
-```
+- Character vector: Names of registered post-processors
 
 ---
-
-#### clear_ocr_backends()
-
-Clear all registered OCR backends.
-
-**Signature:**
-
-```r title="R"
-clear_ocr_backends() -> invisible(NULL)
-```
-
----
-
-### Post-Processors
 
 #### register_post_processor()
 
@@ -1133,35 +1207,35 @@ unregister_post_processor(name) -> invisible(NULL)
 
 ---
 
-#### list_post_processors()
+### Validators
 
-List all registered post-processors.
+#### clear_validators()
+
+Clear all registered validators.
 
 **Signature:**
 
 ```r title="R"
-list_post_processors() -> character
+clear_validators() -> invisible(NULL)
+```
+
+---
+
+#### list_validators()
+
+List all registered validators.
+
+**Signature:**
+
+```r title="R"
+list_validators() -> character
 ```
 
 **Returns:**
 
-- Character vector: Names of registered post-processors
+- Character vector: Names of registered validators
 
 ---
-
-#### clear_post_processors()
-
-Clear all registered post-processors.
-
-**Signature:**
-
-```r title="R"
-clear_post_processors() -> invisible(NULL)
-```
-
----
-
-### Validators
 
 #### register_validator()
 
@@ -1194,35 +1268,19 @@ unregister_validator(name) -> invisible(NULL)
 
 ---
 
-#### list_validators()
-
-List all registered validators.
-
-**Signature:**
-
-```r title="R"
-list_validators() -> character
-```
-
-**Returns:**
-
-- Character vector: Names of registered validators
-
----
-
-#### clear_validators()
-
-Clear all registered validators.
-
-**Signature:**
-
-```r title="R"
-clear_validators() -> invisible(NULL)
-```
-
----
-
 ### Document Extractors
+
+#### clear_document_extractors()
+
+Clear all document extractors.
+
+**Signature:**
+
+```r title="R"
+clear_document_extractors() -> invisible(NULL)
+```
+
+---
 
 #### list_document_extractors()
 
@@ -1255,18 +1313,6 @@ unregister_document_extractor(name) -> invisible(NULL)
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `name` | character | Extractor name |
-
----
-
-#### clear_document_extractors()
-
-Clear all document extractors.
-
-**Signature:**
-
-```r title="R"
-clear_document_extractors() -> invisible(NULL)
-```
 
 ---
 
