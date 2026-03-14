@@ -1036,9 +1036,7 @@ fn dehyphenate_paragraph_lines(para: &mut PdfParagraph) {
             && leading_word.starts_with(|c: char| c.is_lowercase())
         {
             let joined = format!("{}{}", stem, leading_word);
-            let tw = trailing_word.to_string();
-            let lw = leading_word.to_string();
-            apply_dehyphenation_join(para, i, &tw, &lw, &joined);
+            apply_dehyphenation_join(para, i, trailing_word, leading_word, &joined);
             continue;
         }
 
@@ -1085,9 +1083,7 @@ fn dehyphenate_hyphen_only(para: &mut PdfParagraph) {
         let stem = &trailing_word[..trailing_word.len() - 1];
         if !stem.is_empty() && leading_word.starts_with(|c: char| c.is_lowercase()) {
             let joined = format!("{}{}", stem, leading_word);
-            let tw = trailing_word.to_string();
-            let lw = leading_word.to_string();
-            apply_dehyphenation_join(para, i, &tw, &lw, &joined);
+            apply_dehyphenation_join(para, i, trailing_word, leading_word, &joined);
         }
     }
 }

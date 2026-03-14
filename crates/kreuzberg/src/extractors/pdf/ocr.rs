@@ -509,9 +509,9 @@ pub(crate) async fn extract_with_ocr(
             continue;
         }
 
-        // Fallback: use plain OCR text
+        // Fallback: use plain OCR text (move the String directly; no clone needed)
         let _ = page_idx; // used only in layout-detection path above
-        page_texts.push(ocr_result.content.to_string());
+        page_texts.push(ocr_result.content);
     }
 
     // Return SLANet model to global cache for reuse

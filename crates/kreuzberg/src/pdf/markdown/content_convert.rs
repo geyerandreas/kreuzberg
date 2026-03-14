@@ -204,7 +204,9 @@ fn group_words_to_paragraphs(elements: &[ContentElement]) -> Vec<PdfParagraph> {
 
         if gaps.is_empty() {
             // Fallback: use the median line height as a rough proxy.
-            let mut sorted = line_heights.clone();
+            // `line_heights` is already sorted at this point only if gaps were built;
+            // when empty it has not been sorted yet, so sort a fresh copy.
+            let mut sorted = line_heights.to_vec();
             sorted.sort_by(|a, b| a.total_cmp(b));
             sorted[sorted.len() / 2] * 1.5
         } else {
