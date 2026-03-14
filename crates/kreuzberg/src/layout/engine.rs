@@ -323,4 +323,12 @@ impl LayoutEngine {
     pub fn model_name(&self) -> &str {
         self.model.name()
     }
+
+    /// Return a reference to the engine's configuration.
+    ///
+    /// Used by callers (e.g. parallel layout runners) that need to create
+    /// additional engines with identical settings.
+    pub fn config(&self) -> &LayoutEngineConfig {
+        &self.config
+    }
 }
