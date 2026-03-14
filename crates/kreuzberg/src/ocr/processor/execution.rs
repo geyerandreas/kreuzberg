@@ -17,9 +17,83 @@ use crate::ocr::table::{extract_words_from_tsv, post_process_table, reconstruct_
 use crate::ocr::types::{BatchItemResult, TesseractConfig};
 use crate::types::{OcrExtractionResult, OcrTable, OcrTableBoundingBox};
 use kreuzberg_tesseract::{TessPageSegMode, TessPolyBlockType, TesseractAPI};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::env;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+/// Cached Tesseract API state, stored per-thread to avoid reloading tessdata (~100MB) for each image.
+struct CachedApi {
+    tessdata_path: String,
+    language: String,
+    api: TesseractAPI,
+}
+
+thread_local! {
+    /// Per-thread cache of an initialized `TesseractAPI`. Each thread owns at most one
+    /// cached instance. Because Tesseract is not thread-safe, the thread-local pattern
+    /// guarantees exclusive access without locking.
+    static CACHED_TESSERACT_API: RefCell<Option<CachedApi>> = RefCell::new(None);
+}
+
+/// Returns an initialized `TesseractAPI` for the given `(tessdata_path, language)` pair.
+///
+/// If the thread-local cache already holds a matching API, `clear()` is called to reset
+/// image state and the cached instance is returned. Otherwise a fresh instance is created,
+/// initialized, and stored in the cache for subsequent calls.
+///
+/// The caller receives ownership of the `TesseractAPI` via the take-and-put-back pattern:
+/// the value is removed from the cache, used by the caller, and returned via
+/// [`return_api_to_cache`] when done.
+fn get_or_init_api(tessdata_path: &str, language: &str) -> Result<TesseractAPI, OcrError> {
+    // Try to take the cached API out for reuse.
+    let maybe_cached = CACHED_TESSERACT_API.with(|cell| {
+        let mut slot = cell.borrow_mut();
+        if let Some(cached) = slot.as_ref() {
+            if cached.tessdata_path == tessdata_path && cached.language == language {
+                // Cache hit: take the API out so the caller owns it.
+                return slot.take();
+            }
+        }
+        // Cache miss or key mismatch: drop the old entry.
+        *slot = None;
+        None
+    });
+
+    if let Some(cached) = maybe_cached {
+        // Reset image/recognition state without reloading tessdata.
+        cached
+            .api
+            .clear()
+            .map_err(|e| OcrError::ProcessingFailed(format!("Failed to clear cached Tesseract API: {}", e)))?;
+        return Ok(cached.api);
+    }
+
+    // No valid cache entry — create and initialize a fresh API.
+    let api = TesseractAPI::new();
+    api.init(tessdata_path, language).map_err(|e| {
+        OcrError::TesseractInitializationFailed(format!("Failed to initialize language '{}': {}", language, e))
+    })?;
+    Ok(api)
+}
+
+/// Returns a `TesseractAPI` back to the thread-local cache after use.
+///
+/// If the cache already holds a different entry (e.g. due to a re-entrant call), the
+/// returned API is simply dropped.
+fn return_api_to_cache(api: TesseractAPI, tessdata_path: String, language: String) {
+    CACHED_TESSERACT_API.with(|cell| {
+        let mut slot = cell.borrow_mut();
+        // Only cache if the slot is currently empty (no re-entrant replacement).
+        if slot.is_none() {
+            *slot = Some(CachedApi {
+                tessdata_path,
+                language,
+                api,
+            });
+        }
+    });
+}
 
 use crate::types::OcrElement;
 
@@ -538,7 +612,6 @@ pub(super) fn perform_ocr(
     let bytes_per_pixel: u32 = 3;
     let bytes_per_line = width * bytes_per_pixel;
 
-    let api = TesseractAPI::new();
     let tessdata_path = resolve_tessdata_path();
 
     log_ci_debug(ci_debug_enabled, "tessdata", || {
@@ -571,18 +644,14 @@ pub(super) fn perform_ocr(
     // Validate language and traineddata files
     validate_language_and_traineddata(&config.language, &tessdata_path)?;
 
-    let init_result = api.init(&tessdata_path, &config.language);
-    log_ci_debug(ci_debug_enabled, "init", || match &init_result {
-        Ok(_) => format!("language={} datapath='{}'", config.language, tessdata_path),
-        Err(err) => format!(
-            "language={} datapath='{}' error={:?}",
-            config.language, tessdata_path, err
-        ),
-    });
+    // Obtain an initialized TesseractAPI from the per-thread cache. If the cache holds a
+    // matching (tessdata_path, language) entry, `clear()` is called to reset image state
+    // without reloading tessdata (~100MB). Otherwise a fresh API is created and initialized.
+    let api = get_or_init_api(&tessdata_path, &config.language)?;
 
-    init_result.map_err(|e| {
-        OcrError::TesseractInitializationFailed(format!("Failed to initialize language '{}': {}", config.language, e))
-    })?;
+    log_ci_debug(ci_debug_enabled, "init", || {
+        format!("language={} datapath='{}'", config.language, tessdata_path)
+    });
 
     if ci_debug_enabled {
         match api.get_available_languages() {
@@ -973,6 +1042,10 @@ pub(super) fn perform_ocr(
             );
         }
     }
+
+    // Return the API to the thread-local cache so the next call on this thread can reuse
+    // the initialized instance without reloading tessdata.
+    return_api_to_cache(api, tessdata_path, config.language.clone());
 
     Ok(OcrExtractionResult {
         content,
