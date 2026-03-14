@@ -527,7 +527,7 @@ fn element_to_paragraph(elem: &ContentElement) -> Option<PdfParagraph> {
 
     let line = PdfLine {
         segments,
-        baseline_y: 0.0,
+        baseline_y: elem.bbox.map_or(0.0, |r| r.y_min),
         dominant_font_size: font_size,
         is_bold: elem.is_bold,
         is_monospace,

@@ -108,7 +108,10 @@ fn filter_blocks_recursive(blocks: &[ExtractedBlock], left_cutoff: f32, right_cu
 /// `ExtractedBlock` → `PageContent` (via `adapters::from_structure_tree`) →
 /// `Vec<PdfParagraph>` (via `content_convert::content_to_paragraphs`).
 pub(super) fn extracted_blocks_to_paragraphs(blocks: &[ExtractedBlock]) -> Vec<PdfParagraph> {
-    let page_content = super::adapters::from_structure_tree(blocks, 0.0, 0.0, 0);
+    // page_width/page_height are unused by content_to_paragraphs for structure-tree content
+    // (no spatial grouping is performed; elements carry their own bboxes). page_number is
+    // set to 1 (1-indexed sentinel) because we don't have the caller's page number here.
+    let page_content = super::adapters::from_structure_tree(blocks, 0.0, 0.0, 1);
     super::content_convert::content_to_paragraphs(&page_content)
 }
 
@@ -503,8 +506,8 @@ fn assemble_segments_from_chars(char_infos: &[CharInfo], repair_map: Option<&[(c
         }
     }
     let line_height_threshold = if y_jumps.len() >= 3 {
-        y_jumps.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-        y_jumps[0] * 0.6
+        y_jumps.sort_by(|a, b| a.total_cmp(b));
+        y_jumps[y_jumps.len() / 2] * 0.6 // median, not minimum
     } else {
         let avg_fs = char_infos.iter().map(|c| c.font_size).sum::<f32>() / char_infos.len() as f32;
         avg_fs * 0.5
@@ -534,7 +537,7 @@ fn assemble_segments_from_chars(char_infos: &[CharInfo], repair_map: Option<&[(c
                     .find(|&j| char_infos[j].ch != ' ')
                     .unwrap_or(line_start);
                 let last = &char_infos[last_idx];
-                let width = (last.x - first.x).max(first.font_size);
+                let width = (last.right_x - first.x).max(first.font_size);
 
                 segments.push(SegmentData {
                     text: trimmed.to_string(),

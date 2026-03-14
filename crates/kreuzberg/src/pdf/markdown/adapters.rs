@@ -185,7 +185,8 @@ pub(crate) fn from_ocr_elements(
             let block_type_str = meta.get("block_type").and_then(|v| v.as_str());
 
             let mut semantic_role = block_type_str.and_then(|bt| match bt {
-                "PT_HEADING_TEXT" => Some(SemanticRole::Heading { level: 1 }),
+                // Default to level 2; classify.rs will refine based on font-size clustering.
+                "PT_HEADING_TEXT" => Some(SemanticRole::Heading { level: 2 }),
                 "PT_TABLE" => Some(SemanticRole::TableCell),
                 "PT_CAPTION_TEXT" => Some(SemanticRole::Caption),
                 "PT_EQUATION" | "PT_INLINE_EQUATION" => Some(SemanticRole::Formula),

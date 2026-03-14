@@ -303,22 +303,30 @@ pub(super) fn is_list_prefix(text: &str) -> bool {
         }
     }
     // Parenthesized numbers/letters: (1) (a) (i) (A)
+    // Use char-based slicing to avoid panicking on multi-byte UTF-8 boundaries.
     if bytes.len() >= 3 && bytes[0] == b'(' && bytes[bytes.len() - 1] == b')' {
-        let inner = &trimmed[1..trimmed.len() - 1];
-        if inner.chars().all(|c| c.is_ascii_digit())
-            || (inner.len() == 1 && inner.chars().next().is_some_and(|c| c.is_ascii_alphabetic()))
-            || is_roman_numeral(inner)
-        {
-            return true;
+        let char_count = trimmed.chars().count();
+        if char_count >= 3 {
+            let inner: String = trimmed.chars().skip(1).take(char_count - 2).collect();
+            if inner.chars().all(|c| c.is_ascii_digit())
+                || (inner.len() == 1 && inner.chars().next().is_some_and(|c| c.is_ascii_alphabetic()))
+                || is_roman_numeral(&inner)
+            {
+                return true;
+            }
         }
     }
     // Bracketed numbers/letters: [1] [a]
+    // Use char-based slicing to avoid panicking on multi-byte UTF-8 boundaries.
     if bytes.len() >= 3 && bytes[0] == b'[' && bytes[bytes.len() - 1] == b']' {
-        let inner = &trimmed[1..trimmed.len() - 1];
-        if inner.chars().all(|c| c.is_ascii_digit())
-            || (inner.len() == 1 && inner.chars().next().is_some_and(|c| c.is_ascii_alphabetic()))
-        {
-            return true;
+        let char_count = trimmed.chars().count();
+        if char_count >= 3 {
+            let inner: String = trimmed.chars().skip(1).take(char_count - 2).collect();
+            if inner.chars().all(|c| c.is_ascii_digit())
+                || (inner.len() == 1 && inner.chars().next().is_some_and(|c| c.is_ascii_alphabetic()))
+            {
+                return true;
+            }
         }
     }
     // Alphabetic: a. b) A. B) (single letter + period/paren)
