@@ -89,7 +89,7 @@ layout-detection = [
 language-detection = ["dep:whatlang"]
 chunking = ["dep:text-splitter", "dep:pulldown-cmark"]
 chunking-tokenizers = ["chunking", "dep:tokenizers", "text-splitter/tokenizers"]
-embeddings = ["dep:fastembed", "dep:reqwest", "chunking", "tokio-runtime"]
+embeddings = ["dep:fastembed", "dep:reqwest", "dep:hf-hub", "chunking", "tokio-runtime"]
 stopwords = []
 quality = ["dep:unicode-normalization", "dep:chardetng", "stopwords"]
 

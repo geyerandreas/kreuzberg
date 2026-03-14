@@ -297,9 +297,88 @@ pub fn get_or_init_model(
 /// This triggers the same download as `get_or_init_model` but discards the
 /// result, making it suitable for cache-warming scenarios where the caller
 /// doesn't need to use the model immediately.
+///
+/// **Note**: This function downloads AND initializes the ONNX model, which
+/// requires ONNX Runtime and uses significant memory. For download-only
+/// scenarios (e.g., init containers), use [`download_model`] instead.
 #[cfg(feature = "embeddings")]
 pub fn warm_model(model: EmbeddingModel, cache_dir: Option<std::path::PathBuf>) -> crate::Result<()> {
     get_or_init_model(model, cache_dir).map(|_| ())
+}
+
+/// Download an embedding model's files without initializing ONNX Runtime.
+///
+/// Downloads the model files (ONNX model, tokenizer, config) from HuggingFace
+/// to the fastembed/HF cache directory. Subsequent calls to `warm_model` or
+/// `get_or_init_model` will find the files cached and skip the download step.
+///
+/// This is ideal for init containers or CI environments where you want to
+/// pre-populate the cache without loading models into memory.
+#[cfg(feature = "embeddings")]
+pub fn download_model(model: EmbeddingModel, cache_dir: Option<std::path::PathBuf>) -> crate::Result<()> {
+    let cache_directory = cache_dir.unwrap_or_else(|| {
+        if let Ok(env_path) = std::env::var("KREUZBERG_CACHE_DIR") {
+            return std::path::PathBuf::from(env_path).join("embeddings");
+        }
+        let mut path = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
+        path.push(".kreuzberg");
+        path.push("embeddings");
+        path
+    });
+
+    let repo_name = embedding_model_repo(&model);
+    let files = &[
+        "onnx/model.onnx",
+        "tokenizer.json",
+        "config.json",
+        "special_tokens_map.json",
+    ];
+
+    tracing::info!(model = ?model, repo = %repo_name, "Downloading embedding model files (no ONNX init)");
+
+    let api = hf_hub::api::sync::ApiBuilder::new()
+        .with_cache_dir(cache_directory)
+        .with_progress(true)
+        .build()
+        .map_err(|e| crate::KreuzbergError::Plugin {
+            message: format!("Failed to create HF API client: {e}"),
+            plugin_name: "embeddings".to_string(),
+        })?;
+
+    let repo = api.model(repo_name.to_string());
+
+    for file in files {
+        match repo.get(file) {
+            Ok(path) => tracing::debug!(file = %file, path = ?path, "Downloaded"),
+            Err(e) => {
+                // Some files are optional (e.g., special_tokens_map.json)
+                if *file == "onnx/model.onnx" || *file == "tokenizer.json" {
+                    return Err(crate::KreuzbergError::Plugin {
+                        message: format!("Failed to download {file}: {e}"),
+                        plugin_name: "embeddings".to_string(),
+                    });
+                }
+                tracing::debug!(file = %file, error = %e, "Optional file not found, skipping");
+            }
+        }
+    }
+
+    tracing::info!(model = ?model, "Embedding model files downloaded successfully");
+    Ok(())
+}
+
+/// Map an EmbeddingModel variant to its HuggingFace repo name.
+/// These match fastembed's internal model_code mappings.
+#[cfg(feature = "embeddings")]
+fn embedding_model_repo(model: &EmbeddingModel) -> &'static str {
+    match model {
+        EmbeddingModel::AllMiniLML6V2Q => "Xenova/all-MiniLM-L6-v2",
+        EmbeddingModel::BGEBaseENV15 => "Xenova/bge-base-en-v1.5",
+        EmbeddingModel::BGELargeENV15 => "Xenova/bge-large-en-v1.5",
+        EmbeddingModel::MultilingualE5Base => "intfloat/multilingual-e5-base",
+        // Fallback for other models — use the debug name as repo
+        _ => "Xenova/bge-small-en-v1.5",
+    }
 }
 
 /// Preset configurations for common RAG use cases.
