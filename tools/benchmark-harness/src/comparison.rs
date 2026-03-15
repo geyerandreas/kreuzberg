@@ -32,6 +32,10 @@ pub enum Pipeline {
     PaddleMobile,
     /// PaddleOCR mobile tier + layout detection
     PaddleMobileLayout,
+    /// Tesseract OCR with auto_rotate enabled
+    TesseractAutoRotate,
+    /// PaddleOCR without auto_rotate (for comparison)
+    PaddleNoRotate,
     /// Docling vendored extraction (read from file)
     Docling,
 }
@@ -47,6 +51,8 @@ impl Pipeline {
             Pipeline::PaddleLayout => "paddle+layout",
             Pipeline::PaddleMobile => "paddle-mobile",
             Pipeline::PaddleMobileLayout => "paddle-mobile+layout",
+            Pipeline::TesseractAutoRotate => "tesseract-autorotate",
+            Pipeline::PaddleNoRotate => "paddle-norotate",
             Pipeline::Docling => "docling",
         }
     }
@@ -61,6 +67,8 @@ impl Pipeline {
             "paddle+layout" | "paddle-layout" => Some(Pipeline::PaddleLayout),
             "paddle-mobile" => Some(Pipeline::PaddleMobile),
             "paddle-mobile+layout" | "paddle-mobile-layout" => Some(Pipeline::PaddleMobileLayout),
+            "tesseract-autorotate" => Some(Pipeline::TesseractAutoRotate),
+            "paddle-norotate" => Some(Pipeline::PaddleNoRotate),
             "docling" => Some(Pipeline::Docling),
             _ => None,
         }
@@ -201,6 +209,26 @@ fn build_extraction_config(pipeline: Pipeline) -> kreuzberg::ExtractionConfig {
             }),
             layout: Some(LayoutDetectionConfig {
                 preset: "fast".to_string(),
+                ..Default::default()
+            }),
+            ..base
+        },
+        Pipeline::TesseractAutoRotate => kreuzberg::ExtractionConfig {
+            force_ocr: true,
+            ocr: Some(kreuzberg::core::config::OcrConfig {
+                backend: "tesseract".to_string(),
+                language: "eng".to_string(),
+                auto_rotate: true,
+                ..Default::default()
+            }),
+            ..base
+        },
+        Pipeline::PaddleNoRotate => kreuzberg::ExtractionConfig {
+            force_ocr: true,
+            ocr: Some(kreuzberg::core::config::OcrConfig {
+                backend: "paddleocr".to_string(),
+                language: "eng".to_string(),
+                auto_rotate: false,
                 ..Default::default()
             }),
             ..base

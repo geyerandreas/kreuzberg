@@ -761,6 +761,9 @@ pub(super) fn perform_ocr(
     }
 
     // Tell tesseract the source resolution based on our DPI normalization calculation.
+    // Clamp to minimum 70 DPI — tesseract's own fallback for invalid resolution.
+    // Raw images without DPI metadata may report 0, which crashes DetectOrientationScript.
+    let source_dpi = source_dpi.max(70);
     api.set_source_resolution(source_dpi)
         .map_err(|e| OcrError::ProcessingFailed(format!("Failed to set source resolution: {}", e)))?;
 

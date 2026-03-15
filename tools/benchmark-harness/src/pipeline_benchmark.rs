@@ -209,6 +209,26 @@ fn build_config(pipeline: Pipeline) -> kreuzberg::ExtractionConfig {
             }),
             ..base
         },
+        Pipeline::TesseractAutoRotate => kreuzberg::ExtractionConfig {
+            force_ocr: true,
+            ocr: Some(OcrConfig {
+                backend: "tesseract".to_string(),
+                language: "eng".to_string(),
+                auto_rotate: true,
+                ..Default::default()
+            }),
+            ..base
+        },
+        Pipeline::PaddleNoRotate => kreuzberg::ExtractionConfig {
+            force_ocr: true,
+            ocr: Some(OcrConfig {
+                backend: "paddleocr".to_string(),
+                language: "eng".to_string(),
+                auto_rotate: false,
+                ..Default::default()
+            }),
+            ..base
+        },
         Pipeline::Docling => base, // Docling reads from file, not used here
     }
 }
