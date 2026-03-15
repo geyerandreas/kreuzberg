@@ -53,6 +53,29 @@ defmodule E2E.OfficeTest do
       end
     end
 
+    test "office_dbf_basic" do
+      case E2E.Helpers.run_fixture(
+             "office_dbf_basic",
+             "dbf/stations.dbf",
+             nil,
+             requirements: ["office"],
+             notes: "Requires the office feature.",
+             skip_if_missing: true
+           ) do
+        {:ok, result} ->
+          result
+          |> E2E.Helpers.assert_expected_mime(["application/x-dbf"])
+          |> E2E.Helpers.assert_min_content_length(10)
+          |> E2E.Helpers.assert_content_contains_any(["|"])
+
+        {:skipped, reason} ->
+          IO.puts("SKIPPED: #{reason}")
+
+        {:error, reason} ->
+          flunk("Extraction failed: #{inspect(reason)}")
+      end
+    end
+
     test "office_djot_basic" do
       case E2E.Helpers.run_fixture(
              "office_djot_basic",
@@ -350,6 +373,50 @@ defmodule E2E.OfficeTest do
         {:ok, result} ->
           result
           |> E2E.Helpers.assert_expected_mime(["application/x-fictionbook+xml", "application/x-fictionbook"])
+          |> E2E.Helpers.assert_min_content_length(10)
+
+        {:skipped, reason} ->
+          IO.puts("SKIPPED: #{reason}")
+
+        {:error, reason} ->
+          flunk("Extraction failed: #{inspect(reason)}")
+      end
+    end
+
+    test "office_hwp_basic" do
+      case E2E.Helpers.run_fixture(
+             "office_hwp_basic",
+             "hwp/converted_output.hwp",
+             nil,
+             requirements: ["office"],
+             notes: "Requires the office feature.",
+             skip_if_missing: true
+           ) do
+        {:ok, result} ->
+          result
+          |> E2E.Helpers.assert_expected_mime(["application/x-hwp"])
+          |> E2E.Helpers.assert_min_content_length(10)
+
+        {:skipped, reason} ->
+          IO.puts("SKIPPED: #{reason}")
+
+        {:error, reason} ->
+          flunk("Extraction failed: #{inspect(reason)}")
+      end
+    end
+
+    test "office_hwp_styled" do
+      case E2E.Helpers.run_fixture(
+             "office_hwp_styled",
+             "hwp/styled_document.hwp",
+             nil,
+             requirements: ["office"],
+             notes: "Requires the office feature.",
+             skip_if_missing: true
+           ) do
+        {:ok, result} ->
+          result
+          |> E2E.Helpers.assert_expected_mime(["application/x-hwp"])
           |> E2E.Helpers.assert_min_content_length(10)
 
         {:skipped, reason} ->

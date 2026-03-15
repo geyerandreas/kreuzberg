@@ -195,6 +195,14 @@ export function buildConfig(raw: unknown): ExtractionConfig {
 		result.postprocessor = mapPostProcessorConfig(source.postprocessor as PlainRecord);
 	}
 
+	if (isPlainRecord(source.acceleration)) {
+		const accel = source.acceleration as PlainRecord;
+		target.acceleration = {
+			...(typeof accel.provider === "string" ? { provider: accel.provider } : {}),
+			...(typeof accel.device_id === "number" ? { deviceId: accel.device_id } : {}),
+		};
+	}
+
 	return result;
 }
 

@@ -251,6 +251,49 @@ fn test_pdf_large_ciml() {
 }
 
 #[test]
+fn test_pdf_layout_detection() {
+    // PDF extraction with layout detection enabled should produce content from a document with mixed structure.
+
+    let document_path = resolve_document("pdf/docling.pdf");
+    if !document_path.exists() {
+        println!(
+            "Skipping pdf_layout_detection: missing document at {}",
+            document_path.display()
+        );
+        return;
+    }
+    let config: ExtractionConfig = serde_json::from_str(
+        r#"{
+  "layout": {
+    "preset": "fast"
+  },
+  "output_format": "markdown"
+}"#,
+    )
+    .expect("Fixture config should deserialize");
+
+    let result = match kreuzberg::extract_file_sync(&document_path, None, &config) {
+        Err(KreuzbergError::MissingDependency(dep)) => {
+            println!("Skipping pdf_layout_detection: missing dependency {dep}", dep = dep);
+            return;
+        }
+        Err(KreuzbergError::UnsupportedFormat(fmt)) => {
+            println!(
+                "Skipping pdf_layout_detection: unsupported format {fmt} (requires optional tool)",
+                fmt = fmt
+            );
+            return;
+        }
+        Err(err) => panic!("Extraction failed for pdf_layout_detection: {err:?}"),
+        Ok(result) => result,
+    };
+
+    assertions::assert_expected_mime(&result, &["application/pdf"]);
+    assertions::assert_min_content_length(&result, 100);
+    assertions::assert_content_not_empty(&result);
+}
+
+#[test]
 fn test_pdf_non_english_german() {
     // German technical PDF to ensure non-ASCII content extraction.
 

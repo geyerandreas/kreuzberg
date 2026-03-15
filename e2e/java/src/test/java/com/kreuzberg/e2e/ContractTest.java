@@ -318,6 +318,24 @@ public class ContractTest {
   }
 
   @Test
+  public void configAccelerationCpuProvider() throws Exception {
+    JsonNode config = MAPPER.readTree("{\"acceleration\":{\"device_id\":0,\"provider\":\"cpu\"}}");
+    E2EHelpers.runFixture(
+        "config_acceleration_cpu_provider",
+        "pdf/fake_memo.pdf",
+        config,
+        Collections.emptyList(),
+        null,
+        true,
+        result -> {
+          E2EHelpers.Assertions.assertExpectedMime(result, Arrays.asList("application/pdf"));
+          E2EHelpers.Assertions.assertMinContentLength(result, 50);
+          E2EHelpers.Assertions.assertContentContainsAny(
+              result, Arrays.asList("May 5, 2023", "To Whom it May Concern"));
+        });
+  }
+
+  @Test
   public void configChunking() throws Exception {
     JsonNode config = MAPPER.readTree("{\"chunking\":{\"max_chars\":500,\"max_overlap\":50}}");
     E2EHelpers.runFixture(

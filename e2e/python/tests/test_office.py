@@ -43,6 +43,22 @@ def test_office_commonmark_basic() -> None:
     helpers.assert_min_content_length(result, 5)
 
 
+def test_office_dbf_basic() -> None:
+    """dBASE (.dbf) table extraction as markdown."""
+
+    document_path = helpers.resolve_document("dbf/stations.dbf")
+    if not document_path.exists():
+        pytest.skip(f"Skipping office_dbf_basic: missing document at {document_path}")
+
+    config = helpers.build_config(None)
+
+    result = extract_file_sync(document_path, None, config)
+
+    helpers.assert_expected_mime(result, ["application/x-dbf"])
+    helpers.assert_min_content_length(result, 10)
+    helpers.assert_content_contains_any(result, ["|"])
+
+
 def test_office_djot_basic() -> None:
     """Djot markup text extraction."""
 
@@ -237,6 +253,36 @@ def test_office_fictionbook_basic() -> None:
     result = extract_file_sync(document_path, None, config)
 
     helpers.assert_expected_mime(result, ["application/x-fictionbook+xml", "application/x-fictionbook"])
+    helpers.assert_min_content_length(result, 10)
+
+
+def test_office_hwp_basic() -> None:
+    """Hangul Word Processor (.hwp) text extraction."""
+
+    document_path = helpers.resolve_document("hwp/converted_output.hwp")
+    if not document_path.exists():
+        pytest.skip(f"Skipping office_hwp_basic: missing document at {document_path}")
+
+    config = helpers.build_config(None)
+
+    result = extract_file_sync(document_path, None, config)
+
+    helpers.assert_expected_mime(result, ["application/x-hwp"])
+    helpers.assert_min_content_length(result, 10)
+
+
+def test_office_hwp_styled() -> None:
+    """Hangul Word Processor (.hwp) styled document extraction."""
+
+    document_path = helpers.resolve_document("hwp/styled_document.hwp")
+    if not document_path.exists():
+        pytest.skip(f"Skipping office_hwp_styled: missing document at {document_path}")
+
+    config = helpers.build_config(None)
+
+    result = extract_file_sync(document_path, None, config)
+
+    helpers.assert_expected_mime(result, ["application/x-hwp"])
     helpers.assert_min_content_length(result, 10)
 
 

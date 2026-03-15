@@ -54,6 +54,28 @@ class OfficeTest extends TestCase
     }
 
     /**
+     * dBASE (.dbf) table extraction as markdown.
+     */
+    public function test_office_dbf_basic(): void
+    {
+        $documentPath = Helpers::resolveDocument('dbf/stations.dbf');
+        if (!file_exists($documentPath)) {
+            $this->markTestSkipped('Skipping office_dbf_basic: missing document at ' . $documentPath);
+        }
+
+        Helpers::skipIfFeatureUnavailable('office');
+
+        $config = Helpers::buildConfig(null);
+
+        $kreuzberg = new Kreuzberg($config);
+        $result = $kreuzberg->extractFile($documentPath);
+
+        Helpers::assertExpectedMime($result, ['application/x-dbf']);
+        Helpers::assertMinContentLength($result, 10);
+        Helpers::assertContentContainsAny($result, ['|']);
+    }
+
+    /**
      * Djot markup text extraction.
      */
     public function test_office_djot_basic(): void
@@ -301,6 +323,48 @@ class OfficeTest extends TestCase
         $result = $kreuzberg->extractFile($documentPath);
 
         Helpers::assertExpectedMime($result, ['application/x-fictionbook+xml', 'application/x-fictionbook']);
+        Helpers::assertMinContentLength($result, 10);
+    }
+
+    /**
+     * Hangul Word Processor (.hwp) text extraction.
+     */
+    public function test_office_hwp_basic(): void
+    {
+        $documentPath = Helpers::resolveDocument('hwp/converted_output.hwp');
+        if (!file_exists($documentPath)) {
+            $this->markTestSkipped('Skipping office_hwp_basic: missing document at ' . $documentPath);
+        }
+
+        Helpers::skipIfFeatureUnavailable('office');
+
+        $config = Helpers::buildConfig(null);
+
+        $kreuzberg = new Kreuzberg($config);
+        $result = $kreuzberg->extractFile($documentPath);
+
+        Helpers::assertExpectedMime($result, ['application/x-hwp']);
+        Helpers::assertMinContentLength($result, 10);
+    }
+
+    /**
+     * Hangul Word Processor (.hwp) styled document extraction.
+     */
+    public function test_office_hwp_styled(): void
+    {
+        $documentPath = Helpers::resolveDocument('hwp/styled_document.hwp');
+        if (!file_exists($documentPath)) {
+            $this->markTestSkipped('Skipping office_hwp_styled: missing document at ' . $documentPath);
+        }
+
+        Helpers::skipIfFeatureUnavailable('office');
+
+        $config = Helpers::buildConfig(null);
+
+        $kreuzberg = new Kreuzberg($config);
+        $result = $kreuzberg->extractFile($documentPath);
+
+        Helpers::assertExpectedMime($result, ['application/x-hwp']);
         Helpers::assertMinContentLength($result, 10);
     }
 

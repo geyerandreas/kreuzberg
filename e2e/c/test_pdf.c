@@ -93,6 +93,16 @@ static void test_pdf_pdf_large_ciml(void) {
     kreuzberg_free_result(result);
 }
 
+static void test_pdf_pdf_layout_detection(void) {
+    if (skip_if_feature_unavailable("layout-detection")) return;
+    CExtractionResult *result = run_extraction("pdf/docling.pdf", "{\"layout\":{\"preset\":\"fast\"},\"output_format\":\"markdown\"}");
+    if (!result) return; /* skipped */
+    assert_expected_mime(result, (const char *[]){"application/pdf"}, 1);
+    assert_min_content_length(result, 100);
+    assert_content_not_empty(result);
+    kreuzberg_free_result(result);
+}
+
 static void test_pdf_pdf_non_english_german(void) {
     CExtractionResult *result = run_extraction("pdf/5_level_paging_and_5_level_ept_intel_revision_1_1_may_2017.pdf", NULL);
     if (!result) return; /* skipped */
@@ -180,6 +190,7 @@ int main(void) {
     test_pdf_pdf_embedded_images();
     test_pdf_pdf_google_doc();
     test_pdf_pdf_large_ciml();
+    test_pdf_pdf_layout_detection();
     test_pdf_pdf_non_english_german();
     test_pdf_pdf_password_protected();
     test_pdf_pdf_right_to_left();

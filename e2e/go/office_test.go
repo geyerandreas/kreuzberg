@@ -17,6 +17,14 @@ func TestOfficeOfficeCommonmarkBasic(t *testing.T) {
 	assertMinContentLength(t, result, 5)
 }
 
+func TestOfficeOfficeDbfBasic(t *testing.T) {
+	skipIfFeatureUnavailable(t, "office")
+	result := runExtraction(t, "dbf/stations.dbf", nil)
+	assertExpectedMime(t, result, []string{"application/x-dbf"})
+	assertMinContentLength(t, result, 10)
+	assertContentContainsAny(t, result, []string{"|"})
+}
+
 func TestOfficeOfficeDjotBasic(t *testing.T) {
 	result := runExtraction(t, "markdown/tables.djot", nil)
 	assertExpectedMime(t, result, []string{"text/x-djot", "text/djot"})
@@ -95,6 +103,20 @@ func TestOfficeOfficeFb2Basic(t *testing.T) {
 func TestOfficeOfficeFictionbookBasic(t *testing.T) {
 	result := runExtraction(t, "fictionbook/basic.fb2", nil)
 	assertExpectedMime(t, result, []string{"application/x-fictionbook+xml", "application/x-fictionbook"})
+	assertMinContentLength(t, result, 10)
+}
+
+func TestOfficeOfficeHwpBasic(t *testing.T) {
+	skipIfFeatureUnavailable(t, "office")
+	result := runExtraction(t, "hwp/converted_output.hwp", nil)
+	assertExpectedMime(t, result, []string{"application/x-hwp"})
+	assertMinContentLength(t, result, 10)
+}
+
+func TestOfficeOfficeHwpStyled(t *testing.T) {
+	skipIfFeatureUnavailable(t, "office")
+	result := runExtraction(t, "hwp/styled_document.hwp", nil)
+	assertExpectedMime(t, result, []string{"application/x-hwp"})
 	assertMinContentLength(t, result, 10)
 }
 

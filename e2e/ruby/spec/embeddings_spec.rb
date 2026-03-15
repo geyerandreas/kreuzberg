@@ -5,6 +5,7 @@
 #
 # Tests for embeddings fixtures.
 
+# rubocop:disable Metrics/BlockLength
 require_relative 'spec_helper'
 
 RSpec.describe 'embeddings fixtures' do
@@ -13,8 +14,7 @@ RSpec.describe 'embeddings fixtures' do
     E2ERuby.run_fixture_with_method(
       'embedding_async',
       'pdf/fake_memo.pdf',
-      { chunking: { embedding: { model: { name: 'balanced', type: 'preset' }, normalize: true }, max_chars: 500,
-                    max_overlap: 50 } },
+      { chunking: { embedding: { model: { name: 'balanced', type: 'preset' }, normalize: true }, max_chars: 500, max_overlap: 50 } },
       :async,
       :file,
       requirements: %w[embeddings],
@@ -35,8 +35,7 @@ RSpec.describe 'embeddings fixtures' do
     E2ERuby.run_fixture(
       'embedding_balanced_preset',
       'pdf/fake_memo.pdf',
-      { chunking: { embedding: { model: { name: 'balanced', type: 'preset' }, normalize: true }, max_chars: 500,
-                    max_overlap: 50 } },
+      { chunking: { embedding: { model: { name: 'balanced', type: 'preset' }, normalize: true }, max_chars: 500, max_overlap: 50 } },
       requirements: %w[embeddings],
       notes: nil,
       skip_if_missing: true
@@ -73,8 +72,7 @@ RSpec.describe 'embeddings fixtures' do
     E2ERuby.run_fixture(
       'embedding_fast_preset',
       'pdf/fake_memo.pdf',
-      { chunking: { embedding: { model: { name: 'fast', type: 'preset' }, normalize: true }, max_chars: 500,
-                    max_overlap: 50 } },
+      { chunking: { embedding: { model: { name: 'fast', type: 'preset' }, normalize: true }, max_chars: 500, max_overlap: 50 } },
       requirements: %w[embeddings],
       notes: nil,
       skip_if_missing: true
@@ -88,3 +86,4 @@ RSpec.describe 'embeddings fixtures' do
     end
   end
 end
+# rubocop:enable Metrics/BlockLength

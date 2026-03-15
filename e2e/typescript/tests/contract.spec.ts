@@ -259,6 +259,34 @@ describe("contract fixtures", () => {
 	);
 
 	it(
+		"config_acceleration_cpu_provider",
+		() => {
+			const documentPath = resolveDocument("pdf/fake_memo.pdf");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_acceleration_cpu_provider: missing document at", documentPath);
+				return;
+			}
+			const config = buildConfig({ acceleration: { device_id: 0, provider: "cpu" } });
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "config_acceleration_cpu_provider", [], undefined)) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/pdf"]);
+			assertions.assertMinContentLength(result, 50);
+			assertions.assertContentContainsAny(result, ["May 5, 2023", "To Whom it May Concern"]);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
 		"config_chunking",
 		() => {
 			const documentPath = resolveDocument("pdf/fake_memo.pdf");

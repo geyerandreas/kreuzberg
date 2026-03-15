@@ -75,6 +75,19 @@ func TestPdfPdfLargeCiml(t *testing.T) {
 	assertContentContainsAny(t, result, []string{"machine learning", "algorithm", "training"})
 }
 
+func TestPdfPdfLayoutDetection(t *testing.T) {
+	skipIfFeatureUnavailable(t, "layout-detection")
+	result := runExtraction(t, "pdf/docling.pdf", []byte(`{
+"layout": {
+	"preset": "fast"
+},
+"output_format": "markdown"
+}`))
+	assertExpectedMime(t, result, []string{"application/pdf"})
+	assertMinContentLength(t, result, 100)
+	assertContentNotEmpty(t, result)
+}
+
 func TestPdfPdfNonEnglishGerman(t *testing.T) {
 	result := runExtraction(t, "pdf/5_level_paging_and_5_level_ept_intel_revision_1_1_may_2017.pdf", nil)
 	assertExpectedMime(t, result, []string{"application/pdf"})

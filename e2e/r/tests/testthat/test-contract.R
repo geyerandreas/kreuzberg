@@ -130,6 +130,20 @@ test_that("api_extract_file_sync", {
   assert_content_contains_any(result, c("May 5, 2023", "Mallori"))
 })
 
+test_that("config_acceleration_cpu_provider", {
+  result <- run_fixture(
+    "config_acceleration_cpu_provider",
+    "pdf/fake_memo.pdf",
+    list(acceleration = list(device_id = 0L, provider = "cpu")),
+    requirements = character(0),
+    notes = NULL,
+    skip_if_missing = TRUE
+  )
+  assert_expected_mime(result, c("application/pdf"))
+  assert_min_content_length(result, 50L)
+  assert_content_contains_any(result, c("May 5, 2023", "To Whom it May Concern"))
+})
+
 test_that("config_chunking", {
   result <- run_fixture(
     "config_chunking",

@@ -280,6 +280,42 @@ describe("pdf fixtures", () => {
 	);
 
 	it(
+		"pdf_layout_detection",
+		() => {
+			const documentPath = resolveDocument("pdf/docling.pdf");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping pdf_layout_detection: missing document at", documentPath);
+				console.warn("Notes: Requires layout-detection feature with ONNX Runtime");
+				return;
+			}
+			const config = buildConfig({ layout: { preset: "fast" }, output_format: "markdown" });
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (
+					shouldSkipFixture(
+						error,
+						"pdf_layout_detection",
+						["layout-detection"],
+						"Requires layout-detection feature with ONNX Runtime",
+					)
+				) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/pdf"]);
+			assertions.assertMinContentLength(result, 100);
+			assertions.assertContentNotEmpty(result);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
 		"pdf_non_english_german",
 		() => {
 			const documentPath = resolveDocument("pdf/5_level_paging_and_5_level_ept_intel_revision_1_1_may_2017.pdf");

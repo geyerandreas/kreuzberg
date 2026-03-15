@@ -169,6 +169,22 @@ def test_api_extract_file_sync() -> None:
     helpers.assert_content_contains_any(result, ["May 5, 2023", "Mallori"])
 
 
+def test_config_acceleration_cpu_provider() -> None:
+    """Tests explicit CPU acceleration provider configuration"""
+
+    document_path = helpers.resolve_document("pdf/fake_memo.pdf")
+    if not document_path.exists():
+        pytest.skip(f"Skipping config_acceleration_cpu_provider: missing document at {document_path}")
+
+    config = helpers.build_config({"acceleration": {"device_id": 0, "provider": "cpu"}})
+
+    result = extract_file_sync(document_path, None, config)
+
+    helpers.assert_expected_mime(result, ["application/pdf"])
+    helpers.assert_min_content_length(result, 50)
+    helpers.assert_content_contains_any(result, ["May 5, 2023", "To Whom it May Concern"])
+
+
 def test_config_chunking() -> None:
     """Tests chunking configuration with chunk assertions"""
 

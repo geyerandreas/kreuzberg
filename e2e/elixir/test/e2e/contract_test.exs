@@ -207,6 +207,29 @@ defmodule E2E.ContractTest do
       end
     end
 
+    test "config_acceleration_cpu_provider" do
+      case E2E.Helpers.run_fixture(
+             "config_acceleration_cpu_provider",
+             "pdf/fake_memo.pdf",
+             %{acceleration: %{device_id: 0, provider: "cpu"}},
+             requirements: [],
+             notes: nil,
+             skip_if_missing: true
+           ) do
+        {:ok, result} ->
+          result
+          |> E2E.Helpers.assert_expected_mime(["application/pdf"])
+          |> E2E.Helpers.assert_min_content_length(50)
+          |> E2E.Helpers.assert_content_contains_any(["May 5, 2023", "To Whom it May Concern"])
+
+        {:skipped, reason} ->
+          IO.puts("SKIPPED: #{reason}")
+
+        {:error, reason} ->
+          flunk("Extraction failed: #{inspect(reason)}")
+      end
+    end
+
     test "config_chunking" do
       case E2E.Helpers.run_fixture(
              "config_chunking",

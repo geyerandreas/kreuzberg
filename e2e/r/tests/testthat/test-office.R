@@ -30,6 +30,21 @@ test_that("office_commonmark_basic", {
   assert_min_content_length(result, 5L)
 })
 
+test_that("office_dbf_basic", {
+  skip_if_feature_unavailable("office")
+  result <- run_fixture(
+    "office_dbf_basic",
+    "dbf/stations.dbf",
+    NULL,
+    requirements = c("office"),
+    notes = "Requires the office feature.",
+    skip_if_missing = TRUE
+  )
+  assert_expected_mime(result, c("application/x-dbf"))
+  assert_min_content_length(result, 10L)
+  assert_content_contains_any(result, c("|"))
+})
+
 test_that("office_djot_basic", {
   result <- run_fixture(
     "office_djot_basic",
@@ -199,6 +214,34 @@ test_that("office_fictionbook_basic", {
     skip_if_missing = TRUE
   )
   assert_expected_mime(result, c("application/x-fictionbook+xml", "application/x-fictionbook"))
+  assert_min_content_length(result, 10L)
+})
+
+test_that("office_hwp_basic", {
+  skip_if_feature_unavailable("office")
+  result <- run_fixture(
+    "office_hwp_basic",
+    "hwp/converted_output.hwp",
+    NULL,
+    requirements = c("office"),
+    notes = "Requires the office feature.",
+    skip_if_missing = TRUE
+  )
+  assert_expected_mime(result, c("application/x-hwp"))
+  assert_min_content_length(result, 10L)
+})
+
+test_that("office_hwp_styled", {
+  skip_if_feature_unavailable("office")
+  result <- run_fixture(
+    "office_hwp_styled",
+    "hwp/styled_document.hwp",
+    NULL,
+    requirements = c("office"),
+    notes = "Requires the office feature.",
+    skip_if_missing = TRUE
+  )
+  assert_expected_mime(result, c("application/x-hwp"))
   assert_min_content_length(result, 10L)
 })
 

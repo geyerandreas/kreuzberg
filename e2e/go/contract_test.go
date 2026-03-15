@@ -77,6 +77,18 @@ func TestContractApiExtractFileSync(t *testing.T) {
 	assertContentContainsAny(t, result, []string{"May 5, 2023", "Mallori"})
 }
 
+func TestContractConfigAccelerationCpuProvider(t *testing.T) {
+	result := runExtraction(t, "pdf/fake_memo.pdf", []byte(`{
+"acceleration": {
+	"device_id": 0,
+	"provider": "cpu"
+}
+}`))
+	assertExpectedMime(t, result, []string{"application/pdf"})
+	assertMinContentLength(t, result, 50)
+	assertContentContainsAny(t, result, []string{"May 5, 2023", "To Whom it May Concern"})
+}
+
 func TestContractConfigChunking(t *testing.T) {
 	result := runExtraction(t, "pdf/fake_memo.pdf", []byte(`{
 "chunking": {

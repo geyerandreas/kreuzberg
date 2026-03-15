@@ -54,6 +54,23 @@ public class OfficeTest {
   }
 
   @Test
+  public void officeDbfBasic() throws Exception {
+    JsonNode config = null;
+    E2EHelpers.runFixture(
+        "office_dbf_basic",
+        "dbf/stations.dbf",
+        config,
+        Arrays.asList("office"),
+        "Requires the office feature.",
+        true,
+        result -> {
+          E2EHelpers.Assertions.assertExpectedMime(result, Arrays.asList("application/x-dbf"));
+          E2EHelpers.Assertions.assertMinContentLength(result, 10);
+          E2EHelpers.Assertions.assertContentContainsAny(result, Arrays.asList("|"));
+        });
+  }
+
+  @Test
   public void officeDjotBasic() throws Exception {
     JsonNode config = null;
     E2EHelpers.runFixture(
@@ -286,6 +303,38 @@ public class OfficeTest {
         result -> {
           E2EHelpers.Assertions.assertExpectedMime(
               result, Arrays.asList("application/x-fictionbook+xml", "application/x-fictionbook"));
+          E2EHelpers.Assertions.assertMinContentLength(result, 10);
+        });
+  }
+
+  @Test
+  public void officeHwpBasic() throws Exception {
+    JsonNode config = null;
+    E2EHelpers.runFixture(
+        "office_hwp_basic",
+        "hwp/converted_output.hwp",
+        config,
+        Arrays.asList("office"),
+        "Requires the office feature.",
+        true,
+        result -> {
+          E2EHelpers.Assertions.assertExpectedMime(result, Arrays.asList("application/x-hwp"));
+          E2EHelpers.Assertions.assertMinContentLength(result, 10);
+        });
+  }
+
+  @Test
+  public void officeHwpStyled() throws Exception {
+    JsonNode config = null;
+    E2EHelpers.runFixture(
+        "office_hwp_styled",
+        "hwp/styled_document.hwp",
+        config,
+        Arrays.asList("office"),
+        "Requires the office feature.",
+        true,
+        result -> {
+          E2EHelpers.Assertions.assertExpectedMime(result, Arrays.asList("application/x-hwp"));
           E2EHelpers.Assertions.assertMinContentLength(result, 10);
         });
   }

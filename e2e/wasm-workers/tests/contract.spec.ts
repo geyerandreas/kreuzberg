@@ -219,6 +219,31 @@ describe("contract", () => {
 		assertions.assertContentContainsAny(result, ["May 5, 2023", "Mallori"]);
 	});
 
+	it("config_acceleration_cpu_provider", async () => {
+		const documentBytes = getFixture("pdf/fake_memo.pdf");
+		if (documentBytes === null) {
+			console.warn("[SKIP] Test skipped: fixture not available in Cloudflare Workers environment");
+			return;
+		}
+
+		const config = buildConfig({ acceleration: { device_id: 0, provider: "cpu" } });
+		let result: ExtractionResult | null = null;
+		try {
+			result = await extractBytes(documentBytes, "application/pdf", config);
+		} catch (error) {
+			if (shouldSkipFixture(error, "config_acceleration_cpu_provider", [], undefined)) {
+				return;
+			}
+			throw error;
+		}
+		if (result === null) {
+			return;
+		}
+		assertions.assertExpectedMime(result, ["application/pdf"]);
+		assertions.assertMinContentLength(result, 50);
+		assertions.assertContentContainsAny(result, ["May 5, 2023", "To Whom it May Concern"]);
+	});
+
 	it("config_chunking", async () => {
 		const documentBytes = getFixture("pdf/fake_memo.pdf");
 		if (documentBytes === null) {

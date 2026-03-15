@@ -5,6 +5,7 @@
 #
 # Tests for contract fixtures.
 
+# rubocop:disable Metrics/BlockLength
 require_relative 'spec_helper'
 
 RSpec.describe 'contract fixtures' do
@@ -166,6 +167,24 @@ RSpec.describe 'contract fixtures' do
     end
   end
 
+  it 'config_acceleration_cpu_provider' do
+    E2ERuby.run_fixture(
+      'config_acceleration_cpu_provider',
+      'pdf/fake_memo.pdf',
+      { acceleration: { device_id: 0, provider: 'cpu' } },
+      requirements: [],
+      notes: nil,
+      skip_if_missing: true
+    ) do |result|
+      E2ERuby::Assertions.assert_expected_mime(
+        result,
+        ['application/pdf']
+      )
+      E2ERuby::Assertions.assert_min_content_length(result, 50)
+      E2ERuby::Assertions.assert_content_contains_any(result, ['May 5, 2023', 'To Whom it May Concern'])
+    end
+  end
+
   it 'config_chunking' do
     E2ERuby.run_fixture(
       'config_chunking',
@@ -316,8 +335,7 @@ RSpec.describe 'contract fixtures' do
         result,
         ['application/pdf']
       )
-      E2ERuby::Assertions.assert_document(result, has_document: true, min_node_count: 1,
-                                                  node_types_include: %w[paragraph])
+      E2ERuby::Assertions.assert_document(result, has_document: true, min_node_count: 1, node_types_include: %w[paragraph])
     end
   end
 
@@ -370,8 +388,7 @@ RSpec.describe 'contract fixtures' do
         result,
         ['application/vnd.openxmlformats-officedocument.wordprocessingml.document']
       )
-      E2ERuby::Assertions.assert_document(result, has_document: true, min_node_count: 1,
-                                                  node_types_include: %w[heading paragraph])
+      E2ERuby::Assertions.assert_document(result, has_document: true, min_node_count: 1, node_types_include: %w[heading paragraph])
     end
   end
 
@@ -965,3 +982,4 @@ RSpec.describe 'contract fixtures' do
     end
   end
 end
+# rubocop:enable Metrics/BlockLength

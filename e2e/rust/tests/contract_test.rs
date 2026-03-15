@@ -212,6 +212,38 @@ fn test_api_extract_file_sync() {
 }
 
 #[test]
+fn test_config_acceleration_cpu_provider() {
+    // Tests explicit CPU acceleration provider configuration
+
+    let document_path = resolve_document("pdf/fake_memo.pdf");
+    if !document_path.exists() {
+        println!(
+            "Skipping config_acceleration_cpu_provider: missing document at {}",
+            document_path.display()
+        );
+        return;
+    }
+    let config: ExtractionConfig = serde_json::from_str(
+        r#"{
+  "acceleration": {
+    "device_id": 0,
+    "provider": "cpu"
+  }
+}"#,
+    )
+    .expect("Fixture config should deserialize");
+
+    let result = match kreuzberg::extract_file_sync(&document_path, None, &config) {
+        Err(err) => panic!("Extraction failed for config_acceleration_cpu_provider: {err:?}"),
+        Ok(result) => result,
+    };
+
+    assertions::assert_expected_mime(&result, &["application/pdf"]);
+    assertions::assert_min_content_length(&result, 50);
+    assertions::assert_content_contains_any(&result, &["May 5, 2023", "To Whom it May Concern"]);
+}
+
+#[test]
 fn test_config_chunking() {
     // Tests chunking configuration with chunk assertions
 

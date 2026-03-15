@@ -219,6 +219,29 @@ defmodule E2E.PdfTest do
       end
     end
 
+    test "pdf_layout_detection" do
+      case E2E.Helpers.run_fixture(
+             "pdf_layout_detection",
+             "pdf/docling.pdf",
+             %{layout: %{preset: "fast"}, output_format: "markdown"},
+             requirements: ["layout-detection"],
+             notes: "Requires layout-detection feature with ONNX Runtime",
+             skip_if_missing: true
+           ) do
+        {:ok, result} ->
+          result
+          |> E2E.Helpers.assert_expected_mime(["application/pdf"])
+          |> E2E.Helpers.assert_min_content_length(100)
+          |> E2E.Helpers.assert_content_not_empty()
+
+        {:skipped, reason} ->
+          IO.puts("SKIPPED: #{reason}")
+
+        {:error, reason} ->
+          flunk("Extraction failed: #{inspect(reason)}")
+      end
+    end
+
     test "pdf_non_english_german" do
       case E2E.Helpers.run_fixture(
              "pdf_non_english_german",

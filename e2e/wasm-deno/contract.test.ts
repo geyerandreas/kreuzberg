@@ -190,6 +190,27 @@ Deno.test("api_extract_file_sync", { permissions: { read: true, net: true } }, a
 	assertions.assertContentContainsAny(result, ["May 5, 2023", "Mallori"]);
 });
 
+Deno.test("config_acceleration_cpu_provider", { permissions: { read: true, net: true } }, async () => {
+	const config = buildConfig({ acceleration: { device_id: 0, provider: "cpu" } });
+	let result: ExtractionResult | null = null;
+	try {
+		const documentBytes = await resolveDocument("pdf/fake_memo.pdf");
+		// Sync file extraction - WASM uses extractBytes with pre-read bytes
+		result = await extractBytes(documentBytes, "application/pdf", config);
+	} catch (error) {
+		if (shouldSkipFixture(error, "config_acceleration_cpu_provider", [], undefined)) {
+			return;
+		}
+		throw error;
+	}
+	if (result === null) {
+		return;
+	}
+	assertions.assertExpectedMime(result, ["application/pdf"]);
+	assertions.assertMinContentLength(result, 50);
+	assertions.assertContentContainsAny(result, ["May 5, 2023", "To Whom it May Concern"]);
+});
+
 Deno.test("config_chunking", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig({ chunking: { max_chars: 500, max_overlap: 50 } });
 	let result: ExtractionResult | null = null;

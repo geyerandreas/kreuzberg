@@ -185,6 +185,24 @@ public class PdfTest {
   }
 
   @Test
+  public void pdfLayoutDetection() throws Exception {
+    JsonNode config =
+        MAPPER.readTree("{\"layout\":{\"preset\":\"fast\"},\"output_format\":\"markdown\"}");
+    E2EHelpers.runFixture(
+        "pdf_layout_detection",
+        "pdf/docling.pdf",
+        config,
+        Arrays.asList("layout-detection"),
+        "Requires layout-detection feature with ONNX Runtime",
+        true,
+        result -> {
+          E2EHelpers.Assertions.assertExpectedMime(result, Arrays.asList("application/pdf"));
+          E2EHelpers.Assertions.assertMinContentLength(result, 100);
+          E2EHelpers.Assertions.assertContentNotEmpty(result);
+        });
+  }
+
+  @Test
   public void pdfNonEnglishGerman() throws Exception {
     JsonNode config = null;
     E2EHelpers.runFixture(

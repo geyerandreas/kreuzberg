@@ -134,6 +134,21 @@ test_that("pdf_large_ciml", {
   assert_metadata_expectation(result, "format_type", list(eq = "pdf"))
 })
 
+test_that("pdf_layout_detection", {
+  skip_if_feature_unavailable("layout-detection")
+  result <- run_fixture(
+    "pdf_layout_detection",
+    "pdf/docling.pdf",
+    list(layout = list(preset = "fast"), output_format = "markdown"),
+    requirements = c("layout-detection"),
+    notes = "Requires layout-detection feature with ONNX Runtime",
+    skip_if_missing = TRUE
+  )
+  assert_expected_mime(result, c("application/pdf"))
+  assert_min_content_length(result, 100L)
+  assert_content_not_empty(result)
+})
+
 test_that("pdf_non_english_german", {
   result <- run_fixture(
     "pdf_non_english_german",

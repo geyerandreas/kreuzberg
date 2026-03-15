@@ -160,6 +160,22 @@ def test_pdf_large_ciml() -> None:
     helpers.assert_metadata_expectation(result, "format_type", {"eq": "pdf"})
 
 
+def test_pdf_layout_detection() -> None:
+    """PDF extraction with layout detection enabled should produce content from a document with mixed structure."""
+
+    document_path = helpers.resolve_document("pdf/docling.pdf")
+    if not document_path.exists():
+        pytest.skip(f"Skipping pdf_layout_detection: missing document at {document_path}")
+
+    config = helpers.build_config({"layout": {"preset": "fast"}, "output_format": "markdown"})
+
+    result = extract_file_sync(document_path, None, config)
+
+    helpers.assert_expected_mime(result, ["application/pdf"])
+    helpers.assert_min_content_length(result, 100)
+    helpers.assert_content_not_empty(result)
+
+
 def test_pdf_non_english_german() -> None:
     """German technical PDF to ensure non-ASCII content extraction."""
 

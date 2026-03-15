@@ -5,6 +5,7 @@
 #
 # Tests for pdf fixtures.
 
+# rubocop:disable Metrics/BlockLength
 require_relative 'spec_helper'
 
 RSpec.describe 'pdf fixtures' do
@@ -174,6 +175,25 @@ RSpec.describe 'pdf fixtures' do
     end
   end
 
+  it 'pdf_layout_detection' do
+    E2ERuby.skip_if_feature_unavailable('layout-detection')
+    E2ERuby.run_fixture(
+      'pdf_layout_detection',
+      'pdf/docling.pdf',
+      { layout: { preset: 'fast' }, output_format: 'markdown' },
+      requirements: %w[layout-detection],
+      notes: 'Requires layout-detection feature with ONNX Runtime',
+      skip_if_missing: true
+    ) do |result|
+      E2ERuby::Assertions.assert_expected_mime(
+        result,
+        ['application/pdf']
+      )
+      E2ERuby::Assertions.assert_min_content_length(result, 100)
+      E2ERuby::Assertions.assert_content_not_empty(result)
+    end
+  end
+
   it 'pdf_non_english_german' do
     E2ERuby.run_fixture(
       'pdf_non_english_german',
@@ -207,8 +227,7 @@ RSpec.describe 'pdf fixtures' do
         ['application/pdf']
       )
       E2ERuby::Assertions.assert_min_content_length(result, 50)
-      E2ERuby::Assertions.assert_content_contains_any(result,
-                                                      ['LayoutParser', 'document image analysis', 'deep learning'])
+      E2ERuby::Assertions.assert_content_contains_any(result, ['LayoutParser', 'document image analysis', 'deep learning'])
     end
   end
 
@@ -297,9 +316,7 @@ RSpec.describe 'pdf fixtures' do
         ['application/pdf']
       )
       E2ERuby::Assertions.assert_min_content_length(result, 50)
-      E2ERuby::Assertions.assert_content_contains_all(result,
-                                                      ['Table 1', 'Selected Numbers', 'Celsius', 'Fahrenheit',
-                                                       'Water Freezing Point', 'Water Boiling Point'])
+      E2ERuby::Assertions.assert_content_contains_all(result, ['Table 1', 'Selected Numbers', 'Celsius', 'Fahrenheit', 'Water Freezing Point', 'Water Boiling Point'])
       E2ERuby::Assertions.assert_table_count(result, 1, nil)
     end
   end
@@ -323,3 +340,4 @@ RSpec.describe 'pdf fixtures' do
     end
   end
 end
+# rubocop:enable Metrics/BlockLength

@@ -58,6 +58,27 @@ Deno.test("office_commonmark_basic", { permissions: { read: true, net: true } },
 	assertions.assertMinContentLength(result, 5);
 });
 
+Deno.test("office_dbf_basic", { permissions: { read: true, net: true } }, async () => {
+	const config = buildConfig(undefined);
+	let result: ExtractionResult | null = null;
+	try {
+		const documentBytes = await resolveDocument("dbf/stations.dbf");
+		// Sync file extraction - WASM uses extractBytes with pre-read bytes
+		result = await extractBytes(documentBytes, "application/x-dbf", config);
+	} catch (error) {
+		if (shouldSkipFixture(error, "office_dbf_basic", ["office"], "Requires the office feature.")) {
+			return;
+		}
+		throw error;
+	}
+	if (result === null) {
+		return;
+	}
+	assertions.assertExpectedMime(result, ["application/x-dbf"]);
+	assertions.assertMinContentLength(result, 10);
+	assertions.assertContentContainsAny(result, ["|"]);
+});
+
 Deno.test("office_djot_basic", { permissions: { read: true, net: true } }, async () => {
 	const config = buildConfig(undefined);
 	let result: ExtractionResult | null = null;
@@ -348,6 +369,46 @@ Deno.test("office_fictionbook_basic", { permissions: { read: true, net: true } }
 		return;
 	}
 	assertions.assertExpectedMime(result, ["application/x-fictionbook+xml", "application/x-fictionbook"]);
+	assertions.assertMinContentLength(result, 10);
+});
+
+Deno.test("office_hwp_basic", { permissions: { read: true, net: true } }, async () => {
+	const config = buildConfig(undefined);
+	let result: ExtractionResult | null = null;
+	try {
+		const documentBytes = await resolveDocument("hwp/converted_output.hwp");
+		// Sync file extraction - WASM uses extractBytes with pre-read bytes
+		result = await extractBytes(documentBytes, "application/x-hwp", config);
+	} catch (error) {
+		if (shouldSkipFixture(error, "office_hwp_basic", ["office"], "Requires the office feature.")) {
+			return;
+		}
+		throw error;
+	}
+	if (result === null) {
+		return;
+	}
+	assertions.assertExpectedMime(result, ["application/x-hwp"]);
+	assertions.assertMinContentLength(result, 10);
+});
+
+Deno.test("office_hwp_styled", { permissions: { read: true, net: true } }, async () => {
+	const config = buildConfig(undefined);
+	let result: ExtractionResult | null = null;
+	try {
+		const documentBytes = await resolveDocument("hwp/styled_document.hwp");
+		// Sync file extraction - WASM uses extractBytes with pre-read bytes
+		result = await extractBytes(documentBytes, "application/x-hwp", config);
+	} catch (error) {
+		if (shouldSkipFixture(error, "office_hwp_styled", ["office"], "Requires the office feature.")) {
+			return;
+		}
+		throw error;
+	}
+	if (result === null) {
+		return;
+	}
+	assertions.assertExpectedMime(result, ["application/x-hwp"]);
 	assertions.assertMinContentLength(result, 10);
 });
 

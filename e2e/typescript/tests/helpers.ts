@@ -344,6 +344,14 @@ export function buildConfig(raw: unknown): ExtractionConfig {
 		target.htmlOptions = mapHtmlOptions(source.html_options as PlainRecord);
 	}
 
+	if (isPlainRecord(source.acceleration)) {
+		const accel = source.acceleration as PlainRecord;
+		target.acceleration = {
+			...(typeof accel.provider === "string" ? { provider: accel.provider } : {}),
+			...(typeof accel.device_id === "number" ? { deviceId: accel.device_id } : {}),
+		};
+	}
+
 	if (typeof source.output_format === "string") {
 		result.outputFormat = source.output_format as string;
 	}

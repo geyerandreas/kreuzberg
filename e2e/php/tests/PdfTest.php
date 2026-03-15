@@ -201,6 +201,28 @@ class PdfTest extends TestCase
     }
 
     /**
+     * PDF extraction with layout detection enabled should produce content from a document with mixed structure.
+     */
+    public function test_pdf_layout_detection(): void
+    {
+        $documentPath = Helpers::resolveDocument('pdf/docling.pdf');
+        if (!file_exists($documentPath)) {
+            $this->markTestSkipped('Skipping pdf_layout_detection: missing document at ' . $documentPath);
+        }
+
+        Helpers::skipIfFeatureUnavailable('layout-detection');
+
+        $config = Helpers::buildConfig(['layout' => ['preset' => 'fast'], 'output_format' => 'markdown']);
+
+        $kreuzberg = new Kreuzberg($config);
+        $result = $kreuzberg->extractFile($documentPath);
+
+        Helpers::assertExpectedMime($result, ['application/pdf']);
+        Helpers::assertMinContentLength($result, 100);
+        Helpers::assertContentNotEmpty($result);
+    }
+
+    /**
      * German technical PDF to ensure non-ASCII content extraction.
      */
     public function test_pdf_non_english_german(): void

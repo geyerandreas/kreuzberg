@@ -67,6 +67,35 @@ describe("office fixtures", () => {
 	);
 
 	it(
+		"office_dbf_basic",
+		() => {
+			const documentPath = resolveDocument("dbf/stations.dbf");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping office_dbf_basic: missing document at", documentPath);
+				console.warn("Notes: Requires the office feature.");
+				return;
+			}
+			const config = buildConfig(undefined);
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "office_dbf_basic", ["office"], "Requires the office feature.")) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/x-dbf"]);
+			assertions.assertMinContentLength(result, 10);
+			assertions.assertContentContainsAny(result, ["|"]);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
 		"office_djot_basic",
 		() => {
 			const documentPath = resolveDocument("markdown/tables.djot");
@@ -434,6 +463,62 @@ describe("office fixtures", () => {
 				return;
 			}
 			assertions.assertExpectedMime(result, ["application/x-fictionbook+xml", "application/x-fictionbook"]);
+			assertions.assertMinContentLength(result, 10);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		"office_hwp_basic",
+		() => {
+			const documentPath = resolveDocument("hwp/converted_output.hwp");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping office_hwp_basic: missing document at", documentPath);
+				console.warn("Notes: Requires the office feature.");
+				return;
+			}
+			const config = buildConfig(undefined);
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "office_hwp_basic", ["office"], "Requires the office feature.")) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/x-hwp"]);
+			assertions.assertMinContentLength(result, 10);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		"office_hwp_styled",
+		() => {
+			const documentPath = resolveDocument("hwp/styled_document.hwp");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping office_hwp_styled: missing document at", documentPath);
+				console.warn("Notes: Requires the office feature.");
+				return;
+			}
+			const config = buildConfig(undefined);
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "office_hwp_styled", ["office"], "Requires the office feature.")) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/x-hwp"]);
 			assertions.assertMinContentLength(result, 10);
 		},
 		TEST_TIMEOUT_MS,

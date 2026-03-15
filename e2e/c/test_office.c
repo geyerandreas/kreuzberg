@@ -20,6 +20,16 @@ static void test_office_office_commonmark_basic(void) {
     kreuzberg_free_result(result);
 }
 
+static void test_office_office_dbf_basic(void) {
+    if (skip_if_feature_unavailable("office")) return;
+    CExtractionResult *result = run_extraction("dbf/stations.dbf", NULL);
+    if (!result) return; /* skipped */
+    assert_expected_mime(result, (const char *[]){"application/x-dbf"}, 1);
+    assert_min_content_length(result, 10);
+    assert_content_contains_any(result, (const char *[]){"|"}, 1);
+    kreuzberg_free_result(result);
+}
+
 static void test_office_office_djot_basic(void) {
     CExtractionResult *result = run_extraction("markdown/tables.djot", NULL);
     if (!result) return; /* skipped */
@@ -123,6 +133,24 @@ static void test_office_office_fictionbook_basic(void) {
     CExtractionResult *result = run_extraction("fictionbook/basic.fb2", NULL);
     if (!result) return; /* skipped */
     assert_expected_mime(result, (const char *[]){"application/x-fictionbook+xml", "application/x-fictionbook"}, 2);
+    assert_min_content_length(result, 10);
+    kreuzberg_free_result(result);
+}
+
+static void test_office_office_hwp_basic(void) {
+    if (skip_if_feature_unavailable("office")) return;
+    CExtractionResult *result = run_extraction("hwp/converted_output.hwp", NULL);
+    if (!result) return; /* skipped */
+    assert_expected_mime(result, (const char *[]){"application/x-hwp"}, 1);
+    assert_min_content_length(result, 10);
+    kreuzberg_free_result(result);
+}
+
+static void test_office_office_hwp_styled(void) {
+    if (skip_if_feature_unavailable("office")) return;
+    CExtractionResult *result = run_extraction("hwp/styled_document.hwp", NULL);
+    if (!result) return; /* skipped */
+    assert_expected_mime(result, (const char *[]){"application/x-hwp"}, 1);
     assert_min_content_length(result, 10);
     kreuzberg_free_result(result);
 }
@@ -382,6 +410,7 @@ static void test_office_office_xlsx_office_example(void) {
 int main(void) {
     test_office_office_bibtex_basic();
     test_office_office_commonmark_basic();
+    test_office_office_dbf_basic();
     test_office_office_djot_basic();
     test_office_office_doc_legacy();
     test_office_office_docbook_basic();
@@ -395,6 +424,8 @@ int main(void) {
     test_office_office_epub_basic();
     test_office_office_fb2_basic();
     test_office_office_fictionbook_basic();
+    test_office_office_hwp_basic();
+    test_office_office_hwp_styled();
     test_office_office_jats_basic();
     test_office_office_jupyter_basic();
     test_office_office_latex_basic();

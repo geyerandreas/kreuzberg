@@ -192,6 +192,26 @@ class ContractTest extends TestCase
     }
 
     /**
+     * Tests explicit CPU acceleration provider configuration
+     */
+    public function test_config_acceleration_cpu_provider(): void
+    {
+        $documentPath = Helpers::resolveDocument('pdf/fake_memo.pdf');
+        if (!file_exists($documentPath)) {
+            $this->markTestSkipped('Skipping config_acceleration_cpu_provider: missing document at ' . $documentPath);
+        }
+
+        $config = Helpers::buildConfig(['acceleration' => ['device_id' => 0, 'provider' => 'cpu']]);
+
+        $kreuzberg = new Kreuzberg($config);
+        $result = $kreuzberg->extractFile($documentPath);
+
+        Helpers::assertExpectedMime($result, ['application/pdf']);
+        Helpers::assertMinContentLength($result, 50);
+        Helpers::assertContentContainsAny($result, ['May 5, 2023', 'To Whom it May Concern']);
+    }
+
+    /**
      * Tests chunking configuration with chunk assertions
      */
     public function test_config_chunking(): void
