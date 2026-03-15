@@ -12,8 +12,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Experimental: pdf_oxide text extraction backend** (`pdf-oxide` feature): Pure Rust PDF text extraction using [pdf_oxide](https://crates.io/crates/pdf_oxide). Parses PDF content streams directly with adaptive TJ-offset thresholds, providing an alternative to pdfium for text extraction. Opt-in only, not included in `full` feature set.
-- **Geometric space veto for broken CMap fonts**: Pdfium-generated word boundaries are now validated against character geometry — spaces are vetoed when the gap between adjacent characters is less than 50% of average character width. Fixes broken word spacing like "co mputer" → "computer" in PDFs with broken font CMaps.
-- **Docling comparison benchmarks**: Fixed vendored docling output path resolution in benchmark harness, enabling proper quality comparison across the full 171-document PDF corpus.
+- **Geometric space veto for broken CMap fonts**: Pdfium-generated word boundaries are now validated against character geometry — spaces are vetoed when the gap between adjacent characters is less than 50% of average character width (modeled after docling-parse's cell merging algorithm). Fixes broken word spacing like "co mputer" → "computer" in PDFs with broken font CMaps.
+- **Layout classification guards**: SectionHeader overrides from the layout model now require word count limits, trailing punctuation checks (period, colon), figure label detection, monospace filtering, and body-font-size validation. Prevents false heading promotions that degraded quality on ~20 documents.
+- **Table extraction on structure-tree pages**: SLANet table structure recognition now runs on all pages with layout-detected Table regions, including pages where the PDF structure tree succeeded. Previously, structure-tree pages skipped table extraction entirely, causing tables to be flattened into paragraphs.
+- **Fixed SLANet-Plus ONNX model**: Re-exported SLANet-Plus via paddle-to-onnx with Loop/If scalar-to-[1] shape fix, resolving ORT inference failures that caused all SLANet table extractions to silently fail on macOS CoreML.
+- **Docling comparison benchmarks**: Fixed vendored docling output path resolution and moved vendored data to `tools/benchmark-harness/vendored/docling/`. Enables proper quality comparison across the full 171-document PDF corpus.
+
+### Changed
+
+- **Layout preset default**: Changed from `"fast"` to `"accurate"`. Both mapped to the same RT-DETR model; the `Fast` variant has been removed. The `"fast"` string is still accepted for backwards compatibility.
 
 - **ONNX-based layout detection**: New `layout` config field enables document layout analysis using RT-DETR v2 (Docling Heron) with 17 document element classes. Supports `"fast"` and `"accurate"` presets. Models are auto-downloaded from HuggingFace on first use. Available across all language bindings (Python, Node, Ruby, Go, Java, C#, PHP, WASM).
 - **SLANet table structure recognition**: When layout detection is active, detected Table regions are processed by SLANet-plus for neural HTML structure recovery with cell bounding boxes — producing accurate markdown tables with colspan/rowspan support.
