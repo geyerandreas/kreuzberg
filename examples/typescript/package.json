@@ -19,8 +19,8 @@
 		"@kreuzberg/node": "workspace:*"
 	},
 	"devDependencies": {
-		"@types/node": "^25.0.10",
-		"glob": "13.0.0",
+		"@types/node": "^25.5.0",
+		"glob": "13.0.6",
 		"tsx": "^4.21.0",
 		"typescript": "^5.9.3"
 	}

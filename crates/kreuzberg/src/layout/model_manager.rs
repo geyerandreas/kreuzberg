@@ -32,12 +32,12 @@ const MODELS: &[ModelDefinition] = &[
         size_bytes: 168_839_883,
     },
     ModelDefinition {
-        model_type: "slanet_plus",
+        model_type: "tatr",
         hf_repo_id: "Kreuzberg/layout-models",
-        remote_filename: "slanet-plus/model.onnx",
-        local_filename: "slanet-plus.onnx",
-        sha256_checksum: "e48a401a4ebcddd47fe3822427db24d867a557324f58e438692f588bbe9231de",
-        size_bytes: 7_781_309,
+        remote_filename: "tatr/model.onnx",
+        local_filename: "tatr.onnx",
+        sha256_checksum: "c11f4033da75e9c4d41c403ef356e89caa0a37a7d111b55461e7d5ba856bb6b6",
+        size_bytes: 30_158_413,
     },
 ];
 
@@ -106,13 +106,13 @@ impl LayoutModelManager {
     }
 
     /// Ensure the SLANet-plus table structure recognition model exists locally, downloading if needed.
-    pub fn ensure_slanet_plus_model(&self) -> Result<PathBuf, LayoutError> {
-        self.ensure_model("slanet_plus")
+    pub fn ensure_tatr_model(&self) -> Result<PathBuf, LayoutError> {
+        self.ensure_model("tatr")
     }
 
     /// Check if the SLANet-plus model is cached.
-    pub fn is_slanet_plus_cached(&self) -> bool {
-        self.cache_dir.join("slanet_plus").join("slanet-plus.onnx").exists()
+    pub fn is_tatr_cached(&self) -> bool {
+        self.cache_dir.join("tatr").join("tatr.onnx").exists()
     }
 
     /// Get the cache directory path.

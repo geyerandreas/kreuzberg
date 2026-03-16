@@ -16,10 +16,10 @@
 		"@kreuzberg/wasm": "workspace:*"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "^4.20260124.0",
-		"@types/node": "^25.0.10",
+		"@cloudflare/workers-types": "^4.20260316.1",
+		"@types/node": "^25.5.0",
 		"prettier": "^3.8.1",
 		"typescript": "^5.9.3",
-		"wrangler": "^4.60.0"
+		"wrangler": "^4.73.0"
 	}
 }
