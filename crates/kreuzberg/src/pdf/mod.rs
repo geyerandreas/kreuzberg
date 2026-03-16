@@ -67,8 +67,11 @@ pub mod table_reconstruct;
 pub mod text;
 // Stub for when pdf-oxide is disabled — provides set/get for thread-local path
 #[cfg(all(feature = "pdf", not(feature = "pdf-oxide")))]
+#[allow(dead_code)]
 pub(crate) mod oxide_text {
+    #[allow(dead_code)]
     pub(crate) fn set_current_pdf_path(_path: Option<std::path::PathBuf>) {}
+    #[allow(dead_code)]
     pub(crate) fn current_pdf_path() -> Option<std::path::PathBuf> {
         None
     }

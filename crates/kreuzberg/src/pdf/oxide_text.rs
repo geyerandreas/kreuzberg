@@ -20,6 +20,7 @@ thread_local! {
 
 /// Set the current PDF file path for oxide text extraction.
 /// Call this before entering the markdown pipeline.
+#[allow(dead_code)]
 pub(crate) fn set_current_pdf_path(path: Option<PathBuf>) {
     CURRENT_PDF_PATH.with(|cell| {
         *cell.borrow_mut() = path;
@@ -27,6 +28,7 @@ pub(crate) fn set_current_pdf_path(path: Option<PathBuf>) {
 }
 
 /// Get the current PDF file path, if set.
+#[allow(dead_code)]
 pub(crate) fn current_pdf_path() -> Option<PathBuf> {
     CURRENT_PDF_PATH.with(|cell| cell.borrow().clone())
 }
