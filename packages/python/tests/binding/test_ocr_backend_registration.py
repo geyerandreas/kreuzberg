@@ -186,12 +186,14 @@ def test_extract_bytes_sync_uses_existing_config(monkeypatch: pytest.MonkeyPatch
 
 def test_batch_extract_files_sync_uses_existing_config(monkeypatch: pytest.MonkeyPatch) -> None:
     config = ExtractionConfig()
-    calls: list[tuple[list[str], ExtractionConfig]] = []
+    calls: list[tuple[list[str], ExtractionConfig, Any]] = []
     dummy_list = cast("list[kreuzberg.ExtractionResult]", [cast("kreuzberg.ExtractionResult", object())])
 
     monkeypatch.setattr(kreuzberg, "_ensure_ocr_backend_registered", lambda *_args: None)
     monkeypatch.setattr(
-        kreuzberg, "batch_extract_files_sync_impl", lambda paths, cfg: calls.append((paths, cfg)) or dummy_list
+        kreuzberg,
+        "batch_extract_files_sync_impl",
+        lambda paths, cfg, file_configs: calls.append((paths, cfg, file_configs)) or dummy_list,
     )
 
     result = kreuzberg.batch_extract_files_sync(["a", "b"], config=config)
@@ -201,14 +203,14 @@ def test_batch_extract_files_sync_uses_existing_config(monkeypatch: pytest.Monke
 
 def test_batch_extract_bytes_sync_uses_existing_config(monkeypatch: pytest.MonkeyPatch) -> None:
     config = ExtractionConfig()
-    calls: list[tuple[list[bytes], list[str], ExtractionConfig]] = []
+    calls: list[tuple[list[bytes], list[str], ExtractionConfig, Any]] = []
     dummy_list = cast("list[kreuzberg.ExtractionResult]", [cast("kreuzberg.ExtractionResult", object())])
 
     monkeypatch.setattr(kreuzberg, "_ensure_ocr_backend_registered", lambda *_args: None)
     monkeypatch.setattr(
         kreuzberg,
         "batch_extract_bytes_sync_impl",
-        lambda data, mimes, cfg: calls.append((data, mimes, cfg)) or dummy_list,
+        lambda data, mimes, cfg, file_configs: calls.append((data, mimes, cfg, file_configs)) or dummy_list,
     )
 
     result = kreuzberg.batch_extract_bytes_sync([b"a"], ["text/plain"], config=config)
@@ -251,10 +253,12 @@ async def test_extract_bytes_async_uses_existing_config(monkeypatch: pytest.Monk
 @pytest.mark.asyncio
 async def test_batch_extract_files_async_uses_existing_config(monkeypatch: pytest.MonkeyPatch) -> None:
     config = ExtractionConfig()
-    called: list[tuple[list[str], ExtractionConfig]] = []
+    called: list[tuple[list[str], ExtractionConfig, Any]] = []
 
-    async def fake_impl(paths: list[str], cfg: ExtractionConfig) -> list[kreuzberg.ExtractionResult]:
-        called.append((paths, cfg))
+    async def fake_impl(
+        paths: list[str], cfg: ExtractionConfig, file_configs: Any = None
+    ) -> list[kreuzberg.ExtractionResult]:
+        called.append((paths, cfg, file_configs))
         return cast("list[kreuzberg.ExtractionResult]", [])
 
     monkeypatch.setattr(kreuzberg, "_ensure_ocr_backend_registered", lambda *_args: None)
@@ -267,10 +271,12 @@ async def test_batch_extract_files_async_uses_existing_config(monkeypatch: pytes
 @pytest.mark.asyncio
 async def test_batch_extract_bytes_async_uses_existing_config(monkeypatch: pytest.MonkeyPatch) -> None:
     config = ExtractionConfig()
-    called: list[tuple[list[bytes], list[str], ExtractionConfig]] = []
+    called: list[tuple[list[bytes], list[str], ExtractionConfig, Any]] = []
 
-    async def fake_impl(data: list[bytes], mimes: list[str], cfg: ExtractionConfig) -> list[kreuzberg.ExtractionResult]:
-        called.append((data, mimes, cfg))
+    async def fake_impl(
+        data: list[bytes], mimes: list[str], cfg: ExtractionConfig, file_configs: Any = None
+    ) -> list[kreuzberg.ExtractionResult]:
+        called.append((data, mimes, cfg, file_configs))
         return cast("list[kreuzberg.ExtractionResult]", [])
 
     monkeypatch.setattr(kreuzberg, "_ensure_ocr_backend_registered", lambda *_args: None)

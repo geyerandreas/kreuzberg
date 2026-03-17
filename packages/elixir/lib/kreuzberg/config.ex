@@ -103,24 +103,25 @@ defmodule Kreuzberg.ExtractionConfig do
       iex> config = %Kreuzberg.ExtractionConfig{chunking: %{"size" => 512}}
       iex> Kreuzberg.ExtractionConfig.to_map(config)
       %{
+        "acceleration" => nil,
         "chunking" => %{"size" => 512},
-        "ocr" => nil,
-        "language_detection" => nil,
-        "postprocessor" => nil,
-        "images" => nil,
-        "pages" => nil,
-        "token_reduction" => nil,
-        "keywords" => nil,
-        "pdf_options" => nil,
-        "html_options" => nil,
-        "layout" => nil,
-        "max_concurrent_extractions" => nil,
-        "include_document_structure" => false,
-        "use_cache" => true,
         "enable_quality_processing" => true,
         "force_ocr" => false,
+        "html_options" => nil,
+        "images" => nil,
+        "include_document_structure" => false,
+        "keywords" => nil,
+        "language_detection" => nil,
+        "layout" => nil,
+        "max_concurrent_extractions" => nil,
+        "ocr" => nil,
         "output_format" => "plain",
-        "result_format" => "unified"
+        "pages" => nil,
+        "pdf_options" => nil,
+        "postprocessor" => nil,
+        "result_format" => "unified",
+        "token_reduction" => nil,
+        "use_cache" => true
       }
   """
 
@@ -280,47 +281,49 @@ defmodule Kreuzberg.ExtractionConfig do
       iex> config = %Kreuzberg.ExtractionConfig{chunking: %{"size" => 512}, output_format: "markdown"}
       iex> Kreuzberg.ExtractionConfig.to_map(config)
       %{
+        "acceleration" => nil,
         "chunking" => %{"size" => 512},
-        "ocr" => nil,
-        "language_detection" => nil,
-        "postprocessor" => nil,
-        "images" => nil,
-        "pages" => nil,
-        "token_reduction" => nil,
-        "keywords" => nil,
-        "pdf_options" => nil,
-        "html_options" => nil,
-        "layout" => nil,
-        "max_concurrent_extractions" => nil,
-        "include_document_structure" => false,
-        "use_cache" => true,
         "enable_quality_processing" => true,
         "force_ocr" => false,
+        "html_options" => nil,
+        "images" => nil,
+        "include_document_structure" => false,
+        "keywords" => nil,
+        "language_detection" => nil,
+        "layout" => nil,
+        "max_concurrent_extractions" => nil,
+        "ocr" => nil,
         "output_format" => "markdown",
-        "result_format" => "unified"
+        "pages" => nil,
+        "pdf_options" => nil,
+        "postprocessor" => nil,
+        "result_format" => "unified",
+        "token_reduction" => nil,
+        "use_cache" => true
       }
 
       iex> config = %Kreuzberg.ExtractionConfig{}
       iex> Kreuzberg.ExtractionConfig.to_map(config)
       %{
+        "acceleration" => nil,
         "chunking" => nil,
-        "ocr" => nil,
-        "language_detection" => nil,
-        "postprocessor" => nil,
-        "images" => nil,
-        "pages" => nil,
-        "token_reduction" => nil,
-        "keywords" => nil,
-        "pdf_options" => nil,
+        "enable_quality_processing" => true,
+        "force_ocr" => false,
         "html_options" => nil,
+        "images" => nil,
+        "include_document_structure" => false,
+        "keywords" => nil,
+        "language_detection" => nil,
         "layout" => nil,
         "max_concurrent_extractions" => nil,
-        "use_cache" => true,
-        "enable_quality_processing" => true,
-        "include_document_structure" => false,
-        "force_ocr" => false,
+        "ocr" => nil,
         "output_format" => "plain",
-        "result_format" => "unified"
+        "pages" => nil,
+        "pdf_options" => nil,
+        "postprocessor" => nil,
+        "result_format" => "unified",
+        "token_reduction" => nil,
+        "use_cache" => true
       }
 
       iex> Kreuzberg.ExtractionConfig.to_map(nil)

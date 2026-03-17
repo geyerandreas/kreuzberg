@@ -704,19 +704,22 @@ class EmbeddingPreset:
         description (str): Human-readable description of the preset and its use cases.
 
     Example:
-        List all available embedding presets:
-            >>> from kreuzberg import list_embedding_presets, get_embedding_preset
-            >>> presets = list_embedding_presets()
-            >>> for preset_name in presets:
-            ...     preset = get_embedding_preset(preset_name)
-            ...     print(f"{preset.name}: {preset.description}")
-            ...     print(f"  Dimensions: {preset.dimensions}")
-            ...     print(f"  Chunk size: {preset.chunk_size}")
+        List all available embedding presets::
 
-        Get a specific preset:
-            >>> balanced = get_embedding_preset("balanced")
-            >>> print(f"Model: {balanced.model_name}")
-            >>> print(f"Dimensions: {balanced.dimensions}")
+            from kreuzberg import list_embedding_presets, get_embedding_preset
+
+            presets = list_embedding_presets()
+            for preset_name in presets:
+                preset = get_embedding_preset(preset_name)
+                print(f"{preset.name}: {preset.description}")
+                print(f"  Dimensions: {preset.dimensions}")
+                print(f"  Chunk size: {preset.chunk_size}")
+
+        Get a specific preset::
+
+            balanced = get_embedding_preset("balanced")
+            print(f"Model: {balanced.model_name}")
+            print(f"Dimensions: {balanced.dimensions}")
     """
 
     name: str

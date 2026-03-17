@@ -339,8 +339,9 @@ pub unsafe extern "C" fn kreuzberg_extract_bytes_sync_with_config(
 /// # Safety
 ///
 /// - `file_paths` must be a valid pointer to an array of null-terminated C strings
-/// - `file_config_jsons` must be a valid pointer to an array of `count` nullable C strings
-///   (null entries use the base config, non-null entries are parsed as JSON `FileExtractionConfig`)
+/// - `file_config_jsons` must be NULL (no per-file configs) or a valid pointer to an array of
+///   `count` nullable C strings (null entries use the base config, non-null entries are parsed as
+///   JSON `FileExtractionConfig`)
 /// - `count` must be the number of items in both arrays
 /// - `config_json` must be a valid null-terminated C string containing JSON, or NULL for default config
 /// - The returned pointer must be freed with `kreuzberg_free_batch_result`
@@ -363,11 +364,6 @@ pub unsafe extern "C" fn kreuzberg_batch_extract_files_sync(
 
         if file_paths.is_null() {
             set_last_error("file_paths cannot be NULL".to_string());
-            return ptr::null_mut();
-        }
-
-        if file_config_jsons.is_null() {
-            set_last_error("file_config_jsons cannot be NULL".to_string());
             return ptr::null_mut();
         }
 
@@ -407,12 +403,16 @@ pub unsafe extern "C" fn kreuzberg_batch_extract_files_sync(
                 }
             };
 
-            let file_config_ptr = unsafe { *file_config_jsons.add(i) };
-            let file_config = match unsafe { parse_file_config_from_json(file_config_ptr) } {
-                Ok(cfg) => cfg,
-                Err(e) => {
-                    set_last_error(format!("Failed to parse file config at index {}: {}", i, e));
-                    return ptr::null_mut();
+            let file_config = if file_config_jsons.is_null() {
+                None
+            } else {
+                let file_config_ptr = unsafe { *file_config_jsons.add(i) };
+                match unsafe { parse_file_config_from_json(file_config_ptr) } {
+                    Ok(cfg) => cfg,
+                    Err(e) => {
+                        set_last_error(format!("Failed to parse file config at index {}: {}", i, e));
+                        return ptr::null_mut();
+                    }
                 }
             };
 
@@ -459,8 +459,9 @@ pub unsafe extern "C" fn kreuzberg_batch_extract_files_sync(
 /// # Safety
 ///
 /// - `items` must be a valid pointer to an array of CBytesWithMime structures
-/// - `file_config_jsons` must be a valid pointer to an array of `count` nullable C strings
-///   (null entries use the base config, non-null entries are parsed as JSON `FileExtractionConfig`)
+/// - `file_config_jsons` must be NULL (no per-file configs) or a valid pointer to an array of
+///   `count` nullable C strings (null entries use the base config, non-null entries are parsed as
+///   JSON `FileExtractionConfig`)
 /// - `count` must be the number of items in both arrays
 /// - `config_json` must be a valid null-terminated C string containing JSON, or NULL for default config
 /// - The returned pointer must be freed with `kreuzberg_free_batch_result`
@@ -483,11 +484,6 @@ pub unsafe extern "C" fn kreuzberg_batch_extract_bytes_sync(
 
         if items.is_null() {
             set_last_error("items cannot be NULL".to_string());
-            return ptr::null_mut();
-        }
-
-        if file_config_jsons.is_null() {
-            set_last_error("file_config_jsons cannot be NULL".to_string());
             return ptr::null_mut();
         }
 
@@ -535,12 +531,16 @@ pub unsafe extern "C" fn kreuzberg_batch_extract_bytes_sync(
                 }
             };
 
-            let file_config_ptr = unsafe { *file_config_jsons.add(i) };
-            let file_config = match unsafe { parse_file_config_from_json(file_config_ptr) } {
-                Ok(cfg) => cfg,
-                Err(e) => {
-                    set_last_error(format!("Failed to parse file config at index {}: {}", i, e));
-                    return ptr::null_mut();
+            let file_config = if file_config_jsons.is_null() {
+                None
+            } else {
+                let file_config_ptr = unsafe { *file_config_jsons.add(i) };
+                match unsafe { parse_file_config_from_json(file_config_ptr) } {
+                    Ok(cfg) => cfg,
+                    Err(e) => {
+                        set_last_error(format!("Failed to parse file config at index {}: {}", i, e));
+                        return ptr::null_mut();
+                    }
                 }
             };
 

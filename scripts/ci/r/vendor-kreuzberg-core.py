@@ -376,6 +376,13 @@ def main() -> None:
     generate_vendor_cargo_toml(repo_root, workspace_deps, core_version, copied_crates)
     print("Generated vendor/Cargo.toml")
 
+    # Copy root Cargo.lock so vendor workspace uses identical dependency versions
+    root_lock = repo_root / "Cargo.lock"
+    vendor_lock = vendor_base / "Cargo.lock"
+    if root_lock.exists():
+        shutil.copy2(root_lock, vendor_lock)
+        print("Copied Cargo.lock to vendor directory")
+
     # Update R package Cargo.toml to use vendored crates
     r_toml = repo_root / "packages" / "r" / "src" / "rust" / "Cargo.toml"
     if r_toml.exists():
