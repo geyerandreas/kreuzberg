@@ -2134,7 +2134,7 @@ public sealed class ExtractionConfig
     /// Security limits for archive extraction (max archive size, compression ratio, etc.).
     /// </summary>
     [JsonPropertyName("security_limits")]
-    public Dictionary<string, long>? SecurityLimits { get; init; }
+    public SecurityLimitsConfig? SecurityLimits { get; init; }
 
     /// <summary>
     /// Content output format (plain, markdown, djot, html).
@@ -2980,13 +2980,106 @@ public sealed class KeywordConfig
     /// Algorithm-specific parameters for YAKE.
     /// </summary>
     [JsonPropertyName("yake_params")]
-    public Dictionary<string, object?>? YakeParams { get; init; }
+    public YakeParamsConfig? YakeParams { get; init; }
 
     /// <summary>
     /// Algorithm-specific parameters for RAKE.
     /// </summary>
     [JsonPropertyName("rake_params")]
-    public Dictionary<string, object?>? RakeParams { get; init; }
+    public RakeParamsConfig? RakeParams { get; init; }
+}
+
+/// <summary>
+/// Algorithm-specific parameters for the YAKE keyword extraction algorithm.
+/// </summary>
+public sealed class YakeParamsConfig
+{
+    /// <summary>
+    /// Window size for co-occurrence statistics.
+    /// </summary>
+    [JsonPropertyName("window_size")]
+    public int? WindowSize { get; init; }
+}
+
+/// <summary>
+/// Algorithm-specific parameters for the RAKE keyword extraction algorithm.
+/// </summary>
+public sealed class RakeParamsConfig
+{
+    /// <summary>
+    /// Minimum word length for keyword candidates.
+    /// </summary>
+    [JsonPropertyName("min_word_length")]
+    public int? MinWordLength { get; init; }
+
+    /// <summary>
+    /// Maximum number of words per extracted phrase.
+    /// </summary>
+    [JsonPropertyName("max_words_per_phrase")]
+    public int? MaxWordsPerPhrase { get; init; }
+}
+
+/// <summary>
+/// Security limits for archive and document extraction.
+///
+/// Controls thresholds to prevent resource exhaustion attacks such as
+/// decompression bombs, deeply nested archives, and oversized content.
+/// </summary>
+public sealed class SecurityLimitsConfig
+{
+    /// <summary>
+    /// Maximum allowed archive size in bytes.
+    /// </summary>
+    [JsonPropertyName("max_archive_size")]
+    public long? MaxArchiveSize { get; init; }
+
+    /// <summary>
+    /// Maximum allowed compression ratio (uncompressed / compressed).
+    /// </summary>
+    [JsonPropertyName("max_compression_ratio")]
+    public long? MaxCompressionRatio { get; init; }
+
+    /// <summary>
+    /// Maximum number of files allowed inside an archive.
+    /// </summary>
+    [JsonPropertyName("max_files_in_archive")]
+    public long? MaxFilesInArchive { get; init; }
+
+    /// <summary>
+    /// Maximum nesting depth for recursive archive extraction.
+    /// </summary>
+    [JsonPropertyName("max_nesting_depth")]
+    public long? MaxNestingDepth { get; init; }
+
+    /// <summary>
+    /// Maximum length of a single XML/HTML entity.
+    /// </summary>
+    [JsonPropertyName("max_entity_length")]
+    public long? MaxEntityLength { get; init; }
+
+    /// <summary>
+    /// Maximum total content size in bytes after extraction.
+    /// </summary>
+    [JsonPropertyName("max_content_size")]
+    public long? MaxContentSize { get; init; }
+
+    /// <summary>
+    /// Maximum number of processing iterations.
+    /// </summary>
+    [JsonPropertyName("max_iterations")]
+    public long? MaxIterations { get; init; }
+
+    /// <summary>
+    /// Maximum XML document nesting depth.
+    /// </summary>
+    [JsonPropertyName("max_xml_depth")]
+    public long? MaxXmlDepth { get; init; }
+
+    /// <summary>
+    /// Maximum number of cells in a single table.
+    /// </summary>
+    [JsonPropertyName("max_table_cells")]
+    public long? MaxTableCells { get; init; }
 }
 
 /// <summary>

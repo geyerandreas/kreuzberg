@@ -83,6 +83,22 @@ readonly class KeywordConfig
          * @default [1, 3]
          */
         public array $ngramRange = [1, 3],
+
+        /**
+         * Algorithm-specific parameters for YAKE.
+         *
+         * @var YakeParamsConfig|null
+         * @default null
+         */
+        public ?YakeParamsConfig $yakeParams = null,
+
+        /**
+         * Algorithm-specific parameters for RAKE.
+         *
+         * @var RakeParamsConfig|null
+         * @default null
+         */
+        public ?RakeParamsConfig $rakeParams = null,
     ) {
     }
 
@@ -127,12 +143,28 @@ readonly class KeywordConfig
             $ngramRange = [1, 3];
         }
 
+        $yakeParams = null;
+        if (isset($data['yake_params']) && is_array($data['yake_params'])) {
+            /** @var array<string, mixed> $yakeParamsData */
+            $yakeParamsData = $data['yake_params'];
+            $yakeParams = YakeParamsConfig::fromArray($yakeParamsData);
+        }
+
+        $rakeParams = null;
+        if (isset($data['rake_params']) && is_array($data['rake_params'])) {
+            /** @var array<string, mixed> $rakeParamsData */
+            $rakeParamsData = $data['rake_params'];
+            $rakeParams = RakeParamsConfig::fromArray($rakeParamsData);
+        }
+
         return new self(
             algorithm: $algorithm,
             maxKeywords: $maxKeywords,
             minScore: (float) $minScore,
             language: $language,
             ngramRange: $ngramRange,
+            yakeParams: $yakeParams,
+            rakeParams: $rakeParams,
         );
     }
 
@@ -178,6 +210,8 @@ readonly class KeywordConfig
             'min_score' => $this->minScore,
             'language' => $this->language,
             'ngram_range' => $this->ngramRange,
+            'yake_params' => $this->yakeParams?->toArray(),
+            'rake_params' => $this->rakeParams?->toArray(),
         ], static fn ($value): bool => $value !== null);
     }
 

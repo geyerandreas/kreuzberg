@@ -929,6 +929,82 @@ chunking:
 
 ---
 
+## EmailConfig
+
+Configuration for `.msg` (Outlook/MAPI) and `.eml` email file extraction. Controls how legacy Windows codepage encodings are handled when reading email headers and bodies that lack explicit character set declarations.
+
+### Overview
+
+Many older email messages — particularly those created by Microsoft Outlook on Windows — encode text using a Windows code page rather than UTF-8. When no charset is declared in the message headers, Kreuzberg defaults to Windows-1252 (Western European). Use `msg_fallback_codepage` to override this default for mailboxes that predominantly contain messages in a different encoding.
+
+### Fields
+
+| Field                  | Type      | Default                | Description                                                                                      |
+| ---------------------- | --------- | ---------------------- | ------------------------------------------------------------------------------------------------ |
+| `msg_fallback_codepage` | `int?`   | `None` (Windows-1252) | Windows code page number used when no charset is declared in the message. `None` = use 1252.    |
+
+### Common Codepage Values
+
+| Code Page | Encoding                       | Region / Language              |
+| --------- | ------------------------------ | ------------------------------ |
+| `1250`    | Windows Central European       | Polish, Czech, Hungarian, etc. |
+| `1251`    | Windows Cyrillic               | Russian, Ukrainian, Bulgarian  |
+| `1252`    | Windows Western European       | English, German, French (default) |
+| `1253`    | Windows Greek                  | Greek                          |
+| `1254`    | Windows Turkish                | Turkish                        |
+| `1255`    | Windows Hebrew                 | Hebrew                         |
+| `1256`    | Windows Arabic                 | Arabic                         |
+| `932`     | Shift-JIS                      | Japanese                       |
+| `936`     | GBK (Simplified Chinese)       | Simplified Chinese             |
+
+### Configuration Examples
+
+=== "Python"
+
+    ```python title="email_config.py"
+    from kreuzberg import ExtractionConfig, PdfConfig
+    from kreuzberg.email import EmailConfig
+
+    # Extract a Russian Outlook .msg file with Cyrillic encoding
+    config = ExtractionConfig(
+        pdf_options=PdfConfig(
+            email=EmailConfig(msg_fallback_codepage=1251)
+        )
+    )
+    ```
+
+=== "TypeScript"
+
+    ```typescript title="email_config.ts"
+    import { extract } from "kreuzberg";
+
+    // Extract a Japanese .msg file encoded in Shift-JIS
+    const result = await extract("message.msg", {
+      pdfOptions: {
+        email: { msgFallbackCodepage: 932 },
+      },
+    });
+    ```
+
+=== "Rust"
+
+    ```rust title="email_config.rs"
+    use kreuzberg::core::{ExtractionConfig, PdfConfig, EmailConfig};
+
+    // Extract a Central European .msg file
+    let config = ExtractionConfig {
+        pdf_options: Some(PdfConfig {
+            email: Some(EmailConfig {
+                msg_fallback_codepage: Some(1250),
+            }),
+            ..Default::default()
+        }),
+        ..Default::default()
+    };
+    ```
+
+---
+
 ## LanguageDetectionConfig
 
 Configuration for automatic language detection in extracted text.

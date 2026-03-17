@@ -161,10 +161,10 @@ readonly class ExtractionConfig
          * Configures how HTML documents are converted to Markdown, including heading styles,
          * list formatting, code block styles, and preprocessing options.
          *
-         * @var array<string, mixed>|null
+         * @var HtmlConversionOptions|null
          * @default null
          */
-        public ?array $htmlOptions = null,
+        public ?HtmlConversionOptions $htmlOptions = null,
 
         /**
          * Security limits for archive extraction.
@@ -173,10 +173,10 @@ readonly class ExtractionConfig
          * security thresholds to prevent decompression bomb attacks.
          * When null, default limits are used.
          *
-         * @var array<string, int>|null
+         * @var SecurityLimitsConfig|null
          * @default null
          */
-        public ?array $securityLimits = null,
+        public ?SecurityLimitsConfig $securityLimits = null,
 
         /**
          * Maximum number of concurrent extraction operations.
@@ -366,7 +366,7 @@ readonly class ExtractionConfig
         if (isset($data['html_options']) && is_array($data['html_options'])) {
             /** @var array<string, mixed> $htmlOptionsData */
             $htmlOptionsData = $data['html_options'];
-            $htmlOptions = $htmlOptionsData;
+            $htmlOptions = HtmlConversionOptions::fromArray($htmlOptionsData);
         }
 
         $postprocessor = null;
@@ -404,6 +404,13 @@ readonly class ExtractionConfig
             $email = EmailConfig::fromArray($emailData);
         }
 
+        $securityLimits = null;
+        if (isset($data['security_limits']) && is_array($data['security_limits'])) {
+            /** @var array<string, mixed> $securityLimitsData */
+            $securityLimitsData = $data['security_limits'];
+            $securityLimits = SecurityLimitsConfig::fromArray($securityLimitsData);
+        }
+
         return new self(
             useCache: $useCache,
             enableQualityProcessing: $enableQualityProcessing,
@@ -418,6 +425,7 @@ readonly class ExtractionConfig
             keywords: $keywords,
             postprocessor: $postprocessor,
             htmlOptions: $htmlOptions,
+            securityLimits: $securityLimits,
             maxConcurrentExtractions: $maxConcurrentExtractions,
             resultFormat: $resultFormat,
             outputFormat: $outputFormat,
@@ -587,7 +595,8 @@ readonly class ExtractionConfig
             'pages' => $this->pages?->toArray(),
             'language_detection' => $this->languageDetection?->toArray(),
             'keywords' => $this->keywords?->toArray(),
-            'html_options' => $this->htmlOptions,
+            'html_options' => $this->htmlOptions?->toArray(),
+            'security_limits' => $this->securityLimits?->toArray(),
             'postprocessor' => $this->postprocessor?->toArray(),
             'token_reduction' => $this->tokenReduction?->toArray(),
             'acceleration' => $this->acceleration?->toArray(),

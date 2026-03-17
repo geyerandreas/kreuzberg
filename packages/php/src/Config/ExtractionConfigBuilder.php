@@ -38,8 +38,7 @@ class ExtractionConfigBuilder
     private ?PageConfig $pages = null;
     private ?KeywordConfig $keywords = null;
     private ?PostProcessorConfig $postprocessor = null;
-    /** @var array<string, mixed>|null */
-    private ?array $htmlOptions = null;
+    private ?HtmlConversionOptions $htmlOptions = null;
     private ?int $maxConcurrentExtractions = null;
     private string $resultFormat = 'unified';
     private string $outputFormat = 'plain';
@@ -191,12 +190,16 @@ class ExtractionConfigBuilder
     /**
      * Set the HTML to Markdown conversion options.
      *
-     * @param array<string, mixed>|null $htmlOptions HTML conversion configuration
+     * @param HtmlConversionOptions|array<string, mixed>|null $htmlOptions HTML conversion configuration
      * @return self For method chaining
      */
-    public function withHtmlOptions(?array $htmlOptions = null): self
+    public function withHtmlOptions(HtmlConversionOptions|array|null $htmlOptions = null): self
     {
-        $this->htmlOptions = $htmlOptions;
+        if (is_array($htmlOptions)) {
+            $this->htmlOptions = HtmlConversionOptions::fromArray($htmlOptions);
+        } else {
+            $this->htmlOptions = $htmlOptions;
+        }
         return $this;
     }
 

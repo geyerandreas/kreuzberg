@@ -46,7 +46,7 @@ public final class ExtractionConfig {
 	private final AccelerationConfig acceleration;
 	private final EmailConfig email;
 	private final Integer maxConcurrentExtractions;
-	private final Map<String, Object> securityLimits;
+	private final SecurityLimitsConfig securityLimits;
 	private final boolean includeDocumentStructure;
 	private final boolean includeDocumentStructureSet;
 
@@ -507,7 +507,7 @@ public final class ExtractionConfig {
 			map.put("max_concurrent_extractions", maxConcurrentExtractions);
 		}
 		if (securityLimits != null) {
-			map.put("security_limits", securityLimits);
+			map.put("security_limits", securityLimits.toMap());
 		}
 		return map;
 	}
@@ -592,6 +592,10 @@ public final class ExtractionConfig {
 		if (raw.containsKey("max_concurrent_extractions")) {
 			builder.maxConcurrentExtractions(asInteger(raw.get("max_concurrent_extractions")));
 		}
+		Map<String, Object> securityMap = asMap(raw.get("security_limits"));
+		if (securityMap != null) {
+			builder.securityLimits(SecurityLimitsConfig.fromMap(securityMap));
+		}
 	}
 
 	private static boolean asBoolean(Object value, boolean defaultValue) {
@@ -664,7 +668,7 @@ public final class ExtractionConfig {
 		private AccelerationConfig acceleration;
 		private EmailConfig email;
 		private Integer maxConcurrentExtractions;
-		private Map<String, Object> securityLimits;
+		private SecurityLimitsConfig securityLimits;
 
 		private Builder() {
 		}
@@ -844,7 +848,7 @@ public final class ExtractionConfig {
 			return this;
 		}
 
-		public Builder securityLimits(Map<String, Object> securityLimits) {
+		public Builder securityLimits(SecurityLimitsConfig securityLimits) {
 			this.securityLimits = securityLimits;
 			return this;
 		}
