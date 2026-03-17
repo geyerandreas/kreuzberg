@@ -38,6 +38,8 @@ defmodule Kreuzberg.ExtractionConfig do
     * `:html_options` - HTML to Markdown conversion options (quality, format, preprocessing options)
     * `:layout` - Layout detection configuration (preset, confidence_threshold, apply_heuristics)
     * `:acceleration` - GPU acceleration configuration (provider, device_id)
+    * `:security_limits` - Security limits for archive extraction (max sizes, compression ratio, etc.)
+    * `:email` - Email extraction configuration (msg_fallback_codepage)
     * `:max_concurrent_extractions` - Maximum concurrent extractions in batch operations (positive integer or nil)
 
   ## Default Values
@@ -105,6 +107,7 @@ defmodule Kreuzberg.ExtractionConfig do
       %{
         "acceleration" => nil,
         "chunking" => %{"size" => 512},
+        "email" => nil,
         "enable_quality_processing" => true,
         "force_ocr" => false,
         "html_options" => nil,
@@ -120,6 +123,7 @@ defmodule Kreuzberg.ExtractionConfig do
         "pdf_options" => nil,
         "postprocessor" => nil,
         "result_format" => "unified",
+        "security_limits" => nil,
         "token_reduction" => nil,
         "use_cache" => true
       }
@@ -152,6 +156,7 @@ defmodule Kreuzberg.ExtractionConfig do
           layout: layout_config,
           acceleration: nested_config,
           security_limits: nested_config,
+          email: nested_config,
           use_cache: boolean(),
           enable_quality_processing: boolean(),
           force_ocr: boolean(),
@@ -176,6 +181,7 @@ defmodule Kreuzberg.ExtractionConfig do
     :layout,
     :acceleration,
     :security_limits,
+    :email,
     use_cache: true,
     enable_quality_processing: true,
     force_ocr: false,
@@ -283,6 +289,7 @@ defmodule Kreuzberg.ExtractionConfig do
       %{
         "acceleration" => nil,
         "chunking" => %{"size" => 512},
+        "email" => nil,
         "enable_quality_processing" => true,
         "force_ocr" => false,
         "html_options" => nil,
@@ -298,6 +305,7 @@ defmodule Kreuzberg.ExtractionConfig do
         "pdf_options" => nil,
         "postprocessor" => nil,
         "result_format" => "unified",
+        "security_limits" => nil,
         "token_reduction" => nil,
         "use_cache" => true
       }
@@ -307,6 +315,7 @@ defmodule Kreuzberg.ExtractionConfig do
       %{
         "acceleration" => nil,
         "chunking" => nil,
+        "email" => nil,
         "enable_quality_processing" => true,
         "force_ocr" => false,
         "html_options" => nil,
@@ -322,6 +331,7 @@ defmodule Kreuzberg.ExtractionConfig do
         "pdf_options" => nil,
         "postprocessor" => nil,
         "result_format" => "unified",
+        "security_limits" => nil,
         "token_reduction" => nil,
         "use_cache" => true
       }
@@ -354,6 +364,8 @@ defmodule Kreuzberg.ExtractionConfig do
       "html_options" => normalize_nested_config(config.html_options),
       "layout" => normalize_layout_config(config.layout),
       "acceleration" => normalize_acceleration_config(config.acceleration),
+      "security_limits" => normalize_nested_config(config.security_limits),
+      "email" => normalize_email_config(config.email),
       "use_cache" => config.use_cache,
       "enable_quality_processing" => config.enable_quality_processing,
       "force_ocr" => config.force_ocr,
@@ -511,6 +523,17 @@ defmodule Kreuzberg.ExtractionConfig do
   defp normalize_acceleration_config(other), do: other
 
   @doc false
+  defp normalize_email_config(nil), do: nil
+
+  @doc false
+  defp normalize_email_config(email_config) when is_map(email_config) do
+    normalize_map_keys(email_config)
+  end
+
+  @doc false
+  defp normalize_email_config(other), do: other
+
+  @doc false
   defp normalize_format_value(value) when is_binary(value) do
     String.downcase(value)
   end
@@ -593,7 +616,10 @@ defmodule Kreuzberg.ExtractionConfig do
          :ok <- validate_nested_field(config.layout, "layout"),
          :ok <- validate_layout_config(config.layout),
          :ok <- validate_nested_field(config.acceleration, "acceleration"),
-         :ok <- validate_acceleration_config(config.acceleration) do
+         :ok <- validate_acceleration_config(config.acceleration),
+         :ok <- validate_nested_field(config.security_limits, "security_limits"),
+         :ok <- validate_nested_field(config.email, "email"),
+         :ok <- validate_email_config(config.email) do
       {:ok, config}
     end
   end
@@ -720,6 +746,8 @@ defmodule Kreuzberg.ExtractionConfig do
       html_options: Map.get(map, "html_options"),
       layout: Map.get(map, "layout"),
       acceleration: Map.get(map, "acceleration"),
+      security_limits: Map.get(map, "security_limits"),
+      email: Map.get(map, "email"),
       use_cache: Map.get(map, "use_cache", true),
       enable_quality_processing: Map.get(map, "enable_quality_processing", true),
       force_ocr: Map.get(map, "force_ocr", false),
@@ -1067,6 +1095,30 @@ defmodule Kreuzberg.ExtractionConfig do
 
       value ->
         {:error, "Field 'acceleration.device_id' must be a non-negative integer, got: #{type_name(value)}"}
+    end
+  end
+
+  @doc false
+  defp validate_email_config(nil), do: :ok
+
+  @doc false
+  defp validate_email_config(config) when is_map(config) do
+    msg_fallback_codepage =
+      Map.get(config, "msg_fallback_codepage") || Map.get(config, :msg_fallback_codepage)
+
+    case msg_fallback_codepage do
+      nil ->
+        :ok
+
+      value when is_integer(value) and value >= 0 ->
+        :ok
+
+      value when is_integer(value) ->
+        {:error, "Field 'email.msg_fallback_codepage' must be a non-negative integer, got: #{value}"}
+
+      value ->
+        {:error,
+         "Field 'email.msg_fallback_codepage' must be a non-negative integer, got: #{type_name(value)}"}
     end
   end
 end

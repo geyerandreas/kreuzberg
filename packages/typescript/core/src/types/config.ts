@@ -357,6 +357,19 @@ export interface AccelerationConfig {
 	deviceId?: number;
 }
 
+/**
+ * Email extraction configuration.
+ *
+ * Controls behavior of MSG file extraction, specifically the fallback codepage
+ * used when an MSG file contains no codepage property.
+ */
+export interface EmailConfig {
+	/** Windows codepage number to use when an MSG file contains no codepage property.
+	 * Defaults to undefined (falls back to windows-1252).
+	 * Common values: 1250 (Central European), 1251 (Cyrillic), 1253 (Greek), 932 (Japanese). */
+	msgFallbackCodepage?: number;
+}
+
 export interface ExtractionConfig {
 	useCache?: boolean;
 	enableQualityProcessing?: boolean;
@@ -372,6 +385,7 @@ export interface ExtractionConfig {
 	keywords?: KeywordConfig;
 	pages?: PageConfig;
 	acceleration?: AccelerationConfig;
+	email?: EmailConfig;
 	securityLimits?: Record<string, number>;
 	maxConcurrentExtractions?: number;
 	/**

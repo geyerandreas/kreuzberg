@@ -238,6 +238,17 @@ readonly class ExtractionConfig
          * @default null
          */
         public ?AccelerationConfig $acceleration = null,
+
+        /**
+         * Email extraction configuration.
+         *
+         * Configures email-specific extraction settings such as the fallback
+         * code page for MSG email body decoding.
+         *
+         * @var EmailConfig|null
+         * @default null
+         */
+        public ?EmailConfig $email = null,
     ) {
     }
 
@@ -386,6 +397,13 @@ readonly class ExtractionConfig
             $acceleration = AccelerationConfig::fromArray($accelerationData);
         }
 
+        $email = null;
+        if (isset($data['email']) && is_array($data['email'])) {
+            /** @var array<string, mixed> $emailData */
+            $emailData = $data['email'];
+            $email = EmailConfig::fromArray($emailData);
+        }
+
         return new self(
             useCache: $useCache,
             enableQualityProcessing: $enableQualityProcessing,
@@ -405,6 +423,7 @@ readonly class ExtractionConfig
             outputFormat: $outputFormat,
             includeDocumentStructure: $includeDocumentStructure,
             acceleration: $acceleration,
+            email: $email,
         );
     }
 
@@ -572,6 +591,7 @@ readonly class ExtractionConfig
             'postprocessor' => $this->postprocessor?->toArray(),
             'token_reduction' => $this->tokenReduction?->toArray(),
             'acceleration' => $this->acceleration?->toArray(),
+            'email' => $this->email?->toArray(),
         ];
 
         // Add simple boolean/string fields only if explicitly set to non-default values

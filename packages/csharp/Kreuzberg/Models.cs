@@ -2012,6 +2012,18 @@ public enum ExecutionProviderType
 }
 
 /// <summary>
+/// Email extraction configuration.
+/// </summary>
+public sealed class EmailConfig
+{
+    /// <summary>
+    /// Fallback code page for MSG email body decoding.
+    /// </summary>
+    [JsonPropertyName("msg_fallback_codepage")]
+    public int? MsgFallbackCodepage { get; init; }
+}
+
+/// <summary>
 /// Hardware acceleration configuration for ONNX Runtime models.
 /// </summary>
 public sealed class AccelerationConfig
@@ -2159,6 +2171,13 @@ public sealed class ExtractionConfig
     /// </summary>
     [JsonPropertyName("acceleration")]
     public AccelerationConfig? Acceleration { get; init; }
+
+    /// <summary>
+    /// Email extraction configuration.
+    /// If null, uses default email extraction settings.
+    /// </summary>
+    [JsonPropertyName("email")]
+    public EmailConfig? Email { get; init; }
 
 }
 

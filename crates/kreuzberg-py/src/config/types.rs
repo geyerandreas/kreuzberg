@@ -59,7 +59,8 @@ impl ExtractionConfig {
         output_format=None,
         include_document_structure=None,
         layout=None,
-        acceleration=None
+        acceleration=None,
+        email=None
     ))]
     #[allow(clippy::too_many_arguments)]
     fn new(
@@ -82,6 +83,7 @@ impl ExtractionConfig {
         include_document_structure: Option<bool>,
         layout: Option<LayoutDetectionConfig>,
         acceleration: Option<AccelerationConfig>,
+        email: Option<EmailConfig>,
     ) -> PyResult<Self> {
         let (html_options_inner, html_options_dict) = parse_html_options_dict(html_options)?;
         Ok(Self {
@@ -135,6 +137,7 @@ impl ExtractionConfig {
                 security_limits: None,
                 layout: layout.map(Into::into),
                 acceleration: acceleration.map(Into::into),
+                email: email.map(Into::into),
             },
             html_options_dict,
         })
@@ -351,6 +354,16 @@ impl ExtractionConfig {
     #[setter]
     fn set_acceleration(&mut self, value: Option<AccelerationConfig>) {
         self.inner.acceleration = value.map(Into::into);
+    }
+
+    #[getter]
+    fn email(&self) -> Option<EmailConfig> {
+        self.inner.email.clone().map(Into::into)
+    }
+
+    #[setter]
+    fn set_email(&mut self, value: Option<EmailConfig>) {
+        self.inner.email = value.map(Into::into);
     }
 
     fn __repr__(&self) -> String {
@@ -1928,6 +1941,57 @@ impl AccelerationConfig {
             "AccelerationConfig(provider='{}', device_id={})",
             self.provider(),
             self.inner.device_id
+        )
+    }
+}
+
+/// Email extraction configuration.
+///
+/// Controls behavior specific to MSG email extraction.
+///
+/// Attributes:
+///     msg_fallback_codepage (int | None): Windows codepage number to use when an MSG file
+///         contains no codepage property. Defaults to None, which falls back to windows-1252.
+///         Common values: 1250 (Central European), 1251 (Cyrillic), 1252 (Western European, default),
+///         1253 (Greek), 1254 (Turkish), 1255 (Hebrew), 1256 (Arabic), 932 (Japanese), 936 (Simplified Chinese).
+///
+/// Example:
+///     >>> from kreuzberg import EmailConfig
+///     >>> # Use default (windows-1252 fallback)
+///     >>> config = EmailConfig()
+///     >>>
+///     >>> # Force Cyrillic codepage for Russian MSG files
+///     >>> config = EmailConfig(msg_fallback_codepage=1251)
+#[pyclass(name = "EmailConfig", module = "kreuzberg", from_py_object)]
+#[derive(Clone)]
+pub struct EmailConfig {
+    pub inner: kreuzberg::EmailConfig,
+}
+
+#[pymethods]
+impl EmailConfig {
+    #[new]
+    #[pyo3(signature = (msg_fallback_codepage=None))]
+    fn new(msg_fallback_codepage: Option<u32>) -> Self {
+        Self {
+            inner: kreuzberg::EmailConfig { msg_fallback_codepage },
+        }
+    }
+
+    #[getter]
+    fn msg_fallback_codepage(&self) -> Option<u32> {
+        self.inner.msg_fallback_codepage
+    }
+
+    #[setter]
+    fn set_msg_fallback_codepage(&mut self, value: Option<u32>) {
+        self.inner.msg_fallback_codepage = value;
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "EmailConfig(msg_fallback_codepage={:?})",
+            self.inner.msg_fallback_codepage
         )
     }
 }

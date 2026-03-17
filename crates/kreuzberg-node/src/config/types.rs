@@ -5,17 +5,20 @@ use html_to_markdown_rs::options::{
     CodeBlockStyle, ConversionOptions, HeadingStyle, HighlightStyle, ListIndentType, NewlineStyle,
     PreprocessingOptions as HtmlPreprocessingOptions, PreprocessingPreset, WhitespaceMode,
 };
+use kreuzberg::extractors::security::SecurityLimits as RustSecurityLimits;
 use kreuzberg::keywords::{
     KeywordAlgorithm as RustKeywordAlgorithm, KeywordConfig as RustKeywordConfig, RakeParams as RustRakeParams,
     YakeParams as RustYakeParams,
 };
 use kreuzberg::pdf::HierarchyConfig as RustHierarchyConfig;
 use kreuzberg::{
-    ChunkerType, ChunkingConfig as RustChunkingConfig, EmbeddingConfig as RustEmbeddingConfig,
-    EmbeddingModelType as RustEmbeddingModelType, ExtractionConfig, FileExtractionConfig,
-    ImageExtractionConfig as RustImageExtractionConfig, LanguageDetectionConfig as RustLanguageDetectionConfig,
-    OcrConfig as RustOcrConfig, PdfConfig as RustPdfConfig, PostProcessorConfig as RustPostProcessorConfig,
-    TesseractConfig as RustTesseractConfig, TokenReductionConfig as RustTokenReductionConfig,
+    AccelerationConfig as RustAccelerationConfig, ChunkerType, ChunkingConfig as RustChunkingConfig,
+    EmailConfig as RustEmailConfig, EmbeddingConfig as RustEmbeddingConfig,
+    EmbeddingModelType as RustEmbeddingModelType, ExecutionProviderType as RustExecutionProviderType, ExtractionConfig,
+    FileExtractionConfig, ImageExtractionConfig as RustImageExtractionConfig,
+    LanguageDetectionConfig as RustLanguageDetectionConfig, OcrConfig as RustOcrConfig, PdfConfig as RustPdfConfig,
+    PostProcessorConfig as RustPostProcessorConfig, TesseractConfig as RustTesseractConfig,
+    TokenReductionConfig as RustTokenReductionConfig,
 };
 use std::ffi::c_char;
 
@@ -955,6 +958,116 @@ fn keyword_algorithm_to_string(algo: RustKeywordAlgorithm) -> &'static str {
     }
 }
 
+/// Email extraction configuration for Node.js bindings.
+#[napi(object)]
+pub struct JsEmailConfig {
+    /// Windows codepage number for MSG files with no codepage property.
+    /// Common values: 1250 (Central European), 1251 (Cyrillic), 1252 (Western, default),
+    /// 1253 (Greek), 1254 (Turkish), 932 (Japanese), 936 (Simplified Chinese).
+    pub msg_fallback_codepage: Option<u32>,
+}
+
+impl From<JsEmailConfig> for RustEmailConfig {
+    fn from(val: JsEmailConfig) -> Self {
+        RustEmailConfig {
+            msg_fallback_codepage: val.msg_fallback_codepage,
+        }
+    }
+}
+
+/// Hardware acceleration configuration for ONNX Runtime inference.
+///
+/// Controls which execution provider (CPU, CoreML, CUDA, TensorRT) is used
+/// for layout detection and embedding generation.
+#[napi(object)]
+pub struct JsAccelerationConfig {
+    /// Execution provider: "auto" (default), "cpu", "coreml", "cuda", "tensorrt".
+    pub provider: Option<String>,
+    /// GPU device ID for CUDA/TensorRT. Ignored for CPU/CoreML/Auto.
+    pub device_id: Option<u32>,
+}
+
+impl From<JsAccelerationConfig> for RustAccelerationConfig {
+    fn from(val: JsAccelerationConfig) -> Self {
+        let provider = match val.provider.as_deref() {
+            Some("cpu") => RustExecutionProviderType::Cpu,
+            Some("coreml") => RustExecutionProviderType::CoreMl,
+            Some("cuda") => RustExecutionProviderType::Cuda,
+            Some("tensorrt") | Some("tensor_rt") => RustExecutionProviderType::TensorRt,
+            // "auto" or anything unrecognized
+            _ => RustExecutionProviderType::Auto,
+        };
+        RustAccelerationConfig {
+            provider,
+            device_id: val.device_id.unwrap_or(0),
+        }
+    }
+}
+
+/// Security limits to protect against DoS attacks (ZIP bombs, XML entity expansion, etc.).
+#[napi(object)]
+pub struct JsSecurityLimits {
+    /// Maximum uncompressed size for archives in bytes.
+    pub max_archive_size: Option<u32>,
+    /// Maximum compression ratio before flagging as potential bomb.
+    pub max_compression_ratio: Option<u32>,
+    /// Maximum number of files in an archive.
+    pub max_files_in_archive: Option<u32>,
+    /// Maximum nesting depth for structures.
+    pub max_nesting_depth: Option<u32>,
+    /// Maximum entity/string length.
+    pub max_entity_length: Option<u32>,
+    /// Maximum content size in bytes.
+    pub max_content_size: Option<u32>,
+    /// Maximum iterations per operation.
+    pub max_iterations: Option<u32>,
+    /// Maximum XML depth in levels.
+    pub max_xml_depth: Option<u32>,
+    /// Maximum cells per table.
+    pub max_table_cells: Option<u32>,
+}
+
+impl From<JsSecurityLimits> for RustSecurityLimits {
+    fn from(val: JsSecurityLimits) -> Self {
+        let defaults = RustSecurityLimits::default();
+        RustSecurityLimits {
+            max_archive_size: val
+                .max_archive_size
+                .map(|v| v as usize)
+                .unwrap_or(defaults.max_archive_size),
+            max_compression_ratio: val
+                .max_compression_ratio
+                .map(|v| v as usize)
+                .unwrap_or(defaults.max_compression_ratio),
+            max_files_in_archive: val
+                .max_files_in_archive
+                .map(|v| v as usize)
+                .unwrap_or(defaults.max_files_in_archive),
+            max_nesting_depth: val
+                .max_nesting_depth
+                .map(|v| v as usize)
+                .unwrap_or(defaults.max_nesting_depth),
+            max_entity_length: val
+                .max_entity_length
+                .map(|v| v as usize)
+                .unwrap_or(defaults.max_entity_length),
+            max_content_size: val
+                .max_content_size
+                .map(|v| v as usize)
+                .unwrap_or(defaults.max_content_size),
+            max_iterations: val
+                .max_iterations
+                .map(|v| v as usize)
+                .unwrap_or(defaults.max_iterations),
+            max_xml_depth: val.max_xml_depth.map(|v| v as usize).unwrap_or(defaults.max_xml_depth),
+            max_table_cells: val
+                .max_table_cells
+                .map(|v| v as usize)
+                .unwrap_or(defaults.max_table_cells),
+        }
+    }
+}
+
 #[napi(object)]
 pub struct JsPageConfig {
     pub extract_pages: Option<bool>,
@@ -1013,6 +1126,12 @@ pub struct JsExtractionConfig {
     pub include_document_structure: Option<bool>,
     /// Layout detection configuration (None = layout detection disabled)
     pub layout: Option<JsLayoutDetectionConfig>,
+    /// Email extraction configuration
+    pub email: Option<JsEmailConfig>,
+    /// Hardware acceleration configuration for ONNX Runtime inference
+    pub acceleration: Option<JsAccelerationConfig>,
+    /// Security limits to guard against DoS attacks
+    pub security_limits: Option<JsSecurityLimits>,
 }
 
 impl TryFrom<JsPageConfig> for kreuzberg::core::config::PageConfig {
@@ -1090,9 +1209,10 @@ impl TryFrom<JsExtractionConfig> for ExtractionConfig {
                 .transpose()?
                 .unwrap_or_default(),
             include_document_structure: val.include_document_structure.unwrap_or(false),
-            security_limits: None,
+            security_limits: val.security_limits.map(Into::into),
             layout: val.layout.map(Into::into),
-            acceleration: None,
+            acceleration: val.acceleration.map(Into::into),
+            email: val.email.map(Into::into),
         })
     }
 }
@@ -1235,6 +1355,30 @@ impl TryFrom<ExtractionConfig> for JsExtractionConfig {
             }),
             include_document_structure: Some(val.include_document_structure),
             layout: val.layout.map(JsLayoutDetectionConfig::from),
+            email: val.email.map(|e| JsEmailConfig {
+                msg_fallback_codepage: e.msg_fallback_codepage,
+            }),
+            acceleration: val.acceleration.map(|a| JsAccelerationConfig {
+                provider: Some(match a.provider {
+                    RustExecutionProviderType::Auto => "auto".to_string(),
+                    RustExecutionProviderType::Cpu => "cpu".to_string(),
+                    RustExecutionProviderType::CoreMl => "coreml".to_string(),
+                    RustExecutionProviderType::Cuda => "cuda".to_string(),
+                    RustExecutionProviderType::TensorRt => "tensorrt".to_string(),
+                }),
+                device_id: Some(a.device_id),
+            }),
+            security_limits: val.security_limits.map(|sl| JsSecurityLimits {
+                max_archive_size: Some(sl.max_archive_size as u32),
+                max_compression_ratio: Some(sl.max_compression_ratio as u32),
+                max_files_in_archive: Some(sl.max_files_in_archive as u32),
+                max_nesting_depth: Some(sl.max_nesting_depth as u32),
+                max_entity_length: Some(sl.max_entity_length as u32),
+                max_content_size: Some(sl.max_content_size as u32),
+                max_iterations: Some(sl.max_iterations as u32),
+                max_xml_depth: Some(sl.max_xml_depth as u32),
+                max_table_cells: Some(sl.max_table_cells as u32),
+            }),
         })
     }
 }

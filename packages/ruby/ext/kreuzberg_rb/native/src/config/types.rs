@@ -18,9 +18,9 @@ use kreuzberg::keywords::{
 use kreuzberg::pdf::HierarchyConfig;
 use kreuzberg::types::TesseractConfig as RustTesseractConfig;
 use kreuzberg::{
-    AccelerationConfig, ChunkingConfig, EmbeddingConfig, ExecutionProviderType, ExtractionConfig,
-    ImageExtractionConfig, LanguageDetectionConfig, OcrConfig, OutputFormat, PdfConfig, PostProcessorConfig,
-    TokenReductionConfig,
+    AccelerationConfig, ChunkingConfig, EmailConfig, EmbeddingConfig, ExecutionProviderType, ExtractionConfig,
+    ImageExtractionConfig, LanguageDetectionConfig, LayoutDetectionConfig, OcrConfig, OutputFormat, PdfConfig,
+    PostProcessorConfig, TokenReductionConfig,
 };
 use magnus::value::ReprValue;
 use magnus::{Error, RArray, RHash, Ruby, TryConvert, Value};
@@ -787,6 +787,54 @@ pub fn parse_acceleration_config(ruby: &Ruby, hash: RHash) -> Result<Acceleratio
     Ok(config)
 }
 
+/// Parse LayoutDetectionConfig from Ruby Hash
+pub fn parse_layout_detection_config(ruby: &Ruby, hash: RHash) -> Result<LayoutDetectionConfig, Error> {
+    let preset = if let Some(val) = get_kw(ruby, hash, "preset")
+        && val.equal(ruby.qnil()).ok() != Some(true)
+    {
+        symbol_to_string(val)?
+    } else {
+        "accurate".to_string()
+    };
+
+    let confidence_threshold = if let Some(val) = get_kw(ruby, hash, "confidence_threshold")
+        && val.equal(ruby.qnil()).ok() != Some(true)
+    {
+        Some(f32::try_convert(val)?)
+    } else {
+        None
+    };
+
+    let apply_heuristics = if let Some(val) = get_kw(ruby, hash, "apply_heuristics") {
+        bool::try_convert(val)?
+    } else {
+        true
+    };
+
+    let config = LayoutDetectionConfig {
+        preset,
+        confidence_threshold,
+        apply_heuristics,
+    };
+
+    Ok(config)
+}
+
+/// Parse EmailConfig from Ruby Hash
+pub fn parse_email_config(ruby: &Ruby, hash: RHash) -> Result<EmailConfig, Error> {
+    let msg_fallback_codepage = if let Some(val) = get_kw(ruby, hash, "msg_fallback_codepage")
+        && val.equal(ruby.qnil()).ok() != Some(true)
+    {
+        Some(u32::try_convert(val)?)
+    } else {
+        None
+    };
+
+    let config = EmailConfig { msg_fallback_codepage };
+
+    Ok(config)
+}
+
 /// Parse ExtractionConfig from Ruby Hash
 pub fn parse_extraction_config(ruby: &Ruby, opts: Option<RHash>) -> Result<ExtractionConfig, Error> {
     let mut config = ExtractionConfig::default();
@@ -883,6 +931,30 @@ pub fn parse_extraction_config(ruby: &Ruby, opts: Option<RHash>) -> Result<Extra
         {
             let pages_hash = RHash::try_convert(val)?;
             config.pages = Some(parse_page_config(ruby, pages_hash)?);
+        }
+
+        if let Some(val) = get_kw(ruby, hash, "layout")
+            && val.equal(ruby.qnil()).ok() != Some(true)
+        {
+            let layout_hash = RHash::try_convert(val)?;
+            config.layout = Some(parse_layout_detection_config(ruby, layout_hash)?);
+        }
+
+        if let Some(val) = get_kw(ruby, hash, "security_limits")
+            && val.equal(ruby.qnil()).ok() != Some(true)
+        {
+            let security_json = ruby_value_to_json(val)?;
+            let parsed: kreuzberg::extractors::security::SecurityLimits =
+                serde_json::from_value(security_json)
+                    .map_err(|e| runtime_error(format!("Invalid security_limits: {}", e)))?;
+            config.security_limits = Some(parsed);
+        }
+
+        if let Some(val) = get_kw(ruby, hash, "email")
+            && val.equal(ruby.qnil()).ok() != Some(true)
+        {
+            let email_hash = RHash::try_convert(val)?;
+            config.email = Some(parse_email_config(ruby, email_hash)?);
         }
 
         if let Some(val) = get_kw(ruby, hash, "max_concurrent_extractions") {

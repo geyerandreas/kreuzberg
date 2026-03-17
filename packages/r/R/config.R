@@ -19,6 +19,7 @@
 #' @param security_limits Named list. Security limits configuration.
 #' @param max_concurrent_extractions Integer. Max concurrent extractions.
 #' @param layout Layout detection configuration created by \code{layout_detection_config()}.
+#' @param email Email configuration created by \code{email_config()}.
 #' @param ... Additional configuration options passed as named list elements.
 #' @return A named list representing the extraction configuration.
 #' @export
@@ -32,7 +33,7 @@ extraction_config <- function(force_ocr = FALSE, ocr = NULL, chunking = NULL,
                               html_options = NULL, postprocessor = NULL,
                               security_limits = NULL,
                               max_concurrent_extractions = NULL,
-                              layout = NULL, ...) {
+                              layout = NULL, email = NULL, ...) {
   config <- list()
   if (isTRUE(force_ocr)) config$force_ocr <- TRUE
   if (!is.null(ocr)) config$ocr <- ocr
@@ -65,6 +66,7 @@ extraction_config <- function(force_ocr = FALSE, ocr = NULL, chunking = NULL,
     config$max_concurrent_extractions <- as.integer(max_concurrent_extractions)
   }
   if (!is.null(layout)) config$layout <- layout
+  if (!is.null(email)) config$email <- email
   extras <- list(...)
   if (length(extras) > 0) config <- c(config, extras)
   config
@@ -138,6 +140,24 @@ layout_detection_config <- function(preset = "fast", confidence_threshold = NULL
   }
   extras <- list(...)
   if (length(extras) > 0) config <- c(config, extras)
+  config
+}
+
+#' Create an email extraction configuration
+#'
+#' @param msg_fallback_codepage Integer or NULL. Fallback Windows code page for MSG
+#'   email body decoding. Common values: 1250 (Central European), 1251 (Cyrillic),
+#'   1252 (Western European, default), 1253 (Greek), 1254 (Turkish).
+#'   When NULL, the Rust default (windows-1252) is used.
+#' @return A named list representing the email extraction configuration.
+#' @export
+email_config <- function(msg_fallback_codepage = NULL) {
+  config <- list()
+  if (!is.null(msg_fallback_codepage)) {
+    msg_fallback_codepage <- as.integer(msg_fallback_codepage)
+    if (msg_fallback_codepage <= 0L) stop("msg_fallback_codepage must be a positive integer", call. = FALSE)
+    config$msg_fallback_codepage <- msg_fallback_codepage
+  }
   config
 }
 

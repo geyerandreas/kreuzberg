@@ -93,6 +93,7 @@ type ExtractionConfig struct {
 	Pages                    *PageConfig              `json:"pages,omitempty"`
 	SecurityLimits           *SecurityLimitsConfig    `json:"security_limits,omitempty"`
 	Acceleration             *AccelerationConfig      `json:"acceleration,omitempty"`
+	Email                    *EmailConfig             `json:"email,omitempty"`
 	MaxConcurrentExtractions *int                     `json:"max_concurrent_extractions,omitempty"`
 	IncludeDocumentStructure *bool                    `json:"include_document_structure,omitempty"`
 	OutputFormat             string                   `json:"output_format,omitempty"`
@@ -360,6 +361,12 @@ type AccelerationConfig struct {
 	Provider string `json:"provider,omitempty"`
 	// DeviceID is the GPU device ID (for CUDA/TensorRT).
 	DeviceID uint32 `json:"device_id,omitempty"`
+}
+
+// EmailConfig controls email extraction settings.
+type EmailConfig struct {
+	// MsgFallbackCodepage is the fallback code page for MSG email body decoding.
+	MsgFallbackCodepage *uint32 `json:"msg_fallback_codepage,omitempty"`
 }
 
 // PageConfig configures page tracking and extraction.

@@ -204,6 +204,20 @@ impl From<kreuzberg::core::config::HierarchyConfig> for HierarchyConfig {
     }
 }
 
+/// Convert EmailConfig to its inner Rust type
+impl From<EmailConfig> for kreuzberg::EmailConfig {
+    fn from(config: EmailConfig) -> Self {
+        config.inner
+    }
+}
+
+/// Convert Rust EmailConfig to Python wrapper
+impl From<kreuzberg::EmailConfig> for EmailConfig {
+    fn from(config: kreuzberg::EmailConfig) -> Self {
+        Self { inner: config }
+    }
+}
+
 /// Convert AccelerationConfig to its inner Rust type
 impl From<AccelerationConfig> for kreuzberg::AccelerationConfig {
     fn from(config: AccelerationConfig) -> Self {

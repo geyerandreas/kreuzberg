@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Table extraction on structure-tree pages**: SLANet table structure recognition now runs on all pages with layout-detected Table regions, including pages where the PDF structure tree succeeded. Previously, structure-tree pages skipped table extraction entirely, causing tables to be flattened into paragraphs.
 - **Fixed SLANet-Plus ONNX model**: Re-exported SLANet-Plus via paddle-to-onnx with Loop/If scalar-to-[1] shape fix, resolving ORT inference failures that caused all SLANet table extractions to silently fail on macOS CoreML.
 - **Docling comparison benchmarks**: Fixed vendored docling output path resolution and moved vendored data to `tools/benchmark-harness/vendored/docling/`. Enables proper quality comparison across the full 171-document PDF corpus.
+- **`EmailConfig` for MSG fallback codepage** (#505): New `EmailConfig` type with `msg_fallback_codepage` field, configurable via `ExtractionConfig.email`. When an MSG file contains no codepage property, the fallback defaults to windows-1252 and is now configurable (e.g. set `1251` for Cyrillic). Fully typed across all 11 language bindings: Rust, Python, TypeScript, Go, Java, C#, PHP, Ruby, Elixir, R, and WASM.
+- **Binding parity fixes**: `AccelerationConfig` added to Python `.pyi` type stubs and Node.js NAPI types (was previously missing). `SecurityLimits` and `LayoutDetectionConfig` added to Node.js NAPI types. Ruby native binding now parses `layout`, `security_limits`, and `email` config fields. Elixir `to_map/1` now includes `security_limits` (was silently dropped). PHP gains `LayoutDetectionConfig` typed class.
 
 ### Changed
 

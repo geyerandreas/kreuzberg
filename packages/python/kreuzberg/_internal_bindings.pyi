@@ -15,6 +15,7 @@ class ResultFormat(StrEnum):
     ELEMENT_BASED = "element_based"
 
 __all__ = [
+    "AccelerationConfig",
     "AnnotationType",
     "Attributes",
     "BoundingBox",
@@ -31,6 +32,7 @@ __all__ = [
     "Element",
     "ElementMetadata",
     "ElementType",
+    "EmailConfig",
     "EmbeddingConfig",
     "EmbeddingModelType",
     "EmbeddingPreset",
@@ -364,6 +366,69 @@ class LayoutDetectionConfig:
         apply_heuristics: bool | None = None,
     ) -> None: ...
 
+class AccelerationConfig:
+    """Hardware acceleration configuration for ONNX Runtime.
+
+    Controls which execution provider is used for ONNX model inference
+    (e.g., for layout detection or embedding models).
+
+    Attributes:
+        provider (str): Execution provider. One of ``"auto"``, ``"cpu"``,
+            ``"coreml"``, ``"cuda"``, ``"tensorrt"``. Default: ``"auto"``
+        device_id (int): GPU device ID for CUDA/TensorRT providers. Default: 0
+
+    Example:
+        Auto-select provider:
+            >>> from kreuzberg import AccelerationConfig
+            >>> config = AccelerationConfig()
+
+        Force CPU:
+            >>> config = AccelerationConfig(provider="cpu")
+
+        Use CUDA on device 1:
+            >>> config = AccelerationConfig(provider="cuda", device_id=1)
+    """
+
+    provider: str
+    device_id: int
+
+    def __init__(
+        self,
+        *,
+        provider: str | None = None,
+        device_id: int | None = None,
+    ) -> None: ...
+
+class EmailConfig:
+    """Email extraction configuration.
+
+    Controls behavior specific to MSG email extraction.
+
+    Attributes:
+        msg_fallback_codepage (int | None): Windows codepage number to use when an
+            MSG file contains no codepage property. Defaults to None, which falls
+            back to windows-1252. Common values: 1250 (Central European),
+            1251 (Cyrillic), 1252 (Western European), 1253 (Greek), 1254 (Turkish),
+            1255 (Hebrew), 1256 (Arabic), 932 (Japanese), 936 (Simplified Chinese).
+            Default: None
+
+    Example:
+        Use default (windows-1252 fallback):
+            >>> from kreuzberg import EmailConfig
+            >>> config = EmailConfig()
+
+        Force Cyrillic codepage for Russian MSG files:
+            >>> config = EmailConfig(msg_fallback_codepage=1251)
+    """
+
+    msg_fallback_codepage: int | None
+
+    def __init__(
+        self,
+        *,
+        msg_fallback_codepage: int | None = None,
+    ) -> None: ...
+
 class ExtractionConfig:
     """Main extraction configuration for document processing.
 
@@ -460,6 +525,8 @@ class ExtractionConfig:
     output_format: str
     include_document_structure: bool
     layout: LayoutDetectionConfig | None
+    acceleration: AccelerationConfig | None
+    email: EmailConfig | None
 
     def __init__(
         self,
@@ -483,6 +550,8 @@ class ExtractionConfig:
         output_format: str | None = None,
         include_document_structure: bool | None = None,
         layout: LayoutDetectionConfig | None = None,
+        acceleration: AccelerationConfig | None = None,
+        email: EmailConfig | None = None,
     ) -> None: ...
     @staticmethod
     def from_file(path: str | Path) -> ExtractionConfig: ...

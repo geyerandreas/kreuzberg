@@ -44,6 +44,7 @@ public final class ExtractionConfig {
 	private final PageConfig pages;
 	private final LayoutDetectionConfig layout;
 	private final AccelerationConfig acceleration;
+	private final EmailConfig email;
 	private final Integer maxConcurrentExtractions;
 	private final Map<String, Object> securityLimits;
 	private final boolean includeDocumentStructure;
@@ -70,6 +71,7 @@ public final class ExtractionConfig {
 		this.pages = builder.pages;
 		this.layout = builder.layout;
 		this.acceleration = builder.acceleration;
+		this.email = builder.email;
 		this.maxConcurrentExtractions = builder.maxConcurrentExtractions;
 		this.securityLimits = builder.securityLimits;
 		this.includeDocumentStructure = builder.includeDocumentStructure;
@@ -180,6 +182,16 @@ public final class ExtractionConfig {
 	 */
 	public AccelerationConfig getAcceleration() {
 		return acceleration;
+	}
+
+	/**
+	 * Get the email extraction configuration.
+	 *
+	 * @return the email configuration, or null if not set
+	 * @since 4.6.0
+	 */
+	public EmailConfig getEmail() {
+		return email;
 	}
 
 	public Integer getMaxConcurrentExtractions() {
@@ -488,6 +500,9 @@ public final class ExtractionConfig {
 		if (acceleration != null) {
 			map.put("acceleration", acceleration.toMap());
 		}
+		if (email != null) {
+			map.put("email", email.toMap());
+		}
 		if (maxConcurrentExtractions != null) {
 			map.put("max_concurrent_extractions", maxConcurrentExtractions);
 		}
@@ -570,6 +585,10 @@ public final class ExtractionConfig {
 		if (accelerationMap != null) {
 			builder.acceleration(AccelerationConfig.fromMap(accelerationMap));
 		}
+		Map<String, Object> emailMap = asMap(raw.get("email"));
+		if (emailMap != null) {
+			builder.email(EmailConfig.fromMap(emailMap));
+		}
 		if (raw.containsKey("max_concurrent_extractions")) {
 			builder.maxConcurrentExtractions(asInteger(raw.get("max_concurrent_extractions")));
 		}
@@ -643,6 +662,7 @@ public final class ExtractionConfig {
 		private PageConfig pages;
 		private LayoutDetectionConfig layout;
 		private AccelerationConfig acceleration;
+		private EmailConfig email;
 		private Integer maxConcurrentExtractions;
 		private Map<String, Object> securityLimits;
 
@@ -803,6 +823,19 @@ public final class ExtractionConfig {
 		 */
 		public Builder acceleration(AccelerationConfig acceleration) {
 			this.acceleration = acceleration;
+			return this;
+		}
+
+		/**
+		 * Set the email extraction configuration.
+		 *
+		 * @param email
+		 *            the email configuration
+		 * @return this builder for chaining
+		 * @since 4.6.0
+		 */
+		public Builder email(EmailConfig email) {
+			this.email = email;
 			return this;
 		}
 
