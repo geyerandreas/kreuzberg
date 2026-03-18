@@ -99,7 +99,7 @@ pub fn parse_drawing(reader: &mut Reader<&[u8]>) -> Drawing {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
                 let local = e.local_name();
-                let local_name = local.as_ref();
+                let local_name = local.as_ref() as &[u8];
 
                 match local_name {
                     b"inline" => {
@@ -157,7 +157,7 @@ pub fn parse_drawing(reader: &mut Reader<&[u8]>) -> Drawing {
             }
             Ok(Event::Empty(ref e)) => {
                 let local = e.local_name();
-                let local_name = local.as_ref();
+                let local_name = local.as_ref() as &[u8];
 
                 match local_name {
                     b"extent" => {
@@ -205,7 +205,7 @@ pub fn parse_drawing(reader: &mut Reader<&[u8]>) -> Drawing {
             }
             Ok(Event::End(e)) => {
                 depth -= 1;
-                if e.local_name().as_ref() == b"drawing" && depth == 0 {
+                if e.local_name().as_ref() as &[u8] == b"drawing" && depth == 0 {
                     break;
                 }
             }
@@ -232,7 +232,7 @@ fn parse_position(reader: &mut Reader<&[u8]>, element_name: &str) -> Option<i64>
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) if e.local_name().as_ref() == b"posOffset" => {
+            Ok(Event::Start(ref e)) if e.local_name().as_ref() as &[u8] == b"posOffset" => {
                 let mut text_buf = Vec::new();
                 if let Ok(Event::Text(t)) = reader.read_event_into(&mut text_buf)
                     && let Ok(text) = t.decode()
@@ -243,7 +243,7 @@ fn parse_position(reader: &mut Reader<&[u8]>, element_name: &str) -> Option<i64>
                 let mut end_buf = Vec::new();
                 let _ = reader.read_event_into(&mut end_buf);
             }
-            Ok(Event::End(e)) if e.local_name().as_ref() == element_bytes => {
+            Ok(Event::End(e)) if e.local_name().as_ref() as &[u8] == element_bytes => {
                 return result;
             }
             Ok(Event::Eof) => {
@@ -262,7 +262,7 @@ fn parse_position(reader: &mut Reader<&[u8]>, element_name: &str) -> Option<i64>
 fn get_attr(e: &BytesStart, key: &[u8]) -> Option<String> {
     e.attributes()
         .flatten()
-        .find(|attr| attr.key.local_name().as_ref() == key)
+        .find(|attr| attr.key.local_name().as_ref() as &[u8] == key)
         .and_then(|attr| {
             let raw = std::str::from_utf8(&attr.value).ok()?;
             quick_xml::escape::unescape(raw).ok().map(|s| s.into_owned())
@@ -291,7 +291,7 @@ mod tests {
         // Consume opening tag and any events before <w:drawing>
         loop {
             match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(e)) if e.local_name().as_ref() == b"drawing" => {
+                Ok(Event::Start(e)) if e.local_name().as_ref() as &[u8] == b"drawing" => {
                     break;
                 }
                 Ok(Event::Eof) => {

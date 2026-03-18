@@ -218,7 +218,7 @@ pub fn parse_section_properties_streaming(reader: &mut Reader<&[u8]>) -> Section
             Ok(Event::Start(ref e)) | Ok(Event::Empty(ref e)) => {
                 apply_section_element(e, &mut props);
             }
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"w:sectPr" => {
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"w:sectPr" => {
                 break;
             }
             Ok(Event::Eof) => break,
@@ -242,7 +242,7 @@ pub fn parse_section_properties_streaming(reader: &mut Reader<&[u8]>) -> Section
 /// since OOXML section child elements (`w:pgSz`, `w:pgMar`, etc.)
 /// are typically self-closing.
 fn apply_section_element(e: &BytesStart, props: &mut SectionProperties) {
-    match e.name().as_ref() {
+    match e.name().as_ref() as &[u8] {
         b"w:pgSz" => {
             props.page_width_twips = get_w_attr_i32(e, "w");
             props.page_height_twips = get_w_attr_i32(e, "h");
@@ -412,7 +412,7 @@ mod tests {
         // Consume the opening <w:sectPr> tag
         loop {
             match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref e)) if e.name().as_ref() == b"w:sectPr" => break,
+                Ok(Event::Start(ref e)) if e.name().as_ref() as &[u8] == b"w:sectPr" => break,
                 Ok(Event::Eof) => panic!("unexpected EOF"),
                 Err(e) => panic!("unexpected error: {}", e),
                 _ => {}
@@ -444,7 +444,7 @@ mod tests {
         let mut buf = Vec::new();
         loop {
             match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref e)) if e.name().as_ref() == b"w:sectPr" => break,
+                Ok(Event::Start(ref e)) if e.name().as_ref() as &[u8] == b"w:sectPr" => break,
                 Ok(Event::Eof) => panic!("unexpected EOF"),
                 _ => {}
             }

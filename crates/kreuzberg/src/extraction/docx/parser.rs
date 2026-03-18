@@ -832,7 +832,7 @@ impl TableContext {
 /// Works for both `Event::Start` and `Event::Empty` events, eliminating duplication.
 fn apply_run_formatting(e: &BytesStart, current_run: &mut Option<Run>) {
     if let Some(run) = current_run {
-        match e.name().as_ref() {
+        match e.name().as_ref() as &[u8] {
             b"w:b" => run.bold = is_format_enabled(e),
             b"w:i" => run.italic = is_format_enabled(e),
             b"w:u" => run.underline = is_format_enabled(e),
@@ -857,7 +857,7 @@ fn apply_paragraph_property(
     };
 
     if let Some(para) = para {
-        match e.name().as_ref() {
+        match e.name().as_ref() as &[u8] {
             b"w:pStyle" => para.style = get_val_attr_string(e),
             b"w:ilvl" => para.numbering_level = get_val_attr(e),
             b"w:numId" => para.numbering_id = get_val_attr(e),
@@ -1019,7 +1019,7 @@ impl<R: Read + Seek> DocxParser<R> {
 
         loop {
             match reader.read_event_into(&mut buf) {
-                Ok(Event::Empty(ref e)) | Ok(Event::Start(ref e)) if e.name().as_ref() == b"Relationship" => {
+                Ok(Event::Empty(ref e)) | Ok(Event::Start(ref e)) if e.name().as_ref() as &[u8] == b"Relationship" => {
                     let mut id = None;
                     let mut target = None;
                     let mut rel_type_matches = false;
@@ -1080,7 +1080,7 @@ impl<R: Read + Seek> DocxParser<R> {
 
         loop {
             match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref e)) => match e.name().as_ref() {
+                Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                     b"w:p" => {
                         if let Some(ctx) = table_stack.last_mut() {
                             ctx.paragraph = Some(Paragraph::new());
@@ -1230,7 +1230,7 @@ impl<R: Read + Seek> DocxParser<R> {
                     }
                     _ => {}
                 },
-                Ok(Event::Empty(ref e)) => match e.name().as_ref() {
+                Ok(Event::Empty(ref e)) => match e.name().as_ref() as &[u8] {
                     b"w:fldChar" => {
                         for attr in e.attributes().flatten() {
                             if attr.key.as_ref() == b"w:fldCharType" {
@@ -1305,7 +1305,7 @@ impl<R: Read + Seek> DocxParser<R> {
                         run.text.push_str(&text);
                     }
                 }
-                Ok(Event::End(ref e)) => match e.name().as_ref() {
+                Ok(Event::End(ref e)) => match e.name().as_ref() as &[u8] {
                     b"w:t" => {
                         in_text = false;
                     }
@@ -1407,7 +1407,7 @@ impl<R: Read + Seek> DocxParser<R> {
 
         loop {
             match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref e)) => match e.name().as_ref() {
+                Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                     b"w:abstractNum" => {
                         for attr in e.attributes().flatten() {
                             if attr.key.as_ref() == b"w:abstractNumId"
@@ -1451,7 +1451,7 @@ impl<R: Read + Seek> DocxParser<R> {
                     }
                     _ => {}
                 },
-                Ok(Event::Empty(ref e)) => match e.name().as_ref() {
+                Ok(Event::Empty(ref e)) => match e.name().as_ref() as &[u8] {
                     b"w:abstractNumId" => {
                         if let Some(num_id) = current_num_id
                             && let Some(abstract_id) = get_val_attr(e)
@@ -1475,7 +1475,7 @@ impl<R: Read + Seek> DocxParser<R> {
                     }
                     _ => {}
                 },
-                Ok(Event::End(ref e)) => match e.name().as_ref() {
+                Ok(Event::End(ref e)) => match e.name().as_ref() as &[u8] {
                     b"w:abstractNum" => {
                         current_abstract_num_id = None;
                         current_lvl = None;
@@ -1537,7 +1537,7 @@ impl<R: Read + Seek> DocxParser<R> {
 
         loop {
             match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref e)) => match e.name().as_ref() {
+                Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                     b"w:p" => current_paragraph = Some(Paragraph::new()),
                     b"w:r" => current_run = Some(Run::default()),
                     b"w:t" => in_text = true,
@@ -1558,7 +1558,7 @@ impl<R: Read + Seek> DocxParser<R> {
                     }
                     _ => {}
                 },
-                Ok(Event::Empty(ref e)) => match e.name().as_ref() {
+                Ok(Event::Empty(ref e)) => match e.name().as_ref() as &[u8] {
                     b"w:b" => {
                         if let Some(ref mut run) = current_run {
                             run.bold = is_format_enabled(e);
@@ -1582,7 +1582,7 @@ impl<R: Read + Seek> DocxParser<R> {
                         run.text.push_str(&text);
                     }
                 }
-                Ok(Event::End(ref e)) => match e.name().as_ref() {
+                Ok(Event::End(ref e)) => match e.name().as_ref() as &[u8] {
                     b"w:t" => in_text = false,
                     b"w:r" => {
                         if let Some(run) = current_run.take()
@@ -1619,7 +1619,7 @@ impl<R: Read + Seek> DocxParser<R> {
 
         loop {
             match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref e)) => match e.name().as_ref() {
+                Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                     b"w:footnote" | b"w:endnote" => {
                         let mut id = String::new();
                         for attr in e.attributes().flatten() {
@@ -1648,7 +1648,7 @@ impl<R: Read + Seek> DocxParser<R> {
                     }
                     _ => {}
                 },
-                Ok(Event::Empty(ref e)) => match e.name().as_ref() {
+                Ok(Event::Empty(ref e)) => match e.name().as_ref() as &[u8] {
                     b"w:b" => {
                         if let Some(ref mut run) = current_run {
                             run.bold = is_format_enabled(e);
@@ -1667,7 +1667,7 @@ impl<R: Read + Seek> DocxParser<R> {
                         run.text.push_str(&text);
                     }
                 }
-                Ok(Event::End(ref e)) => match e.name().as_ref() {
+                Ok(Event::End(ref e)) => match e.name().as_ref() as &[u8] {
                     b"w:t" => in_text = false,
                     b"w:r" => {
                         if let Some(run) = current_run.take()

@@ -128,7 +128,7 @@ fn collect_children(reader: &mut Reader<&[u8]>, end_tag: &[u8]) -> Vec<MathNode>
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
-                let tag = e.name().as_ref().to_vec();
+                let tag = e.name().(as_ref() as &[u8]).to_vec();
                 match tag.as_slice() {
                     b"m:r" => {
                         nodes.push(collect_run(reader));
@@ -196,7 +196,7 @@ fn collect_children(reader: &mut Reader<&[u8]>, end_tag: &[u8]) -> Vec<MathNode>
                     }
                 }
             }
-            Ok(Event::End(ref e)) if e.name().as_ref() == end_tag => {
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == end_tag => {
                 break;
             }
             Ok(Event::Eof) => break,
@@ -216,7 +216,7 @@ fn collect_run(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:t" => in_text = true,
                 b"m:rPr" => skip_to_end(reader, b"m:rPr"),
                 _ => {}
@@ -226,7 +226,7 @@ fn collect_run(reader: &mut Reader<&[u8]>) -> MathNode {
                     text.push_str(&t);
                 }
             }
-            Ok(Event::End(ref e)) => match e.name().as_ref() {
+            Ok(Event::End(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:t" => in_text = false,
                 b"m:r" => break,
                 _ => {}
@@ -248,13 +248,13 @@ fn collect_ssup(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:e" => base = collect_children(reader, b"m:e"),
                 b"m:sup" => sup = collect_children(reader, b"m:sup"),
                 b"m:sSupPr" => skip_to_end(reader, b"m:sSupPr"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:sSup" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:sSup" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -272,13 +272,13 @@ fn collect_ssub(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:e" => base = collect_children(reader, b"m:e"),
                 b"m:sub" => sub = collect_children(reader, b"m:sub"),
                 b"m:sSubPr" => skip_to_end(reader, b"m:sSubPr"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:sSub" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:sSub" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -297,14 +297,14 @@ fn collect_ssubsup(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:e" => base = collect_children(reader, b"m:e"),
                 b"m:sub" => sub = collect_children(reader, b"m:sub"),
                 b"m:sup" => sup = collect_children(reader, b"m:sup"),
                 b"m:sSubSupPr" => skip_to_end(reader, b"m:sSubSupPr"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:sSubSup" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:sSubSup" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -323,7 +323,7 @@ fn collect_frac(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:fPr" => {
                     frac_type = collect_frac_pr(reader);
                 }
@@ -331,7 +331,7 @@ fn collect_frac(reader: &mut Reader<&[u8]>) -> MathNode {
                 b"m:den" => den = collect_children(reader, b"m:den"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:f" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:f" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -349,7 +349,7 @@ fn collect_frac_pr(reader: &mut Reader<&[u8]>) -> FracType {
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e) | Event::Empty(ref e)) => {
-                if e.name().as_ref() == b"m:type"
+                if e.name().as_ref() as &[u8] == b"m:type"
                     && let Some(val) = get_m_val(e)
                 {
                     frac_type = match val.as_str() {
@@ -360,7 +360,7 @@ fn collect_frac_pr(reader: &mut Reader<&[u8]>) -> FracType {
                     };
                 }
             }
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:fPr" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:fPr" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -379,7 +379,7 @@ fn collect_rad(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:radPr" => {
                     deg_hide = collect_rad_pr(reader);
                 }
@@ -387,7 +387,7 @@ fn collect_rad(reader: &mut Reader<&[u8]>) -> MathNode {
                 b"m:e" => body = collect_children(reader, b"m:e"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:rad" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:rad" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -404,10 +404,10 @@ fn collect_rad_pr(reader: &mut Reader<&[u8]>) -> bool {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e) | Event::Empty(ref e)) if e.name().as_ref() == b"m:degHide" => {
+            Ok(Event::Start(ref e) | Event::Empty(ref e)) if e.name().as_ref() as &[u8] == b"m:degHide" => {
                 deg_hide = get_m_val(e).as_deref() != Some("0");
             }
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:radPr" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:radPr" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -429,7 +429,7 @@ fn collect_nary(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:naryPr" => {
                     collect_nary_pr(reader, &mut chr, &mut sub_hide, &mut sup_hide);
                 }
@@ -438,7 +438,7 @@ fn collect_nary(reader: &mut Reader<&[u8]>) -> MathNode {
                 b"m:e" => body = collect_children(reader, b"m:e"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:nary" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:nary" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -461,7 +461,7 @@ fn collect_nary_pr(reader: &mut Reader<&[u8]>, chr: &mut String, sub_hide: &mut 
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e) | Event::Empty(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e) | Event::Empty(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:chr" => {
                     if let Some(val) = get_m_val(e) {
                         *chr = val;
@@ -475,7 +475,7 @@ fn collect_nary_pr(reader: &mut Reader<&[u8]>, chr: &mut String, sub_hide: &mut 
                 }
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:naryPr" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:naryPr" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -493,7 +493,7 @@ fn collect_delim(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:dPr" => {
                     collect_delim_pr(reader, &mut begin_chr, &mut end_chr, &mut sep_chr);
                 }
@@ -502,7 +502,7 @@ fn collect_delim(reader: &mut Reader<&[u8]>) -> MathNode {
                 }
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:d" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:d" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -523,7 +523,7 @@ fn collect_delim_pr(reader: &mut Reader<&[u8]>, begin_chr: &mut String, end_chr:
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e) | Event::Empty(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e) | Event::Empty(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:begChr" => {
                     if let Some(val) = get_m_val(e) {
                         *begin_chr = val;
@@ -541,7 +541,7 @@ fn collect_delim_pr(reader: &mut Reader<&[u8]>, begin_chr: &mut String, end_chr:
                 }
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:dPr" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:dPr" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -557,13 +557,13 @@ fn collect_func(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:fName" => name = collect_children(reader, b"m:fName"),
                 b"m:e" => body = collect_children(reader, b"m:e"),
                 b"m:funcPr" => skip_to_end(reader, b"m:funcPr"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:func" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:func" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -581,14 +581,14 @@ fn collect_acc(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:accPr" => {
                     collect_acc_pr(reader, &mut chr);
                 }
                 b"m:e" => body = collect_children(reader, b"m:e"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:acc" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:acc" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -605,13 +605,13 @@ fn collect_acc_pr(reader: &mut Reader<&[u8]>, chr: &mut String) {
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e) | Event::Empty(ref e)) => {
-                if e.name().as_ref() == b"m:chr"
+                if e.name().as_ref() as &[u8] == b"m:chr"
                     && let Some(val) = get_m_val(e)
                 {
                     *chr = val;
                 }
             }
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:accPr" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:accPr" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -626,12 +626,12 @@ fn collect_eqarr(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:e" => rows.push(collect_children(reader, b"m:e")),
                 b"m:eqArrPr" => skip_to_end(reader, b"m:eqArrPr"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:eqArr" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:eqArr" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -649,13 +649,13 @@ fn collect_limlow(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:e" => body = collect_children(reader, b"m:e"),
                 b"m:lim" => lim = collect_children(reader, b"m:lim"),
                 b"m:limLowPr" => skip_to_end(reader, b"m:limLowPr"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:limLow" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:limLow" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -673,13 +673,13 @@ fn collect_limupp(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:e" => body = collect_children(reader, b"m:e"),
                 b"m:lim" => lim = collect_children(reader, b"m:lim"),
                 b"m:limUppPr" => skip_to_end(reader, b"m:limUppPr"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:limUpp" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:limUpp" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -697,14 +697,14 @@ fn collect_bar(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:barPr" => {
                     top = collect_bar_pr(reader);
                 }
                 b"m:e" => body = collect_children(reader, b"m:e"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:bar" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:bar" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -722,13 +722,13 @@ fn collect_bar_pr(reader: &mut Reader<&[u8]>) -> bool {
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e) | Event::Empty(ref e)) => {
-                if e.name().as_ref() == b"m:pos"
+                if e.name().as_ref() as &[u8] == b"m:pos"
                     && let Some(val) = get_m_val(e)
                 {
                     top = val != "bot";
                 }
             }
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:barPr" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:barPr" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -745,12 +745,12 @@ fn collect_borderbox(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:e" => body = collect_children(reader, b"m:e"),
                 b"m:borderBoxPr" => skip_to_end(reader, b"m:borderBoxPr"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:borderBox" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:borderBox" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -767,14 +767,14 @@ fn collect_matrix(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:mr" => {
                     rows.push(collect_matrix_row(reader));
                 }
                 b"m:mPr" => skip_to_end(reader, b"m:mPr"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:m" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:m" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -791,10 +791,10 @@ fn collect_matrix_row(reader: &mut Reader<&[u8]>) -> Vec<Vec<MathNode>> {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) if e.name().as_ref() == b"m:e" => {
+            Ok(Event::Start(ref e)) if e.name().as_ref() as &[u8] == b"m:e" => {
                 cells.push(collect_children(reader, b"m:e"));
             }
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:mr" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:mr" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -813,14 +813,14 @@ fn collect_spre(reader: &mut Reader<&[u8]>) -> MathNode {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) => match e.name().as_ref() {
+            Ok(Event::Start(ref e)) => match e.name().as_ref() as &[u8] {
                 b"m:e" => base = collect_children(reader, b"m:e"),
                 b"m:sub" => sub = collect_children(reader, b"m:sub"),
                 b"m:sup" => sup = collect_children(reader, b"m:sup"),
                 b"m:sPrePr" => skip_to_end(reader, b"m:sPrePr"),
                 _ => {}
             },
-            Ok(Event::End(ref e)) if e.name().as_ref() == b"m:sPre" => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == b"m:sPre" => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -838,7 +838,7 @@ fn collect_element_body(reader: &mut Reader<&[u8]>, end_tag: &[u8]) -> Vec<MathN
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
-                let tag = e.name().as_ref().to_vec();
+                let tag = e.name().(as_ref() as &[u8]).to_vec();
                 if tag.ends_with(b"Pr") {
                     skip_to_end(reader, &tag);
                 } else if tag == b"m:e" {
@@ -848,7 +848,7 @@ fn collect_element_body(reader: &mut Reader<&[u8]>, end_tag: &[u8]) -> Vec<MathN
                     skip_to_end(reader, &tag);
                 }
             }
-            Ok(Event::End(ref e)) if e.name().as_ref() == end_tag => break,
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == end_tag => break,
             Ok(Event::Eof) => break,
             _ => {}
         }
@@ -863,7 +863,7 @@ fn collect_element_body(reader: &mut Reader<&[u8]>, end_tag: &[u8]) -> Vec<MathN
 /// Get the `m:val` attribute value from a start/empty element.
 fn get_m_val(e: &quick_xml::events::BytesStart) -> Option<String> {
     for attr in e.attributes().flatten() {
-        let key = attr.key.as_ref();
+        let key = attr.key.as_ref() as &[u8];
         if key == b"m:val" || key == b"val" {
             return std::str::from_utf8(&attr.value).ok().map(|s| s.to_string());
         }
@@ -878,10 +878,10 @@ fn skip_to_end(reader: &mut Reader<&[u8]>, tag: &[u8]) {
 
     loop {
         match reader.read_event_into(&mut buf) {
-            Ok(Event::Start(ref e)) if e.name().as_ref() == tag => {
+            Ok(Event::Start(ref e)) if e.name().as_ref() as &[u8] == tag => {
                 depth += 1;
             }
-            Ok(Event::End(ref e)) if e.name().as_ref() == tag => {
+            Ok(Event::End(ref e)) if e.name().as_ref() as &[u8] == tag => {
                 depth -= 1;
                 if depth == 0 {
                     break;
@@ -1362,7 +1362,7 @@ mod tests {
         let mut buf = Vec::new();
         loop {
             match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref e)) if e.name().as_ref() == b"m:oMath" => break,
+                Ok(Event::Start(ref e)) if e.name().as_ref() as &[u8] == b"m:oMath" => break,
                 Ok(Event::Eof) => return String::new(),
                 _ => {}
             }
@@ -1639,7 +1639,7 @@ mod tests {
         let mut buf = Vec::new();
         loop {
             match reader.read_event_into(&mut buf) {
-                Ok(Event::Start(ref e)) if e.name().as_ref() == b"m:oMathPara" => break,
+                Ok(Event::Start(ref e)) if e.name().as_ref() as &[u8] == b"m:oMathPara" => break,
                 Ok(Event::Eof) => panic!("unexpected EOF"),
                 _ => {}
             }
