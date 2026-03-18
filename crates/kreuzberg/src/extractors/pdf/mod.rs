@@ -406,11 +406,7 @@ impl DocumentExtractor for PdfExtractor {
 
         #[cfg(feature = "ocr")]
         let (text, used_ocr) = if config.force_ocr {
-            if config.ocr.is_some() {
-                (run_ocr_with_layout(content, config).await?, true)
-            } else {
-                (native_text, false)
-            }
+            (run_ocr_with_layout(content, config).await?, true)
         } else if let Some(ocr_config) = config.ocr.as_ref() {
             let thresholds = ocr_config.effective_thresholds();
             let decision = ocr::evaluate_per_page_ocr(
@@ -1041,6 +1037,29 @@ mod tests {
                     extraction_result.content.contains(marker_placeholder),
                     "Page markers should be inserted when configured and document has multiple pages"
                 );
+            }
+        }
+    }
+
+    #[tokio::test]
+    #[cfg(all(feature = "pdf", feature = "ocr"))]
+    async fn test_pdf_force_ocr_without_ocr_config() {
+        use crate::core::config::ExtractionConfig;
+
+        let extractor = PdfExtractor::new();
+
+        let config = ExtractionConfig {
+            force_ocr: true,
+            ocr: None,
+            ..Default::default()
+        };
+
+        let pdf_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../test_documents/pdf/multi_page.pdf");
+        if let Ok(content) = std::fs::read(pdf_path) {
+            let result = extractor.extract_bytes(&content, "application/pdf", &config).await;
+            
+            if let Err(e) = result {
+                assert!(!e.to_string().contains("OCR config required for force_ocr"), "Should not require manual OCR config when force_ocr is true");
             }
         }
     }
