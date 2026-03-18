@@ -14,7 +14,7 @@ use pdfium_render::prelude::*;
 
 use super::text_repair::{apply_ligature_repairs, build_ligature_repair_map, normalize_text_encoding};
 use super::types::PdfParagraph;
-use crate::pdf::text_data::{PageTextData, extract_page_text_data};
+use crate::pdf::text_data::{ExtractedSegment, PageTextData, extract_page_text_data};
 
 // Alias to distinguish from our local PdfParagraph type.
 use pdfium_render::prelude::PdfParagraph as PdfiumParagraph;
@@ -143,13 +143,18 @@ pub(super) fn objects_to_page_data(
     }
 
     // Primary path: single-pass extraction via PageTextData DTO.
-    // Extracts all character data once, then assembles segments without
-    // further pdfium text API calls.
+    // Character-based assembly is primary (handles reading order, sidebars,
+    // italic runs correctly). Segment-based is available as fallback.
     let page_width = page.width().value;
-    if let Some(data) = extract_page_text_data(page)
-        && let Some(segments) = chars_to_segments_from_data(&data, page_width)
-    {
-        return (segments, images);
+    if let Some(data) = extract_page_text_data(page) {
+        // Primary: character-based assembly (correct reading order).
+        if let Some(segments) = chars_to_segments_from_data(&data, page_width) {
+            return (segments, images);
+        }
+        // Fallback: segment-based assembly (pdfium's pre-merged text runs).
+        if let Some(segments) = segments_to_line_segments(&data, page_width, None) {
+            return (segments, images);
+        }
     }
 
     // Fallback: page objects API with column detection.
@@ -348,9 +353,10 @@ fn build_line_text(chars: &[CharInfo], repair_map: Option<&[(char, &str)]>) -> S
         if idx > 0 && ci.ch != ' ' {
             let prev = &chars[idx - 1];
             if prev.ch == ' ' {
-                // Previous char is a generated space. Check if we should keep it
-                // by looking at the gap between the last real char and current char.
-                // Find the last non-space char before the space.
+                // Previous char is a generated space that was already pushed to
+                // `line_text`. We only need to decide whether to *veto* (remove)
+                // that space when the geometric gap is too small (CMap artefact).
+                // We must NOT push an additional space — it was already emitted.
                 let last_real = chars[..idx - 1].iter().rev().find(|c| c.ch != ' ');
                 if let Some(real_prev) = last_real {
                     let gap = ci.x - real_prev.right_x;
@@ -365,13 +371,12 @@ fn build_line_text(chars: &[CharInfo], repair_map: Option<&[(char, &str)]>) -> S
                     // This threshold is calibrated from docling-parse's 0.33 on
                     // advance widths, adjusted up because tight_bounds are narrower.
                     if gap < avg_char_width * 0.5 {
-                        // Skip the space — chars are too close for a word boundary
-                    } else {
-                        line_text.push(' ');
+                        // Remove the already-pushed space — chars are too close
+                        // for a word boundary.
+                        line_text.pop();
                     }
-                } else {
-                    line_text.push(' ');
                 }
+                // If no real_prev found, the space stands as-is (already pushed).
             } else {
                 // Non-space to non-space: insert space on large gaps (positioned text).
                 let gap = ci.x - prev.right_x;
@@ -597,6 +602,175 @@ fn assemble_segments_from_chars(char_infos: &[CharInfo], repair_map: Option<&[(c
     }
 
     segments
+}
+
+/// Assemble `SegmentData` from pdfium's pre-merged segments.
+///
+/// Pdfium segments already contain properly spaced text (pdfium handles word
+/// boundaries via CMap knowledge). This function groups segments by Y-position
+/// into visual lines, splitting any segment that contains embedded newlines.
+///
+/// Returns `None` if segments are empty or produce no usable lines, allowing
+/// the caller to fall back to character-based assembly.
+fn segments_to_line_segments(data: &PageTextData, page_width: f32, _page: Option<&PdfPage>) -> Option<Vec<SegmentData>> {
+    if data.segments.is_empty() {
+        return None;
+    }
+
+    // Filter sidebar segments (in margin zones).
+    let left_cutoff = page_width * 0.05;
+    let right_cutoff = page_width * 0.95;
+
+    let filtered: Vec<&ExtractedSegment> = data
+        .segments
+        .iter()
+        .filter(|seg| {
+            // Keep segments that are not entirely in the margin zone.
+            let seg_right = seg.x + seg.width;
+            seg_right >= left_cutoff && seg.x <= right_cutoff
+        })
+        .collect();
+
+    if filtered.is_empty() {
+        return None;
+    }
+
+    // Split segments at embedded newlines into sub-segments (one per visual line).
+    let mut line_segments: Vec<SegmentData> = Vec::new();
+    for seg in &filtered {
+        let lines: Vec<&str> = seg.text.split('\n').collect();
+        if lines.len() <= 1 {
+            // Single-line segment: emit directly.
+            let trimmed = seg.text.trim();
+            if !trimmed.is_empty() {
+                line_segments.push(SegmentData {
+                    text: trimmed.to_string(),
+                    x: seg.x,
+                    y: seg.y,
+                    width: seg.width,
+                    height: seg.height,
+                    font_size: seg.font_size,
+                    is_bold: seg.is_bold,
+                    is_italic: seg.is_italic,
+                    is_monospace: seg.is_monospace,
+                    baseline_y: seg.baseline_y,
+                });
+            }
+        } else {
+            // Multi-line segment: split into one SegmentData per line.
+            // Estimate line height from the segment's total height.
+            let line_height = if lines.len() > 1 {
+                seg.height / lines.len() as f32
+            } else {
+                seg.height
+            };
+            for (line_idx, line_text) in lines.iter().enumerate() {
+                let trimmed = line_text.trim();
+                if trimmed.is_empty() {
+                    continue;
+                }
+                // Estimate Y offset for each sub-line (PDF Y increases upward,
+                // so later lines have lower Y).
+                let sub_y = seg.y + seg.height - (line_idx as f32 + 1.0) * line_height;
+                // Estimate width proportional to text length.
+                let total_chars: usize = lines.iter().map(|l| l.trim().len().max(1)).sum();
+                let sub_width = seg.width * (trimmed.len() as f32 / total_chars as f32);
+                line_segments.push(SegmentData {
+                    text: trimmed.to_string(),
+                    x: seg.x,
+                    y: sub_y,
+                    width: sub_width.max(seg.font_size),
+                    height: line_height,
+                    font_size: seg.font_size,
+                    is_bold: seg.is_bold,
+                    is_italic: seg.is_italic,
+                    is_monospace: seg.is_monospace,
+                    baseline_y: sub_y,
+                });
+            }
+        }
+    }
+
+    if line_segments.is_empty() {
+        return None;
+    }
+
+    // Group segments by Y-position into visual lines, then sort lines top-to-bottom.
+    // Compute a threshold for "same line" grouping.
+    let avg_height = line_segments.iter().map(|s| s.height).sum::<f32>() / line_segments.len() as f32;
+    let y_threshold = (avg_height * 0.5).max(2.0);
+
+    // Sort by Y descending (top of page first in PDF coordinates) then by X.
+    line_segments.sort_by(|a, b| {
+        let y_cmp = b.y.total_cmp(&a.y); // descending Y
+        if y_cmp == std::cmp::Ordering::Equal {
+            a.x.total_cmp(&b.x) // ascending X within same line
+        } else {
+            y_cmp
+        }
+    });
+
+    // Merge segments on the same visual line into single SegmentData entries.
+    // Docling approach: concatenate pre-extracted segment text (NOT re-querying
+    // pdfium, which would pick up rotated sidebar characters). Pdfium already
+    // handles word boundaries within each segment's text.
+    let mut merged: Vec<SegmentData> = Vec::new();
+    let mut i = 0;
+    while i < line_segments.len() {
+        let mut line_text = line_segments[i].text.clone();
+        let mut line_right = line_segments[i].x + line_segments[i].width;
+        let line_y = line_segments[i].y;
+        let first = &line_segments[i];
+        let line_x = first.x;
+        let line_font_size = first.font_size;
+        let line_bold = first.is_bold;
+        let line_italic = first.is_italic;
+        let line_mono = first.is_monospace;
+        let line_height = first.height;
+        let line_baseline = first.baseline_y;
+
+        let mut j = i + 1;
+        while j < line_segments.len() {
+            let dy = (line_segments[j].y - line_y).abs();
+            if dy <= y_threshold {
+                // Same visual line: concatenate with space between segments.
+                let gap = line_segments[j].x - line_right;
+                if gap > line_font_size * 0.3 {
+                    line_text.push(' ');
+                }
+                line_text.push_str(&line_segments[j].text);
+                line_right = line_segments[j].x + line_segments[j].width;
+                j += 1;
+            } else {
+                break;
+            }
+        }
+
+        let width = (line_right - line_x).max(line_font_size);
+        merged.push(SegmentData {
+            text: line_text,
+            x: line_x,
+            y: line_y,
+            width,
+            height: line_height,
+            font_size: line_font_size,
+            is_bold: line_bold,
+            is_italic: line_italic,
+            is_monospace: line_mono,
+            baseline_y: line_baseline,
+        });
+
+        i = j;
+    }
+
+    // Apply ligature repair if needed.
+    if let Some(ref repair_map) = data.ligature_repair_map {
+        for seg in &mut merged {
+            seg.text = super::text_repair::apply_ligature_repairs(&seg.text, repair_map);
+        }
+    }
+
+    if merged.is_empty() { None } else { Some(merged) }
 }
 
 /// Convert pre-extracted `PageTextData` into `CharInfo` values and assemble segments.
@@ -1094,5 +1268,134 @@ mod tests {
                 "Right column should only have R chars"
             );
         }
+    }
+
+    // ── Segment-based assembly tests ──
+
+    fn make_extracted_segment(text: &str, x: f32, y: f32, width: f32, height: f32, font_size: f32) -> ExtractedSegment {
+        ExtractedSegment {
+            text: text.to_string(),
+            x,
+            y,
+            width,
+            height,
+            font_size,
+            is_bold: false,
+            is_italic: false,
+            is_monospace: false,
+            baseline_y: y,
+        }
+    }
+
+    fn make_page_text_data_with_segments(segments: Vec<ExtractedSegment>) -> PageTextData {
+        PageTextData {
+            chars: Vec::new(),
+            full_text: String::new(),
+            ligature_repair_map: None,
+            segments,
+        }
+    }
+
+    #[test]
+    fn test_segments_to_line_segments_empty() {
+        let data = make_page_text_data_with_segments(Vec::new());
+        assert!(segments_to_line_segments(&data, 600.0, None).is_none());
+    }
+
+    #[test]
+    fn test_segments_to_line_segments_single_line() {
+        let segments = vec![make_extracted_segment("Hello world", 50.0, 700.0, 100.0, 12.0, 12.0)];
+        let data = make_page_text_data_with_segments(segments);
+        let result = segments_to_line_segments(&data, 600.0, None).expect("Should produce segments");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].text, "Hello world");
+        assert_eq!(result[0].x, 50.0);
+    }
+
+    #[test]
+    fn test_segments_to_line_segments_multiple_lines() {
+        let segments = vec![
+            make_extracted_segment("First line", 50.0, 700.0, 100.0, 12.0, 12.0),
+            make_extracted_segment("Second line", 50.0, 680.0, 100.0, 12.0, 12.0),
+            make_extracted_segment("Third line", 50.0, 660.0, 100.0, 12.0, 12.0),
+        ];
+        let data = make_page_text_data_with_segments(segments);
+        let result = segments_to_line_segments(&data, 600.0, None).expect("Should produce segments");
+        assert_eq!(result.len(), 3);
+        // Sorted top-to-bottom (highest Y first).
+        assert_eq!(result[0].text, "First line");
+        assert_eq!(result[1].text, "Second line");
+        assert_eq!(result[2].text, "Third line");
+    }
+
+    #[test]
+    fn test_segments_to_line_segments_same_line_merge() {
+        // Two segments at the same Y should merge into one line.
+        let segments = vec![
+            make_extracted_segment("Hello", 50.0, 700.0, 50.0, 12.0, 12.0),
+            make_extracted_segment("world", 120.0, 700.0, 50.0, 12.0, 12.0),
+        ];
+        let data = make_page_text_data_with_segments(segments);
+        let result = segments_to_line_segments(&data, 600.0, None).expect("Should produce segments");
+        assert_eq!(result.len(), 1);
+        assert!(result[0].text.contains("Hello"));
+        assert!(result[0].text.contains("world"));
+    }
+
+    #[test]
+    fn test_segments_to_line_segments_multiline_split() {
+        // A single segment containing a newline should be split.
+        let segments = vec![make_extracted_segment(
+            "Line one\nLine two",
+            50.0,
+            680.0,
+            100.0,
+            24.0,
+            12.0,
+        )];
+        let data = make_page_text_data_with_segments(segments);
+        let result = segments_to_line_segments(&data, 600.0, None).expect("Should produce segments");
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].text, "Line one");
+        assert_eq!(result[1].text, "Line two");
+    }
+
+    #[test]
+    fn test_segments_to_line_segments_filters_sidebar() {
+        // Segment entirely in left margin (x < 5% of 600 = 30) should be filtered.
+        let segments = vec![
+            make_extracted_segment("sidebar", 5.0, 700.0, 20.0, 12.0, 12.0),
+            make_extracted_segment("Main content", 50.0, 700.0, 200.0, 12.0, 12.0),
+        ];
+        let data = make_page_text_data_with_segments(segments);
+        let result = segments_to_line_segments(&data, 600.0, None).expect("Should produce segments");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].text, "Main content");
+    }
+
+    #[test]
+    fn test_segments_to_line_segments_whitespace_only_skipped() {
+        let segments = vec![
+            make_extracted_segment("   ", 50.0, 700.0, 30.0, 12.0, 12.0),
+            make_extracted_segment("Real text", 100.0, 700.0, 80.0, 12.0, 12.0),
+        ];
+        let data = make_page_text_data_with_segments(segments);
+        let result = segments_to_line_segments(&data, 600.0, None).expect("Should produce segments");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].text, "Real text");
+    }
+
+    #[test]
+    fn test_segments_to_line_segments_ligature_repair() {
+        let segments = vec![make_extracted_segment("Hello \u{0C}le", 50.0, 700.0, 100.0, 12.0, 12.0)];
+        let data = PageTextData {
+            chars: Vec::new(),
+            full_text: String::new(),
+            ligature_repair_map: Some(vec![('\u{0C}', "fi")]),
+            segments,
+        };
+        let result = segments_to_line_segments(&data, 600.0, None).expect("Should produce segments");
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].text, "Hello file");
     }
 }

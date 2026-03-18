@@ -201,4 +201,81 @@ mod tests {
         assert!((r.y_min - 0.0).abs() < f32::EPSILON);
         assert!((r.y_max - 10.0).abs() < f32::EPSILON);
     }
+
+    #[test]
+    fn test_width_and_height() {
+        let r = Rect::new(10.0, 30.0, 5.0, 25.0);
+        assert!((r.width() - 20.0).abs() < f32::EPSILON);
+        assert!((r.height() - 20.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_center_x_and_y() {
+        let r = Rect::new(0.0, 10.0, 0.0, 20.0);
+        assert!((r.center_x() - 5.0).abs() < f32::EPSILON);
+        assert!((r.center_y() - 10.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_from_ltrb() {
+        // from_ltrb(left, top, right, bottom) — image coords
+        let r = Rect::from_ltrb(10.0, 80.0, 50.0, 20.0);
+        assert!((r.left - 10.0).abs() < f32::EPSILON);
+        assert!((r.right - 50.0).abs() < f32::EPSILON);
+        assert!((r.y_min - 20.0).abs() < f32::EPSILON);
+        assert!((r.y_max - 80.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_zero_width_rect() {
+        let r = Rect::new(5.0, 5.0, 0.0, 10.0);
+        assert!((r.width() - 0.0).abs() < f32::EPSILON);
+        assert!((r.area() - 0.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_zero_height_rect() {
+        let r = Rect::new(0.0, 10.0, 5.0, 5.0);
+        assert!((r.height() - 0.0).abs() < f32::EPSILON);
+        assert!((r.area() - 0.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_identical_rects_intersection() {
+        let a = Rect::new(0.0, 10.0, 0.0, 10.0);
+        let b = Rect::new(0.0, 10.0, 0.0, 10.0);
+        assert!((a.intersection_area(&b) - 100.0).abs() < f32::EPSILON);
+        assert!((a.intersection_over_self(&b) - 1.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_adjacent_rects_no_intersection() {
+        // Touching at edge (left=10 meets right=10)
+        let a = Rect::new(0.0, 10.0, 0.0, 10.0);
+        let b = Rect::new(10.0, 20.0, 0.0, 10.0);
+        assert!((a.intersection_area(&b) - 0.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_contains_point_just_outside() {
+        let r = Rect::new(0.0, 10.0, 0.0, 10.0);
+        assert!(!r.contains_point(-0.001, 5.0));
+        assert!(!r.contains_point(10.001, 5.0));
+        assert!(!r.contains_point(5.0, -0.001));
+        assert!(!r.contains_point(5.0, 10.001));
+    }
+
+    #[test]
+    fn test_intersection_over_self_no_overlap() {
+        let a = Rect::new(0.0, 5.0, 0.0, 5.0);
+        let b = Rect::new(100.0, 200.0, 100.0, 200.0);
+        assert!((a.intersection_over_self(&b) - 0.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_intersection_area_symmetric() {
+        let a = Rect::new(0.0, 10.0, 0.0, 10.0);
+        let b = Rect::new(5.0, 15.0, 5.0, 15.0);
+        assert!((a.intersection_area(&b) - b.intersection_area(&a)).abs() < f32::EPSILON);
+    }
 }

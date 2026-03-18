@@ -396,4 +396,128 @@ mod tests {
         let page = from_segments(segments, 612.0, 792.0, 1);
         assert_eq!(page.elements.len(), 0);
     }
+
+    #[test]
+    fn test_map_content_role_all_variants() {
+        assert_eq!(
+            map_content_role(&ContentRole::Heading { level: 3 }),
+            (SemanticRole::Heading { level: 3 }, None)
+        );
+        assert_eq!(
+            map_content_role(&ContentRole::Paragraph),
+            (SemanticRole::Paragraph, None)
+        );
+        assert_eq!(
+            map_content_role(&ContentRole::ListItem {
+                label: Some("a.".to_string())
+            }),
+            (SemanticRole::ListItem, Some("a.".to_string()))
+        );
+        assert_eq!(
+            map_content_role(&ContentRole::TableCell {
+                row: 0,
+                col: 0,
+                is_header: false,
+            }),
+            (SemanticRole::TableCell, None)
+        );
+        assert_eq!(
+            map_content_role(&ContentRole::Figure { alt_text: None }),
+            (SemanticRole::Figure, None)
+        );
+        assert_eq!(map_content_role(&ContentRole::Caption), (SemanticRole::Caption, None));
+        assert_eq!(map_content_role(&ContentRole::Code), (SemanticRole::Code, None));
+        assert_eq!(
+            map_content_role(&ContentRole::BlockQuote),
+            (SemanticRole::BlockQuote, None)
+        );
+        assert_eq!(
+            map_content_role(&ContentRole::Link { url: None }),
+            (SemanticRole::Paragraph, None)
+        );
+        assert_eq!(
+            map_content_role(&ContentRole::Other("Formula".to_string())),
+            (SemanticRole::Formula, None)
+        );
+        assert_eq!(
+            map_content_role(&ContentRole::Other("Unknown".to_string())),
+            (SemanticRole::Other, None)
+        );
+    }
+
+    #[test]
+    fn test_from_segments_no_bbox_when_all_zero() {
+        let segments = vec![SegmentData {
+            text: "No position".to_string(),
+            x: 0.0,
+            y: 0.0,
+            width: 0.0,
+            height: 0.0,
+            font_size: 12.0,
+            is_bold: false,
+            is_italic: false,
+            is_monospace: false,
+            baseline_y: 0.0,
+        }];
+        let page = from_segments(segments, 612.0, 792.0, 1);
+        assert_eq!(page.elements.len(), 1);
+        assert!(page.elements[0].bbox.is_none());
+    }
+
+    #[test]
+    fn test_from_segments_preserves_style_flags() {
+        let segments = vec![SegmentData {
+            text: "Styled".to_string(),
+            x: 10.0,
+            y: 20.0,
+            width: 50.0,
+            height: 12.0,
+            font_size: 14.0,
+            is_bold: true,
+            is_italic: true,
+            is_monospace: true,
+            baseline_y: 20.0,
+        }];
+        let page = from_segments(segments, 612.0, 792.0, 1);
+        let elem = &page.elements[0];
+        assert!(elem.is_bold);
+        assert!(elem.is_italic);
+        assert!(elem.is_monospace);
+        assert_eq!(elem.font_size, Some(14.0));
+    }
+
+    #[test]
+    fn test_from_segments_page_metadata() {
+        let page = from_segments(Vec::new(), 400.0, 600.0, 5);
+        assert_eq!(page.page_number, 5);
+        assert!((page.page_width - 400.0).abs() < f32::EPSILON);
+        assert!((page.page_height - 600.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_from_structure_tree_page_metadata() {
+        let page = from_structure_tree(&[], 500.0, 700.0, 3);
+        assert_eq!(page.page_number, 3);
+        assert_eq!(page.source, ExtractionSource::StructureTree);
+        assert!(page.elements.is_empty());
+    }
+
+    #[test]
+    fn test_from_segments_element_level_is_line() {
+        let segments = vec![SegmentData {
+            text: "A line".to_string(),
+            x: 10.0,
+            y: 100.0,
+            width: 80.0,
+            height: 12.0,
+            font_size: 12.0,
+            is_bold: false,
+            is_italic: false,
+            is_monospace: false,
+            baseline_y: 100.0,
+        }];
+        let page = from_segments(segments, 612.0, 792.0, 1);
+        assert_eq!(page.elements[0].level, ElementLevel::Line);
+        assert!(page.elements[0].semantic_role.is_none());
+    }
 }

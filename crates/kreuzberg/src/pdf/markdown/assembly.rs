@@ -412,4 +412,93 @@ mod tests {
         let t = result.find("| T |").unwrap();
         assert!(t > m2);
     }
+
+    #[test]
+    fn test_list_items_single_newline_between() {
+        let mut para1 = make_paragraph("- Item 1", None);
+        para1.is_list_item = true;
+        let mut para2 = make_paragraph("- Item 2", None);
+        para2.is_list_item = true;
+        let pages = vec![vec![para1, para2]];
+        let result = assemble_markdown_with_tables(pages, &[], None);
+        // List items should be separated by single newline, not double
+        assert!(result.contains("- Item 1\n- Item 2"));
+    }
+
+    #[test]
+    fn test_list_to_non_list_double_newline() {
+        let mut para1 = make_paragraph("- Item", None);
+        para1.is_list_item = true;
+        let para2 = make_paragraph("Body text", None);
+        let pages = vec![vec![para1, para2]];
+        let result = assemble_markdown_with_tables(pages, &[], None);
+        assert!(result.contains("- Item\n\nBody text"));
+    }
+
+    #[test]
+    fn test_tables_beyond_page_count_appended() {
+        let pages = vec![vec![make_paragraph("Page 1", None)]];
+        // Table on page 5 (beyond available pages)
+        let tables = vec![crate::types::Table {
+            cells: vec![],
+            markdown: "| Extra |".to_string(),
+            page_number: 5,
+            bounding_box: None,
+        }];
+        let result = assemble_markdown_with_tables(pages, &tables, None);
+        assert!(result.contains("Page 1"));
+        assert!(result.contains("| Extra |"));
+    }
+
+    #[test]
+    fn test_empty_table_markdown_not_rendered() {
+        let pages = vec![vec![make_paragraph("Text", None)]];
+        let tables = vec![crate::types::Table {
+            cells: vec![],
+            markdown: "   ".to_string(), // Whitespace-only markdown
+            page_number: 1,
+            bounding_box: None,
+        }];
+        let result = assemble_markdown_with_tables(pages, &tables, None);
+        // Table with whitespace-only markdown should be skipped
+        assert_eq!(result.trim(), "Text");
+    }
+
+    #[test]
+    fn test_page_number_zero_treated_as_page_one() {
+        let pages = vec![vec![make_paragraph("Content", None)]];
+        let tables = vec![crate::types::Table {
+            cells: vec![],
+            markdown: "| T |".to_string(),
+            page_number: 0, // 0 should be treated as page 0 index
+            bounding_box: None,
+        }];
+        let result = assemble_markdown_with_tables(pages, &tables, None);
+        assert!(result.contains("| T |"));
+    }
+
+    #[test]
+    fn test_caption_skipped_in_main_flow() {
+        let para1 = make_paragraph("Main text", None);
+        let mut caption = make_paragraph("Caption text", None);
+        caption.caption_for = Some(0); // Caption for para at index 0
+        let pages = vec![vec![para1, caption]];
+        let result = assemble_markdown_with_tables(pages, &[], None);
+        // Caption should be rendered after its parent, in italics
+        assert!(result.contains("Main text"));
+        assert!(result.contains("*Caption text*"));
+    }
+
+    #[test]
+    fn test_multiple_pages_with_page_markers() {
+        let pages = vec![
+            vec![make_paragraph("A", None)],
+            vec![make_paragraph("B", None)],
+            vec![make_paragraph("C", None)],
+        ];
+        let result = assemble_markdown_with_tables(pages, &[], Some("[P{page_num}]"));
+        assert!(result.contains("[P1]"));
+        assert!(result.contains("[P2]"));
+        assert!(result.contains("[P3]"));
+    }
 }

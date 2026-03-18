@@ -212,6 +212,12 @@ fn group_words_to_paragraphs(elements: &[ContentElement]) -> Vec<PdfParagraph> {
             let mut sorted = line_heights.to_vec();
             sorted.sort_by(|a, b| a.total_cmp(b));
             sorted[sorted.len() / 2] * 1.5
+        } else if gaps.len() == 1 {
+            // With only one inter-line gap we cannot compute a meaningful
+            // median to distinguish normal line spacing from paragraph breaks.
+            // Fall back to a line-height-based heuristic: a gap larger than
+            // 1.5× the median element height signals a paragraph break.
+            median_height * 1.5
         } else {
             gaps.sort_by(|a, b| a.total_cmp(b));
             let median_gap = gaps[gaps.len() / 2];

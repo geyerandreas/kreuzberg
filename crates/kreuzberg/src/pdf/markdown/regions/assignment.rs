@@ -319,3 +319,189 @@ fn compute_refined_hints(
 
     refined
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::pdf::hierarchy::SegmentData;
+    use crate::pdf::markdown::types::{LayoutHint, LayoutHintClass};
+
+    fn make_seg(text: &str, x: f32, y: f32, width: f32, height: f32) -> SegmentData {
+        SegmentData {
+            text: text.to_string(),
+            x,
+            y,
+            width,
+            height,
+            font_size: 12.0,
+            is_bold: false,
+            is_italic: false,
+            is_monospace: false,
+            baseline_y: y,
+        }
+    }
+
+    fn make_hint(class: LayoutHintClass, confidence: f32, left: f32, bottom: f32, right: f32, top: f32) -> LayoutHint {
+        LayoutHint {
+            class,
+            confidence,
+            left,
+            bottom,
+            right,
+            top,
+        }
+    }
+
+    #[test]
+    fn test_segment_inside_region_assigned() {
+        let segments = vec![make_seg("Hello", 50.0, 700.0, 100.0, 12.0)];
+        let hints = vec![make_hint(LayoutHintClass::Text, 0.9, 40.0, 690.0, 200.0, 720.0)];
+        let (regions, unassigned) = assign_segments_to_regions(&segments, &hints, 0.5, &[], &[]);
+        assert_eq!(regions.len(), 1);
+        assert_eq!(regions[0].segment_indices, vec![0]);
+        assert!(unassigned.is_empty());
+    }
+
+    #[test]
+    fn test_segment_outside_all_regions_unassigned() {
+        let segments = vec![make_seg("Hello", 500.0, 100.0, 50.0, 12.0)];
+        let hints = vec![make_hint(LayoutHintClass::Text, 0.9, 40.0, 690.0, 200.0, 720.0)];
+        let (regions, unassigned) = assign_segments_to_regions(&segments, &hints, 0.5, &[], &[]);
+        assert!(regions[0].segment_indices.is_empty());
+        assert_eq!(unassigned, vec![0]);
+    }
+
+    #[test]
+    fn test_whitespace_only_segments_skipped() {
+        let segments = vec![
+            make_seg("   ", 50.0, 700.0, 100.0, 12.0),
+            make_seg("Real", 50.0, 680.0, 80.0, 12.0),
+        ];
+        let hints = vec![make_hint(LayoutHintClass::Text, 0.9, 0.0, 0.0, 600.0, 800.0)];
+        let (regions, unassigned) = assign_segments_to_regions(&segments, &hints, 0.5, &[], &[]);
+        // Only segment index 1 should be assigned; segment 0 (whitespace) is skipped entirely
+        assert_eq!(regions[0].segment_indices, vec![1]);
+        assert!(unassigned.is_empty());
+    }
+
+    #[test]
+    fn test_table_hints_excluded_from_regions() {
+        let segments = vec![make_seg("Hello", 50.0, 700.0, 100.0, 12.0)];
+        let hints = vec![make_hint(LayoutHintClass::Table, 0.9, 0.0, 0.0, 600.0, 800.0)];
+        let (regions, unassigned) = assign_segments_to_regions(&segments, &hints, 0.5, &[], &[]);
+        // Table hints are excluded from region assignment
+        assert!(regions.is_empty());
+        assert_eq!(unassigned, vec![0]);
+    }
+
+    #[test]
+    fn test_picture_hints_excluded_from_regions() {
+        let segments = vec![make_seg("Hello", 50.0, 700.0, 100.0, 12.0)];
+        let hints = vec![make_hint(LayoutHintClass::Picture, 0.9, 0.0, 0.0, 600.0, 800.0)];
+        let (regions, unassigned) = assign_segments_to_regions(&segments, &hints, 0.5, &[], &[]);
+        assert!(regions.is_empty());
+        // Segment inside a Picture region is suppressed (not unassigned either)
+        assert!(unassigned.is_empty());
+    }
+
+    #[test]
+    fn test_confidence_filtering() {
+        let segments = vec![make_seg("Hello", 50.0, 700.0, 100.0, 12.0)];
+        let hints = vec![make_hint(LayoutHintClass::Text, 0.3, 0.0, 0.0, 600.0, 800.0)];
+        // min_confidence = 0.5, hint confidence = 0.3 → filtered out
+        let (regions, unassigned) = assign_segments_to_regions(&segments, &hints, 0.5, &[], &[]);
+        assert!(regions.is_empty());
+        assert_eq!(unassigned, vec![0]);
+    }
+
+    #[test]
+    fn test_overlapping_regions_best_ios_wins() {
+        let segments = vec![make_seg("Hello", 50.0, 700.0, 100.0, 12.0)];
+        // Region A: large, fully containing the segment
+        // Region B: smaller, also containing the segment but tighter → higher IoS → wins tie
+        let hints = vec![
+            make_hint(LayoutHintClass::Text, 0.9, 0.0, 0.0, 600.0, 800.0),
+            make_hint(LayoutHintClass::SectionHeader, 0.9, 40.0, 695.0, 200.0, 720.0),
+        ];
+        let (regions, unassigned) = assign_segments_to_regions(&segments, &hints, 0.5, &[], &[]);
+        assert_eq!(regions.len(), 2);
+        // Both have IoS = 1.0, tie broken by smallest area → region 1 (smaller)
+        assert!(regions[1].segment_indices.contains(&0) || regions[0].segment_indices.contains(&0));
+        assert!(unassigned.is_empty());
+    }
+
+    #[test]
+    fn test_segment_suppressed_by_extracted_table_bbox() {
+        let segments = vec![make_seg("Table text", 50.0, 700.0, 100.0, 12.0)];
+        let hints = vec![make_hint(LayoutHintClass::Text, 0.9, 0.0, 0.0, 600.0, 800.0)];
+        // Table bbox fully containing the segment → suppressed at >=50% IoS
+        let table_bboxes = vec![crate::types::BoundingBox {
+            x0: 0.0,
+            y0: 0.0,
+            x1: 600.0,
+            y1: 800.0,
+        }];
+        let (regions, unassigned) = assign_segments_to_regions(&segments, &hints, 0.5, &table_bboxes, &[]);
+        // Segment should be suppressed (not assigned, not in unassigned)
+        assert!(regions[0].segment_indices.is_empty());
+        assert!(unassigned.is_empty());
+    }
+
+    #[test]
+    fn test_no_hints_returns_all_unassigned() {
+        let segments = vec![
+            make_seg("A", 50.0, 700.0, 50.0, 12.0),
+            make_seg("B", 50.0, 680.0, 50.0, 12.0),
+        ];
+        let (regions, unassigned) = assign_segments_to_regions(&segments, &[], 0.5, &[], &[]);
+        assert!(regions.is_empty());
+        assert_eq!(unassigned, vec![0, 1]);
+    }
+
+    #[test]
+    fn test_empty_segments_returns_empty() {
+        let hints = vec![make_hint(LayoutHintClass::Text, 0.9, 0.0, 0.0, 600.0, 800.0)];
+        let (regions, unassigned) = assign_segments_to_regions(&[], &hints, 0.5, &[], &[]);
+        assert_eq!(regions.len(), 1);
+        assert!(regions[0].segment_indices.is_empty());
+        assert!(unassigned.is_empty());
+    }
+
+    #[test]
+    fn test_multiple_segments_distributed_across_regions() {
+        let segments = vec![
+            make_seg("Top", 50.0, 700.0, 100.0, 12.0),
+            make_seg("Bottom", 50.0, 100.0, 100.0, 12.0),
+        ];
+        let hints = vec![
+            make_hint(LayoutHintClass::SectionHeader, 0.9, 0.0, 690.0, 300.0, 720.0),
+            make_hint(LayoutHintClass::Text, 0.9, 0.0, 90.0, 300.0, 120.0),
+        ];
+        let (regions, unassigned) = assign_segments_to_regions(&segments, &hints, 0.5, &[], &[]);
+        assert_eq!(regions[0].segment_indices, vec![0]);
+        assert_eq!(regions[1].segment_indices, vec![1]);
+        assert!(unassigned.is_empty());
+    }
+
+    #[test]
+    fn test_refined_assignment_returns_results() {
+        let segments = vec![
+            make_seg("A", 50.0, 700.0, 100.0, 12.0),
+            make_seg("B", 50.0, 680.0, 100.0, 12.0),
+        ];
+        let hints = vec![make_hint(LayoutHintClass::Text, 0.9, 40.0, 670.0, 200.0, 720.0)];
+        let (regions, unassigned) = assign_segments_to_regions_refined(&segments, &hints, 0.5, &[], &[]);
+        // Both should be assigned to the region
+        assert!(!regions.is_empty());
+        let total_assigned: usize = regions.iter().map(|r| r.segment_indices.len()).sum();
+        assert_eq!(total_assigned + unassigned.len(), 2);
+    }
+
+    #[test]
+    fn test_refined_with_no_regions_returns_all_unassigned() {
+        let segments = vec![make_seg("A", 50.0, 700.0, 50.0, 12.0)];
+        let (regions, unassigned) = assign_segments_to_regions_refined(&segments, &[], 0.5, &[], &[]);
+        assert!(regions.is_empty());
+        assert_eq!(unassigned, vec![0]);
+    }
+}

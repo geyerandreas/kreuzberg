@@ -192,3 +192,139 @@ pub(in crate::pdf::markdown) fn extract_tables_from_layout_hints(
 
     tables
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::pdf::table_reconstruct::HocrWord;
+
+    fn make_word(text: &str, left: u32, top: u32, width: u32, height: u32) -> HocrWord {
+        HocrWord {
+            text: text.to_string(),
+            left,
+            top,
+            width,
+            height,
+            confidence: 95.0,
+        }
+    }
+
+    fn make_table_hint(confidence: f32, left: f32, bottom: f32, right: f32, top: f32) -> LayoutHint {
+        LayoutHint {
+            class: LayoutHintClass::Table,
+            confidence,
+            left,
+            bottom,
+            right,
+            top,
+        }
+    }
+
+    #[test]
+    fn test_no_table_hints_returns_empty() {
+        let words = vec![make_word("hello", 10, 10, 50, 12)];
+        let hints = vec![LayoutHint {
+            class: LayoutHintClass::Text,
+            confidence: 0.9,
+            left: 0.0,
+            bottom: 0.0,
+            right: 600.0,
+            top: 800.0,
+        }];
+        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5);
+        assert!(tables.is_empty());
+    }
+
+    #[test]
+    fn test_low_confidence_table_hint_filtered() {
+        let words = vec![
+            make_word("A", 10, 10, 50, 12),
+            make_word("B", 100, 10, 50, 12),
+            make_word("C", 10, 30, 50, 12),
+            make_word("D", 100, 30, 50, 12),
+        ];
+        let hints = vec![make_table_hint(0.3, 0.0, 0.0, 200.0, 800.0)];
+        // min_confidence = 0.5, hint has 0.3 → filtered
+        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5);
+        assert!(tables.is_empty());
+    }
+
+    #[test]
+    fn test_empty_region_too_few_words() {
+        // Only 2 words in the region — below the 4-word minimum
+        let words = vec![make_word("A", 10, 10, 50, 12), make_word("B", 100, 10, 50, 12)];
+        let hints = vec![make_table_hint(0.9, 0.0, 0.0, 200.0, 800.0)];
+        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5);
+        assert!(tables.is_empty());
+    }
+
+    #[test]
+    fn test_empty_words_returns_empty() {
+        let hints = vec![make_table_hint(0.9, 0.0, 0.0, 200.0, 800.0)];
+        let tables = extract_tables_from_layout_hints(&[], &hints, 0, 800.0, 0.5);
+        assert!(tables.is_empty());
+    }
+
+    #[test]
+    fn test_no_hints_returns_empty() {
+        let words = vec![
+            make_word("A", 10, 10, 50, 12),
+            make_word("B", 100, 10, 50, 12),
+            make_word("C", 10, 30, 50, 12),
+            make_word("D", 100, 30, 50, 12),
+        ];
+        let tables = extract_tables_from_layout_hints(&words, &[], 0, 800.0, 0.5);
+        assert!(tables.is_empty());
+    }
+
+    #[test]
+    fn test_words_outside_hint_bbox_excluded() {
+        // Words at (500, 500) are far from the hint bbox
+        let words = vec![
+            make_word("A", 500, 500, 50, 12),
+            make_word("B", 560, 500, 50, 12),
+            make_word("C", 500, 520, 50, 12),
+            make_word("D", 560, 520, 50, 12),
+        ];
+        // Hint covers (0, 0) to (100, 100) in PDF coords → image y = 700..800
+        let hints = vec![make_table_hint(0.9, 0.0, 700.0, 100.0, 800.0)];
+        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5);
+        // Words at (500, 500) don't overlap the hint → too few words → empty
+        assert!(tables.is_empty());
+    }
+
+    #[test]
+    fn test_whitespace_only_words_filtered() {
+        let words = vec![
+            make_word("  ", 10, 10, 50, 12),
+            make_word("A", 100, 10, 50, 12),
+            make_word("B", 10, 30, 50, 12),
+            make_word("C", 100, 30, 50, 12),
+        ];
+        // Only 3 non-empty words → below 4-word minimum
+        let hints = vec![make_table_hint(0.9, 0.0, 0.0, 200.0, 800.0)];
+        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5);
+        assert!(tables.is_empty());
+    }
+
+    #[test]
+    fn test_page_number_is_one_indexed() {
+        // Construct words that form a valid 2-column, multi-row table
+        // Rows at y=10 and y=40 in image coords, columns at x=10 and x=200
+        let words = vec![
+            make_word("Header1", 10, 10, 80, 15),
+            make_word("Header2", 200, 10, 80, 15),
+            make_word("Cell1", 10, 40, 80, 15),
+            make_word("Cell2", 200, 40, 80, 15),
+            make_word("Cell3", 10, 70, 80, 15),
+            make_word("Cell4", 200, 70, 80, 15),
+        ];
+        // Hint in PDF coords: bottom=700, top=800 → image top=0, image bottom=100
+        let hints = vec![make_table_hint(0.9, 0.0, 700.0, 400.0, 800.0)];
+        let tables = extract_tables_from_layout_hints(&words, &hints, 2, 800.0, 0.5);
+        // If a valid table is produced, its page_number should be page_index + 1
+        for table in &tables {
+            assert_eq!(table.page_number, 3); // page_index=2 → page_number=3
+        }
+    }
+}

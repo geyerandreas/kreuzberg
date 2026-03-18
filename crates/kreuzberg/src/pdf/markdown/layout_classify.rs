@@ -682,4 +682,211 @@ mod tests {
         assert!(paragraphs[0].is_page_furniture);
         assert_eq!(paragraphs[0].layout_class, Some(LayoutHintClass::PageHeader));
     }
+
+    // ── is_separator_text tests ──
+
+    #[test]
+    fn test_separator_pure_dashes() {
+        assert!(is_separator_text("----------"));
+    }
+
+    #[test]
+    fn test_separator_underscores() {
+        assert!(is_separator_text("___________"));
+    }
+
+    #[test]
+    fn test_separator_mixed_with_few_alnum() {
+        // < 15% alphanumeric among filler chars
+        assert!(is_separator_text("------- M ---------"));
+    }
+
+    #[test]
+    fn test_separator_empty_string() {
+        assert!(!is_separator_text(""));
+        assert!(!is_separator_text("   "));
+    }
+
+    #[test]
+    fn test_separator_normal_text() {
+        assert!(!is_separator_text("Hello World"));
+    }
+
+    #[test]
+    fn test_separator_short_symbols() {
+        // Short symbol strings are separators (no alphanumeric)
+        assert!(is_separator_text("---"));
+    }
+
+    // ── infer_heading_level_from_text additional tests ──
+
+    #[test]
+    fn test_infer_heading_level_alpha_prefix() {
+        // "A. Proofs" → alphabetic prefix → H2
+        assert_eq!(
+            infer_heading_level_from_text("A. Proofs", LayoutHintClass::SectionHeader),
+            2
+        );
+    }
+
+    #[test]
+    fn test_infer_heading_level_alpha_subsection() {
+        // "A.1 Details" → 1 effective dot → H3
+        assert_eq!(
+            infer_heading_level_from_text("A.1 Details", LayoutHintClass::SectionHeader),
+            3
+        );
+    }
+
+    #[test]
+    fn test_infer_heading_level_deep_subsection() {
+        // "1.2.3.4 Very deep" → 3 dots → H4 (capped at 4)
+        assert_eq!(
+            infer_heading_level_from_text("1.2.3.4 Very deep", LayoutHintClass::SectionHeader),
+            4
+        );
+    }
+
+    // ── apply_hint_to_paragraph tests ──
+
+    #[test]
+    fn test_code_override() {
+        let mut paragraphs = vec![make_para(50.0, 600.0, 300.0, 16.0)];
+        paragraphs[0].heading_level = Some(2);
+        let hints = vec![make_hint(LayoutHintClass::Code, 0.9, 40.0, 598.0, 400.0, 620.0)];
+        apply_layout_overrides(&mut paragraphs, &hints, 0.5, 0.5, None);
+        assert!(paragraphs[0].is_code_block);
+        assert_eq!(paragraphs[0].heading_level, None); // Heading cleared
+    }
+
+    #[test]
+    fn test_formula_override() {
+        let mut paragraphs = vec![make_para(50.0, 600.0, 300.0, 16.0)];
+        let hints = vec![make_hint(LayoutHintClass::Formula, 0.9, 40.0, 598.0, 400.0, 620.0)];
+        apply_layout_overrides(&mut paragraphs, &hints, 0.5, 0.5, None);
+        assert!(paragraphs[0].is_formula);
+    }
+
+    #[test]
+    fn test_list_item_override() {
+        let mut paragraphs = vec![make_para(50.0, 600.0, 300.0, 16.0)];
+        let hints = vec![make_hint(LayoutHintClass::ListItem, 0.9, 40.0, 598.0, 400.0, 620.0)];
+        apply_layout_overrides(&mut paragraphs, &hints, 0.5, 0.5, None);
+        assert!(paragraphs[0].is_list_item);
+    }
+
+    #[test]
+    fn test_body_text_demotes_heading() {
+        let mut paragraphs = vec![make_para(50.0, 600.0, 300.0, 16.0)];
+        paragraphs[0].heading_level = Some(2);
+        let hints = vec![make_hint(LayoutHintClass::Text, 0.9, 40.0, 598.0, 400.0, 620.0)];
+        apply_layout_overrides(&mut paragraphs, &hints, 0.5, 0.5, None);
+        assert_eq!(paragraphs[0].heading_level, None);
+    }
+
+    #[test]
+    fn test_body_text_low_confidence_preserves_heading() {
+        let mut paragraphs = vec![make_para(50.0, 600.0, 300.0, 16.0)];
+        paragraphs[0].heading_level = Some(2);
+        let hints = vec![make_hint(LayoutHintClass::Text, 0.6, 40.0, 598.0, 400.0, 620.0)];
+        apply_layout_overrides(&mut paragraphs, &hints, 0.5, 0.5, None);
+        assert_eq!(paragraphs[0].heading_level, Some(2)); // Preserved, confidence < 0.7
+    }
+
+    #[test]
+    fn test_page_footer_override() {
+        let mut paragraphs = vec![make_para(50.0, 600.0, 300.0, 16.0)];
+        let hints = vec![make_hint(LayoutHintClass::PageFooter, 0.9, 40.0, 598.0, 400.0, 620.0)];
+        apply_layout_overrides(&mut paragraphs, &hints, 0.5, 0.5, None);
+        assert!(paragraphs[0].is_page_furniture);
+    }
+
+    #[test]
+    fn test_separator_text_not_promoted_to_heading() {
+        // A line of dashes should not become a heading even if layout says SectionHeader
+        let mut para = PdfParagraph {
+            lines: vec![make_line(vec![make_segment("----------", 50.0, 600.0, 300.0, 16.0)])],
+            dominant_font_size: 12.0,
+            heading_level: None,
+            is_bold: false,
+            is_list_item: false,
+            is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
+            caption_for: None,
+            block_bbox: None,
+        };
+        let hint = make_hint(LayoutHintClass::SectionHeader, 0.9, 40.0, 598.0, 400.0, 620.0);
+        apply_hint_to_paragraph(&mut para, &hint, None);
+        assert_eq!(para.heading_level, None); // Separator not promoted
+    }
+
+    #[test]
+    fn test_compute_paragraph_bbox_no_positional_data() {
+        // Segments with all-zero positions should return None
+        let para = PdfParagraph {
+            lines: vec![make_line(vec![make_segment("text", 0.0, 0.0, 0.0, 0.0)])],
+            dominant_font_size: 12.0,
+            heading_level: None,
+            is_bold: false,
+            is_list_item: false,
+            is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
+            caption_for: None,
+            block_bbox: None,
+        };
+        assert!(compute_paragraph_bbox(&para).is_none());
+    }
+
+    #[test]
+    fn test_compute_paragraph_bbox_with_block_bbox() {
+        let para = PdfParagraph {
+            lines: vec![make_line(vec![make_segment("text", 0.0, 0.0, 0.0, 0.0)])],
+            dominant_font_size: 12.0,
+            heading_level: None,
+            is_bold: false,
+            is_list_item: false,
+            is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
+            caption_for: None,
+            block_bbox: Some((50.0, 100.0, 400.0, 120.0)),
+        };
+        let bbox = compute_paragraph_bbox(&para).unwrap();
+        assert!((bbox.left - 50.0).abs() < f32::EPSILON);
+        assert!((bbox.y_min - 100.0).abs() < f32::EPSILON);
+        assert!((bbox.right - 400.0).abs() < f32::EPSILON);
+        assert!((bbox.y_max - 120.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn test_compute_paragraph_bbox_from_segments() {
+        let para = PdfParagraph {
+            lines: vec![
+                make_line_at(vec![make_segment("A", 50.0, 700.0, 100.0, 12.0)], 700.0),
+                make_line_at(vec![make_segment("B", 60.0, 680.0, 120.0, 14.0)], 680.0),
+            ],
+            dominant_font_size: 12.0,
+            heading_level: None,
+            is_bold: false,
+            is_list_item: false,
+            is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
+            caption_for: None,
+            block_bbox: None,
+        };
+        let bbox = compute_paragraph_bbox(&para).unwrap();
+        assert!((bbox.left - 50.0).abs() < f32::EPSILON);
+        assert!((bbox.y_min - 680.0).abs() < f32::EPSILON);
+        // right = max(50+100, 60+120) = max(150, 180) = 180
+        assert!((bbox.right - 180.0).abs() < f32::EPSILON);
+        // top = max(700+12, 680+14) = max(712, 694) = 712
+        assert!((bbox.y_max - 712.0).abs() < f32::EPSILON);
+    }
 }
