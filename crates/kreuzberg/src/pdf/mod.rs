@@ -65,6 +65,8 @@ pub mod table;
 pub mod table_reconstruct;
 #[cfg(feature = "pdf")]
 pub mod text;
+#[cfg(feature = "pdf")]
+pub(crate) mod text_data;
 // Stub for when pdf-oxide is disabled — provides set/get for thread-local path
 #[cfg(all(feature = "pdf", not(feature = "pdf-oxide")))]
 #[allow(dead_code)]

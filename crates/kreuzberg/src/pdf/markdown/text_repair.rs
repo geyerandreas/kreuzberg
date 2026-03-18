@@ -105,6 +105,53 @@ pub(super) fn build_ligature_repair_map(page: &PdfPage) -> Option<Vec<(char, &'s
     if repair_map.is_empty() { None } else { Some(repair_map) }
 }
 
+/// Build a ligature repair map from pre-extracted character data (PageTextData DTO).
+///
+/// Same logic as `build_ligature_repair_map` but operates on `ExtractedChar` instead of
+/// calling pdfium directly. Used in the single-pass extraction path.
+#[cfg(feature = "pdf")]
+#[allow(dead_code)] // Will be wired up when pipeline.rs uses PageTextData directly
+pub(super) fn build_ligature_repair_map_from_chars(
+    chars: &[crate::pdf::text_data::ExtractedChar],
+) -> Option<Vec<(char, &'static str)>> {
+    let mut repair_map: Vec<(char, &'static str)> = Vec::new();
+
+    for ec in chars {
+        if ec.is_generated || !ec.has_map_error || ec.is_symbolic {
+            continue;
+        }
+
+        let mapped_char = ec.ch;
+        if repair_map.iter().any(|(c, _)| *c == mapped_char) {
+            continue;
+        }
+
+        let unicode_val = mapped_char as u32;
+        let ligature = match unicode_val {
+            0x0B => "ff",
+            0x0C => "fi",
+            0x0D => "fl",
+            0x0E => "ffi",
+            0x0F => "ffl",
+            0x01 => "fi",
+            0x02 => "fl",
+            0x03 => "ff",
+            0x04 => "ffi",
+            0x05 => "ffl",
+            0x21 => "fi",
+            0x22 => "ff",
+            0x23 => "fl",
+            0x24 => "ffi",
+            0x25 => "ffl",
+            _ => continue,
+        };
+
+        repair_map.push((mapped_char, ligature));
+    }
+
+    if repair_map.is_empty() { None } else { Some(repair_map) }
+}
+
 /// Apply ligature repairs to a text string using a page-specific repair map.
 ///
 /// After replacing ligature characters, collapses spurious spaces that result
