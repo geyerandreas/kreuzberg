@@ -175,6 +175,7 @@ fn extract_heuristic_segments(
     heuristic_pages: &[usize],
     top_margin: Option<f32>,
     bottom_margin: Option<f32>,
+    has_layout_hints: bool,
 ) -> (Vec<Vec<SegmentData>>, Vec<ImagePosition>) {
     let stage1_start = std::time::Instant::now();
     let mut all_page_segments: Vec<Vec<SegmentData>> = vec![Vec::new(); page_count as usize];
@@ -202,18 +203,7 @@ fn extract_heuristic_segments(
             );
         }
 
-        // Filter out segments in page margins (headers/footers/page numbers)
-        let page_height = page.height().value;
-        let top_frac = top_margin.unwrap_or(PAGE_TOP_MARGIN_FRACTION).clamp(0.0, 0.5);
-        let bottom_frac = bottom_margin.unwrap_or(PAGE_BOTTOM_MARGIN_FRACTION).clamp(0.0, 0.5);
-        let top_cutoff = page_height * (1.0 - top_frac);
-        let bottom_cutoff = page_height * bottom_frac;
-
-        // Filter tiny text first (always applied).
-        // If font-size filtering removes ALL text content, fall back to unfiltered
-        // segments — some PDFs report unscaled font_size=1 when the actual rendered
-        // size comes from the font matrix, so the filter would incorrectly discard
-        // all content.
+        // Filter tiny text (always applied).
         let font_filtered: Vec<SegmentData> = segments
             .iter()
             .filter(|s| s.font_size >= MIN_FONT_SIZE)
@@ -225,37 +215,47 @@ fn extract_heuristic_segments(
             segments
         };
 
-        let has_content = font_filtered.iter().any(|s| !s.text.trim().is_empty());
+        // When layout hints are available, skip geometric margin filtering and
+        // standalone page number removal. The layout model handles PageHeader/
+        // PageFooter classification more accurately than hard margin cutoffs.
+        // Docling also relies solely on the model for header/footer detection.
+        let mut filtered: Vec<SegmentData> = if has_layout_hints {
+            font_filtered
+        } else {
+            // No layout model — use geometric margin filtering as fallback.
+            let page_height = page.height().value;
+            let top_frac = top_margin.unwrap_or(PAGE_TOP_MARGIN_FRACTION).clamp(0.0, 0.5);
+            let bottom_frac = bottom_margin.unwrap_or(PAGE_BOTTOM_MARGIN_FRACTION).clamp(0.0, 0.5);
+            let top_cutoff = page_height * (1.0 - top_frac);
+            let bottom_cutoff = page_height * bottom_frac;
 
-        // Apply margin filtering to remove headers/footers/page numbers.
-        // If margin filtering removes ALL content, fall back to unfiltered
-        // segments — this handles PDFs where pdfium reports baseline_y values
-        // that fall outside the expected margin bands.
-        let mut filtered: Vec<SegmentData> = if has_content {
-            let margin_filtered: Vec<SegmentData> = font_filtered
-                .iter()
-                .filter(|s| {
-                    if s.baseline_y == 0.0 {
-                        return true;
-                    }
-                    s.baseline_y <= top_cutoff && s.baseline_y >= bottom_cutoff
-                })
-                .cloned()
-                .collect();
+            let has_content = font_filtered.iter().any(|s| !s.text.trim().is_empty());
 
-            if margin_filtered.iter().any(|s| !s.text.trim().is_empty()) {
-                margin_filtered
+            if has_content {
+                let mf: Vec<SegmentData> = font_filtered
+                    .iter()
+                    .filter(|s| {
+                        if s.baseline_y == 0.0 {
+                            return true;
+                        }
+                        s.baseline_y <= top_cutoff && s.baseline_y >= bottom_cutoff
+                    })
+                    .cloned()
+                    .collect();
+                if mf.iter().any(|s| !s.text.trim().is_empty()) {
+                    mf
+                } else {
+                    font_filtered
+                }
             } else {
-                // Margin filter removed everything — skip it for this page
                 font_filtered
             }
-        } else {
-            font_filtered
         };
 
-        // Remove standalone page numbers: short numeric-only segments that are isolated
-        // (no other segment on the same baseline)
-        filter_standalone_page_numbers(&mut filtered);
+        // Remove standalone page numbers only when no layout model.
+        if !has_layout_hints {
+            filter_standalone_page_numbers(&mut filtered);
+        }
 
         all_page_segments[i] = filtered;
         all_image_positions.extend(image_positions);
@@ -583,11 +583,26 @@ pub fn render_document_as_markdown_with_tables(
         // Ensure vector is large enough (pdf_oxide may return fewer pages)
         all_segs.resize_with(page_count as usize, Vec::new);
         // Still need pdfium for image positions
-        let (_, image_positions) =
-            extract_heuristic_segments(pages, page_count, &heuristic_pages, top_margin, bottom_margin);
+        let has_hints = layout_hints.is_some();
+        let (_, image_positions) = extract_heuristic_segments(
+            pages,
+            page_count,
+            &heuristic_pages,
+            top_margin,
+            bottom_margin,
+            has_hints,
+        );
         (all_segs, image_positions)
     } else {
-        extract_heuristic_segments(pages, page_count, &heuristic_pages, top_margin, bottom_margin)
+        let has_hints = layout_hints.is_some();
+        extract_heuristic_segments(
+            pages,
+            page_count,
+            &heuristic_pages,
+            top_margin,
+            bottom_margin,
+            has_hints,
+        )
     };
 
     // Detect font encoding issues on heuristic pages.

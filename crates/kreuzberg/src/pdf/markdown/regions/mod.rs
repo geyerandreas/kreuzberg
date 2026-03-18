@@ -53,6 +53,7 @@ impl<'a> LayoutRegion<'a> {
 ///
 /// Segments not covered by any layout region fall through to the standard
 /// pipeline (XY-Cut → lines → paragraphs → font-size classification).
+#[allow(clippy::too_many_arguments)]
 pub(super) fn assemble_region_paragraphs(
     segments: Vec<SegmentData>,
     hints: &[LayoutHint],
@@ -663,21 +664,10 @@ mod tests {
     }
 
     #[test]
-    fn test_picture_regions_exclude_short_artifacts() {
-        // Picture regions are excluded from region assignment. Short non-substantive
-        // text (<4 alnum chars) inside them is suppressed as OCR artifacts.
+    fn test_picture_regions_preserve_all_text() {
+        // All text inside Picture regions is preserved as unassigned.
+        // Picture regions never suppress text — it falls through to body text.
         let segments = vec![make_segment("ab", 10.0, 700.0, 40.0, 12.0)];
-        let hints = vec![make_hint(LayoutHintClass::Picture, 0.9, 0.0, 690.0, 200.0, 720.0)];
-        let (regions, unassigned) = assignment::assign_segments_to_regions(&segments, &hints, 0.5, &[], &[]);
-        assert!(regions.is_empty());
-        assert_eq!(unassigned.len(), 0); // suppressed (too short)
-    }
-
-    #[test]
-    fn test_picture_regions_preserve_substantive_text() {
-        // Substantive text (>=4 alnum chars) inside Picture regions is preserved
-        // as unassigned so it appears in the output (e.g., "Fig. 3" captions).
-        let segments = vec![make_segment("Fig. 3", 10.0, 700.0, 40.0, 12.0)];
         let hints = vec![make_hint(LayoutHintClass::Picture, 0.9, 0.0, 690.0, 200.0, 720.0)];
         let (regions, unassigned) = assignment::assign_segments_to_regions(&segments, &hints, 0.5, &[], &[]);
         assert!(regions.is_empty());
