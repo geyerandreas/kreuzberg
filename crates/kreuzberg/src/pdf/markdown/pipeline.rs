@@ -636,43 +636,26 @@ pub fn render_document_as_markdown_with_tables(
     // without heuristic segments (structure-tree-only pages).
     let mut layout_tables: Vec<crate::types::Table> = Vec::new();
     if let Some(hints_pages) = layout_hints {
-        // Try TATR for neural table structure recognition when layout images are available.
-        #[cfg(feature = "layout-detection")]
-        let mut tatr_model = if layout_images.is_some() {
-            crate::layout::take_or_create_tatr()
-        } else {
-            None
-        };
+        // Phase 1 (sequential): Prepare words per page. This may require pdfium
+        // calls for structure-tree-only pages, so it must be sequential.
+        struct TablePageData {
+            page_idx: usize,
+            words: Vec<crate::pdf::table_reconstruct::HocrWord>,
+            page_height: f32,
+        }
+        let mut table_pages: Vec<TablePageData> = Vec::new();
 
-        // Run table extraction on ALL pages with Table hints, including
-        // structure-tree pages. The structure tree flattens tables into
-        // paragraphs — layout-detected tables with TATR structure
-        // recognition produce proper markdown tables.
-        #[allow(clippy::needless_range_loop)] // indexes into both hints_pages and all_page_segments
+        #[allow(clippy::needless_range_loop)]
         for page_idx in 0..page_count as usize {
             let Some(hints) = hints_pages.get(page_idx) else {
                 continue;
             };
-            // Log detected layout classes per page for diagnostics.
-            {
-                let mut class_counts: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
-                for h in hints {
-                    *class_counts.entry(format!("{:?}", h.class)).or_insert(0) += 1;
-                }
-                let mut summary: Vec<String> = class_counts.iter().map(|(k, v)| format!("{}:{}", k, v)).collect();
-                summary.sort();
-                tracing::debug!(page = page_idx, classes = summary.join(", "), "layout hints for page");
-            }
             if !hints.iter().any(|h| h.class == super::types::LayoutHintClass::Table) {
                 continue;
             }
 
-            // Use Stage 1 segments when available (same source as region assembly).
-            // For structure-tree-only pages (empty segments), fall back to
-            // character-level extraction via extract_words_from_page.
             let page_segments = &all_page_segments[page_idx];
             let (words, page_height) = if !page_segments.is_empty() {
-                // Get page height from layout results (avoids pdfium page fetch)
                 #[cfg(feature = "layout-detection")]
                 let ph = layout_results.and_then(|r| r.get(page_idx)).map(|r| r.page_height_pts);
                 #[cfg(not(feature = "layout-detection"))]
@@ -690,11 +673,9 @@ pub fn render_document_as_markdown_with_tables(
                         page.height().value
                     }
                 };
-
                 let w = crate::pdf::table_reconstruct::segments_to_words(page_segments, page_height);
                 (w, page_height)
             } else {
-                // Fallback: structure-tree-only pages need character-level extraction
                 let page = pages.get(page_idx as PdfPageIndex).map_err(|e| {
                     crate::pdf::error::PdfError::TextExtractionFailed(format!(
                         "Failed to get page {} for table extraction: {:?}",
@@ -712,59 +693,119 @@ pub fn render_document_as_markdown_with_tables(
             };
 
             if words.is_empty() {
-                tracing::debug!(page = page_idx, "table extraction: no words on page, skipping");
                 continue;
             }
-
-            tracing::debug!(
-                page = page_idx,
-                word_count = words.len(),
-                from_segments = !page_segments.is_empty(),
-                has_images = layout_images.is_some(),
-                has_results = layout_results.is_some(),
-                "table extraction: attempting TATR"
-            );
-
-            // Try TATR path first if we have images, results, and model
-            #[cfg(feature = "layout-detection")]
-            if let (Some(images), Some(results), Some(ref mut tatr)) =
-                (layout_images, layout_results, tatr_model.as_mut())
-                && let (Some(page_image), Some(page_result)) = (images.get(page_idx), results.get(page_idx))
-            {
-                let tatr_tables = super::regions::recognize_tables_for_native_page(
-                    page_image,
-                    hints,
-                    &words,
-                    page_result,
-                    page_height,
-                    page_idx,
-                    tatr,
-                );
-                tracing::debug!(
-                    page = page_idx,
-                    tatr_tables = tatr_tables.len(),
-                    "TATR table extraction result"
-                );
-                if !tatr_tables.is_empty() {
-                    layout_tables.extend(tatr_tables);
-                    continue;
-                }
-            }
-
-            // Fallback: heuristic table reconstruction
-            layout_tables.extend(super::regions::extract_tables_from_layout_hints(
-                &words,
-                hints,
+            table_pages.push(TablePageData {
                 page_idx,
+                words,
                 page_height,
-                0.5,
-            ));
+            });
         }
 
-        // Return TATR model to global cache for reuse by future extractions
+        // Phase 2 (parallel): Run TATR inference + heuristic fallback on prepared pages.
+        // Each rayon worker gets its own TATR model via thread-local storage.
         #[cfg(feature = "layout-detection")]
-        if let Some(model) = tatr_model.take() {
-            crate::layout::return_tatr(model);
+        {
+            use std::cell::RefCell;
+            thread_local! {
+                static TL_TATR: RefCell<Option<crate::layout::models::tatr::TatrModel>> = const { RefCell::new(None) };
+            }
+
+            // Seed one thread-local with the cached model (avoids loading from disk)
+            #[cfg(feature = "layout-detection")]
+            let seed_model = if layout_images.is_some() {
+                crate::layout::take_or_create_tatr()
+            } else {
+                None
+            };
+            let has_tatr = seed_model.is_some();
+            if let Some(model) = seed_model {
+                TL_TATR.with(|cell| {
+                    *cell.borrow_mut() = Some(model);
+                });
+            }
+
+            if has_tatr {
+                if let (Some(images), Some(results)) = (layout_images, layout_results) {
+                    let parallel_tables: Vec<Vec<crate::types::Table>> = table_pages
+                        .par_iter()
+                        .map(|tp| {
+                            TL_TATR.with(|cell| {
+                                let mut tatr_ref = cell.borrow_mut();
+                                let tatr = tatr_ref.get_or_insert_with(|| {
+                                    crate::layout::take_or_create_tatr().expect("TATR model should be available")
+                                });
+
+                                if let (Some(page_image), Some(page_result)) =
+                                    (images.get(tp.page_idx), results.get(tp.page_idx))
+                                {
+                                    let hints = &hints_pages[tp.page_idx];
+                                    let tatr_tables = super::regions::recognize_tables_for_native_page(
+                                        page_image,
+                                        hints,
+                                        &tp.words,
+                                        page_result,
+                                        tp.page_height,
+                                        tp.page_idx,
+                                        tatr,
+                                    );
+                                    if !tatr_tables.is_empty() {
+                                        return tatr_tables;
+                                    }
+                                }
+
+                                // Fallback: heuristic table reconstruction
+                                let hints = &hints_pages[tp.page_idx];
+                                super::regions::extract_tables_from_layout_hints(
+                                    &tp.words,
+                                    hints,
+                                    tp.page_idx,
+                                    tp.page_height,
+                                    0.5,
+                                )
+                            })
+                        })
+                        .collect();
+
+                    for tables in parallel_tables {
+                        layout_tables.extend(tables);
+                    }
+
+                    // Return thread-local TATR models to global cache
+                    TL_TATR.with(|cell| {
+                        if let Some(model) = cell.borrow_mut().take() {
+                            crate::layout::return_tatr(model);
+                        }
+                    });
+                }
+            } else {
+                // No TATR — run heuristic fallback sequentially
+                for tp in &table_pages {
+                    let hints = &hints_pages[tp.page_idx];
+                    layout_tables.extend(super::regions::extract_tables_from_layout_hints(
+                        &tp.words,
+                        hints,
+                        tp.page_idx,
+                        tp.page_height,
+                        0.5,
+                    ));
+                }
+            }
+        }
+
+        #[cfg(not(feature = "layout-detection"))]
+        {
+            // No layout detection — run heuristic fallback sequentially
+            for tp in &table_pages {
+                let hints = &hints_pages[tp.page_idx];
+                layout_tables.extend(super::regions::extract_tables_from_layout_hints(
+                    &tp.words,
+                    hints,
+                    tp.page_idx,
+                    tp.page_height,
+                    0.5,
+                ));
+            }
         }
     }
 

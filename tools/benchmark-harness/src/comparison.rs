@@ -395,28 +395,53 @@ pub fn print_comparison_table(results: &[DocResult]) {
     // Header
     eprint!("{:<25}", "Document");
     for name in &pipeline_names {
-        eprint!(" {:>10} {:>10}", format!("{} SF1", name), format!("{} TF1", name));
+        eprint!(
+            " {:>10} {:>10} {:>8}",
+            format!("{} SF1", name),
+            format!("{} TF1", name),
+            format!("{} ms", name),
+        );
     }
     eprintln!();
-    eprintln!("{}", "-".repeat(25 + pipeline_names.len() * 22));
+    eprintln!("{}", "-".repeat(25 + pipeline_names.len() * 30));
 
     // Rows
     for doc in results {
         eprint!("{:<25}", doc.name);
         for pr in &doc.results {
-            eprint!(" {:>9.1}% {:>9.1}%", pr.sf1 * 100.0, pr.tf1 * 100.0);
+            let time_str = if pr.time_ms.is_nan() || pr.time_ms <= 0.0 {
+                "---".to_string()
+            } else {
+                format!("{:.0}", pr.time_ms)
+            };
+            eprint!(" {:>9.1}% {:>9.1}% {:>8}", pr.sf1 * 100.0, pr.tf1 * 100.0, time_str);
         }
         eprintln!();
     }
 
     // Averages
-    eprintln!("{}", "-".repeat(25 + pipeline_names.len() * 22));
+    eprintln!("{}", "-".repeat(25 + pipeline_names.len() * 30));
     eprint!("{:<25}", "AVERAGE");
     let n = results.len() as f64;
     for (i, _) in pipeline_names.iter().enumerate() {
         let avg_sf1: f64 = results.iter().map(|r| r.results[i].sf1).sum::<f64>() / n;
         let avg_tf1: f64 = results.iter().map(|r| r.results[i].tf1).sum::<f64>() / n;
-        eprint!(" {:>9.1}% {:>9.1}%", avg_sf1 * 100.0, avg_tf1 * 100.0);
+        let times: Vec<f64> = results
+            .iter()
+            .map(|r| r.results[i].time_ms)
+            .filter(|t| !t.is_nan() && *t > 0.0)
+            .collect();
+        let avg_time = if times.is_empty() {
+            f64::NAN
+        } else {
+            times.iter().sum::<f64>() / times.len() as f64
+        };
+        let time_str = if avg_time.is_nan() {
+            "---".to_string()
+        } else {
+            format!("{:.0}", avg_time)
+        };
+        eprint!(" {:>9.1}% {:>9.1}% {:>8}", avg_sf1 * 100.0, avg_tf1 * 100.0, time_str);
     }
     eprintln!();
 }
