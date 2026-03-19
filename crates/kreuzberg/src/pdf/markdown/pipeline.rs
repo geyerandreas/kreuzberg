@@ -20,8 +20,9 @@ use super::paragraphs::{merge_continuation_paragraphs, split_embedded_list_items
 use super::render::inject_image_placeholders;
 use super::text_repair::{
     apply_ligature_repairs, apply_to_all_segments, build_ligature_repair_map, clean_duplicate_punctuation,
-    expand_ligatures_with_space_absorption, normalize_unicode_text, repair_broken_word_spacing,
-    repair_contextual_ligatures, text_has_broken_word_spacing, text_has_ligature_corruption,
+    expand_ligatures_with_space_absorption, normalize_text_encoding, normalize_unicode_text,
+    repair_broken_word_spacing, repair_contextual_ligatures, text_has_broken_word_spacing,
+    text_has_ligature_corruption,
 };
 use super::types::{LayoutHint, PdfParagraph};
 
@@ -100,6 +101,9 @@ fn extract_structure_tree_pages(
                         apply_to_all_segments(&mut paragraphs, repair_broken_word_spacing);
                     }
                 }
+                // Normalize text encoding: strip pdfium's \x02 soft-hyphen markers
+                // and handle Unicode soft hyphens.
+                apply_to_all_segments(&mut paragraphs, normalize_text_encoding);
                 // Expand Unicode ligature characters (ﬁ, ﬂ, etc.) and absorb spurious spaces.
                 apply_to_all_segments(&mut paragraphs, expand_ligatures_with_space_absorption);
                 // Normalize Unicode characters (curly quotes, fraction slash, etc.)
@@ -495,6 +499,10 @@ fn process_single_page(
                 apply_to_all_segments(&mut paragraphs, repair_broken_word_spacing);
             }
         }
+        // Normalize text encoding: strip pdfium's \x02 soft-hyphen markers
+        // (rejoining word fragments like "soft\x02 ware" → "software") and
+        // handle Unicode soft hyphens.
+        apply_to_all_segments(&mut paragraphs, normalize_text_encoding);
         // Expand Unicode ligature characters (ﬁ, ﬂ, etc.) and absorb spurious spaces.
         apply_to_all_segments(&mut paragraphs, expand_ligatures_with_space_absorption);
         // Normalize Unicode characters (curly quotes, fraction slash, etc.)

@@ -561,12 +561,16 @@ fn is_dup_punct_byte(b: u8) -> bool {
     matches!(b, b',' | b'.' | b';' | b':')
 }
 
-/// Normalize text encoding: handle soft hyphens and strip control characters.
+/// Normalize text encoding: handle soft hyphens, pdfium word-break markers,
+/// and strip control characters.
 ///
 /// - `\u{00AD}` (soft hyphen) at end of text → replaced with `-` so downstream
 ///   hyphen-rejoining logic can merge word fragments.
 /// - `\u{00AD}` mid-text → removed (invisible break hint).
-/// - C0 control characters (U+0000–U+001F except `\t`, `\n`, `\r`) → removed.
+/// - `\x02` (STX) followed by space/newline → both removed, rejoining the word
+///   fragments. Pdfium emits `\x02` at soft-hyphen positions where the hyphen
+///   character was discarded by the PDF producer.
+/// - Other C0 control characters (U+0000–U+001F except `\t`, `\n`, `\r`) → removed.
 pub(super) fn normalize_text_encoding(text: &str) -> Cow<'_, str> {
     // Fast path: no special characters present
     if !text.contains('\u{00AD}') && !text.bytes().any(|b| b < 0x20 && b != b'\t' && b != b'\n' && b != b'\r') {
@@ -586,6 +590,14 @@ pub(super) fn normalize_text_encoding(text: &str) -> Cow<'_, str> {
                     result.push('-');
                 }
                 // Mid-word soft hyphen: drop (invisible break hint)
+            }
+            '\x02' => {
+                // Pdfium soft-hyphen word-break marker. Strip the marker and any
+                // immediately following whitespace to rejoin the word fragments.
+                // e.g., "soft\x02 ware" → "software", "recog\x02\nnition" → "recognition"
+                while chars.peek().is_some_and(|c| *c == ' ' || *c == '\n') {
+                    chars.next();
+                }
             }
             c if c.is_control() && c != '\n' && c != '\r' && c != '\t' => {
                 // Strip other control characters
@@ -813,7 +825,31 @@ mod tests {
 
     #[test]
     fn test_normalize_strips_control_chars() {
-        assert_eq!(normalize_text_encoding("he\x01llo\x02"), "hello");
+        assert_eq!(normalize_text_encoding("he\x01llo"), "hello");
+    }
+
+    #[test]
+    fn test_normalize_stx_word_break_with_space() {
+        // Pdfium soft-hyphen marker: \x02 followed by space → rejoin word
+        assert_eq!(normalize_text_encoding("soft\x02 ware"), "software");
+    }
+
+    #[test]
+    fn test_normalize_stx_word_break_with_newline() {
+        // Pdfium soft-hyphen marker: \x02 followed by newline → rejoin word
+        assert_eq!(normalize_text_encoding("recog\x02\nnition"), "recognition");
+    }
+
+    #[test]
+    fn test_normalize_stx_at_end() {
+        // \x02 at end of text → just stripped
+        assert_eq!(normalize_text_encoding("hello\x02"), "hello");
+    }
+
+    #[test]
+    fn test_normalize_stx_no_trailing_space() {
+        // \x02 not followed by space → just stripped (rejoin adjacent chars)
+        assert_eq!(normalize_text_encoding("soft\x02ware"), "software");
     }
 
     #[test]

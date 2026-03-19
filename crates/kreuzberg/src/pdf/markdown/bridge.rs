@@ -4,8 +4,16 @@
 //! 1. Structure tree: `ExtractedBlock` → `PdfParagraph` (for tagged PDFs)
 //! 2. Page objects: `PdfPage` → `(Vec<SegmentData>, Vec<ImagePosition>)` (heuristic extraction)
 //!
-//! The page objects path includes post-processing ligature repair for pages
-//! with broken font encodings (detected via `PdfPageTextChar::has_unicode_map_error()`).
+//! The page objects path uses a Segment-based algorithm as its primary extraction:
+//! pdfium segments are grouped into rows, merged horizontally, and text is
+//! re-extracted from merged bounding boxes via `page.text().inside_rect()`.
+//! This produces correct word boundaries (pdfium reassembles fragmented words
+//! like "soft"+"ware" into "software" within bounded rects) and naturally
+//! excludes sidebar text through tight per-group bboxes.
+//!
+//! Falls back to character-level extraction with column detection when the
+//! segment-based path produces no results, and to the page objects API when
+//! `page.text()` fails entirely.
 
 use std::borrow::Cow;
 
@@ -115,9 +123,15 @@ pub(super) fn extracted_blocks_to_paragraphs(blocks: &[ExtractedBlock]) -> Vec<P
 
 /// Extract text segments and image positions from a PDF page.
 ///
-/// Uses the page objects API with column detection for text extraction.
-/// For pages with broken font encodings (ligature corruption), applies
-/// per-character repair using `PdfPageTextChar::has_unicode_map_error()`.
+/// Primary path: Segment-based extraction using pdfium's segment API with
+/// row grouping, cell merging, and text re-extraction from merged bounding
+/// boxes. This produces correct word boundaries (pdfium reassembles fragmented
+/// words like "soft"+"ware" into "software" within bounded rects).
+///
+/// Fallback: character-level extraction via `PageTextData` DTO when the
+/// segment-based path produces no results.
+///
+/// Last resort: page objects API with column detection when `page.text()` fails.
 ///
 /// Also detects image objects and records their positions for interleaving.
 pub(super) fn objects_to_page_data(
@@ -139,9 +153,17 @@ pub(super) fn objects_to_page_data(
         }
     }
 
-    // Primary path: single-pass extraction via PageTextData DTO.
-    // Extracts all character data once, then assembles segments without
-    // further pdfium text API calls.
+    // Primary path: Segment-based extraction with inside_rect() re-extraction.
+    // Uses pdfium's segment API to get text rects, groups into rows,
+    // merges adjacent cells, then re-extracts text from merged bboxes.
+    // Post-processing (normalize_text_encoding in pipeline.rs) handles
+    // pdfium's \x02 soft-hyphen markers by stripping them + adjacent whitespace.
+    let page_height = page.height().value;
+    if let Some(segments) = extract_segments_merged(page, page_height) {
+        return (segments, images);
+    }
+
+    // Secondary fallback: character-level extraction with column detection.
     let page_width = page.width().value;
     if let Some(data) = extract_page_text_data(page)
         && let Some(segments) = chars_to_segments_from_data(&data, page_width)
@@ -149,8 +171,8 @@ pub(super) fn objects_to_page_data(
         return (segments, images);
     }
 
-    // Fallback: page objects API with column detection.
-    // Used when page.text() fails (rare edge case).
+    // Last resort: page objects API with column detection.
+    // Used when page.text() fails entirely (rare edge case).
     let mut segments = Vec::new();
     let column_groups = super::columns::split_objects_into_columns(&objects);
     let column_vecs = partition_objects_by_columns(objects, &column_groups);
@@ -159,7 +181,7 @@ pub(super) fn objects_to_page_data(
         extract_paragraphs_to_segments(paragraphs, &mut segments);
     }
 
-    // Apply ligature repair for fallback path.
+    // Apply ligature repair for last-resort path.
     if let Some(repair_map) = build_ligature_repair_map(page) {
         for seg in &mut segments {
             seg.text = apply_ligature_repairs(&seg.text, &repair_map);
@@ -167,6 +189,640 @@ pub(super) fn objects_to_page_data(
     }
 
     (segments, images)
+}
+
+// ── Segment-based segment extraction ──
+
+/// A text cell extracted from pdfium's segment API, with coordinates
+/// converted to page top-left origin for row grouping.
+struct TextCell {
+    text: String,
+    /// Left edge in PDF coordinates (bottom-left origin).
+    pdf_left: f32,
+    /// Bottom edge in PDF coordinates (bottom-left origin).
+    pdf_bottom: f32,
+    /// Right edge in PDF coordinates (bottom-left origin).
+    pdf_right: f32,
+    /// Top edge in PDF coordinates (bottom-left origin).
+    pdf_top: f32,
+    /// Top edge in page top-left coordinate system.
+    top: f32,
+    /// Bottom edge in page top-left coordinate system.
+    bottom: f32,
+    /// Font size in points.
+    font_size: f32,
+    /// Whether the font is bold.
+    is_bold: bool,
+    /// Whether the font is italic.
+    is_italic: bool,
+    /// Whether the font is monospace.
+    is_monospace: bool,
+    /// Baseline Y in PDF coordinates (bottom-left origin).
+    baseline_y: f32,
+}
+
+/// A row of text cells sharing approximately the same vertical position.
+struct TextRow {
+    cells: Vec<TextCell>,
+    /// Top edge of the row (page top-left coordinates).
+    top: f32,
+    /// Bottom edge of the row (page top-left coordinates).
+    bottom: f32,
+}
+
+impl TextRow {
+    fn height(&self) -> f32 {
+        (self.bottom - self.top).abs()
+    }
+}
+
+/// A group of merged cells within a row, potentially requiring text re-extraction.
+struct MergedCellGroup {
+    cells: Vec<TextCell>,
+    /// Merged left edge in PDF coordinates.
+    pdf_left: f32,
+    /// Merged bottom edge in PDF coordinates.
+    pdf_bottom: f32,
+    /// Merged right edge in PDF coordinates.
+    pdf_right: f32,
+    /// Merged top edge in PDF coordinates.
+    pdf_top: f32,
+}
+
+/// Segment-based text extraction from a PDF page.
+///
+/// Implements a segment-based cell-merging extraction algorithm:
+/// 1. Extract text rects from pdfium's segment API
+/// 2. Group cells into rows (vertical_threshold = 0.5)
+/// 3. Merge adjacent cells within rows (horizontal_threshold = 1.0)
+/// 4. Re-extract text from merged bboxes using `page.text().inside_rect()`
+/// 5. Convert to `SegmentData`
+///
+/// The re-extraction step is the key: pdfium re-assembles fragmented words
+/// (e.g., "soft" + "ware" becomes "software") when given a bounding rect
+/// that spans both fragments. Tight per-group bboxes naturally exclude
+/// sidebar text without explicit filtering.
+fn extract_segments_merged(page: &PdfPage, page_height: f32) -> Option<Vec<SegmentData>> {
+    let text_obj = page.text().ok()?;
+    let pdfium_segments = text_obj.segments();
+    let seg_count = pdfium_segments.len();
+    if seg_count == 0 {
+        return None;
+    }
+
+    // Step 1: Extract text rects into cells.
+    let mut cells: Vec<TextCell> = Vec::with_capacity(seg_count);
+    for i in 0..seg_count {
+        let seg = match pdfium_segments.get(i) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+        let text = seg.text();
+        if text.trim().is_empty() {
+            continue;
+        }
+        let bounds = seg.bounds();
+        let pdf_left = bounds.left().value;
+        let pdf_bottom = bounds.bottom().value;
+        let pdf_right = bounds.right().value;
+        let pdf_top = bounds.top().value;
+
+        // Convert from PDF bottom-left origin to page top-left origin.
+        let top = page_height - pdf_top;
+        let bottom = page_height - pdf_bottom;
+
+        // Sample font properties from the first non-whitespace character.
+        let (font_size, is_bold, is_italic, is_monospace, baseline_y) = sample_font_from_segment(&seg);
+
+        cells.push(TextCell {
+            text,
+            pdf_left,
+            pdf_bottom,
+            pdf_right,
+            pdf_top,
+            top,
+            bottom,
+            font_size,
+            is_bold,
+            is_italic,
+            is_monospace,
+            baseline_y,
+        });
+    }
+
+    if cells.is_empty() {
+        return None;
+    }
+
+    // Filter sidebar cells: cells whose right edge is within 5% of page width
+    // from the left margin are likely rotated sidebar text (e.g., arXiv IDs).
+    let page_width = page.width().value;
+    let sidebar_cutoff = page_width * 0.05;
+    cells.retain(|c| c.pdf_right > sidebar_cutoff);
+
+    if cells.is_empty() {
+        return None;
+    }
+
+    // Step 2: Group cells into rows.
+    let rows = group_cells_into_rows(cells);
+
+    // Step 3 & 4: Merge adjacent cells within rows, re-extract text from merged bboxes.
+    let mut segments = Vec::new();
+    for row in rows {
+        let merged_groups = merge_cells_in_row(row);
+        for group in merged_groups {
+            // Step 4: Re-extract text from merged bbox.
+            let text = if group.cells.len() == 1 {
+                // Single cell: use text as-is.
+                group.cells[0].text.clone()
+            } else {
+                // Multi-cell group: re-extract from merged bbox using pdfium.
+                // The bbox is in PDF coordinates (bottom-left origin).
+                let rect = PdfRect::new_from_values(group.pdf_bottom, group.pdf_left, group.pdf_top, group.pdf_right);
+                let reextracted = text_obj.inside_rect(rect);
+                if reextracted.trim().is_empty() {
+                    // Fallback: concatenate individual cell texts.
+                    group.cells.iter().map(|c| c.text.as_str()).collect::<Vec<_>>().join("")
+                } else {
+                    reextracted
+                }
+            };
+
+            let trimmed = text.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            // Step 5: Convert to SegmentData.
+            // Use the first cell's font info as representative.
+            let first = &group.cells[0];
+            let width = group.pdf_right - group.pdf_left;
+            let height = group.pdf_top - group.pdf_bottom;
+
+            segments.push(SegmentData {
+                text: trimmed.to_string(),
+                x: group.pdf_left,
+                y: first.baseline_y,
+                width: width.max(first.font_size),
+                height: height.max(first.font_size),
+                font_size: first.font_size,
+                is_bold: first.is_bold,
+                is_italic: first.is_italic,
+                is_monospace: first.is_monospace,
+                baseline_y: first.baseline_y,
+            });
+        }
+    }
+
+    if segments.is_empty() { None } else { Some(segments) }
+}
+
+/// Sample font properties from a pdfium text segment's first non-whitespace character.
+///
+/// Returns (font_size, is_bold, is_italic, is_monospace, baseline_y).
+fn sample_font_from_segment(seg: &pdfium_render::prelude::PdfPageTextSegment<'_>) -> (f32, bool, bool, bool, f32) {
+    let bounds = seg.bounds();
+    let default_baseline = bounds.bottom().value;
+
+    if let Ok(seg_chars) = seg.chars() {
+        for ch in seg_chars.iter() {
+            let uv = ch.unicode_value();
+            if let Some(uc) = char::from_u32(uv)
+                && uc.is_whitespace()
+            {
+                continue;
+            }
+            let scaled = ch.scaled_font_size().value;
+            let fs = if scaled > 0.0 { scaled } else { 12.0 };
+            let info = ch.font_info();
+            let mono = ch.font_is_fixed_pitch();
+            let bl_y = ch.origin().map(|o| o.1.value).unwrap_or(default_baseline);
+            return (fs, info.1, info.2, mono, bl_y);
+        }
+    }
+
+    (12.0, false, false, false, default_baseline)
+}
+
+/// Group cells into rows based on vertical proximity.
+///
+/// A cell belongs to the current row if its top and bottom
+/// are both within `row_height * vertical_threshold` of the row's top and bottom.
+/// `vertical_threshold = 0.5` (half the row height).
+fn group_cells_into_rows(cells: Vec<TextCell>) -> Vec<TextRow> {
+    const VERTICAL_THRESHOLD: f32 = 0.5;
+
+    let mut rows: Vec<TextRow> = Vec::new();
+
+    for cell in cells {
+        let cell_top = cell.top;
+        let cell_bottom = cell.bottom;
+        // Find matching row index.
+        let matching_row = rows.iter().position(|row| {
+            let row_h = row.height().max(1.0);
+            let tolerance = row_h * VERTICAL_THRESHOLD;
+            (cell_top - row.top).abs() <= tolerance && (cell_bottom - row.bottom).abs() <= tolerance
+        });
+        if let Some(idx) = matching_row {
+            rows[idx].top = rows[idx].top.min(cell_top);
+            rows[idx].bottom = rows[idx].bottom.max(cell_bottom);
+            rows[idx].cells.push(cell);
+        } else {
+            rows.push(TextRow {
+                cells: vec![cell],
+                top: cell_top,
+                bottom: cell_bottom,
+            });
+        }
+    }
+
+    // Sort rows top-to-bottom (ascending top in page top-left coordinates).
+    rows.sort_by(|a, b| a.top.partial_cmp(&b.top).unwrap_or(std::cmp::Ordering::Equal));
+    rows
+}
+
+/// Merge adjacent cells within a row based on horizontal proximity.
+///
+/// Cells are sorted left-to-right. If the gap between
+/// consecutive cells is <= `avg_height * horizontal_threshold`, they are
+/// merged into one group. `horizontal_threshold = 1.0`.
+fn merge_cells_in_row(mut row: TextRow) -> Vec<MergedCellGroup> {
+    const HORIZONTAL_THRESHOLD: f32 = 1.0;
+
+    // Sort cells left-to-right by their left edge (PDF coordinates).
+    row.cells
+        .sort_by(|a, b| a.pdf_left.partial_cmp(&b.pdf_left).unwrap_or(std::cmp::Ordering::Equal));
+
+    // Compute average height across all cells in the row.
+    let avg_height = if row.cells.is_empty() {
+        12.0
+    } else {
+        row.cells.iter().map(|c| (c.pdf_top - c.pdf_bottom).abs()).sum::<f32>() / row.cells.len() as f32
+    };
+    let merge_threshold = avg_height * HORIZONTAL_THRESHOLD;
+
+    let mut groups: Vec<MergedCellGroup> = Vec::new();
+
+    for cell in row.cells {
+        let should_merge = if let Some(last_group) = groups.last() {
+            let gap = cell.pdf_left - last_group.pdf_right;
+            gap <= merge_threshold
+        } else {
+            false
+        };
+
+        if should_merge {
+            let group = groups.last_mut().unwrap();
+            group.pdf_left = group.pdf_left.min(cell.pdf_left);
+            group.pdf_bottom = group.pdf_bottom.min(cell.pdf_bottom);
+            group.pdf_right = group.pdf_right.max(cell.pdf_right);
+            group.pdf_top = group.pdf_top.max(cell.pdf_top);
+            group.cells.push(cell);
+        } else {
+            groups.push(MergedCellGroup {
+                pdf_left: cell.pdf_left,
+                pdf_bottom: cell.pdf_bottom,
+                pdf_right: cell.pdf_right,
+                pdf_top: cell.pdf_top,
+                cells: vec![cell],
+            });
+        }
+    }
+
+    groups
+}
+
+// ── Geometric cell-merging (adapted from docling-parse, MIT license) ──
+// See ATTRIBUTIONS.md for license details.
+
+/// Euclidean distance between two 2D points.
+fn dist(x0: f32, y0: f32, x1: f32, y1: f32) -> f32 {
+    ((x1 - x0).powi(2) + (y1 - y0).powi(2)).sqrt()
+}
+
+/// A character cell with axis-aligned bounding box for geometric merging.
+///
+/// Adapted from docling-parse's `page_item<PAGE_CELL>`. Uses 4-coordinate
+/// axis-aligned rects (pdfium gives `PdfRect`, not rotated quads).
+struct CharCell {
+    text: String,
+    /// Left edge (PDF x coordinate).
+    left: f32,
+    /// Bottom edge (PDF y coordinate).
+    bottom: f32,
+    /// Right edge (PDF x coordinate).
+    right: f32,
+    /// Top edge (PDF y coordinate).
+    top: f32,
+    /// Font size in points.
+    font_size: f32,
+    /// Whether the font is bold.
+    is_bold: bool,
+    /// Whether the font is italic.
+    is_italic: bool,
+    /// Whether the font is monospace.
+    is_monospace: bool,
+    /// Baseline Y in PDF coordinates.
+    baseline_y: f32,
+    /// Whether this cell is still active (not merged into another).
+    active: bool,
+}
+
+impl CharCell {
+    /// Horizontal length of the cell's bounding box.
+    fn length(&self) -> f32 {
+        (self.right - self.left).abs()
+    }
+
+    /// Number of Unicode characters in the cell's text.
+    fn char_count(&self) -> usize {
+        self.text.chars().count()
+    }
+
+    /// Average width per character.
+    fn avg_char_width(&self) -> f32 {
+        let n = self.char_count().max(1) as f32;
+        self.length() / n
+    }
+
+    /// Check if `other` is geometrically adjacent to this cell.
+    ///
+    /// Adapted from docling-parse's `is_adjacent_to(other, eps_d0, eps_d1)`:
+    /// - d0: distance from this cell's bottom-right to other's bottom-left
+    /// - d1: distance from this cell's top-right to other's top-left
+    fn is_adjacent_to(&self, other: &Self, eps_d0: f32, eps_d1: f32) -> bool {
+        let d0 = dist(self.right, self.bottom, other.left, other.bottom);
+        let d1 = dist(self.right, self.top, other.left, other.top);
+        d0 < eps_d0 && d1 < eps_d1
+    }
+
+    /// Merge `other` into this cell.
+    ///
+    /// Adapted from docling-parse's `merge_with(other, delta)`:
+    /// If the gap between cells exceeds `space_threshold`, insert a space
+    /// (word boundary). Otherwise concatenate directly (same word).
+    fn merge_with(&mut self, other: &Self, space_threshold: f32) {
+        let gap = dist(self.right, self.bottom, other.left, other.bottom);
+        if gap > space_threshold {
+            self.text.push(' ');
+        }
+        self.text.push_str(&other.text);
+        // Extend bbox to encompass the merged cell.
+        self.right = other.right;
+        self.top = self.top.max(other.top);
+        self.bottom = self.bottom.min(other.bottom);
+    }
+}
+
+/// Left-to-right cell contraction pass.
+///
+/// For each active cell i, try merging with consecutive cell j if adjacent.
+/// If `allow_reverse` is true, also try j merging i (for cells missed in
+/// previous passes).
+fn contract_left_to_right(cells: &mut [CharCell], merge_factor: f32, space_factor: f32, allow_reverse: bool) {
+    let len = cells.len();
+    for i in 0..len {
+        if !cells[i].active {
+            continue;
+        }
+        for j in (i + 1)..len {
+            if !cells[j].active {
+                break;
+            }
+            let eps_d0 = cells[i].avg_char_width() * merge_factor;
+            let eps_d1 = eps_d0;
+            let space_threshold = cells[i].avg_char_width() * space_factor;
+
+            // Split borrow: get immutable data from cells[j] before mutating cells[i].
+            if cells[i].is_adjacent_to(&cells[j], eps_d0, eps_d1) {
+                let other_text = cells[j].text.clone();
+                let other_left = cells[j].left;
+                let other_bottom = cells[j].bottom;
+                let other_right = cells[j].right;
+                let other_top = cells[j].top;
+                let other = CharCell {
+                    text: other_text,
+                    left: other_left,
+                    bottom: other_bottom,
+                    right: other_right,
+                    top: other_top,
+                    font_size: cells[j].font_size,
+                    is_bold: cells[j].is_bold,
+                    is_italic: cells[j].is_italic,
+                    is_monospace: cells[j].is_monospace,
+                    baseline_y: cells[j].baseline_y,
+                    active: true,
+                };
+                cells[i].merge_with(&other, space_threshold);
+                cells[j].active = false;
+            } else if allow_reverse && cells[j].is_adjacent_to(&cells[i], eps_d0, eps_d1) {
+                let other_text = cells[i].text.clone();
+                let other_left = cells[i].left;
+                let other_bottom = cells[i].bottom;
+                let other_right = cells[i].right;
+                let other_top = cells[i].top;
+                let other = CharCell {
+                    text: other_text,
+                    left: other_left,
+                    bottom: other_bottom,
+                    right: other_right,
+                    top: other_top,
+                    font_size: cells[i].font_size,
+                    is_bold: cells[i].is_bold,
+                    is_italic: cells[i].is_italic,
+                    is_monospace: cells[i].is_monospace,
+                    baseline_y: cells[i].baseline_y,
+                    active: true,
+                };
+                cells[j].merge_with(&other, space_threshold);
+                cells[i].active = false;
+                break;
+            } else {
+                break;
+            }
+        }
+    }
+}
+
+/// Right-to-left cell contraction pass (for RTL text support).
+fn contract_right_to_left(cells: &mut [CharCell], merge_factor: f32, space_factor: f32) {
+    let len = cells.len();
+    for i in (0..len).rev() {
+        if !cells[i].active {
+            continue;
+        }
+        for j in (0..i).rev() {
+            if !cells[j].active {
+                break;
+            }
+            let eps_d0 = cells[i].avg_char_width() * merge_factor;
+            let eps_d1 = eps_d0;
+            let space_threshold = cells[i].avg_char_width() * space_factor;
+
+            if cells[j].is_adjacent_to(&cells[i], eps_d0, eps_d1) {
+                let other_text = cells[i].text.clone();
+                let other_left = cells[i].left;
+                let other_bottom = cells[i].bottom;
+                let other_right = cells[i].right;
+                let other_top = cells[i].top;
+                let other = CharCell {
+                    text: other_text,
+                    left: other_left,
+                    bottom: other_bottom,
+                    right: other_right,
+                    top: other_top,
+                    font_size: cells[i].font_size,
+                    is_bold: cells[i].is_bold,
+                    is_italic: cells[i].is_italic,
+                    is_monospace: cells[i].is_monospace,
+                    baseline_y: cells[i].baseline_y,
+                    active: true,
+                };
+                cells[j].merge_with(&other, space_threshold);
+                cells[i].active = false;
+                break;
+            } else {
+                break;
+            }
+        }
+    }
+}
+
+/// Three-pass geometric cell merging (adapted from docling-parse).
+///
+/// Merges adjacent character cells into textlines using geometric distance:
+/// 1. L→R pass: merge consecutive cells that are spatially adjacent
+/// 2. R→L pass: handle RTL text
+/// 3. L→R reverse pass: catch cells missed by earlier passes
+///
+/// `merge_factor`: adjacency threshold as multiple of avg char width (1.5)
+/// `space_factor`: space insertion threshold as multiple of avg char width (0.33)
+fn merge_cells_geometric(cells: &mut Vec<CharCell>, merge_factor: f32, space_factor: f32) {
+    contract_left_to_right(cells, merge_factor, space_factor, false);
+    contract_right_to_left(cells, merge_factor, space_factor);
+    contract_left_to_right(cells, merge_factor, space_factor, true);
+    cells.retain(|c| c.active);
+}
+
+/// Extract text segments using geometric cell-merging (docling-parse approach).
+///
+/// Builds per-character cells from pre-extracted `PageTextData` (which uses
+/// `origin()` positions — advance-width based, not glyph-ink bounds). Adjacent
+/// characters chain properly because origin positions follow the text matrix
+/// advance, just like docling-parse's raw PDF operator extraction.
+///
+/// This produces correct word boundaries without `inside_rect()` re-extraction,
+/// avoiding `\x02` markers and spurious spaces at line breaks.
+fn extract_segments_cell_merge(data: &PageTextData, page_width: f32) -> Option<Vec<SegmentData>> {
+    if data.chars.is_empty() {
+        return None;
+    }
+
+    let mut cells: Vec<CharCell> = Vec::with_capacity(data.chars.len());
+
+    // Build cells, using the NEXT character's origin x as the current character's
+    // right edge. This ensures advance-width-based chaining — adjacent characters
+    // in the same word have touching bboxes because origin positions follow the
+    // text matrix advance (same as docling-parse's raw PDF operator extraction).
+    let char_count = data.chars.len();
+    for (idx, ec) in data.chars.iter().enumerate() {
+        // Skip control characters but keep spaces (they bridge word gaps).
+        if ec.ch.is_control() {
+            continue;
+        }
+        if ec.ch == '\n' || ec.ch == '\r' || ec.ch == '\t' {
+            continue;
+        }
+
+        let fs = if ec.font_size > 0.0 { ec.font_size } else { 12.0 };
+
+        let left = ec.x;
+
+        // Use next char's x as right edge if on the same line (similar Y).
+        // This gives advance-width-based right edges that chain properly.
+        // For the last char on a line (or last char overall), fall back to
+        // right_x but extend it slightly (by 0.1 * font_size) to ensure
+        // the cell overlaps with any adjacent character that follows closely.
+        let right = if idx + 1 < char_count {
+            let next = &data.chars[idx + 1];
+            let same_line = (next.y - ec.y).abs() < fs * 0.5;
+            if same_line && next.x > ec.x {
+                next.x
+            } else {
+                // End of line or next char is to the left (line wrap).
+                // Use right_x with a small extension to handle ligature glyphs
+                // whose tight_bounds don't reach the advance position.
+                ec.right_x.max(ec.x + fs * 0.5)
+            }
+        } else {
+            ec.right_x.max(ec.x + fs * 0.5)
+        };
+
+        let bottom = ec.y - fs * 0.25;
+        let top = ec.y + fs * 0.75;
+
+        // Skip degenerate cells.
+        if (right - left).abs() < 0.01 {
+            continue;
+        }
+
+        cells.push(CharCell {
+            text: ec.ch.to_string(),
+            left,
+            bottom,
+            right,
+            top,
+            font_size: fs,
+            is_bold: ec.is_bold,
+            is_italic: ec.is_italic,
+            is_monospace: ec.is_monospace,
+            baseline_y: ec.y,
+            active: true,
+        });
+    }
+
+    if cells.is_empty() {
+        return None;
+    }
+
+    // Filter sidebar cells (e.g., rotated arXiv IDs along page margins).
+    let sidebar_cutoff = page_width * 0.05;
+    cells.retain(|c| c.right > sidebar_cutoff);
+
+    if cells.is_empty() {
+        return None;
+    }
+
+    // Merge characters into textlines using docling-parse's algorithm.
+    // merge_factor=3.0: adjacent threshold as fraction of avg char width.
+    //   Higher than docling-parse's 1.0 because pdfium's character positions
+    //   have larger gaps around ligature glyphs (fi, fl) and kerned pairs.
+    // space_factor=0.33: gap > 0.33 * avg_char_width → insert space (word boundary).
+    merge_cells_geometric(&mut cells, 3.0, 0.33);
+
+    // Convert merged cells to SegmentData.
+    let mut segments: Vec<SegmentData> = Vec::with_capacity(cells.len());
+    for cell in &cells {
+        let trimmed = cell.text.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        segments.push(SegmentData {
+            text: trimmed.to_string(),
+            x: cell.left,
+            y: cell.baseline_y,
+            width: (cell.right - cell.left).max(cell.font_size),
+            height: (cell.top - cell.bottom).max(cell.font_size),
+            font_size: cell.font_size,
+            is_bold: cell.is_bold,
+            is_italic: cell.is_italic,
+            is_monospace: cell.is_monospace,
+            baseline_y: cell.baseline_y,
+        });
+    }
+
+    if segments.is_empty() { None } else { Some(segments) }
 }
 
 /// Partition page objects into column groups by moving objects out of the source vec.
@@ -1841,5 +2497,161 @@ mod tests {
             all_text.contains("configuration"),
             "Expected 'configuration' from multi-line dehyphenation, got: {all_text}",
         );
+    }
+
+    // ── Geometric cell-merging tests (docling-parse port) ──
+
+    fn make_char_cell(text: &str, left: f32, bottom: f32, right: f32, top: f32) -> CharCell {
+        CharCell {
+            text: text.to_string(),
+            left,
+            bottom,
+            right,
+            top,
+            font_size: 12.0,
+            is_bold: false,
+            is_italic: false,
+            is_monospace: false,
+            baseline_y: bottom,
+            active: true,
+        }
+    }
+
+    #[test]
+    fn test_char_cell_adjacent_touching() {
+        let a = make_char_cell("a", 0.0, 0.0, 10.0, 12.0);
+        let b = make_char_cell("b", 10.0, 0.0, 20.0, 12.0);
+        assert!(a.is_adjacent_to(&b, 5.0, 5.0));
+    }
+
+    #[test]
+    fn test_char_cell_adjacent_small_gap() {
+        let a = make_char_cell("a", 0.0, 0.0, 10.0, 12.0);
+        let b = make_char_cell("b", 12.0, 0.0, 22.0, 12.0);
+        assert!(a.is_adjacent_to(&b, 5.0, 5.0));
+    }
+
+    #[test]
+    fn test_char_cell_not_adjacent_large_gap() {
+        let a = make_char_cell("a", 0.0, 0.0, 10.0, 12.0);
+        let b = make_char_cell("b", 30.0, 0.0, 40.0, 12.0);
+        assert!(!a.is_adjacent_to(&b, 5.0, 5.0));
+    }
+
+    #[test]
+    fn test_char_cell_not_adjacent_different_lines() {
+        let a = make_char_cell("a", 0.0, 0.0, 10.0, 12.0);
+        let b = make_char_cell("b", 10.0, 20.0, 20.0, 32.0);
+        assert!(!a.is_adjacent_to(&b, 5.0, 5.0));
+    }
+
+    #[test]
+    fn test_char_cell_merge_no_space() {
+        let mut a = make_char_cell("so", 0.0, 0.0, 10.0, 12.0);
+        let b = make_char_cell("ft", 10.0, 0.0, 20.0, 12.0);
+        a.merge_with(&b, 3.0);
+        assert_eq!(a.text, "soft");
+    }
+
+    #[test]
+    fn test_char_cell_merge_with_space() {
+        let mut a = make_char_cell("hello", 0.0, 0.0, 50.0, 12.0);
+        let b = make_char_cell("world", 55.0, 0.0, 105.0, 12.0);
+        a.merge_with(&b, 3.0);
+        assert_eq!(a.text, "hello world");
+    }
+
+    #[test]
+    fn test_char_cell_merge_extends_bbox() {
+        let mut a = make_char_cell("a", 0.0, 0.0, 10.0, 12.0);
+        let b = make_char_cell("b", 10.0, 0.0, 20.0, 14.0);
+        a.merge_with(&b, 3.0);
+        assert_eq!(a.right, 20.0);
+        assert_eq!(a.top, 14.0);
+    }
+
+    #[test]
+    fn test_merge_geometric_word_fragments() {
+        // Adjacent chars "s","o","f","t" → "soft"
+        let mut cells = vec![
+            make_char_cell("s", 0.0, 0.0, 6.0, 12.0),
+            make_char_cell("o", 6.0, 0.0, 12.0, 12.0),
+            make_char_cell("f", 12.0, 0.0, 18.0, 12.0),
+            make_char_cell("t", 18.0, 0.0, 24.0, 12.0),
+        ];
+        merge_cells_geometric(&mut cells, 1.5, 0.33);
+        assert_eq!(cells.len(), 1);
+        assert_eq!(cells[0].text, "soft");
+    }
+
+    #[test]
+    fn test_merge_geometric_preserves_word_boundaries() {
+        // "hello" and "world" with gap > space_threshold → "hello world"
+        let mut cells = vec![
+            make_char_cell("hello", 0.0, 0.0, 50.0, 12.0),
+            make_char_cell("world", 60.0, 0.0, 110.0, 12.0),
+        ];
+        merge_cells_geometric(&mut cells, 1.5, 0.33);
+        assert_eq!(cells.len(), 1);
+        assert_eq!(cells[0].text, "hello world");
+    }
+
+    #[test]
+    fn test_merge_geometric_separate_lines() {
+        // Two cells on different Y positions → should NOT merge
+        let mut cells = vec![
+            make_char_cell("line1", 0.0, 100.0, 50.0, 112.0),
+            make_char_cell("line2", 0.0, 80.0, 50.0, 92.0),
+        ];
+        merge_cells_geometric(&mut cells, 1.5, 0.33);
+        assert_eq!(cells.len(), 2);
+    }
+
+    #[test]
+    fn test_merge_geometric_cross_line_word_break() {
+        // "soft" at end of line 1, "ware" at start of line 2 (different Y)
+        // Should produce two separate textlines, NOT "software"
+        let mut cells = vec![
+            make_char_cell("soft", 400.0, 100.0, 440.0, 112.0),
+            make_char_cell("ware", 50.0, 85.0, 90.0, 97.0),
+        ];
+        merge_cells_geometric(&mut cells, 1.5, 0.33);
+        assert_eq!(cells.len(), 2);
+    }
+
+    #[test]
+    fn test_merge_geometric_ligature_adjacent() {
+        // Ligature "ﬁ" next to "eld" → "ﬁeld"
+        let mut cells = vec![
+            make_char_cell("\u{FB01}", 0.0, 0.0, 10.0, 14.0),
+            make_char_cell("eld", 10.0, 0.0, 30.0, 12.0),
+        ];
+        merge_cells_geometric(&mut cells, 1.5, 0.33);
+        assert_eq!(cells.len(), 1);
+        assert_eq!(cells[0].text, "\u{FB01}eld");
+    }
+
+    #[test]
+    fn test_merge_geometric_full_line_with_space_char() {
+        // Characters forming "Hello World" — the space character bridges the gap.
+        // In docling-parse, line cell merging keeps space chars (unlike word merging).
+        let cw = 6.0; // char width
+        let mut cells = vec![
+            make_char_cell("H", 0.0, 0.0, cw, 12.0),
+            make_char_cell("e", cw, 0.0, 2.0 * cw, 12.0),
+            make_char_cell("l", 2.0 * cw, 0.0, 3.0 * cw, 12.0),
+            make_char_cell("l", 3.0 * cw, 0.0, 4.0 * cw, 12.0),
+            make_char_cell("o", 4.0 * cw, 0.0, 5.0 * cw, 12.0),
+            // Space char bridges the word gap
+            make_char_cell(" ", 5.0 * cw, 0.0, 6.0 * cw, 12.0),
+            make_char_cell("W", 6.0 * cw, 0.0, 7.0 * cw, 12.0),
+            make_char_cell("o", 7.0 * cw, 0.0, 8.0 * cw, 12.0),
+            make_char_cell("r", 8.0 * cw, 0.0, 9.0 * cw, 12.0),
+            make_char_cell("l", 9.0 * cw, 0.0, 10.0 * cw, 12.0),
+            make_char_cell("d", 10.0 * cw, 0.0, 11.0 * cw, 12.0),
+        ];
+        merge_cells_geometric(&mut cells, 1.5, 0.33);
+        assert_eq!(cells.len(), 1);
+        assert_eq!(cells[0].text, "Hello World");
     }
 }
