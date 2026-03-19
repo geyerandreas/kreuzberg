@@ -22,3 +22,51 @@ updates:
     ignore:
       - dependency-name: "kreuzberg"
       - dependency-name: "kreuzberg-ffi"
+
+  - package-ecosystem: "pip"
+    directories:
+      - "/"
+      - "/packages/python"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "npm"
+    directories:
+      - "/"
+      - "/crates/kreuzberg-node"
+      - "/crates/kreuzberg-wasm"
+      - "/packages/typescript/core"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "bundler"
+    directory: "/packages/ruby"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "composer"
+    directories:
+      - "/"
+      - "/packages/php"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "gomod"
+    directory: "/packages/go/v4"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "maven"
+    directory: "/packages/java"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "nuget"
+    directory: "/packages/csharp"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "mix"
+    directory: "/packages/elixir"
+    schedule:
+      interval: "weekly"
