@@ -122,6 +122,7 @@ pub(crate) fn extract_all_from_document(
             layout_results,
             #[cfg(not(feature = "layout-detection"))]
             None,
+            allow_single_column,
         ) {
             Ok((md, has_encoding_issues)) if !md.trim().is_empty() => {
                 tracing::debug!(

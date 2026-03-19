@@ -32,6 +32,7 @@ where
 
     let max_concurrent = config
         .max_concurrent_extractions
+        .or_else(|| config.concurrency.as_ref().and_then(|c| c.max_threads))
         .unwrap_or_else(|| (num_cpus::get() as f64 * 1.5).ceil() as usize);
     let semaphore = Arc::new(Semaphore::new(max_concurrent));
 

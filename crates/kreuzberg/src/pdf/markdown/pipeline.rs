@@ -536,6 +536,7 @@ pub fn render_document_as_markdown_with_tables(
     #[cfg(not(feature = "layout-detection"))] _layout_images: Option<()>,
     #[cfg(feature = "layout-detection")] layout_results: Option<&[crate::pdf::layout_runner::PageLayoutResult]>,
     #[cfg(not(feature = "layout-detection"))] _layout_results: Option<()>,
+    allow_single_column: bool,
 ) -> Result<(String, bool)> {
     let pages = document.pages();
     let page_count = pages.len();
@@ -765,6 +766,7 @@ pub fn render_document_as_markdown_with_tables(
                                     tp.page_idx,
                                     tp.page_height,
                                     0.5,
+                                    allow_single_column,
                                 )
                             })
                         })
@@ -791,6 +793,7 @@ pub fn render_document_as_markdown_with_tables(
                         tp.page_idx,
                         tp.page_height,
                         0.5,
+                        allow_single_column,
                     ));
                 }
             }
@@ -807,6 +810,7 @@ pub fn render_document_as_markdown_with_tables(
                     tp.page_idx,
                     tp.page_height,
                     0.5,
+                    allow_single_column,
                 ));
             }
         }

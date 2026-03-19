@@ -232,7 +232,7 @@ mod tests {
             right: 600.0,
             top: 800.0,
         }];
-        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5);
+        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5, false);
         assert!(tables.is_empty());
     }
 
@@ -246,7 +246,7 @@ mod tests {
         ];
         let hints = vec![make_table_hint(0.3, 0.0, 0.0, 200.0, 800.0)];
         // min_confidence = 0.5, hint has 0.3 → filtered
-        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5);
+        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5, false);
         assert!(tables.is_empty());
     }
 
@@ -255,14 +255,14 @@ mod tests {
         // Only 2 words in the region — below the 4-word minimum
         let words = vec![make_word("A", 10, 10, 50, 12), make_word("B", 100, 10, 50, 12)];
         let hints = vec![make_table_hint(0.9, 0.0, 0.0, 200.0, 800.0)];
-        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5);
+        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5, false);
         assert!(tables.is_empty());
     }
 
     #[test]
     fn test_empty_words_returns_empty() {
         let hints = vec![make_table_hint(0.9, 0.0, 0.0, 200.0, 800.0)];
-        let tables = extract_tables_from_layout_hints(&[], &hints, 0, 800.0, 0.5);
+        let tables = extract_tables_from_layout_hints(&[], &hints, 0, 800.0, 0.5, false);
         assert!(tables.is_empty());
     }
 
@@ -274,7 +274,7 @@ mod tests {
             make_word("C", 10, 30, 50, 12),
             make_word("D", 100, 30, 50, 12),
         ];
-        let tables = extract_tables_from_layout_hints(&words, &[], 0, 800.0, 0.5);
+        let tables = extract_tables_from_layout_hints(&words, &[], 0, 800.0, 0.5, false);
         assert!(tables.is_empty());
     }
 
@@ -289,7 +289,7 @@ mod tests {
         ];
         // Hint covers (0, 0) to (100, 100) in PDF coords → image y = 700..800
         let hints = vec![make_table_hint(0.9, 0.0, 700.0, 100.0, 800.0)];
-        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5);
+        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5, false);
         // Words at (500, 500) don't overlap the hint → too few words → empty
         assert!(tables.is_empty());
     }
@@ -304,7 +304,7 @@ mod tests {
         ];
         // Only 3 non-empty words → below 4-word minimum
         let hints = vec![make_table_hint(0.9, 0.0, 0.0, 200.0, 800.0)];
-        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5);
+        let tables = extract_tables_from_layout_hints(&words, &hints, 0, 800.0, 0.5, false);
         assert!(tables.is_empty());
     }
 
@@ -322,7 +322,7 @@ mod tests {
         ];
         // Hint in PDF coords: bottom=700, top=800 → image top=0, image bottom=100
         let hints = vec![make_table_hint(0.9, 0.0, 700.0, 400.0, 800.0)];
-        let tables = extract_tables_from_layout_hints(&words, &hints, 2, 800.0, 0.5);
+        let tables = extract_tables_from_layout_hints(&words, &hints, 2, 800.0, 0.5, false);
         // If a valid table is produced, its page_number should be page_index + 1
         for table in &tables {
             assert_eq!(table.page_number, 3); // page_index=2 → page_number=3
