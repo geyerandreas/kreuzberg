@@ -4,16 +4,8 @@
 //! 1. Structure tree: `ExtractedBlock` → `PdfParagraph` (for tagged PDFs)
 //! 2. Page objects: `PdfPage` → `(Vec<SegmentData>, Vec<ImagePosition>)` (heuristic extraction)
 //!
-//! The page objects path uses a Segment-based algorithm as its primary extraction:
-//! pdfium segments are grouped into rows, merged horizontally, and text is
-//! re-extracted from merged bounding boxes via `page.text().inside_rect()`.
-//! This produces correct word boundaries (pdfium reassembles fragmented words
-//! like "soft"+"ware" into "software" within bounded rects) and naturally
-//! excludes sidebar text through tight per-group bboxes.
-//!
-//! Falls back to character-level extraction with column detection when the
-//! segment-based path produces no results, and to the page objects API when
-//! `page.text()` fails entirely.
+//! The page objects path includes post-processing ligature repair for pages
+//! with broken font encodings (detected via `PdfPageTextChar::has_unicode_map_error()`).
 
 use std::borrow::Cow;
 
@@ -126,15 +118,9 @@ pub(super) fn extracted_blocks_to_paragraphs(blocks: &[ExtractedBlock]) -> Vec<P
 
 /// Extract text segments and image positions from a PDF page.
 ///
-/// Primary path: Segment-based extraction using pdfium's segment API with
-/// row grouping, cell merging, and text re-extraction from merged bounding
-/// boxes. This produces correct word boundaries (pdfium reassembles fragmented
-/// words like "soft"+"ware" into "software" within bounded rects).
-///
-/// Fallback: character-level extraction via `PageTextData` DTO when the
-/// segment-based path produces no results.
-///
-/// Last resort: page objects API with column detection when `page.text()` fails.
+/// Uses the page objects API with column detection for text extraction.
+/// For pages with broken font encodings (ligature corruption), applies
+/// per-character repair using `PdfPageTextChar::has_unicode_map_error()`.
 ///
 /// Also detects image objects and records their positions for interleaving.
 pub(super) fn objects_to_page_data(
@@ -156,19 +142,9 @@ pub(super) fn objects_to_page_data(
         }
     }
 
-    // Primary path: Segment-based segment extraction.
-    // Uses pdfium's segment API to get text rects, groups into rows,
-    // merges adjacent cells, then re-extracts text from merged bboxes
-    // using page.text().inside_rect(). This produces correct word
-    // boundaries (e.g., "software" instead of "soft ware") because
-    // pdfium re-assembles text within the bounded rect.
-    let page_height = page.height().value;
-    if let Some(segments) = extract_segments_merged(page, page_height) {
-        return (segments, images);
-    }
-
-    // Secondary fallback: character-level extraction with column detection.
-    // Used when Segment-based extraction produces nothing (e.g., no segments).
+    // Primary path: single-pass extraction via PageTextData DTO.
+    // Extracts all character data once, then assembles segments without
+    // further pdfium text API calls.
     let page_width = page.width().value;
     if let Some(data) = extract_page_text_data(page)
         && let Some(segments) = chars_to_segments_from_data(&data, page_width)
@@ -176,8 +152,8 @@ pub(super) fn objects_to_page_data(
         return (segments, images);
     }
 
-    // Last resort: page objects API with column detection.
-    // Used when page.text() fails entirely (rare edge case).
+    // Fallback: page objects API with column detection.
+    // Used when page.text() fails (rare edge case).
     let mut segments = Vec::new();
     let column_groups = super::columns::split_objects_into_columns(&objects);
     let column_vecs = partition_objects_by_columns(objects, &column_groups);
@@ -186,7 +162,7 @@ pub(super) fn objects_to_page_data(
         extract_paragraphs_to_segments(paragraphs, &mut segments);
     }
 
-    // Apply ligature repair for last-resort path.
+    // Apply ligature repair for fallback path.
     if let Some(repair_map) = build_ligature_repair_map(page) {
         for seg in &mut segments {
             seg.text = apply_ligature_repairs(&seg.text, &repair_map);
@@ -194,308 +170,6 @@ pub(super) fn objects_to_page_data(
     }
 
     (segments, images)
-}
-
-// ── Segment-based segment extraction ──
-
-/// A text cell extracted from pdfium's segment API, with coordinates
-/// converted to page top-left origin for row grouping.
-struct TextCell {
-    text: String,
-    /// Left edge in PDF coordinates (bottom-left origin).
-    pdf_left: f32,
-    /// Bottom edge in PDF coordinates (bottom-left origin).
-    pdf_bottom: f32,
-    /// Right edge in PDF coordinates (bottom-left origin).
-    pdf_right: f32,
-    /// Top edge in PDF coordinates (bottom-left origin).
-    pdf_top: f32,
-    /// Top edge in page top-left coordinate system.
-    top: f32,
-    /// Bottom edge in page top-left coordinate system.
-    bottom: f32,
-    /// Font size in points.
-    font_size: f32,
-    /// Whether the font is bold.
-    is_bold: bool,
-    /// Whether the font is italic.
-    is_italic: bool,
-    /// Whether the font is monospace.
-    is_monospace: bool,
-    /// Baseline Y in PDF coordinates (bottom-left origin).
-    baseline_y: f32,
-}
-
-/// A row of text cells sharing approximately the same vertical position.
-struct TextRow {
-    cells: Vec<TextCell>,
-    /// Top edge of the row (page top-left coordinates).
-    top: f32,
-    /// Bottom edge of the row (page top-left coordinates).
-    bottom: f32,
-}
-
-impl TextRow {
-    fn height(&self) -> f32 {
-        (self.bottom - self.top).abs()
-    }
-}
-
-/// A group of merged cells within a row, potentially requiring text re-extraction.
-struct MergedCellGroup {
-    cells: Vec<TextCell>,
-    /// Merged left edge in PDF coordinates.
-    pdf_left: f32,
-    /// Merged bottom edge in PDF coordinates.
-    pdf_bottom: f32,
-    /// Merged right edge in PDF coordinates.
-    pdf_right: f32,
-    /// Merged top edge in PDF coordinates.
-    pdf_top: f32,
-}
-
-/// Segment-based text extraction from a PDF page.
-///
-/// Implements a segment-based cell-merging extraction algorithm:
-/// 1. Extract text rects from pdfium's segment API
-/// 2. Group cells into rows (vertical_threshold = 0.5)
-/// 3. Merge adjacent cells within rows (horizontal_threshold = 1.0)
-/// 4. Re-extract text from merged bboxes using `page.text().inside_rect()`
-/// 5. Convert to `SegmentData`
-///
-/// The re-extraction step is the key: pdfium re-assembles fragmented words
-/// (e.g., "soft" + "ware" becomes "software") when given a bounding rect
-/// that spans both fragments. Tight per-group bboxes naturally exclude
-/// sidebar text without explicit filtering.
-fn extract_segments_merged(page: &PdfPage, page_height: f32) -> Option<Vec<SegmentData>> {
-    let text_obj = page.text().ok()?;
-    let pdfium_segments = text_obj.segments();
-    let seg_count = pdfium_segments.len();
-    if seg_count == 0 {
-        return None;
-    }
-
-    // Step 1: Extract text rects into cells.
-    let mut cells: Vec<TextCell> = Vec::with_capacity(seg_count);
-    for i in 0..seg_count {
-        let seg = match pdfium_segments.get(i) {
-            Ok(s) => s,
-            Err(_) => continue,
-        };
-        let text = seg.text();
-        if text.trim().is_empty() {
-            continue;
-        }
-        let bounds = seg.bounds();
-        let pdf_left = bounds.left().value;
-        let pdf_bottom = bounds.bottom().value;
-        let pdf_right = bounds.right().value;
-        let pdf_top = bounds.top().value;
-
-        // Convert from PDF bottom-left origin to page top-left origin.
-        let top = page_height - pdf_top;
-        let bottom = page_height - pdf_bottom;
-
-        // Sample font properties from the first non-whitespace character.
-        let (font_size, is_bold, is_italic, is_monospace, baseline_y) = sample_font_from_segment(&seg);
-
-        cells.push(TextCell {
-            text,
-            pdf_left,
-            pdf_bottom,
-            pdf_right,
-            pdf_top,
-            top,
-            bottom,
-            font_size,
-            is_bold,
-            is_italic,
-            is_monospace,
-            baseline_y,
-        });
-    }
-
-    if cells.is_empty() {
-        return None;
-    }
-
-    // Filter sidebar cells: cells whose right edge is within 5% of page width
-    // from the left margin are likely rotated sidebar text (e.g., arXiv IDs).
-    let page_width = page.width().value;
-    let sidebar_cutoff = page_width * 0.05;
-    cells.retain(|c| c.pdf_right > sidebar_cutoff);
-
-    if cells.is_empty() {
-        return None;
-    }
-
-    // Step 2: Group cells into rows.
-    let rows = group_cells_into_rows(cells);
-
-    // Step 3 & 4: Merge adjacent cells within rows, re-extract text from merged bboxes.
-    let mut segments = Vec::new();
-    for row in rows {
-        let merged_groups = merge_cells_in_row(row);
-        for group in merged_groups {
-            // Step 4: Re-extract text from merged bbox.
-            let text = if group.cells.len() == 1 {
-                // Single cell: use text as-is.
-                group.cells[0].text.clone()
-            } else {
-                // Multi-cell group: re-extract from merged bbox using pdfium.
-                // The bbox is in PDF coordinates (bottom-left origin).
-                let rect = PdfRect::new_from_values(group.pdf_bottom, group.pdf_left, group.pdf_top, group.pdf_right);
-                let reextracted = text_obj.inside_rect(rect);
-                if reextracted.trim().is_empty() {
-                    // Fallback: concatenate individual cell texts.
-                    group.cells.iter().map(|c| c.text.as_str()).collect::<Vec<_>>().join("")
-                } else {
-                    reextracted
-                }
-            };
-
-            let trimmed = text.trim();
-            if trimmed.is_empty() {
-                continue;
-            }
-
-            // Step 5: Convert to SegmentData.
-            // Use the first cell's font info as representative.
-            let first = &group.cells[0];
-            let width = group.pdf_right - group.pdf_left;
-            let height = group.pdf_top - group.pdf_bottom;
-
-            segments.push(SegmentData {
-                text: trimmed.to_string(),
-                x: group.pdf_left,
-                y: first.baseline_y,
-                width: width.max(first.font_size),
-                height: height.max(first.font_size),
-                font_size: first.font_size,
-                is_bold: first.is_bold,
-                is_italic: first.is_italic,
-                is_monospace: first.is_monospace,
-                baseline_y: first.baseline_y,
-            });
-        }
-    }
-
-    if segments.is_empty() { None } else { Some(segments) }
-}
-
-/// Sample font properties from a pdfium text segment's first non-whitespace character.
-///
-/// Returns (font_size, is_bold, is_italic, is_monospace, baseline_y).
-fn sample_font_from_segment(seg: &pdfium_render::prelude::PdfPageTextSegment<'_>) -> (f32, bool, bool, bool, f32) {
-    let bounds = seg.bounds();
-    let default_baseline = bounds.bottom().value;
-
-    if let Ok(seg_chars) = seg.chars() {
-        for ch in seg_chars.iter() {
-            let uv = ch.unicode_value();
-            if let Some(uc) = char::from_u32(uv)
-                && uc.is_whitespace()
-            {
-                continue;
-            }
-            let scaled = ch.scaled_font_size().value;
-            let fs = if scaled > 0.0 { scaled } else { 12.0 };
-            let info = ch.font_info();
-            let mono = ch.font_is_fixed_pitch();
-            let bl_y = ch.origin().map(|o| o.1.value).unwrap_or(default_baseline);
-            return (fs, info.1, info.2, mono, bl_y);
-        }
-    }
-
-    (12.0, false, false, false, default_baseline)
-}
-
-/// Group cells into rows based on vertical proximity.
-///
-/// cell-merging algorithm: a cell belongs to the current row if its top and bottom
-/// are both within `row_height * vertical_threshold` of the row's top and bottom.
-/// `vertical_threshold = 0.5` (half the row height).
-fn group_cells_into_rows(cells: Vec<TextCell>) -> Vec<TextRow> {
-    const VERTICAL_THRESHOLD: f32 = 0.5;
-
-    let mut rows: Vec<TextRow> = Vec::new();
-
-    for cell in cells {
-        let cell_top = cell.top;
-        let cell_bottom = cell.bottom;
-        // Find matching row index.
-        let matching_row = rows.iter().position(|row| {
-            let row_h = row.height().max(1.0);
-            let tolerance = row_h * VERTICAL_THRESHOLD;
-            (cell_top - row.top).abs() <= tolerance && (cell_bottom - row.bottom).abs() <= tolerance
-        });
-        if let Some(idx) = matching_row {
-            rows[idx].top = rows[idx].top.min(cell_top);
-            rows[idx].bottom = rows[idx].bottom.max(cell_bottom);
-            rows[idx].cells.push(cell);
-        } else {
-            rows.push(TextRow {
-                cells: vec![cell],
-                top: cell_top,
-                bottom: cell_bottom,
-            });
-        }
-    }
-
-    // Sort rows top-to-bottom (ascending top in page top-left coordinates).
-    rows.sort_by(|a, b| a.top.partial_cmp(&b.top).unwrap_or(std::cmp::Ordering::Equal));
-    rows
-}
-
-/// Merge adjacent cells within a row based on horizontal proximity.
-///
-/// cell-merging algorithm: cells are sorted left-to-right. If the gap between
-/// consecutive cells is <= `avg_height * horizontal_threshold`, they are
-/// merged into one group. `horizontal_threshold = 1.0`.
-fn merge_cells_in_row(mut row: TextRow) -> Vec<MergedCellGroup> {
-    const HORIZONTAL_THRESHOLD: f32 = 1.0;
-
-    // Sort cells left-to-right by their left edge (PDF coordinates).
-    row.cells
-        .sort_by(|a, b| a.pdf_left.partial_cmp(&b.pdf_left).unwrap_or(std::cmp::Ordering::Equal));
-
-    // Compute average height across all cells in the row.
-    let avg_height = if row.cells.is_empty() {
-        12.0
-    } else {
-        row.cells.iter().map(|c| (c.pdf_top - c.pdf_bottom).abs()).sum::<f32>() / row.cells.len() as f32
-    };
-    let merge_threshold = avg_height * HORIZONTAL_THRESHOLD;
-
-    let mut groups: Vec<MergedCellGroup> = Vec::new();
-
-    for cell in row.cells {
-        let should_merge = if let Some(last_group) = groups.last() {
-            let gap = cell.pdf_left - last_group.pdf_right;
-            gap <= merge_threshold
-        } else {
-            false
-        };
-
-        if should_merge {
-            let group = groups.last_mut().unwrap();
-            group.pdf_left = group.pdf_left.min(cell.pdf_left);
-            group.pdf_bottom = group.pdf_bottom.min(cell.pdf_bottom);
-            group.pdf_right = group.pdf_right.max(cell.pdf_right);
-            group.pdf_top = group.pdf_top.max(cell.pdf_top);
-            group.cells.push(cell);
-        } else {
-            groups.push(MergedCellGroup {
-                pdf_left: cell.pdf_left,
-                pdf_bottom: cell.pdf_bottom,
-                pdf_right: cell.pdf_right,
-                pdf_top: cell.pdf_top,
-                cells: vec![cell],
-            });
-        }
-    }
-
-    groups
 }
 
 /// Partition page objects into column groups by moving objects out of the source vec.
@@ -688,7 +362,7 @@ fn build_line_text(chars: &[CharInfo], repair_map: Option<&[(char, &str)]>) -> S
                         (ci.font_size + real_prev.font_size) * 0.3
                     };
                     // Veto the space if gap < 50% of character width.
-                    // This threshold is calibrated from the reference implementation's 0.33 on
+                    // This threshold is calibrated from docling-parse's 0.33 on
                     // advance widths, adjusted up because tight_bounds are narrower.
                     if gap < avg_char_width * 0.5 {
                         // Remove already-pushed space — chars are too close.
@@ -950,12 +624,19 @@ fn assemble_segments_from_chars(char_infos: &[CharInfo], repair_map: Option<&[(c
     // title/heading lines from inflating the margin).
     let _right_margin = compute_right_margin(char_infos, &line_ranges);
 
-    // ── Pass 2: emit segments, merging cross-line word breaks ──
+    // ── Pass 2: emit segments, merging cross-line hyphenated word breaks ──
+    //
+    // Follows docling's `sanitize_text()` approach: when a line ends with a
+    // hyphen that pdfium recognises as a line-break hyphen (`is_hyphen` flag
+    // from `FPDFText_IsHyphen`), strip the hyphen and join directly with the
+    // next line's text.  This precisely handles "soft-" + "ware" → "software",
+    // "recog-" + "nition" → "recognition", etc., without the false positives
+    // of the previous full-width heuristic.
     let mut segments = Vec::new();
     let mut pending_text: Option<String> = None;
     let mut pending_start: usize = 0;
 
-    for &(start, end) in line_ranges.iter() {
+    for (range_idx, &(start, end)) in line_ranges.iter().enumerate() {
         let line_text = build_line_text(&char_infos[start..end], repair_map);
         let trimmed = line_text.trim();
         if trimmed.is_empty() {
@@ -971,14 +652,20 @@ fn assemble_segments_from_chars(char_infos: &[CharInfo], repair_map: Option<&[(c
             pending_start = start;
         }
 
-        // Word-break merge disabled: the full-width heuristic produces false
-        // positives on documents with variable line lengths. Cross-line word
-        // breaks ("soft ware") remain as separate segments.
-        // TODO: re-enable with a more precise heuristic.
-        let merge_with_next = false;
+        // Check if this line ends with a pdfium-flagged hyphen that should be
+        // removed to rejoin a word split across lines.  The `is_hyphen` flag
+        // from pdfium's `FPDFText_IsHyphen` fires for soft hyphens (U+00AD),
+        // discretionary hyphens, and regular hyphens at line-break positions.
+        let merge_with_next = range_idx + 1 < line_ranges.len()
+            && line_ends_with_break_hyphen(&char_infos[start..end]);
 
         if merge_with_next {
-            // Keep accumulating into pending_text.
+            // Strip the trailing hyphen character from the accumulated text so
+            // "soft-" becomes "soft" before "ware" is appended on the next
+            // iteration.
+            if let Some(ref mut pending) = pending_text {
+                strip_trailing_hyphen(pending);
+            }
             continue;
         }
 
@@ -1054,78 +741,55 @@ fn compute_right_margin(char_infos: &[CharInfo], line_ranges: &[(usize, usize)])
     max_right
 }
 
-/// Determine whether a line break between two visual lines is a mid-word split
-/// caused by PDF line wrapping, and the two lines should be merged.
+/// Check whether a line (slice of `CharInfo`) ends with a hyphen that pdfium
+/// recognises as a line-break hyphen.
 ///
-/// Returns `true` when all of:
-/// 1. The current line is "full-width" — its last character's right edge is
-///    within 15% of the column width from the right margin.
-/// 2. The current line ends with a lowercase alphabetic character.
-/// 3. The next line begins with a lowercase alphabetic character.
+/// Returns `true` when the last non-space character satisfies **both**:
+/// 1. `is_hyphen` flag is set (pdfium's `FPDFText_IsHyphen` API), and
+/// 2. The character before the hyphen is alphabetic, and
+/// 3. The character is one of the standard hyphen/minus codepoints (`-`,
+///    U+2010 HYPHEN, U+00AD SOFT HYPHEN) — excluding em/en dashes that are
+///    intentional punctuation.
 ///
-/// This catches cases like "soft|ware", "recog|nition", "struc|tures" where
-/// the PDF renderer wraps a word across lines. Short lines (headings, list
-/// items, last lines of paragraphs) are not merged because they don't reach
-/// the right margin.
-#[allow(dead_code)]
-fn should_merge_line_break(
-    char_infos: &[CharInfo],
-    _curr_start: usize,
-    curr_end: usize,
-    next_start: usize,
-    next_end: usize,
-    right_margin: f32,
-) -> bool {
-    // Find last non-space char of current line.
-    let curr_last_idx = match (0..curr_end)
-        .rev()
-        .find(|&j| j >= _curr_start && char_infos[j].ch != ' ')
-    {
-        Some(idx) => idx,
-        None => return false,
-    };
-    let curr_last = &char_infos[curr_last_idx];
-
-    // Find first non-space char of next line.
-    let next_first = match (next_start..next_end).find(|&j| char_infos[j].ch != ' ') {
-        Some(idx) => &char_infos[idx],
+/// This mirrors docling's `sanitize_text` which strips trailing `-` at line
+/// boundaries to rejoin hyphenated words.
+fn line_ends_with_break_hyphen(line_chars: &[CharInfo]) -> bool {
+    // Find the last non-space character.
+    let last = match line_chars.iter().rev().find(|c| c.ch != ' ') {
+        Some(c) => c,
         None => return false,
     };
 
-    // Condition 2 & 3: both sides are lowercase alphabetic.
-    if !curr_last.ch.is_alphabetic() || !curr_last.ch.is_lowercase() {
-        return false;
-    }
-    if !next_first.ch.is_alphabetic() || !next_first.ch.is_lowercase() {
+    if !last.is_hyphen {
         return false;
     }
 
-    // Condition 1: current line reaches near the right margin.
-    // Compute column width from the leftmost char to the right margin.
-    // We consider a line "full-width" if its right edge is within 15% of
-    // the column width from the margin.
-    if right_margin <= f32::MIN {
+    // Only treat standard hyphen-like chars as break hyphens — not em/en dashes.
+    if !matches!(last.ch, '-' | '\u{2010}' | '\u{00AD}' | '\u{2011}') {
         return false;
     }
 
-    // Use the first character's X of the current line as the left edge.
-    let left_edge = char_infos[_curr_start..curr_end]
+    // The character before the hyphen must be alphabetic to confirm this is a
+    // word-break hyphen rather than a standalone dash or numeric range.
+    line_chars
         .iter()
+        .rev()
         .filter(|c| c.ch != ' ')
-        .map(|c| c.x)
-        .fold(f32::MAX, f32::min);
+        .nth(1) // second-to-last non-space
+        .is_some_and(|c| c.ch.is_alphabetic())
+}
 
-    let column_width = right_margin - left_edge;
-    if column_width <= 0.0 {
-        return false;
+/// Strip the trailing hyphen character from a string.
+///
+/// Removes the last character if it is a hyphen/minus (`-`, U+2010, U+00AD,
+/// U+2011). If the text ends with trailing spaces after the hyphen, only the
+/// hyphen itself is removed (spaces were already trimmed by the caller).
+fn strip_trailing_hyphen(text: &mut String) {
+    if let Some(ch) = text.chars().next_back() {
+        if matches!(ch, '-' | '\u{2010}' | '\u{00AD}' | '\u{2011}') {
+            text.pop();
+        }
     }
-
-    let line_right = curr_last.right_x;
-    let shortfall = right_margin - line_right;
-
-    // Allow up to 15% of column width as tolerance. This accommodates
-    // natural variation in character widths at line ends.
-    shortfall < column_width * 0.15
 }
 
 /// Convert pre-extracted `PageTextData` into `CharInfo` values and assemble segments.
@@ -1181,19 +845,6 @@ fn chars_to_segments_from_data(data: &PageTextData, page_width: f32) -> Option<V
     };
 
     if segments.is_empty() { None } else { Some(segments) }
-}
-
-/// Extract text segments from a PDF page using pdfium's text API.
-///
-/// Thin wrapper that extracts `PageTextData` once via the single-pass DTO,
-/// then delegates to `chars_to_segments_from_data` for assembly.
-/// Retained for backward compatibility; primary callers now use
-/// `extract_page_text_data` + `chars_to_segments_from_data` directly.
-#[allow(dead_code)]
-fn chars_to_segments(page: &PdfPage) -> Option<Vec<SegmentData>> {
-    let data = extract_page_text_data(page)?;
-    let page_width = page.width().value;
-    chars_to_segments_from_data(&data, page_width)
 }
 
 /// Convert pdfium paragraphs into SegmentData, preserving per-line positions.
@@ -1803,23 +1454,17 @@ mod tests {
             .collect()
     }
 
-    /// "soft" at end of full-width line 1, "ware" at start of line 2.
-    /// Both lines reach near the right margin. Should merge into "software".
+    /// "soft-" at end of line 1 (with pdfium is_hyphen flag), "ware" at start of line 2.
+    /// Should merge into "software" by stripping the hyphen.
     #[test]
     fn test_word_break_merge_software() {
         let fs = 12.0;
         let cw = fs * 0.6; // char width
-        // Line 1: "this is soft" — full-width line ending at ~right margin
         let right_margin_x = 300.0;
         let mut chars = Vec::new();
+        // Line 1: "this is soft-" — hyphen at end has is_hyphen = true
         chars.extend(make_word_chars("this", 10.0, 100.0, fs));
-        chars.push(make_char_exact(
-            ' ',
-            10.0 + 4.0 * cw + 1.0,
-            100.0,
-            fs,
-            10.0 + 4.0 * cw + 1.0 + cw,
-        ));
+        chars.push(make_char_exact(' ', 10.0 + 4.0 * cw + 1.0, 100.0, fs, 10.0 + 4.0 * cw + 1.0 + cw));
         chars.extend(make_word_chars("is", 10.0 + 5.0 * cw + 2.0, 100.0, fs));
         chars.push(make_char_exact(
             ' ',
@@ -1828,19 +1473,14 @@ mod tests {
             fs,
             10.0 + 7.0 * cw + 3.0 + cw,
         ));
-        // "soft" placed so its right edge is near right_margin_x
-        let soft_start = right_margin_x - 4.0 * cw;
+        let soft_start = right_margin_x - 5.0 * cw; // 4 chars + hyphen
         chars.extend(make_word_chars("soft", soft_start, 100.0, fs));
+        // Trailing hyphen with is_hyphen = true (pdfium flag)
+        chars.push(make_hyphen_char('-', soft_start + 4.0 * cw, 100.0, fs, soft_start + 5.0 * cw));
 
         // Line 2: "ware is great" — starts with lowercase continuation
         chars.extend(make_word_chars("ware", 10.0, 80.0, fs));
-        chars.push(make_char_exact(
-            ' ',
-            10.0 + 4.0 * cw + 1.0,
-            80.0,
-            fs,
-            10.0 + 4.0 * cw + 1.0 + cw,
-        ));
+        chars.push(make_char_exact(' ', 10.0 + 4.0 * cw + 1.0, 80.0, fs, 10.0 + 4.0 * cw + 1.0 + cw));
         chars.extend(make_word_chars("is", 10.0 + 5.0 * cw + 2.0, 80.0, fs));
         chars.push(make_char_exact(
             ' ',
@@ -1853,10 +1493,15 @@ mod tests {
         chars.extend(make_word_chars("great", great_start, 80.0, fs));
 
         let segments = assemble_segments_from_chars(&chars, None);
-        // Word-break merge is disabled; lines remain separate segments.
-        assert_eq!(segments.len(), 2, "Lines stay as separate segments");
-        assert!(segments[0].text.contains("soft"), "Line 1 ends with 'soft'");
-        assert!(segments[1].text.starts_with("ware"), "Line 2 starts with 'ware'");
+        let all_text: String = segments
+            .iter()
+            .map(|s| s.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(
+            all_text.contains("software"),
+            "Expected 'software' in merged text, got: {all_text}",
+        );
     }
 
     /// Short line ending with lowercase + next line starting with lowercase
@@ -1939,13 +1584,7 @@ mod tests {
 
         // Line 2: "next line" — starts with lowercase
         chars.extend(make_word_chars("next", 10.0, 80.0, fs));
-        chars.push(make_char_exact(
-            ' ',
-            10.0 + 4.0 * cw + 1.0,
-            80.0,
-            fs,
-            10.0 + 5.0 * cw + 1.0,
-        ));
+        chars.push(make_char_exact(' ', 10.0 + 4.0 * cw + 1.0, 80.0, fs, 10.0 + 5.0 * cw + 1.0));
         let line2_start = right_margin_x - 4.0 * cw;
         chars.extend(make_word_chars("line", line2_start, 80.0, fs));
 
@@ -1957,7 +1596,8 @@ mod tests {
         );
     }
 
-    /// Multi-line word break chain: "recog" + "ni" + "tion" across 3 lines.
+    /// Multi-line word break chain: "recog-" + "ni-" + "tion" across 3 lines.
+    /// Both hyphens have pdfium's is_hyphen flag set.
     #[test]
     fn test_word_break_merge_chain() {
         let fs = 12.0;
@@ -1965,28 +1605,17 @@ mod tests {
         let right_margin_x = 200.0;
 
         let mut chars = Vec::new();
-        // Line 1: "the recog" — full-width, ends lowercase
+        // Line 1: "the recog-" — ends with pdfium hyphen
         chars.extend(make_word_chars("the", 10.0, 100.0, fs));
-        chars.push(make_char_exact(
-            ' ',
-            10.0 + 3.0 * cw + 1.0,
-            100.0,
-            fs,
-            10.0 + 4.0 * cw + 1.0,
-        ));
-        let recog_start = right_margin_x - 5.0 * cw;
+        chars.push(make_char_exact(' ', 10.0 + 3.0 * cw + 1.0, 100.0, fs, 10.0 + 4.0 * cw + 1.0));
+        let recog_start = right_margin_x - 6.0 * cw; // 5 chars + hyphen
         chars.extend(make_word_chars("recog", recog_start, 100.0, fs));
+        chars.push(make_hyphen_char('-', recog_start + 5.0 * cw, 100.0, fs, recog_start + 6.0 * cw));
 
-        // Line 2: "nition is" — full-width
+        // Line 2: "nition is" — starts with lowercase continuation
         let ni_start = 10.0;
         chars.extend(make_word_chars("nition", ni_start, 80.0, fs));
-        chars.push(make_char_exact(
-            ' ',
-            ni_start + 6.0 * cw + 1.0,
-            80.0,
-            fs,
-            ni_start + 7.0 * cw + 1.0,
-        ));
+        chars.push(make_char_exact(' ', ni_start + 6.0 * cw + 1.0, 80.0, fs, ni_start + 7.0 * cw + 1.0));
         let is_start = right_margin_x - 2.0 * cw;
         chars.extend(make_word_chars("is", is_start, 80.0, fs));
 
@@ -1994,10 +1623,189 @@ mod tests {
         chars.extend(make_word_chars("great", 10.0, 60.0, fs));
 
         let segments = assemble_segments_from_chars(&chars, None);
-        // Word-break merge is disabled; lines remain separate segments.
-        // "recog" and "nition" appear in separate segments.
-        assert_eq!(segments.len(), 3, "Three separate line segments");
-        assert!(segments[0].text.contains("recog"), "Line 1 has 'recog'");
-        assert!(segments[1].text.starts_with("nition"), "Line 2 starts with 'nition'");
+        let all_text: String = segments.iter().map(|s| s.text.as_str()).collect::<Vec<_>>().join(" ");
+        assert!(
+            all_text.contains("recognition"),
+            "Expected 'recognition' in output, got: {all_text}",
+        );
+    }
+
+    // ── Tests for pdfium-hyphen-based cross-line word break merging ──
+
+    /// Create a CharInfo with `is_hyphen = true`.
+    fn make_hyphen_char(ch: char, x: f32, y: f32, font_size: f32, right_x: f32) -> CharInfo {
+        CharInfo {
+            ch,
+            x,
+            y,
+            font_size,
+            right_x,
+            is_bold: false,
+            is_italic: false,
+            is_monospace: false,
+            has_map_error: false,
+            is_symbolic: false,
+            is_hyphen: true,
+        }
+    }
+
+    #[test]
+    fn test_line_ends_with_break_hyphen_basic() {
+        let fs = 12.0;
+        let cw = fs * 0.6;
+        // "soft-" where '-' has is_hyphen = true
+        let mut chars = make_word_chars("soft", 10.0, 100.0, fs);
+        chars.push(make_hyphen_char('-', 10.0 + 4.0 * cw, 100.0, fs, 10.0 + 5.0 * cw));
+        assert!(line_ends_with_break_hyphen(&chars));
+    }
+
+    #[test]
+    fn test_line_ends_with_break_hyphen_not_flagged() {
+        let fs = 12.0;
+        let cw = fs * 0.6;
+        // "word-" where '-' has is_hyphen = false (e.g., intentional hyphen in compound word)
+        let mut chars = make_word_chars("word", 10.0, 100.0, fs);
+        chars.push(make_char_exact('-', 10.0 + 4.0 * cw, 100.0, fs, 10.0 + 5.0 * cw));
+        assert!(!line_ends_with_break_hyphen(&chars));
+    }
+
+    #[test]
+    fn test_line_ends_with_break_hyphen_standalone_dash() {
+        let fs = 12.0;
+        // Just a dash with no preceding alphabetic — should not be treated as break hyphen
+        let chars = vec![make_hyphen_char('-', 10.0, 100.0, fs, 10.0 + fs * 0.6)];
+        assert!(!line_ends_with_break_hyphen(&chars));
+    }
+
+    #[test]
+    fn test_line_ends_with_break_hyphen_em_dash_ignored() {
+        let fs = 12.0;
+        let cw = fs * 0.6;
+        // "word—" with em dash that has is_hyphen = true — should NOT be treated as break
+        let mut chars = make_word_chars("word", 10.0, 100.0, fs);
+        chars.push(make_hyphen_char('\u{2014}', 10.0 + 4.0 * cw, 100.0, fs, 10.0 + 5.0 * cw));
+        assert!(!line_ends_with_break_hyphen(&chars));
+    }
+
+    #[test]
+    fn test_strip_trailing_hyphen() {
+        let mut text = "soft-".to_string();
+        strip_trailing_hyphen(&mut text);
+        assert_eq!(text, "soft");
+    }
+
+    #[test]
+    fn test_strip_trailing_hyphen_no_hyphen() {
+        let mut text = "word".to_string();
+        strip_trailing_hyphen(&mut text);
+        assert_eq!(text, "word");
+    }
+
+    #[test]
+    fn test_strip_trailing_soft_hyphen() {
+        let mut text = "soft\u{00AD}".to_string();
+        strip_trailing_hyphen(&mut text);
+        assert_eq!(text, "soft");
+    }
+
+    #[test]
+    fn test_assemble_segments_dehyphenates_pdfium_hyphen() {
+        // Simulate "soft-" on line 1 and "ware" on line 2, where the hyphen
+        // has is_hyphen = true from pdfium. The result should be one segment
+        // containing "software".
+        let fs = 12.0;
+        let cw = fs * 0.6;
+
+        let mut chars = Vec::new();
+        // Line 1 at y=100: "soft-"
+        chars.extend(make_word_chars("soft", 10.0, 100.0, fs));
+        chars.push(make_hyphen_char('-', 10.0 + 4.0 * cw, 100.0, fs, 10.0 + 5.0 * cw));
+        // Line 2 at y=80: "ware is great"
+        chars.extend(make_word_chars("ware", 10.0, 80.0, fs));
+        chars.push(make_char_exact(' ', 10.0 + 4.0 * cw + 1.0, 80.0, fs, 10.0 + 5.0 * cw + 1.0));
+        chars.extend(make_word_chars("is", 10.0 + 5.0 * cw + 2.0, 80.0, fs));
+        chars.push(make_char_exact(
+            ' ',
+            10.0 + 7.0 * cw + 3.0,
+            80.0,
+            fs,
+            10.0 + 8.0 * cw + 3.0,
+        ));
+        chars.extend(make_word_chars("great", 10.0 + 8.0 * cw + 4.0, 80.0, fs));
+
+        let segments = assemble_segments_from_chars(&chars, None);
+        let all_text: String = segments
+            .iter()
+            .map(|s| s.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(
+            all_text.contains("software"),
+            "Expected 'software' (dehyphenated), got: {all_text}",
+        );
+        assert!(
+            !all_text.contains("soft-"),
+            "Trailing hyphen should have been removed, got: {all_text}",
+        );
+    }
+
+    #[test]
+    fn test_assemble_segments_preserves_non_break_hyphen() {
+        // "well-" where the hyphen does NOT have is_hyphen=true (e.g., compound word
+        // like "well-known"). Should remain as separate segments with the hyphen intact.
+        let fs = 12.0;
+        let cw = fs * 0.6;
+
+        let mut chars = Vec::new();
+        // Line 1 at y=100: "well-"
+        chars.extend(make_word_chars("well", 10.0, 100.0, fs));
+        // Regular hyphen (is_hyphen = false)
+        chars.push(make_char_exact('-', 10.0 + 4.0 * cw, 100.0, fs, 10.0 + 5.0 * cw));
+        // Line 2 at y=80: "known"
+        chars.extend(make_word_chars("known", 10.0, 80.0, fs));
+
+        let segments = assemble_segments_from_chars(&chars, None);
+        let all_text: String = segments
+            .iter()
+            .map(|s| s.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(
+            all_text.contains("well-"),
+            "Non-break hyphen should be preserved, got: {all_text}",
+        );
+        assert!(
+            !all_text.contains("wellknown"),
+            "Should NOT merge across non-break hyphen, got: {all_text}",
+        );
+    }
+
+    #[test]
+    fn test_assemble_segments_multi_hyphen_chain() {
+        // "config-" on line 1, "ura-" on line 2, "tion" on line 3.
+        // All hyphens have is_hyphen = true. Should produce "configuration".
+        let fs = 12.0;
+        let cw = fs * 0.6;
+
+        let mut chars = Vec::new();
+        // Line 1 at y=120: "config-"
+        chars.extend(make_word_chars("config", 10.0, 120.0, fs));
+        chars.push(make_hyphen_char('-', 10.0 + 6.0 * cw, 120.0, fs, 10.0 + 7.0 * cw));
+        // Line 2 at y=100: "ura-"
+        chars.extend(make_word_chars("ura", 10.0, 100.0, fs));
+        chars.push(make_hyphen_char('-', 10.0 + 3.0 * cw, 100.0, fs, 10.0 + 4.0 * cw));
+        // Line 3 at y=80: "tion"
+        chars.extend(make_word_chars("tion", 10.0, 80.0, fs));
+
+        let segments = assemble_segments_from_chars(&chars, None);
+        let all_text: String = segments
+            .iter()
+            .map(|s| s.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        assert!(
+            all_text.contains("configuration"),
+            "Expected 'configuration' from multi-line dehyphenation, got: {all_text}",
+        );
     }
 }

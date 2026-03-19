@@ -105,59 +105,12 @@ pub(super) fn build_ligature_repair_map(page: &PdfPage) -> Option<Vec<(char, &'s
     if repair_map.is_empty() { None } else { Some(repair_map) }
 }
 
-/// Build a ligature repair map from pre-extracted character data (PageTextData DTO).
-///
-/// Same logic as `build_ligature_repair_map` but operates on `ExtractedChar` instead of
-/// calling pdfium directly. Used in the single-pass extraction path.
-#[cfg(feature = "pdf")]
-#[allow(dead_code)] // Will be wired up when pipeline.rs uses PageTextData directly
-pub(super) fn build_ligature_repair_map_from_chars(
-    chars: &[crate::pdf::text_data::ExtractedChar],
-) -> Option<Vec<(char, &'static str)>> {
-    let mut repair_map: Vec<(char, &'static str)> = Vec::new();
-
-    for ec in chars {
-        if ec.is_generated || !ec.has_map_error || ec.is_symbolic {
-            continue;
-        }
-
-        let mapped_char = ec.ch;
-        if repair_map.iter().any(|(c, _)| *c == mapped_char) {
-            continue;
-        }
-
-        let unicode_val = mapped_char as u32;
-        let ligature = match unicode_val {
-            0x0B => "ff",
-            0x0C => "fi",
-            0x0D => "fl",
-            0x0E => "ffi",
-            0x0F => "ffl",
-            0x01 => "fi",
-            0x02 => "fl",
-            0x03 => "ff",
-            0x04 => "ffi",
-            0x05 => "ffl",
-            0x21 => "fi",
-            0x22 => "ff",
-            0x23 => "fl",
-            0x24 => "ffi",
-            0x25 => "ffl",
-            _ => continue,
-        };
-
-        repair_map.push((mapped_char, ligature));
-    }
-
-    if repair_map.is_empty() { None } else { Some(repair_map) }
-}
-
 /// Apply ligature repairs to a text string using a page-specific repair map.
 ///
 /// After replacing ligature characters, collapses spurious spaces that result
 /// from the replacement: e.g., "ﬁ rst" → "fi rst" → "first". When a ligature
 /// expansion is immediately followed by a space and a lowercase letter, the
-/// space is removed (matching the reference regex-based post-processing).
+/// space is removed (matching Docling's regex-based post-processing).
 pub(super) fn apply_ligature_repairs(text: &str, repair_map: &[(char, &str)]) -> String {
     let mut result = String::with_capacity(text.len() + 16);
     for ch in text.chars() {
@@ -473,7 +426,7 @@ pub(super) fn repair_broken_word_spacing(text: &str) -> Cow<'_, str> {
 /// glyph and the continuation of the word (e.g. "ﬁ eld"), which must be absorbed
 /// to produce correct text ("field").
 ///
-/// Matches the reference approach:
+/// Matches Docling's approach:
 /// ```python
 /// _LIGATURE_RE = re.compile(r"([\ufb00-\ufb06])( (?=\w))?")
 /// ```
@@ -525,7 +478,7 @@ pub(super) fn expand_ligatures_with_space_absorption(text: &str) -> Cow<'_, str>
 
 /// Normalize Unicode characters commonly found in PDFs to their ASCII equivalents.
 ///
-/// Standard normalizations for curly quotes, fraction
+/// Matches docling's `sanitize_text()` normalizations for curly quotes, fraction
 /// slash, and bullet characters. This improves TF1 by ensuring extracted text
 /// matches ground truth tokenization.
 pub(super) fn normalize_unicode_text(text: &str) -> Cow<'_, str> {
@@ -538,6 +491,74 @@ pub(super) fn normalize_unicode_text(text: &str) -> Cow<'_, str> {
             .replace('\u{2044}', "/")  // fraction slash
             .replace('\u{2022}', "\u{00B7}"), // bullet → middle dot
     )
+}
+
+/// Clean up duplicate punctuation artifacts from PDF text extraction.
+///
+/// When pdfium's segment-level re-extraction picks up characters from adjacent
+/// cells (due to slightly overlapping bounding boxes), duplicate punctuation
+/// patterns like `, ,` or `. .` appear. This collapses them to single
+/// punctuation marks.
+///
+/// Patterns handled:
+/// - `, ,` → `,`
+/// - `. .` → `.`
+/// - `; ;` → `;`
+/// - `: :` → `:`
+pub(super) fn clean_duplicate_punctuation(text: &str) -> Cow<'_, str> {
+    // Fast path: check for any duplicate punctuation pattern before allocating.
+    if !has_duplicate_punctuation(text) {
+        return Cow::Borrowed(text);
+    }
+
+    // Apply iteratively until no more duplicate punctuation remains.
+    // Handles chains like `, , ,` which need two passes (`, , ,` -> `, ,` -> `,`).
+    let mut current = collapse_duplicate_punctuation_once(text);
+    while has_duplicate_punctuation(&current) {
+        current = collapse_duplicate_punctuation_once(&current);
+    }
+
+    Cow::Owned(current)
+}
+
+/// Single pass of duplicate punctuation collapsing.
+fn collapse_duplicate_punctuation_once(text: &str) -> String {
+    let mut result = String::with_capacity(text.len());
+    let bytes = text.as_bytes();
+    let len = bytes.len();
+    let mut i = 0;
+
+    while i < len {
+        let b = bytes[i];
+        // Check for "X Y X" pattern where X is punctuation and Y is a space.
+        if is_dup_punct_byte(b) && i + 2 < len && bytes[i + 1] == b' ' && bytes[i + 2] == b {
+            // Found "X X" with space between — emit just the first punctuation.
+            result.push(b as char);
+            i += 3; // skip "X X"
+        } else {
+            result.push(b as char);
+            i += 1;
+        }
+    }
+
+    result
+}
+
+/// Check if the text contains any duplicate punctuation pattern.
+fn has_duplicate_punctuation(text: &str) -> bool {
+    let bytes = text.as_bytes();
+    for i in 0..bytes.len().saturating_sub(2) {
+        let b = bytes[i];
+        if is_dup_punct_byte(b) && bytes[i + 1] == b' ' && bytes[i + 2] == b {
+            return true;
+        }
+    }
+    false
+}
+
+/// Check if a byte is a punctuation character subject to duplicate cleanup.
+fn is_dup_punct_byte(b: u8) -> bool {
+    matches!(b, b',' | b'.' | b';' | b':')
 }
 
 /// Normalize text encoding: handle soft hyphens and strip control characters.
@@ -574,59 +595,6 @@ pub(super) fn normalize_text_encoding(text: &str) -> Cow<'_, str> {
     }
 
     Cow::Owned(result)
-}
-
-/// Normalize Unicode combining marks to their precomposed (NFC) equivalents.
-///
-/// PDFs sometimes emit base characters followed by combining marks as separate
-/// codepoints (e.g., `u` + `\u{0308}` combining diaeresis instead of `ü`).
-/// This produces visually correct text but breaks string matching and search.
-///
-/// Uses the `unicode-normalization` crate (behind the `quality` feature flag)
-/// for full NFC normalization. Without that feature, implements a heuristic
-/// for the most common case: orphaned combining marks preceded by a space
-/// are reattached to the previous base character.
-///
-/// Returns `Cow::Borrowed` (zero-alloc) when no combining marks are present.
-pub(super) fn normalize_unicode_combining(text: &str) -> Cow<'_, str> {
-    // Fast path: check if any combining marks (U+0300–U+036F) are present.
-    let has_combining = text.chars().any(|c| ('\u{0300}'..='\u{036F}').contains(&c));
-    if !has_combining {
-        return Cow::Borrowed(text);
-    }
-
-    #[cfg(feature = "quality")]
-    {
-        use unicode_normalization::UnicodeNormalization;
-        let normalized: String = text.nfc().collect();
-        if normalized == text {
-            return Cow::Borrowed(text);
-        }
-        Cow::Owned(normalized)
-    }
-
-    #[cfg(not(feature = "quality"))]
-    {
-        // Heuristic: handle the common case of "base space combining" by removing
-        // the space so the combining mark attaches to the base character.
-        // e.g., "u \u{0308}" → "u\u{0308}" which at least keeps them adjacent.
-        let mut result = String::with_capacity(text.len());
-        let mut chars = text.chars().peekable();
-        while let Some(ch) = chars.next() {
-            if ch == ' ' {
-                // If next char is a combining mark, skip the space.
-                if chars.peek().is_some_and(|&c| ('\u{0300}'..='\u{036F}').contains(&c)) {
-                    continue;
-                }
-            }
-            result.push(ch);
-        }
-        if result == text {
-            Cow::Borrowed(text)
-        } else {
-            Cow::Owned(result)
-        }
-    }
 }
 
 /// Apply a text transformation to every segment in every paragraph.
@@ -959,45 +927,50 @@ mod tests {
         assert_eq!(expand_ligatures_with_space_absorption("\u{FB01}nally"), "finally");
     }
 
-    // --- normalize_unicode_combining ---
-
     #[test]
-    fn test_combining_diaeresis() {
-        // "Ru\u{0308}schlikon" → "Rüschlikon" (combining diaeresis merges with u)
-        let input = "Ru\u{0308}schlikon";
-        let result = normalize_unicode_combining(input);
-        // With the `quality` feature (NFC normalization), the combining mark merges
-        // into the precomposed character. Without it, the heuristic at least keeps
-        // them adjacent.
-        #[cfg(feature = "quality")]
-        assert_eq!(result, "R\u{00FC}schlikon"); // ü
-        #[cfg(not(feature = "quality"))]
-        assert_eq!(result, input); // no space to remove, stays as decomposed
+    fn test_clean_duplicate_comma() {
+        assert_eq!(
+            clean_duplicate_punctuation("simple, , self-contained"),
+            "simple, self-contained"
+        );
     }
 
     #[test]
-    fn test_orphaned_combining_mark() {
-        // "text \u{0308}" — combining mark after space (orphaned).
-        // With NFC, the space + combining mark stays as-is (no base to attach to).
-        // Without NFC, heuristic removes the space so mark attaches to 't'.
-        let input = "text \u{0308}";
-        let result = normalize_unicode_combining(input);
-        #[cfg(feature = "quality")]
-        {
-            // NFC can't combine space + diaeresis; result depends on normalization
-            // but the combining mark is still present.
-            assert!(result.contains('\u{0308}') || result.contains('\u{00A8}'));
-        }
-        #[cfg(not(feature = "quality"))]
-        assert_eq!(result, "text\u{0308}"); // space removed, mark adjacent to 't'
+    fn test_clean_duplicate_period() {
+        assert_eq!(clean_duplicate_punctuation("end. . next"), "end. next");
     }
 
     #[test]
-    fn test_no_combining_marks_passthrough() {
-        // Normal text unchanged — should return borrowed (zero-alloc).
-        let input = "hello world";
-        let result = normalize_unicode_combining(input);
-        assert!(matches!(result, Cow::Borrowed(_)));
-        assert_eq!(result, "hello world");
+    fn test_clean_duplicate_semicolon() {
+        assert_eq!(clean_duplicate_punctuation("a; ; b"), "a; b");
+    }
+
+    #[test]
+    fn test_clean_duplicate_colon() {
+        assert_eq!(clean_duplicate_punctuation("key: : value"), "key: value");
+    }
+
+    #[test]
+    fn test_clean_duplicate_punctuation_no_change() {
+        // Normal text without duplicate punctuation should pass through unchanged.
+        let text = "Hello, world. This is normal; right: yes";
+        assert!(matches!(clean_duplicate_punctuation(text), Cow::Borrowed(_)));
+    }
+
+    #[test]
+    fn test_clean_duplicate_punctuation_multiple() {
+        assert_eq!(
+            clean_duplicate_punctuation("a, , b, , c"),
+            "a, b, c"
+        );
+    }
+
+    #[test]
+    fn test_clean_duplicate_punctuation_triple() {
+        // Triple comma `, , ,` collapses iteratively: `, , ,` -> `, ,` -> `,`
+        assert_eq!(
+            clean_duplicate_punctuation("[12, 13, 9]. Docling is designed as a simple, , , self-contained"),
+            "[12, 13, 9]. Docling is designed as a simple, self-contained"
+        );
     }
 }

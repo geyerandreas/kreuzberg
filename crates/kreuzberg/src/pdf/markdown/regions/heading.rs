@@ -36,7 +36,24 @@ pub(in crate::pdf::markdown) fn apply_region_class(
                 let margin_fraction = 0.12; // top/bottom 12% of page
                 let near_top = region_center_y > page_height * (1.0 - margin_fraction);
                 let near_bottom = region_center_y < page_height * margin_fraction;
-                near_top || near_bottom
+
+                // Also check for sidebar annotations: narrow regions along the
+                // left or right edge spanning most of the page height. These are
+                // rotated text (e.g., arXiv identifiers) that the layout model
+                // correctly classifies as PAGE_HEADER but whose vertical center
+                // is in the middle of the page, failing the top/bottom check.
+                let region_width = (hint.right - hint.left).abs();
+                let region_height = (hint.top - hint.bottom).abs();
+                // A sidebar is much taller than it is wide (at least 3:1 aspect ratio)
+                // and sits in the leftmost or rightmost 8% of the page.
+                // Use page_height as an approximation for margin thresholds
+                // since typical page aspect ratio is ~0.77 (612/792).
+                let lateral_margin = page_height * 0.06; // ~48pt on letter, covers left/right 8%
+                let is_sidebar = region_height > region_width * 3.0
+                    && (hint.right < lateral_margin
+                        || hint.left > page_height - lateral_margin);
+
+                near_top || near_bottom || is_sidebar
             } else {
                 true // Can't validate, trust the model
             };
@@ -347,5 +364,114 @@ fn split_multi_heading_paragraphs(paragraphs: &mut Vec<PdfParagraph>) {
         }
 
         i += 1; // Move past the first split paragraph (others will be processed next)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::pdf::hierarchy::SegmentData;
+    use crate::pdf::markdown::types::{LayoutHint, LayoutHintClass, PdfLine, PdfParagraph};
+
+    fn make_paragraph(text: &str) -> PdfParagraph {
+        PdfParagraph {
+            lines: vec![PdfLine {
+                segments: vec![SegmentData {
+                    text: text.to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 100.0,
+                    height: 12.0,
+                    font_size: 10.0,
+                    is_bold: false,
+                    is_italic: false,
+                    is_monospace: false,
+                    baseline_y: 0.0,
+                }],
+                baseline_y: 0.0,
+                dominant_font_size: 10.0,
+                is_bold: false,
+                is_monospace: false,
+            }],
+            dominant_font_size: 10.0,
+            heading_level: None,
+            is_bold: false,
+            is_list_item: false,
+            is_code_block: false,
+            is_formula: false,
+            is_page_furniture: false,
+            layout_class: None,
+            caption_for: None,
+            block_bbox: None,
+        }
+    }
+
+    #[test]
+    fn test_sidebar_classified_as_furniture() {
+        // Simulate an arXiv sidebar: narrow region along left margin spanning most of page height.
+        // Layout model classifies it as PageHeader.
+        let mut paragraphs = vec![make_paragraph("arXiv:2408.09869v5")];
+        let hint = LayoutHint {
+            class: LayoutHintClass::PageHeader,
+            confidence: 0.9,
+            left: 5.0,     // left margin
+            bottom: 50.0,  // near bottom of page
+            right: 25.0,   // narrow (20pt wide)
+            top: 742.0,    // near top of page (792 - 50)
+        };
+        let page_height = 792.0; // letter size
+
+        apply_region_class(&mut paragraphs, &hint, &[], None, page_height, 0);
+
+        // The sidebar should be marked as page furniture
+        assert!(
+            paragraphs[0].is_page_furniture,
+            "sidebar along left margin should be marked as page furniture"
+        );
+    }
+
+    #[test]
+    fn test_regular_header_near_top_classified_as_furniture() {
+        // A conventional page header at the top of the page.
+        let mut paragraphs = vec![make_paragraph("Page 42")];
+        let hint = LayoutHint {
+            class: LayoutHintClass::PageHeader,
+            confidence: 0.9,
+            left: 50.0,
+            bottom: 750.0, // near top
+            right: 500.0,
+            top: 780.0,
+        };
+        let page_height = 792.0;
+
+        apply_region_class(&mut paragraphs, &hint, &[], None, page_height, 0);
+
+        assert!(
+            paragraphs[0].is_page_furniture,
+            "header near top of page should be marked as furniture"
+        );
+    }
+
+    #[test]
+    fn test_wide_region_mid_page_not_furniture() {
+        // A wide region in the middle of the page classified as PageHeader
+        // by mistake should NOT be treated as furniture.
+        let mut paragraphs = vec![make_paragraph("This is body text that was misclassified")];
+        let hint = LayoutHint {
+            class: LayoutHintClass::PageHeader,
+            confidence: 0.8,
+            left: 50.0,
+            bottom: 350.0, // middle of page
+            right: 500.0,  // wide region
+            top: 450.0,
+        };
+        let page_height = 792.0;
+
+        apply_region_class(&mut paragraphs, &hint, &[], None, page_height, 0);
+
+        assert!(
+            !paragraphs[0].is_page_furniture,
+            "wide region in middle of page should not be furniture"
+        );
     }
 }

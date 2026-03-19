@@ -21,8 +21,6 @@ pub(crate) struct ExtractedChar {
     pub is_symbolic: bool,
     pub has_map_error: bool,
     /// True for pdfium-generated synthetic word boundary characters.
-    /// Used by the ligature repair map builder; will also be consumed
-    /// by the hierarchy extraction path.
     #[allow(dead_code)]
     pub is_generated: bool,
     pub is_hyphen: bool,
@@ -32,26 +30,6 @@ pub(crate) struct ExtractedChar {
     pub font_weight: u32,
 }
 
-/// A pre-merged text run from pdfium's segment API (`FPDFText_CountRects`/`GetRect`).
-///
-/// Pdfium groups characters sharing the same baseline and font settings into
-/// segments, with proper word boundary detection via CMap knowledge. Each
-/// segment represents a contiguous run of same-style text on a single line.
-#[derive(Debug, Clone)]
-#[allow(dead_code)] // Used by segments_to_line_segments fallback path
-pub(crate) struct ExtractedSegment {
-    pub text: String,
-    pub x: f32,
-    pub y: f32,
-    pub width: f32,
-    pub height: f32,
-    pub font_size: f32,
-    pub is_bold: bool,
-    pub is_italic: bool,
-    pub is_monospace: bool,
-    pub baseline_y: f32,
-}
-
 /// Pre-extracted text data for a single PDF page.
 ///
 /// Built once via `extract_page_text_data`, then consumed by downstream
@@ -59,17 +37,7 @@ pub(crate) struct ExtractedSegment {
 /// pdfium calls on the page's text layer.
 pub(crate) struct PageTextData {
     pub chars: Vec<ExtractedChar>,
-    /// Full text as returned by `page.text().all()`.
-    /// Used by downstream consumers for whole-page text analysis
-    /// (e.g., contextual ligature detection, broken word spacing).
-    #[allow(dead_code)]
-    pub full_text: String,
     pub ligature_repair_map: Option<Vec<(char, &'static str)>>,
-    /// Pre-merged text segments from pdfium's rect-based API.
-    /// Each segment shares baseline and font settings. May be empty
-    /// if the page has no text or segment extraction fails.
-    #[allow(dead_code)] // Used by segments_to_line_segments fallback path
-    pub segments: Vec<ExtractedSegment>,
 }
 
 /// Extract all text data from a PDF page in a single pass.
@@ -81,7 +49,6 @@ pub(crate) struct PageTextData {
 /// Returns `None` if the page has no text or `page.text()` fails.
 pub(crate) fn extract_page_text_data(page: &PdfPage) -> Option<PageTextData> {
     let text_obj = page.text().ok()?;
-    let full_text = text_obj.all();
     let chars = text_obj.chars();
     let char_count = chars.len();
     if char_count == 0 {
@@ -223,73 +190,9 @@ pub(crate) fn extract_page_text_data(page: &PdfPage) -> Option<PageTextData> {
 
     let _ = has_any_map_error; // used only to gate repair_map construction above
 
-    // Extract segments (pdfium's pre-merged text runs via FPDFText_CountRects/GetRect).
-    let pdfium_segments = text_obj.segments();
-    let seg_count = pdfium_segments.len();
-    let mut segments = Vec::with_capacity(seg_count);
-    for i in 0..seg_count {
-        if let Ok(seg) = pdfium_segments.get(i) {
-            let text = seg.text();
-            if text.trim().is_empty() {
-                continue;
-            }
-            let bounds = seg.bounds();
-            // Sample font properties from the first non-whitespace character in the segment.
-            let (font_size, is_bold, is_italic, is_monospace, baseline_y) = if let Ok(seg_chars) = seg.chars() {
-                let mut fs = 12.0_f32;
-                let mut bold = false;
-                let mut italic = false;
-                let mut mono = false;
-                let mut bl_y = bounds.bottom().value;
-                let mut found = false;
-                for ch in seg_chars.iter() {
-                    let uv = ch.unicode_value();
-                    if let Some(uc) = char::from_u32(uv)
-                        && uc.is_whitespace()
-                    {
-                        continue;
-                    }
-                    let scaled = ch.scaled_font_size().value;
-                    fs = if scaled > 0.0 { scaled } else { 12.0 };
-                    let info = ch.font_info();
-                    bold = info.1;
-                    italic = info.2;
-                    mono = ch.font_is_fixed_pitch();
-                    if let Ok(origin) = ch.origin() {
-                        bl_y = origin.1.value;
-                    }
-                    found = true;
-                    break;
-                }
-                if !found {
-                    continue; // skip segment if no real chars found
-                }
-                (fs, bold, italic, mono, bl_y)
-            } else {
-                // chars() failed; use bounds for geometry, defaults for font
-                (12.0, false, false, false, bounds.bottom().value)
-            };
-
-            segments.push(ExtractedSegment {
-                text,
-                x: bounds.left().value,
-                y: bounds.bottom().value,
-                width: bounds.width().value,
-                height: bounds.height().value,
-                font_size,
-                is_bold,
-                is_italic,
-                is_monospace,
-                baseline_y,
-            });
-        }
-    }
-
     Some(PageTextData {
         chars: extracted,
-        full_text,
         ligature_repair_map: if repair_map.is_empty() { None } else { Some(repair_map) },
-        segments,
     })
 }
 

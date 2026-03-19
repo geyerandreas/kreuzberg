@@ -77,52 +77,6 @@ pub(crate) fn convert_error(err: kreuzberg::KreuzbergError) -> napi::Error {
     }
 }
 
-/// Validates that a JavaScript object has all required properties before plugin registration.
-///
-/// This helper function checks if a plugin object has all required methods and provides
-/// clear error messages if any are missing. This improves developer experience by
-/// catching configuration errors early with actionable error messages.
-///
-/// # Arguments
-///
-/// * `obj` - The JavaScript object to validate
-/// * `plugin_type` - Type of plugin (for error messages, e.g., "PostProcessor")
-/// * `required_methods` - Slice of required method names
-///
-/// # Returns
-///
-/// Returns `Ok(())` if all required methods exist, or an error with details about
-/// which methods are missing.
-///
-/// # Example
-///
-/// ```rust,ignore
-/// validate_plugin_object(&processor, "PostProcessor", &["name", "process"])?;
-/// ```
-#[allow(dead_code)]
-pub(crate) fn validate_plugin_object(obj: &Object, plugin_type: &str, required_methods: &[&str]) -> Result<()> {
-    let mut missing_methods = Vec::new();
-
-    for method_name in required_methods {
-        if !obj.has_named_property(method_name)? {
-            missing_methods.push(*method_name);
-        }
-    }
-
-    if !missing_methods.is_empty() {
-        return Err(Error::new(
-            Status::InvalidArg,
-            format!(
-                "{} is missing required methods: {}. Please ensure your plugin implements all required methods.",
-                plugin_type,
-                missing_methods.join(", ")
-            ),
-        ));
-    }
-
-    Ok(())
-}
-
 /// Returns the human-readable name for an error code.
 ///
 /// Maps to FFI function kreuzberg_error_code_name().

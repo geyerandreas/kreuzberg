@@ -51,12 +51,6 @@ impl TableState {
         self.current_row.clear();
     }
 
-    /// Check if this table has any content.
-    #[allow(dead_code)]
-    pub fn is_empty(&self) -> bool {
-        self.rows.is_empty() && self.current_row.is_empty() && self.current_cell.is_empty()
-    }
-
     /// Finalize the table with format control. If `plain` is true, the table
     /// text representation uses tab-separated format instead of markdown pipes.
     pub fn finalize_with_format(mut self, plain: bool) -> Option<Table> {

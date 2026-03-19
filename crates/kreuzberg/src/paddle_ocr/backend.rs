@@ -215,11 +215,6 @@ impl PaddleOcrBackend {
     /// Returns `Ok(Some(rotated_bytes))` if rotation was applied,
     /// `Ok(None)` if no rotation needed (0° or low confidence).
     fn detect_and_rotate(&self, image_bytes: &[u8]) -> Result<Option<Vec<u8>>> {
-        // PP-LCNet doc_ori outputs ~45% confidence for correct class in a 4-class problem
-        // (uniform baseline is 25%). A threshold of 0.35 provides good discrimination.
-        #[allow(dead_code)] // Will be used when orientation detection is wired up
-        const MIN_CONFIDENCE: f32 = 0.35;
-
         let detector = self.doc_ori_detector.get_or_try_init(|| {
             let cache_dir = crate::doc_orientation::resolve_cache_dir();
             Ok::<_, crate::KreuzbergError>(crate::doc_orientation::DocOrientationDetector::new(cache_dir))

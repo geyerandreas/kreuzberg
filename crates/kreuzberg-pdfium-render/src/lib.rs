@@ -19,33 +19,44 @@ mod pdf;
 mod pdfium;
 mod utils;
 
-/// A prelude for conveniently importing all public `pdfium-render` definitions at once.
+/// A prelude for conveniently importing public `pdfium-render` definitions.
+///
+/// Only re-exports types actually used by the kreuzberg crate.
+/// Unused modules (form fields, actions, destinations, appearance modes,
+/// attachments, bookmarks, signatures) are excluded to reduce surface area.
 ///
 /// Usage:
 /// ```
 /// use pdfium_render::prelude::*;
 /// ```
 pub mod prelude {
-    #[allow(deprecated)]
-    // TODO: AJRC - 5-Aug-24 - deprecated items will be removed in release 0.9.0. Tracking issue:
-    // https://github.com/ajrcarey/pdfium-render/issues/36
     pub use crate::{
         bindings::*,
         error::*,
         font_provider::FontDescriptor,
-        pdf::action::*,
-        pdf::appearance_mode::*,
+        // Bitmap & rendering
         pdf::bitmap::*,
         pdf::color::*,
         pdf::color_space::*,
-        pdf::destination::*,
-        pdf::document::attachment::*,
-        pdf::document::attachments::*,
-        pdf::document::bookmark::*,
-        pdf::document::bookmarks::*,
+        // Document
         pdf::document::fonts::*,
-        pdf::document::form::*,
         pdf::document::metadata::*,
+        pdf::document::pages::*,
+        pdf::document::permissions::*,
+        pdf::document::{PdfDocument, PdfDocumentVersion},
+        // Page core
+        pdf::document::page::boundaries::*,
+        pdf::document::page::extraction::*,
+        pdf::document::page::links::*,
+        pdf::document::page::paragraph::*,
+        pdf::document::page::render_config::*,
+        pdf::document::page::size::*,
+        pdf::document::page::struct_element::*,
+        pdf::document::page::struct_tree::*,
+        pdf::document::page::{
+            PdfBitmapRotation, PdfPage, PdfPageContentRegenerationStrategy, PdfPageOrientation, PdfPageRenderRotation,
+        },
+        // Annotations (read-only, used by kreuzberg annotations.rs)
         pdf::document::page::annotation::attachment_points::*,
         pdf::document::page::annotation::circle::*,
         pdf::document::page::annotation::free_text::*,
@@ -53,8 +64,6 @@ pub mod prelude {
         pdf::document::page::annotation::ink::*,
         pdf::document::page::annotation::link::*,
         pdf::document::page::annotation::objects::*,
-        pdf::document::page::annotation::popup::*,
-        pdf::document::page::annotation::redacted::*,
         pdf::document::page::annotation::square::*,
         pdf::document::page::annotation::squiggly::*,
         pdf::document::page::annotation::stamp::*,
@@ -62,25 +71,9 @@ pub mod prelude {
         pdf::document::page::annotation::text::*,
         pdf::document::page::annotation::underline::*,
         pdf::document::page::annotation::unsupported::*,
-        pdf::document::page::annotation::variable_text::*,
-        pdf::document::page::annotation::widget::*,
-        pdf::document::page::annotation::xfa_widget::*,
         pdf::document::page::annotation::{PdfPageAnnotation, PdfPageAnnotationCommon, PdfPageAnnotationType},
         pdf::document::page::annotations::*,
-        pdf::document::page::boundaries::*,
-        pdf::document::page::extraction::*,
-        pdf::document::page::field::button::*,
-        pdf::document::page::field::checkbox::*,
-        pdf::document::page::field::combo::*,
-        pdf::document::page::field::list::*,
-        pdf::document::page::field::option::*,
-        pdf::document::page::field::options::*,
-        pdf::document::page::field::radio::*,
-        pdf::document::page::field::signature::*,
-        pdf::document::page::field::text::*,
-        pdf::document::page::field::unknown::*,
-        pdf::document::page::field::{PdfFormField, PdfFormFieldCommon, PdfFormFieldType},
-        pdf::document::page::links::*,
+        // Page objects
         pdf::document::page::object::content_mark::*,
         pdf::document::page::object::content_marks::*,
         pdf::document::page::object::group::*,
@@ -96,25 +89,14 @@ pub mod prelude {
         },
         pdf::document::page::objects::common::*,
         pdf::document::page::objects::*,
-        pdf::document::page::paragraph::*,
-        pdf::document::page::render_config::*,
-        pdf::document::page::size::*,
-        pdf::document::page::struct_element::*,
-        pdf::document::page::struct_tree::*,
+        // Text extraction
         pdf::document::page::text::char::*,
         pdf::document::page::text::chars::*,
         pdf::document::page::text::search::*,
         pdf::document::page::text::segment::*,
         pdf::document::page::text::segments::*,
         pdf::document::page::text::*,
-        pdf::document::page::{
-            PdfBitmapRotation, PdfPage, PdfPageContentRegenerationStrategy, PdfPageOrientation, PdfPageRenderRotation,
-        },
-        pdf::document::pages::*,
-        pdf::document::permissions::*,
-        pdf::document::signature::*,
-        pdf::document::signatures::*,
-        pdf::document::{PdfDocument, PdfDocumentVersion},
+        // Fonts & geometry
         pdf::font::glyph::*,
         pdf::font::glyphs::*,
         pdf::font::*,
@@ -126,6 +108,7 @@ pub mod prelude {
         pdf::points::*,
         pdf::quad_points::*,
         pdf::rect::*,
+        // Pdfium initialization
         pdfium::*,
     };
 }

@@ -7,7 +7,6 @@
 
 /// Result of validating a single layout region.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(dead_code)]
 pub(in crate::pdf::markdown) enum RegionValidation {
     /// Region contains text-like connected components; suppress normally.
     HasContent,

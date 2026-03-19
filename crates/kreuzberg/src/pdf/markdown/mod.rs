@@ -4,14 +4,12 @@
 //! (pre-merged character runs sharing baseline + font settings) to reconstruct headings,
 //! paragraphs, inline formatting, and list items.
 
-#[allow(dead_code)] // Wired incrementally — consumers added in subsequent commits.
 pub(crate) mod adapters;
 mod assembly;
 mod bridge;
 mod classify;
 mod columns;
 mod constants;
-#[allow(dead_code)] // Wired incrementally — consumers added in subsequent commits.
 pub(crate) mod content;
 mod content_convert;
 pub(crate) mod geometry;

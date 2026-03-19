@@ -11,15 +11,12 @@ use super::types::{LayoutHintClass, PdfLine, PdfParagraph};
 use crate::pdf::hierarchy::SegmentData;
 
 /// Minimum gap between columns as fraction of estimated page width.
-#[allow(dead_code)]
 const MIN_COLUMN_GAP_FRACTION: f32 = 0.10;
 
 /// Minimum fraction of total Y range that each column side must span.
-#[allow(dead_code)]
 const MIN_COLUMN_Y_SPAN_FRACTION: f32 = 0.30;
 
 /// Minimum number of elements required on each side of a column split.
-#[allow(dead_code)]
 const MIN_ELEMENTS_PER_COLUMN: usize = 2;
 
 /// Y-proximity tolerance as a fraction of median element height, for line grouping.
@@ -584,7 +581,6 @@ fn element_to_paragraph(elem: &ContentElement) -> Option<PdfParagraph> {
 /// 7. If valid: partition elements into left/right groups, sort each top-to-bottom,
 ///    concatenate left then right.
 /// 8. If no valid split: leave elements in their current order.
-#[allow(dead_code)]
 pub(crate) fn reorder_elements_reading_order(elements: &mut Vec<ContentElement>) {
     if elements.len() < MIN_ELEMENTS_PER_COLUMN * 2 {
         return;

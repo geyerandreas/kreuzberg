@@ -50,7 +50,6 @@ impl ProcessorCache {
 pub(super) static PROCESSOR_CACHE: Lazy<StdRwLock<Option<ProcessorCache>>> = Lazy::new(|| StdRwLock::new(None));
 
 /// Clear the processor cache (primarily for testing when registry changes).
-#[allow(dead_code)]
 pub fn clear_processor_cache() -> Result<()> {
     let mut cache = PROCESSOR_CACHE
         .write()

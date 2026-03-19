@@ -44,8 +44,6 @@ struct SharedModelDefinition {
     remote_filename: &'static str,
     local_filename: &'static str,
     sha256_checksum: &'static str,
-    #[allow(dead_code)]
-    size_bytes: u64,
 }
 
 /// Recognition model definition (per script family).
@@ -54,8 +52,6 @@ struct RecModelDefinition {
     script_family: &'static str,
     model_sha256: &'static str,
     dict_sha256: &'static str,
-    #[allow(dead_code)]
-    model_size_bytes: u64,
 }
 
 /// Legacy v1 shared models — kept for backward compatibility with `ensure_shared_models()`.
@@ -66,14 +62,12 @@ const SHARED_MODELS: &[SharedModelDefinition] = &[
         remote_filename: "PP-OCRv5_server_det_infer.onnx",
         local_filename: "model.onnx",
         sha256_checksum: "127edf0182bb3d218ad59476377b02ca90296cfb4cc85df55042d671a3e53aeb",
-        size_bytes: 88_118_768,
     },
     SharedModelDefinition {
         model_type: "cls",
         remote_filename: "ch_ppocr_mobile_v2.0_cls_infer.onnx",
         local_filename: "model.onnx",
         sha256_checksum: "e47acedf663230f8863ff1ab0e64dd2d82b838fceb5957146dab185a89d6215c",
-        size_bytes: 585_532,
     },
 ];
 
@@ -86,55 +80,46 @@ const REC_MODELS: &[RecModelDefinition] = &[
         script_family: "latin",
         model_sha256: "614ffc2d6d3902d360fad7f1b0dd455ee45e877069d14c4e51a99dc4ef144409",
         dict_sha256: "6230982f2773c40b10dc12a3346947a1a771f9be03fd891b294a023357378005",
-        model_size_bytes: 7_862_832,
     },
     RecModelDefinition {
         script_family: "korean",
         model_sha256: "322f140154c820fcb83c3d24cfe42c9ec70dd1a1834163306a7338136e4f1eaa",
         dict_sha256: "086835d8f64802da9214d24e7aea3fda477a72d2df4716e9769117ca081059bb",
-        model_size_bytes: 13_401_252,
     },
     RecModelDefinition {
         script_family: "eslav",
         model_sha256: "dc6bf0e855247decce214ba6dae5bc135fa0ad725a5918a7fcfb59fad6c9cdee",
         dict_sha256: "71e693f3f04afcd137ec0ce3bdc6732468f784f7f35168b9850e6ffe628a21c3",
-        model_size_bytes: 7_870_092,
     },
     RecModelDefinition {
         script_family: "thai",
         model_sha256: "2b6e56b1872200349e227574c25aeb0e0f9af9b8356e9ff5f75ac543a535669a",
         dict_sha256: "40708ca7e0b6222320a5ba690201b77a6b39633273e3fd19e209613d18595d59",
-        model_size_bytes: 7_873_480,
     },
     RecModelDefinition {
         script_family: "greek",
         model_sha256: "13373f736dbb229e96945fc41c2573403d91503b0775c7b7294839e0c5f3a7a3",
         dict_sha256: "c361caeae4e2b0e27a453390d65ca27be64fa04d4a6eddd79d91a8a6053141de",
-        model_size_bytes: 7_791_200,
     },
     RecModelDefinition {
         script_family: "arabic",
         model_sha256: "5b62055fc6209fa3bb247a9a2a7a9d5100c30868bad8a2fa49ed062f64b83021",
         dict_sha256: "7f92f7dbb9b75a4787a83bfb4f6d14a8ab515525130c9d40a9036f61cf6999e9",
-        model_size_bytes: 8_022_231,
     },
     RecModelDefinition {
         script_family: "devanagari",
         model_sha256: "2e895a63a7e08932c8b7b65d8bdb87f96b6f075a80c329ab98298ea0915ebf85",
         dict_sha256: "09c7440bfc5477e5c41052304b6b185aff8c4a5e8b2b4c23c1c706f6fe1ee9fc",
-        model_size_bytes: 7_935_595,
     },
     RecModelDefinition {
         script_family: "tamil",
         model_sha256: "1d3dd137f72273e13b03ad30c7abc55494d6aa723b441c21122479c0622105e0",
         dict_sha256: "85b541352ae18dc6ba6d47152d8bf8adff6b0266e605d2eef2990c1bf466117b",
-        model_size_bytes: 7_908_975,
     },
     RecModelDefinition {
         script_family: "telugu",
         model_sha256: "9ba6b6cd4f028f4e5eaa7e29c428b5ea52bd399c02844cddc5d412f139cf7793",
         dict_sha256: "42f83f5d3fdb50778e4fa5b66c58d99a59ab7792151c5e74f34b8ffd7b61c9d6",
-        model_size_bytes: 7_922_043,
     },
 ];
 
@@ -148,8 +133,6 @@ struct V2DetModelDefinition {
     tier: &'static str,
     remote_filename: &'static str,
     sha256_checksum: &'static str,
-    #[allow(dead_code)]
-    size_bytes: u64,
 }
 
 /// V2 recognition model definition (unified multilingual models).
@@ -161,8 +144,6 @@ struct V2RecModelDefinition {
     remote_dict: &'static str,
     model_sha256: &'static str,
     dict_sha256: &'static str,
-    #[allow(dead_code)]
-    model_size_bytes: u64,
 }
 
 /// V2 detection models: server (PP-OCRv5, 88MB) and mobile (PP-OCRv5, 4.7MB).
@@ -171,13 +152,11 @@ const V2_DET_MODELS: &[V2DetModelDefinition] = &[
         tier: "server",
         remote_filename: "v2/det/server.onnx",
         sha256_checksum: "d5f46afc7a2b7fe5773c4ce6ff05c9e23631eb5de0f59d7a90404d9c49678f3c",
-        size_bytes: 88_047_983,
     },
     V2DetModelDefinition {
         tier: "mobile",
         remote_filename: "v2/det/mobile.onnx",
         sha256_checksum: "c8d9b07063420ce5365c74e42532de48238feeeedcdb7a330b195708bc38a93f",
-        size_bytes: 4_766_440,
     },
 ];
 
@@ -189,7 +168,6 @@ const V2_REC_MODELS: &[V2RecModelDefinition] = &[
         remote_dict: "v2/rec/unified_server/dict.txt",
         model_sha256: "00667becb28bcd49dfbcb8c7724aa8d6e8f01a1444db66e404182431e0fcbc14",
         dict_sha256: "74f75c9f414da39d503635e76c6871baf8ab8df3b5a47072d55b9344483086c9",
-        model_size_bytes: 84_480_012,
     },
     V2RecModelDefinition {
         model_key: "unified_mobile",
@@ -197,7 +175,6 @@ const V2_REC_MODELS: &[V2RecModelDefinition] = &[
         remote_dict: "v2/rec/unified_mobile/dict.txt",
         model_sha256: "bcb195e3463eb9e46ef419b8a01ea4729577de5fd63c64f0a762e43bd64256e7",
         dict_sha256: "74f75c9f414da39d503635e76c6871baf8ab8df3b5a47072d55b9344483086c9",
-        model_size_bytes: 16_529_870,
     },
     V2RecModelDefinition {
         model_key: "en_mobile",
@@ -205,7 +182,6 @@ const V2_REC_MODELS: &[V2RecModelDefinition] = &[
         remote_dict: "v2/rec/en_mobile/dict.txt",
         model_sha256: "70b2450eed39599af6b996c27a2f1a0ef30eeb49f9f66dd3e74f28f652befc89",
         dict_sha256: "854c6bb3e5a9a8ceac81fa700927e86a8da0e9b329a2846c57fc686be9db93e5",
-        model_size_bytes: 7_843_511,
     },
 ];
 
@@ -215,7 +191,6 @@ const V2_CLS_MODEL: SharedModelDefinition = SharedModelDefinition {
     remote_filename: "v2/classifiers/PP-LCNet_x1_0_textline_ori.onnx",
     local_filename: "model.onnx",
     sha256_checksum: "1090f9f483a115f904beefe04acc9d28edf0c0b7b08cf0dd8d0ea59a9e0f2735",
-    size_bytes: 6_775_212,
 };
 
 /// V2 document orientation model (PP-LCNet, for page-level auto_rotate).
@@ -224,7 +199,6 @@ const V2_DOC_ORI_MODEL: SharedModelDefinition = SharedModelDefinition {
     remote_filename: "v2/classifiers/PP-LCNet_x1_0_doc_ori.onnx",
     local_filename: "model.onnx",
     sha256_checksum: "6b742aebce6f0f7f71f747931ac7becfc7c96c51641e14943b291eeb334e7947",
-    size_bytes: 6_785_465,
 };
 
 /// Resolved recognition model with engine pool key for sharing.
@@ -541,7 +515,7 @@ impl ModelManager {
             entries.push(ModelManifestEntry {
                 relative_path: format!("paddle-ocr/{}/{}", model.model_type, model.local_filename),
                 sha256: model.sha256_checksum.to_string(),
-                size_bytes: model.size_bytes,
+                size_bytes: 0,
                 source_url: format!(
                     "https://huggingface.co/{}/resolve/main/{}",
                     HF_REPO_ID, model.remote_filename
@@ -553,7 +527,7 @@ impl ModelManager {
             entries.push(ModelManifestEntry {
                 relative_path: format!("paddle-ocr/rec/{}/model.onnx", rec.script_family),
                 sha256: rec.model_sha256.to_string(),
-                size_bytes: rec.model_size_bytes,
+                size_bytes: 0,
                 source_url: format!(
                     "https://huggingface.co/{}/resolve/main/rec/{}/model.onnx",
                     HF_REPO_ID, rec.script_family
@@ -1133,15 +1107,6 @@ mod tests {
             );
         }
 
-        // Shared models and rec models should have non-zero size
-        let shared_entries: Vec<_> = entries.iter().filter(|e| !e.relative_path.contains("/rec/")).collect();
-        for entry in &shared_entries {
-            assert!(
-                entry.size_bytes > 0,
-                "Shared model {} should have non-zero size",
-                entry.relative_path
-            );
-        }
     }
 
     #[test]

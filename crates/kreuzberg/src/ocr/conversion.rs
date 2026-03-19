@@ -329,7 +329,6 @@ pub fn elements_to_hocr_words(elements: &[OcrElement], min_confidence: f64) -> V
 }
 
 /// Extension trait to add optional rotation to OcrElement builder.
-#[allow(dead_code)]
 trait OcrElementExt {
     fn with_rotation_opt(self, rotation: Option<OcrRotation>) -> Self;
 }

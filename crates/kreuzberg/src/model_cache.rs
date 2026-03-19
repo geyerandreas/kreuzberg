@@ -70,7 +70,6 @@ impl<T: Send> ModelCache<T> {
     }
 
     /// Take the cached model if one exists, without creating a new one.
-    #[allow(dead_code)]
     pub fn take(&self) -> Option<T> {
         self.slot.lock().ok().and_then(|mut guard| guard.take())
     }

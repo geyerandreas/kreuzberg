@@ -19,9 +19,9 @@ use super::lines::is_cjk_char;
 use super::paragraphs::{merge_continuation_paragraphs, split_embedded_list_items};
 use super::render::inject_image_placeholders;
 use super::text_repair::{
-    apply_ligature_repairs, apply_to_all_segments, build_ligature_repair_map, expand_ligatures_with_space_absorption,
-    normalize_unicode_combining, normalize_unicode_text, repair_broken_word_spacing, repair_contextual_ligatures,
-    text_has_broken_word_spacing, text_has_ligature_corruption,
+    apply_ligature_repairs, apply_to_all_segments, build_ligature_repair_map, clean_duplicate_punctuation,
+    expand_ligatures_with_space_absorption, normalize_unicode_text, repair_broken_word_spacing,
+    repair_contextual_ligatures, text_has_broken_word_spacing, text_has_ligature_corruption,
 };
 use super::types::{LayoutHint, PdfParagraph};
 
@@ -104,8 +104,8 @@ fn extract_structure_tree_pages(
                 apply_to_all_segments(&mut paragraphs, expand_ligatures_with_space_absorption);
                 // Normalize Unicode characters (curly quotes, fraction slash, etc.)
                 apply_to_all_segments(&mut paragraphs, normalize_unicode_text);
-                // Normalize Unicode combining marks (e.g., u + combining diaeresis → ü).
-                apply_to_all_segments(&mut paragraphs, normalize_unicode_combining);
+                // Clean up duplicate punctuation (`, ,` → `,`) from overlapping cell extraction.
+                apply_to_all_segments(&mut paragraphs, clean_duplicate_punctuation);
                 // Dehyphenate: rejoin trailing hyphens. Use positional
                 // data for full-line checks when bounds are available.
                 let has_positions = paragraphs.iter().any(|p| {
@@ -499,8 +499,8 @@ fn process_single_page(
         apply_to_all_segments(&mut paragraphs, expand_ligatures_with_space_absorption);
         // Normalize Unicode characters (curly quotes, fraction slash, etc.)
         apply_to_all_segments(&mut paragraphs, normalize_unicode_text);
-        // Normalize Unicode combining marks (e.g., u + combining diaeresis → ü).
-        apply_to_all_segments(&mut paragraphs, normalize_unicode_combining);
+        // Clean up duplicate punctuation (`, ,` → `,`) from overlapping cell extraction.
+        apply_to_all_segments(&mut paragraphs, clean_duplicate_punctuation);
         // Dehyphenate: heuristic path has positional data for
         // full-line detection, enabling both hyphen and no-hyphen joins.
         dehyphenate_paragraphs(&mut paragraphs, true);
@@ -954,7 +954,6 @@ pub fn render_document_as_markdown_with_tables(
     let final_markdown = repair_contextual_ligatures(&final_markdown);
     let final_markdown = expand_ligatures_with_space_absorption(&final_markdown);
     let final_markdown = normalize_unicode_text(&final_markdown);
-    let final_markdown = normalize_unicode_combining(&final_markdown);
 
     Ok((final_markdown.into_owned(), has_font_encoding_issues))
 }
