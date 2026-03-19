@@ -82,7 +82,7 @@ fn parse_xml_inner(xml_bytes: &[u8], preserve_whitespace: bool, svg_mode: bool) 
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e)) => {
-                let name_bytes = e.name().as_ref() as &[u8].to_vec();
+                let name_bytes = (e.name().as_ref() as &[u8]).to_vec();
                 let name: Cow<str> = String::from_utf8_lossy(&name_bytes);
                 let name_owned = name.into_owned();
                 element_count += 1;
@@ -113,7 +113,7 @@ fn parse_xml_inner(xml_bytes: &[u8], preserve_whitespace: bool, svg_mode: bool) 
                 last_was_element_tag = true;
             }
             Ok(Event::Empty(e)) => {
-                let name_bytes = e.name().as_ref() as &[u8].to_vec();
+                let name_bytes = (e.name().as_ref() as &[u8]).to_vec();
                 let name: Cow<str> = String::from_utf8_lossy(&name_bytes);
                 let name_owned = name.into_owned();
                 element_count += 1;
