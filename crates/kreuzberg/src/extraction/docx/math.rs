@@ -128,7 +128,7 @@ fn collect_children(reader: &mut Reader<&[u8]>, end_tag: &[u8]) -> Vec<MathNode>
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
-                let tag = e.name().(as_ref() as &[u8]).to_vec();
+                let tag = (e.name().as_ref() as &[u8]).to_vec();
                 match tag.as_slice() {
                     b"m:r" => {
                         nodes.push(collect_run(reader));
@@ -838,7 +838,7 @@ fn collect_element_body(reader: &mut Reader<&[u8]>, end_tag: &[u8]) -> Vec<MathN
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(ref e)) => {
-                let tag = e.name().(as_ref() as &[u8]).to_vec();
+                let tag = (e.name().as_ref() as &[u8]).to_vec();
                 if tag.ends_with(b"Pr") {
                     skip_to_end(reader, &tag);
                 } else if tag == b"m:e" {
