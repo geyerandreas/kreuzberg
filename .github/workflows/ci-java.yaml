@@ -256,6 +256,9 @@ jobs:
       - name: Setup Layout Models
         uses: ./.github/actions/setup-layout-models
 
+      - name: Setup PaddleOCR Models
+        uses: ./.github/actions/setup-paddle-ocr-models
+
       - name: Cache Hugging Face models (fastembed)
         uses: ./.github/actions/cache-hf-fastembed
 

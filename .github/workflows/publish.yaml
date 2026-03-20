@@ -1428,8 +1428,7 @@ jobs:
         with:
           destination: target/release
 
-      - name: Setup ONNX Runtime (Unix only)
-        if: matrix.settings.build_features == 'default'
+      - name: Setup ONNX Runtime
         uses: ./.github/actions/setup-onnx-runtime
         with:
           ort-version: ${{ env.ORT_VERSION }}
@@ -2295,8 +2294,7 @@ jobs:
         with:
           destination: target/release
 
-      - name: Setup ONNX Runtime (Unix only)
-        if: matrix.settings.build_features == 'default'
+      - name: Setup ONNX Runtime
         uses: ./.github/actions/setup-onnx-runtime
         with:
           ort-version: ${{ env.ORT_VERSION }}
@@ -2545,6 +2543,26 @@ jobs:
         if: matrix.settings.os == 'windows-latest'
         shell: pwsh
         run: scripts/ci/go/setup-msys2-windows.ps1
+
+      - name: Cache PDFium
+        uses: ./.github/actions/cache-pdfium
+        with:
+          pdfium-version: ${{ env.PDFIUM_VERSION }}
+
+      - name: Download PDFium
+        uses: ./.github/actions/download-pdfium
+        with:
+          pdfium-version: ${{ env.PDFIUM_VERSION }}
+
+      - name: Stage PDFium runtime
+        uses: ./.github/actions/stage-pdfium-runtime
+        with:
+          destination: target/release
+
+      - name: Setup ONNX Runtime
+        uses: ./.github/actions/setup-onnx-runtime
+        with:
+          ort-version: ${{ env.ORT_VERSION }}
 
       - name: Setup OpenSSL
         uses: kreuzberg-dev/actions/setup-openssl@v1

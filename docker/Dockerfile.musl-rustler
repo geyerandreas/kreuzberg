@@ -19,7 +19,10 @@ WORKDIR /build
 RUN apk add --no-cache \
     curl gcc g++ musl-dev cmake make pkgconf \
     openssl-dev openssl-libs-static \
-    perl linux-headers git file
+    perl linux-headers git file && \
+    apk add --no-cache onnxruntime-dev \
+    --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community \
+    --repository=https://dl-cdn.alpinelinux.org/alpine/edge/main
 
 # Install Rust via rustup (Alpine's packaged Rust may be too old / not nightly)
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
@@ -37,11 +40,13 @@ RUN mkdir -p /build/pdfium && \
     tar -xzf /build/pdfium.tgz -C /build/pdfium && \
     rm /build/pdfium.tgz
 
-# NOTE: ONNX Runtime is NOT needed at build time.
-# kreuzberg-paddle-ocr uses ort's "load-dynamic" feature, which loads
-# libonnxruntime.so via dlopen() at runtime.
-
 ENV KREUZBERG_PDFIUM_PREBUILT=/build/pdfium
+
+# Point ort-sys to Alpine's system ORT library instead of downloading prebuilt binaries.
+ENV ORT_LIB_LOCATION=/usr/lib
+ENV ORT_PREFER_DYNAMIC_LINK=1
+ENV ORT_SKIP_DOWNLOAD=1
+ENV ORT_STRATEGY=system
 # Allow cdylib output on musl targets (default is +crt-static which blocks shared libs)
 ENV RUSTFLAGS="-C target-feature=-crt-static"
 
