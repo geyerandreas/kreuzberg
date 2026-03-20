@@ -369,10 +369,18 @@ fn extract_segments_merged(page: &PdfPage, page_height: f32) -> Option<Vec<Segme
     for row in rows {
         let merged_groups = merge_cells_in_row(row);
         for group in merged_groups {
+            // Capture first cell's font info before potentially consuming cells.
+            let first = &group.cells[0];
+            let first_font_size = first.font_size;
+            let first_is_bold = first.is_bold;
+            let first_is_italic = first.is_italic;
+            let first_is_monospace = first.is_monospace;
+            let first_baseline_y = first.baseline_y;
+
             // Step 4: Re-extract text from merged bbox.
             let text = if group.cells.len() == 1 {
-                // Single cell: use text as-is.
-                group.cells[0].text.clone()
+                // Single cell: move text out to avoid clone.
+                group.cells.into_iter().next().unwrap().text
             } else {
                 // Multi-cell group: re-extract from merged bbox using pdfium.
                 // The bbox is in PDF coordinates (bottom-left origin).
@@ -392,22 +400,20 @@ fn extract_segments_merged(page: &PdfPage, page_height: f32) -> Option<Vec<Segme
             }
 
             // Step 5: Convert to SegmentData.
-            // Use the first cell's font info as representative.
-            let first = &group.cells[0];
             let width = group.pdf_right - group.pdf_left;
             let height = group.pdf_top - group.pdf_bottom;
 
             segments.push(SegmentData {
                 text: trimmed.to_string(),
                 x: group.pdf_left,
-                y: first.baseline_y,
-                width: width.max(first.font_size),
-                height: height.max(first.font_size),
-                font_size: first.font_size,
-                is_bold: first.is_bold,
-                is_italic: first.is_italic,
-                is_monospace: first.is_monospace,
-                baseline_y: first.baseline_y,
+                y: first_baseline_y,
+                width: width.max(first_font_size),
+                height: height.max(first_font_size),
+                font_size: first_font_size,
+                is_bold: first_is_bold,
+                is_italic: first_is_italic,
+                is_monospace: first_is_monospace,
+                baseline_y: first_baseline_y,
             });
         }
     }
@@ -588,8 +594,9 @@ fn repair_word_breaks_from_full_text(segments: &mut [SegmentData], full_text: &s
 // ── Segment-level extraction from DTO ──
 
 /// A row of extracted segments sharing approximately the same vertical position.
+/// Stores indices into the filtered segment slice to avoid cloning.
 struct SegmentRow {
-    segments: Vec<ExtractedSegment>,
+    segment_indices: Vec<usize>,
     top: f32,
     bottom: f32,
 }
@@ -619,8 +626,9 @@ fn extract_segments_from_dto(data: &PageTextData, page_width: f32) -> Option<Vec
     }
 
     // Group segments into rows by vertical proximity.
+    // Store indices into `filtered` to avoid cloning ExtractedSegment.
     let mut rows: Vec<SegmentRow> = Vec::new();
-    for seg in &filtered {
+    for (seg_idx, seg) in filtered.iter().enumerate() {
         let seg_top = seg.top;
         let seg_bottom = seg.bottom;
         let seg_height = (seg_top - seg_bottom).abs().max(1.0);
@@ -633,10 +641,10 @@ fn extract_segments_from_dto(data: &PageTextData, page_width: f32) -> Option<Vec
         if let Some(idx) = matching_row {
             rows[idx].top = rows[idx].top.max(seg_top);
             rows[idx].bottom = rows[idx].bottom.min(seg_bottom);
-            rows[idx].segments.push((*seg).clone());
+            rows[idx].segment_indices.push(seg_idx);
         } else {
             rows.push(SegmentRow {
-                segments: vec![(*seg).clone()],
+                segment_indices: vec![seg_idx],
                 top: seg_top,
                 bottom: seg_bottom,
             });
@@ -649,7 +657,8 @@ fn extract_segments_from_dto(data: &PageTextData, page_width: f32) -> Option<Vec
     // Build one SegmentData per row by concatenating segment texts.
     let mut result: Vec<SegmentData> = Vec::with_capacity(rows.len());
     for row in &rows {
-        let mut sorted_segs = row.segments.clone();
+        // Resolve indices to references, then sort by left position.
+        let mut sorted_segs: Vec<&ExtractedSegment> = row.segment_indices.iter().map(|&i| filtered[i]).collect();
         sorted_segs.sort_by(|a, b| a.left.partial_cmp(&b.left).unwrap_or(std::cmp::Ordering::Equal));
 
         // De-duplicate overlapping segments with identical text (bold/shadow rendering).

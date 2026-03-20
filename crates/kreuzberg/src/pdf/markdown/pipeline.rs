@@ -84,17 +84,7 @@ fn extract_structure_tree_pages(
                 // paragraph text (not page.text()) since structure tree
                 // text may differ from the page text layer.
                 {
-                    let mut all_text = String::new();
-                    for p in &paragraphs {
-                        for l in &p.lines {
-                            for s in &l.segments {
-                                if !all_text.is_empty() {
-                                    all_text.push(' ');
-                                }
-                                all_text.push_str(&s.text);
-                            }
-                        }
-                    }
+                    let all_text = build_page_text(&paragraphs);
                     if text_has_ligature_corruption(&all_text) {
                         apply_to_all_segments(&mut paragraphs, repair_contextual_ligatures);
                     }
@@ -105,21 +95,7 @@ fn extract_structure_tree_pages(
                 }
                 // Fused text normalization pass: apply all 5 text repairs in a single
                 // traversal instead of 5 separate passes over all segments.
-                apply_to_all_segments(&mut paragraphs, |text| {
-                    let t1 = normalize_text_encoding(text);
-                    let t2 = repair_ligature_spaces(&t1);
-                    let t3 = expand_ligatures_with_space_absorption(&t2);
-                    let t4 = normalize_unicode_text(&t3);
-                    let t5 = clean_duplicate_punctuation(&t4);
-                    // If any step produced Owned, the chain references locals.
-                    // Convert to Owned to return safely, or Borrowed if nothing changed.
-                    match (&t1, &t2, &t3, &t4, &t5) {
-                        (Cow::Borrowed(_), Cow::Borrowed(_), Cow::Borrowed(_), Cow::Borrowed(_), Cow::Borrowed(_)) => {
-                            Cow::Borrowed(text)
-                        }
-                        _ => Cow::Owned(t5.into_owned()),
-                    }
-                });
+                apply_to_all_segments(&mut paragraphs, fused_text_repairs);
                 // Dehyphenate: rejoin trailing hyphens. Use positional
                 // data for full-line checks when bounds are available.
                 let has_positions = paragraphs.iter().any(|p| {
@@ -442,30 +418,7 @@ fn process_single_page(
             // Quality gate: run the standard pipeline on the same segments
             // and compare alphanumeric character counts.  If the layout path
             // drops too much text (< 70% of standard), fall back to standard.
-            let standard_filtered = if !table_bboxes.is_empty() {
-                standard_segments
-                    .into_iter()
-                    .filter(|seg| {
-                        let seg_area = seg.width * seg.height;
-                        if seg_area <= 0.0 || seg.text.trim().is_empty() {
-                            return true;
-                        }
-                        !table_bboxes.iter().any(|bb| {
-                            let inter_left = seg.x.max(bb.x0 as f32);
-                            let inter_right = (seg.x + seg.width).min(bb.x1 as f32);
-                            let inter_bottom = seg.y.max(bb.y0 as f32);
-                            let inter_top = (seg.y + seg.height).min(bb.y1 as f32);
-                            if inter_left >= inter_right || inter_bottom >= inter_top {
-                                return false;
-                            }
-                            let inter_area = (inter_right - inter_left) * (inter_top - inter_bottom);
-                            inter_area / seg_area >= 0.5
-                        })
-                    })
-                    .collect::<Vec<_>>()
-            } else {
-                standard_segments
-            };
+            let standard_filtered = filter_segments_by_table_bboxes(standard_segments, &table_bboxes);
             let mut standard_paras = super::regions::assemble_standard_pipeline(standard_filtered);
             classify_paragraphs(&mut standard_paras, heading_map);
 
@@ -508,30 +461,7 @@ fn process_single_page(
                     "standard pipeline: table suppression active"
                 );
             }
-            let page_segments = if !table_bboxes.is_empty() {
-                page_segments
-                    .into_iter()
-                    .filter(|seg| {
-                        let seg_area = seg.width * seg.height;
-                        if seg_area <= 0.0 || seg.text.trim().is_empty() {
-                            return true; // Keep zero-area/empty segments
-                        }
-                        !table_bboxes.iter().any(|bb| {
-                            let inter_left = seg.x.max(bb.x0 as f32);
-                            let inter_right = (seg.x + seg.width).min(bb.x1 as f32);
-                            let inter_bottom = seg.y.max(bb.y0 as f32);
-                            let inter_top = (seg.y + seg.height).min(bb.y1 as f32);
-                            if inter_left >= inter_right || inter_bottom >= inter_top {
-                                return false;
-                            }
-                            let inter_area = (inter_right - inter_left) * (inter_top - inter_bottom);
-                            inter_area / seg_area >= 0.5
-                        })
-                    })
-                    .collect::<Vec<_>>()
-            } else {
-                page_segments
-            };
+            let page_segments = filter_segments_by_table_bboxes(page_segments, &table_bboxes);
             let mut paras = super::regions::assemble_standard_pipeline(page_segments);
             classify_paragraphs(&mut paras, heading_map);
             // Apply layout hint overrides to the standard pipeline output.
@@ -549,17 +479,7 @@ fn process_single_page(
         // chars_to_segments didn't catch encoding issues (pdfium
         // doesn't always flag broken ToUnicode CMaps).
         {
-            let mut all_text = String::new();
-            for p in &paragraphs {
-                for l in &p.lines {
-                    for s in &l.segments {
-                        if !all_text.is_empty() {
-                            all_text.push(' ');
-                        }
-                        all_text.push_str(&s.text);
-                    }
-                }
-            }
+            let all_text = build_page_text(&paragraphs);
             if text_has_ligature_corruption(&all_text) {
                 apply_to_all_segments(&mut paragraphs, repair_contextual_ligatures);
             }
@@ -571,19 +491,7 @@ fn process_single_page(
         }
         // Fused text normalization pass: apply all 5 text repairs in a single
         // traversal instead of 5 separate passes over all segments.
-        apply_to_all_segments(&mut paragraphs, |text| {
-            let t1 = normalize_text_encoding(text);
-            let t2 = repair_ligature_spaces(&t1);
-            let t3 = expand_ligatures_with_space_absorption(&t2);
-            let t4 = normalize_unicode_text(&t3);
-            let t5 = clean_duplicate_punctuation(&t4);
-            match (&t1, &t2, &t3, &t4, &t5) {
-                (Cow::Borrowed(_), Cow::Borrowed(_), Cow::Borrowed(_), Cow::Borrowed(_), Cow::Borrowed(_)) => {
-                    Cow::Borrowed(text)
-                }
-                _ => Cow::Owned(t5.into_owned()),
-            }
-        });
+        apply_to_all_segments(&mut paragraphs, fused_text_repairs);
         // Dehyphenate: heuristic path has positional data for
         // full-line detection, enabling both hyphen and no-hyphen joins.
         dehyphenate_paragraphs(&mut paragraphs, true);
@@ -1050,6 +958,71 @@ pub fn render_document_as_markdown_with_tables(
     Ok((final_markdown.into_owned(), has_font_encoding_issues))
 }
 
+/// Filter out segments that overlap >=50% with any table bounding box.
+///
+/// Segments with zero area or empty text are always kept.
+fn filter_segments_by_table_bboxes(
+    segments: Vec<SegmentData>,
+    table_bboxes: &[crate::types::BoundingBox],
+) -> Vec<SegmentData> {
+    if table_bboxes.is_empty() {
+        return segments;
+    }
+    segments
+        .into_iter()
+        .filter(|seg| {
+            let seg_area = seg.width * seg.height;
+            if seg_area <= 0.0 || seg.text.trim().is_empty() {
+                return true;
+            }
+            !table_bboxes.iter().any(|bb| {
+                let inter_left = seg.x.max(bb.x0 as f32);
+                let inter_right = (seg.x + seg.width).min(bb.x1 as f32);
+                let inter_bottom = seg.y.max(bb.y0 as f32);
+                let inter_top = (seg.y + seg.height).min(bb.y1 as f32);
+                if inter_left >= inter_right || inter_bottom >= inter_top {
+                    return false;
+                }
+                let inter_area = (inter_right - inter_left) * (inter_top - inter_bottom);
+                inter_area / seg_area >= 0.5
+            })
+        })
+        .collect()
+}
+
+/// Concatenate all segment texts from paragraphs into a single string for analysis.
+fn build_page_text(paragraphs: &[PdfParagraph]) -> String {
+    let mut all_text = String::new();
+    for p in paragraphs {
+        for l in &p.lines {
+            for s in &l.segments {
+                if !all_text.is_empty() {
+                    all_text.push(' ');
+                }
+                all_text.push_str(&s.text);
+            }
+        }
+    }
+    all_text
+}
+
+/// Apply all 5 text repair passes in a single traversal over a segment's text.
+///
+/// Returns `Cow::Borrowed` if nothing changed, `Cow::Owned` otherwise.
+fn fused_text_repairs(text: &str) -> Cow<'_, str> {
+    let t1 = normalize_text_encoding(text);
+    let t2 = repair_ligature_spaces(&t1);
+    let t3 = expand_ligatures_with_space_absorption(&t2);
+    let t4 = normalize_unicode_text(&t3);
+    let t5 = clean_duplicate_punctuation(&t4);
+    match (&t1, &t2, &t3, &t4, &t5) {
+        (Cow::Borrowed(_), Cow::Borrowed(_), Cow::Borrowed(_), Cow::Borrowed(_), Cow::Borrowed(_)) => {
+            Cow::Borrowed(text)
+        }
+        _ => Cow::Owned(t5.into_owned()),
+    }
+}
+
 /// Deduplicate tables that overlap on the same page.
 ///
 /// When both heuristic and layout-based table extraction produce tables for the
@@ -1060,7 +1033,7 @@ fn deduplicate_overlapping_tables(tables: &mut Vec<crate::types::Table>) {
         return;
     }
 
-    let mut to_remove = Vec::new();
+    let mut to_remove = std::collections::HashSet::new();
 
     for i in 0..tables.len() {
         if to_remove.contains(&i) {
@@ -1087,20 +1060,21 @@ fn deduplicate_overlapping_tables(tables: &mut Vec<crate::types::Table>) {
                     let content_a = tables[i].cells.len() + tables[i].markdown.len();
                     let content_b = tables[j].cells.len() + tables[j].markdown.len();
                     if content_a >= content_b {
-                        to_remove.push(j);
+                        to_remove.insert(j);
                     } else {
-                        to_remove.push(i);
+                        to_remove.insert(i);
                     }
                 }
             }
         }
     }
 
-    to_remove.sort_unstable();
-    to_remove.dedup();
-    for idx in to_remove.into_iter().rev() {
-        tables.remove(idx);
-    }
+    let mut idx = 0;
+    tables.retain(|_| {
+        let keep = !to_remove.contains(&idx);
+        idx += 1;
+        keep
+    });
 }
 
 /// Filter page furniture paragraphs with a safety valve.

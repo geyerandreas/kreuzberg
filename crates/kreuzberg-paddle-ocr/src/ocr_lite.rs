@@ -352,7 +352,7 @@ impl OcrLite {
         )?;
 
         let mut text_blocks = Vec::with_capacity(text_lines.len());
-        for i in 0..text_lines.len() {
+        for (i, text_line) in text_lines.into_iter().enumerate() {
             text_blocks.push(TextBlock {
                 box_points: text_boxes[i]
                     .points
@@ -365,8 +365,8 @@ impl OcrLite {
                 box_score: text_boxes[i].score,
                 angle_index: angles[i].index,
                 angle_score: angles[i].score,
-                text: text_lines[i].text.clone(),
-                text_score: text_lines[i].text_score,
+                text: text_line.text,
+                text_score: text_line.text_score,
             });
         }
 

@@ -181,16 +181,23 @@ impl CrnnNet {
                 let resized =
                     image::imageops::resize(img, dst_width, CRNN_DST_HEIGHT, image::imageops::FilterType::Triangle);
 
-                // Normalize and fill into batch tensor (zero-padded on right)
+                // Normalize and fill into batch tensor (zero-padded on right).
+                // Use raw slice access instead of per-pixel get_pixel() to
+                // eliminate millions of bounds checks in the hot loop.
                 let cols = resized.width() as usize;
                 let rows = resized.height() as usize;
+                let raw = resized.as_raw();
+                assert_eq!(raw.len(), rows * cols * 3, "unexpected image buffer size");
+                let adjusted = [
+                    MEAN_VALUES[0] * NORM_VALUES[0],
+                    MEAN_VALUES[1] * NORM_VALUES[1],
+                    MEAN_VALUES[2] * NORM_VALUES[2],
+                ];
                 for r in 0..rows {
                     for c in 0..cols {
-                        let pixel = resized.get_pixel(c as u32, r as u32);
+                        let base = r * cols * 3 + c * 3;
                         for ch in 0..3 {
-                            let value = pixel[ch] as f32;
-                            batch_data[[batch_idx, ch, r, c]] =
-                                value * NORM_VALUES[ch] - MEAN_VALUES[ch] * NORM_VALUES[ch];
+                            batch_data[[batch_idx, ch, r, c]] = raw[base + ch] as f32 * NORM_VALUES[ch] - adjusted[ch];
                         }
                     }
                 }

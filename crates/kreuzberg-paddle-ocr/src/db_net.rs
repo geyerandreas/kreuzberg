@@ -367,7 +367,6 @@ impl DbNet {
             return Ok(Vec::new());
         }
 
-        let mut ret_pts = Vec::new();
         let first_polygon = solution.first().ok_or_else(|| {
             OcrError::Io(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
@@ -375,9 +374,11 @@ impl DbNet {
             ))
         })?;
 
-        for ip in first_polygon.exterior().points() {
-            ret_pts.push(imageproc::point::Point::new(ip.x() as i32, ip.y() as i32));
-        }
+        let ret_pts: Vec<_> = first_polygon
+            .exterior()
+            .points()
+            .map(|ip| imageproc::point::Point::new(ip.x() as i32, ip.y() as i32))
+            .collect();
 
         Ok(ret_pts)
     }
