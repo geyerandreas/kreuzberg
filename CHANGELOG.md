@@ -7,125 +7,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [4.5.0] - Unreleased
+## [4.5.0] - 2026-03-20
 
 ### Added
 
-- **Experimental: pdf_oxide text extraction backend** (`pdf-oxide` feature): Pure Rust PDF text extraction using [pdf_oxide](https://crates.io/crates/pdf_oxide). Parses PDF content streams directly with adaptive TJ-offset thresholds, providing an alternative to pdfium for text extraction. Opt-in only, not included in `full` feature set.
-- **Geometric space veto for broken CMap fonts**: Pdfium-generated word boundaries are now validated against character geometry — spaces are vetoed when the gap between adjacent characters is less than 50% of average character width (modeled after docling-parse's cell merging algorithm). Fixes broken word spacing like "co mputer" → "computer" in PDFs with broken font CMaps.
-- **Layout classification guards**: SectionHeader overrides from the layout model now require word count limits, trailing punctuation checks (period, colon), figure label detection, monospace filtering, and body-font-size validation. Prevents false heading promotions that degraded quality on ~20 documents.
-- **Table extraction on structure-tree pages**: SLANet table structure recognition now runs on all pages with layout-detected Table regions, including pages where the PDF structure tree succeeded. Previously, structure-tree pages skipped table extraction entirely, causing tables to be flattened into paragraphs.
-- **Fixed SLANet-Plus ONNX model**: Re-exported SLANet-Plus via paddle-to-onnx with Loop/If scalar-to-[1] shape fix, resolving ORT inference failures that caused all SLANet table extractions to silently fail on macOS CoreML.
-- **Docling comparison benchmarks**: Fixed vendored docling output path resolution and moved vendored data to `tools/benchmark-harness/vendored/docling/`. Enables proper quality comparison across the full 171-document PDF corpus.
-- **`EmailConfig` for MSG fallback codepage** (#505): New `EmailConfig` type with `msg_fallback_codepage` field, configurable via `ExtractionConfig.email`. When an MSG file contains no codepage property, the fallback defaults to windows-1252 and is now configurable (e.g. set `1251` for Cyrillic). Fully typed across all 11 language bindings: Rust, Python, TypeScript, Go, Java, C#, PHP, Ruby, Elixir, R, and WASM.
-- **Binding parity fixes**: `AccelerationConfig` added to Python `.pyi` type stubs and Node.js NAPI types (was previously missing). `SecurityLimits` and `LayoutDetectionConfig` added to Node.js NAPI types. Ruby native binding now parses `layout`, `security_limits`, and `email` config fields. Elixir `to_map/1` now includes `security_limits` (was silently dropped). PHP gains `LayoutDetectionConfig` typed class.
-- **Strong typing across bindings**: Replaced weak `Dictionary`/`Map`/`array` types with strongly typed config classes — C# (`SecurityLimitsConfig`, `YakeParamsConfig`, `RakeParamsConfig`), Java (`SecurityLimitsConfig`), PHP (`SecurityLimitsConfig`, `HtmlConversionOptions`, `YakeParamsConfig`, `RakeParamsConfig`).
-- **`ConcurrencyConfig` for thread limiting** (#503): New `ConcurrencyConfig` type with `max_threads` field, configurable via `ExtractionConfig.concurrency`. Caps Rayon thread pool, ONNX Runtime intra-op threads, and batch concurrency semaphore to a single limit — useful for deployments on constrained hardware. Fully typed across all language bindings: Rust, Python, TypeScript, Go, Java, C#, PHP, Ruby (with RBS stubs), Elixir, and R.
-- **Opt-in single-column pseudo tables** (#449): New `allow_single_column_tables` boolean on `PdfConfig` (default: `false`). When enabled, relaxes the minimum column requirement from 2–3 to 1, allowing single-column structured data (glossaries, itemized lists in table format) to be emitted as tables. All other quality filters (density, sparsity, prose detection) still apply. Available across all language bindings.
-
-### Changed
-
-- **Layout preset default**: Changed from `"fast"` to `"accurate"`. Both mapped to the same RT-DETR model; the `Fast` variant has been removed. The `"fast"` string is still accepted for backwards compatibility.
-
-- **Experimental: pdf_oxide text extraction backend** (`pdf-oxide` feature): Pure Rust PDF text extraction using [pdf_oxide](https://crates.io/crates/pdf_oxide). Parses PDF content streams directly with adaptive TJ-offset thresholds, providing an alternative to pdfium for text extraction. Opt-in only, not included in `full` feature set.
-- **Geometric space veto for broken CMap fonts**: Pdfium-generated word boundaries are now validated against character geometry — spaces are vetoed when the gap between adjacent characters is less than 50% of average character width (modeled after docling-parse's cell merging algorithm). Fixes broken word spacing like "co mputer" → "computer" in PDFs with broken font CMaps.
-- **Layout classification guards**: SectionHeader overrides from the layout model now require word count limits, trailing punctuation checks (period, colon), figure label detection, monospace filtering, and body-font-size validation. Prevents false heading promotions that degraded quality on ~20 documents.
-- **Table extraction on structure-tree pages**: SLANet table structure recognition now runs on all pages with layout-detected Table regions, including pages where the PDF structure tree succeeded. Previously, structure-tree pages skipped table extraction entirely, causing tables to be flattened into paragraphs.
-- **Fixed SLANet-Plus ONNX model**: Re-exported SLANet-Plus via paddle-to-onnx with Loop/If scalar-to-[1] shape fix, resolving ORT inference failures that caused all SLANet table extractions to silently fail on macOS CoreML.
-- **Docling comparison benchmarks**: Fixed vendored docling output path resolution and moved vendored data to `tools/benchmark-harness/vendored/docling/`. Enables proper quality comparison across the full 171-document PDF corpus.
-
-### Changed
-
-- **Layout preset default**: Changed from `"fast"` to `"accurate"`. Both mapped to the same RT-DETR model; the `Fast` variant has been removed. The `"fast"` string is still accepted for backwards compatibility.
-
-- **ONNX-based layout detection**: New `layout` config field enables document layout analysis using RT-DETR v2 (Docling Heron) with 17 document element classes. Supports `"fast"` and `"accurate"` presets. Models are auto-downloaded from HuggingFace on first use. Available across all language bindings (Python, Node, Ruby, Go, Java, C#, PHP, WASM).
-- **SLANet table structure recognition**: When layout detection is active, detected Table regions are processed by SLANet-plus for neural HTML structure recovery with cell bounding boxes — producing accurate markdown tables with colspan/rowspan support.
-- **Layout-enhanced heading detection**: The layout model's SectionHeader and Title regions guide heading detection in both structure tree and heuristic PDF extraction paths. High-confidence layout hints (≥0.7) can override font-size-based heading classification and demote false headings.
-- **Language-agnostic section pattern recognition**: Headings ending with a period are now allowed when they match structural patterns — section symbol (§), all-caps short text, or numbered sections (e.g., "3.2. Methods", "ARTICLE IV."). Improves heading detection for legal, academic, and multilingual documents.
-- **Multi-backend OCR pipeline**: New `OcrPipelineConfig` enables quality-based fallback across OCR backends (e.g., Tesseract → PaddleOCR). Each stage has configurable priority, language, and backend-specific settings. Default pipeline auto-constructed when `paddle-ocr` feature is enabled.
+- **ONNX-based document layout detection**: New `layout` config field enables document layout analysis using RT-DETR v2 with 17 element classes. Supports `"fast"` and `"accurate"` presets with auto-downloaded models. Available across all language bindings.
+- **SLANet table structure recognition**: Detected Table regions are processed by SLANet-plus for neural HTML structure recovery, producing markdown tables with colspan/rowspan support. Now runs on all pages including structure-tree pages (previously skipped).
+- **Layout-enhanced heading detection**: Layout model SectionHeader and Title regions guide heading detection in both structure tree and heuristic extraction. High-confidence hints (>=0.7) can override font-size-based classification.
+- **Multi-backend OCR pipeline**: New `OcrPipelineConfig` enables quality-based fallback across OCR backends (e.g., Tesseract then PaddleOCR) with configurable priority, language, and backend-specific settings.
 - **OCR quality thresholds**: New `OcrQualityThresholds` config with 16 tunable parameters for OCR output quality assessment and fallback decisions.
-- **OCR auto-rotate**: New `OcrConfig.auto_rotate` flag (default: false) for automatic page rotation detection using Tesseract's orientation analysis. Handles 0/90/180/270 degree rotations.
-- **ChunkSizing configuration**: `sizing_type`, `sizing_model`, and `sizing_cache_dir` fields exposed in `ChunkingConfig` across all language bindings for control over token counting strategy.
-- **Chunk heading context**: New `HeadingContext` type in `ChunkMetadata` providing heading level and text for better chunk context awareness.
-- **CLI `cache warm` command**: Eagerly downloads all PaddleOCR and layout detection models for all supported languages. Supports optional `--all-embeddings` to download all 4 embedding presets, or `--embedding-model <preset>` for a specific one. Useful for pre-populating caches in containerized or offline deployments.
-- **CLI `cache manifest` command**: Outputs a JSON manifest of all expected model files with SHA256 checksums, sizes, and HuggingFace source URLs. Enables scripted cache verification and pre-population.
-- **`ModelManifestEntry` type**: New public type for model cache manifest entries with `relative_path`, `sha256`, `size_bytes`, and `source_url` fields.
-- **`ModelManager::manifest()` / `LayoutModelManager::manifest()`**: Static methods returning the full manifest of expected model files for each model manager.
-- **`ModelManager::ensure_all_models()` / `LayoutModelManager::ensure_all_models()`**: Eagerly download all models (all 11 PaddleOCR script families + layout models), unlike the lazy per-use defaults.
-- **`AccelerationConfig` for explicit GPU/execution provider control**: New config type enabling fine-grained control over ONNX execution providers (CPU, CoreML, CUDA, TensorRT). Allows users to pin specific acceleration backends for layout detection and table recognition.
-- **Acceleration config support across all 10 language bindings**: `AccelerationConfig` fully typed and tested across Python, TypeScript, Ruby, Go, Java, PHP, C#, Elixir, Node, and C FFI.
-- **Per-file extraction configuration (`FileExtractionConfig`)**: New type enabling per-file configuration overrides in batch operations. Each file in a batch can specify its own OCR, chunking, output format, and other extraction settings while sharing batch-level defaults (concurrency, caching, acceleration). Per-file configs are now an optional parameter on the unified `batch_extract_file` / `batch_extract_bytes` functions (async + sync variants) across all language bindings: Rust, Python, TypeScript/Node, Go, Java, C#, PHP, Ruby, Elixir, R, WASM, and C FFI. CLI supports `--file-configs` flag for batch commands. MCP tool supports `file_configs` parameter.
-- **Embedding benchmark subcommand in benchmark harness**: New `embed-benchmark` CLI command for performance profiling of the embedding pipeline (`tools/benchmark-harness/src/embed_benchmark.rs`).
-- **E2E test fixture for acceleration config**: Comprehensive test coverage for `AccelerationConfig` serialization and cross-language binding parity.
-- **PaddleOCR v2 model tier system**: New `model_tier` field in `PaddleOcrConfig` with `"mobile"` (default, ~21MB total, fast) and `"server"` (~172MB, highest accuracy for GPU/complex documents). Both tiers use unified multilingual models (CJK+English in one model). Available across all language bindings.
-- **Layout detection overrides for OCR output**: Layout detection results (Title, SectionHeader, PageHeader/Footer, etc.) from the RT-DETR model are now applied to OCR-extracted paragraphs via `apply_layout_overrides`. Previously, layout hints were only used for TATR table recognition in the OCR path. Enables heading detection (H1 90%, H2 100% on structured docs) and furniture filtering for both PaddleOCR and Tesseract OCR backends.
-- **PaddleOCR paragraph separation**: OCR text blocks are now separated with double newlines, producing proper markdown paragraph boundaries and improving SF1 structural quality (pdf_scanned_ocr: 1% → 25%).
-- **PaddleOCR performance optimizations**: Pre-computed normalization constants, `Cow<RgbImage>` zero-copy padding, `Arc<Vec<u8>>` for image sharing across page tasks, Vec capacity pre-allocation, `powi(2)` → direct multiply, ONNX Runtime Level3 graph optimization.
-- **PP-LCNet classification models**: Replaced legacy PPOCRv2 angle classifier (585KB) with PP-LCNet_x1_0_textline_ori (6.7MB) for improved text line orientation detection. Added PP-LCNet_x1_0_doc_ori for page-level document orientation detection with PaddleOCR backend `auto_rotate`.
-- **Unified multilingual recognition models**: PP-OCRv5 unified server (84MB, 18K+ chars) and mobile (16.5MB) recognition models replace per-script English and Chinese models. Covers CJK, English, Latin, and symbol recognition in a single model. Per-script models retained for 9 other script families (Korean, Arabic, Thai, Greek, Devanagari, Tamil, Telugu, Latin, East Slavic).
-- **PaddleOCR mobile benchmark pipelines**: New `paddle-mobile` and `paddle-mobile+layout` pipelines in the benchmark harness for comparing server vs mobile tier quality and performance.
-- **`padding` field in PaddleOcrConfig bindings**: Previously only available in Rust, now exposed across Python, TypeScript, Ruby, and Go bindings.
-- **E2E test fixtures for per-file batch configs**: Four new contract fixtures (`api_batch_file_with_configs_sync`, `api_batch_file_with_configs_async`, `api_batch_bytes_with_configs_sync`, `api_batch_bytes_with_configs_async`) with `file_configs` support in the E2E generator `ExtractionSpec`.
-
-### Fixed
-
-- **PDF image extraction decoding**: Images returned from PDFs (FlateDecode, DCTDecode, JPXDecode) are now automatically decoded and re-encoded as standard formats (PNG/JPEG/etc.) instead of returning raw compressed bytes. Updated the image format mapping to reflect standard MIME-compatible types.
-- **PDF structure tree heading trust**: Structure tree heading tags (H1–H6) are now trusted as author-intent metadata with only a word-count guard. Previously, font-size validation rejected valid headings when the font was close to body size.
-- **PDF structure tree extraction performance**: MCID text and style maps are now built in a single pass over page objects (was two passes). Uses the pre-loaded `FPDFText` page handle instead of calling `FPDFText_LoadPage` per text object, eliminating multi-second extraction times on complex pages.
-- **OCR layout: Picture regions no longer suppress text**: Layout-detected Picture regions (diagrams, figures) now preserve any embedded text as plain paragraphs instead of silently dropping it. Uses content-aware `is_substantive_text()` heuristic to distinguish real text from OCR artifacts.
-- **Non-transitive sort comparators**: Fixed multiple sort comparators across the codebase that used tolerance-based "same row" grouping (non-transitive). All spatial reading-order sorts now quantize coordinates into discrete row buckets, ensuring correct and stable ordering.
-- **Float comparison soundness**: Replaced all `partial_cmp().unwrap_or(Equal)` patterns with `total_cmp()` across layout, PDF hierarchy, cache, keyword extraction, and token reduction modules. Eliminates undefined ordering for NaN values.
-- **Page furniture over-stripping**: Added 30% bulk and 80-char per-paragraph guards to prevent aggressive furniture stripping from removing legitimate content.
-- **`KREUZBERG_CACHE_DIR` not respected by all caches**: Embeddings, OCR result cache, and document extraction cache now honor the `KREUZBERG_CACHE_DIR` environment variable, matching layout and PaddleOCR cache resolution.
-- **MSG PT_STRING8 encoding**: Outlook `.msg` files store ANSI string properties (PT_STRING8 / type `0x001E`) encoded with the Windows code page declared in `PR_MESSAGE_CODEPAGE` (0x3FFD) or `PR_INTERNET_CPID` (0x3FDE). The previous code decoded these bytes with `from_utf8_lossy`, replacing non-ASCII characters (e.g. `0xF6` → ö in CP1252) with U+FFFD replacement characters. The fix reads the declared code page and uses `encoding_rs` to decode PT_STRING8 streams correctly. When no code page property is present, the fallback defaults to windows-1252 and is configurable via `ExtractionConfig::email` (`EmailConfig::msg_fallback_codepage`) — set e.g. `1251` for Cyrillic or `1253` for Greek when processing MSG archives from non-Western-European locales.
+- **OCR auto-rotate**: New `OcrConfig.auto_rotate` flag (default: false) for automatic page rotation detection. Handles 0/90/180/270 degree rotations.
+- **PaddleOCR v2 model tier system**: New `model_tier` field with `"mobile"` (default, ~21MB, fast) and `"server"` (~172MB, highest accuracy). Both use unified multilingual models (CJK+English in one model). Available across all bindings.
+- **`AccelerationConfig` for GPU/execution provider control**: Fine-grained control over ONNX execution providers (CPU, CoreML, CUDA, TensorRT) for layout detection and table recognition. Typed across all bindings.
+- **`ConcurrencyConfig` for thread limiting** (#503): New `max_threads` field caps Rayon, ONNX intra-op threads, and batch concurrency to a single limit. Typed across all bindings.
+- **`EmailConfig` for MSG fallback codepage** (#505): Configurable fallback codepage for MSG files lacking a codepage property (default: windows-1252). Set e.g. `1251` for Cyrillic. Typed across all bindings.
+- **Per-file extraction configuration (`FileExtractionConfig`)**: Per-file config overrides in batch operations. Each file can specify its own OCR, chunking, output format settings. CLI supports `--file-configs`, MCP supports `file_configs` parameter.
+- **Opt-in single-column pseudo tables** (#449): New `allow_single_column_tables` on `PdfConfig` (default: false). Allows single-column structured data (glossaries, itemized lists) to be emitted as tables.
+- **Experimental: `pdf_oxide` text extraction backend** (`pdf-oxide` feature): Pure Rust PDF text extraction as an alternative to pdfium. Opt-in only, not included in `full` feature set.
+- **CLI `cache warm` command**: Eagerly downloads all PaddleOCR and layout detection models. Supports `--all-embeddings` or `--embedding-model <preset>`. Useful for containerized or offline deployments.
+- **CLI `cache manifest` command**: Outputs a JSON manifest of all expected model files with SHA256 checksums, sizes, and source URLs for scripted cache verification.
+- **ChunkSizing configuration**: `sizing_type`, `sizing_model`, and `sizing_cache_dir` fields exposed in `ChunkingConfig` across all bindings.
+- **Chunk heading context**: New `HeadingContext` type in `ChunkMetadata` providing heading level and text.
+- **`ModelManifestEntry` type and `manifest()` / `ensure_all_models()` methods**: Public API for querying and eagerly downloading model cache manifests.
+- **SF1 structural quality metrics in benchmark CI**: SF1 quality scores now computed alongside TF1, with PDF-specific quality rankings for tracking extraction quality regressions.
 
 ### Changed
 
-- **PaddleOCR v2 models**: All PaddleOCR models updated to v2 generation. Detection uses PP-OCRv5 server/mobile, classification uses PP-LCNet, recognition uses unified multilingual models for CJK/English. V1 models remain on HuggingFace for older kreuzberg versions.
-- **CLI `cache warm` downloads v2 models**: The warm command now downloads both server and mobile detection models, the new PP-LCNet classifiers, document orientation model, all v2 unified recognition models, and all per-script recognition models.
-- **Batch API unification**: All `_with_configs` batch functions removed; per-file `FileExtractionConfig` is now an optional parameter on the unified `batch_extract_file` / `batch_extract_bytes` functions across all language bindings.
-- **PaddleOCR default model tier**: Changed from `"server"` to `"mobile"`. Mobile models (~21MB total) provide equivalent quality to server (~172MB) on standard documents while being 3-5x faster. Server tier remains available via `with_model_tier("server")` for GPU acceleration or complex documents. Both English and Chinese mobile now use unified_mobile (16.5MB) — one model handles all CJK+English.
-- **PP-LCNet classification models**: Replaced legacy PPOCRv2 angle classifier (585KB) with PP-LCNet_x1_0_textline_ori (6.7MB) for improved text line orientation detection. Added PP-LCNet_x1_0_doc_ori for page-level document orientation detection with PaddleOCR backend `auto_rotate`.
-- **Unified multilingual recognition models**: PP-OCRv5 unified server (84MB, 18K+ chars) and mobile (16.5MB) recognition models replace per-script English and Chinese models. Covers CJK, English, Latin, and symbol recognition in a single model. Per-script models retained for 9 other script families (Korean, Arabic, Thai, Greek, Devanagari, Tamil, Telugu, Latin, East Slavic).
-- **PaddleOCR benchmark pipelines**: Renamed `paddle-mobile` → `paddle` (now default), added `paddle-server` for explicit server tier benchmarking.
-- **`padding` field in PaddleOcrConfig bindings**: Previously only available in Rust, now exposed across Python, TypeScript, Ruby, and Go bindings.
-- **E2E test fixtures for per-file batch configs**: Four new contract fixtures (`api_batch_file_with_configs_sync`, `api_batch_file_with_configs_async`, `api_batch_bytes_with_configs_sync`, `api_batch_bytes_with_configs_async`) with `file_configs` support in the E2E generator `ExtractionSpec`.
-- **PaddleOCR v2 models**: All PaddleOCR models updated to v2 generation. Detection uses PP-OCRv5 server/mobile, classification uses PP-LCNet, recognition uses unified multilingual models for CJK/English. V1 models remain on HuggingFace for older kreuzberg versions.
-- **CLI `cache warm` downloads v2 models**: The warm command now downloads both server and mobile detection models, the new PP-LCNet classifiers, document orientation model, all v2 unified recognition models, and all per-script recognition models.
-- **Layout pipeline no longer forces heuristic extraction**: When layout detection is enabled, structure tree extraction proceeds normally instead of being forced into the heuristic path. Proportional matching applies layout hints to structure tree paragraphs, preserving text quality.
-- **Global ONNX model caching**: Layout detection engine and SLANet table recognition model are now cached globally and reused across document extractions, avoiding expensive ONNX session recreation in batch processing scenarios.
-- **Docker model pre-download uses `cache warm`**: The `Dockerfile.full` now uses `kreuzberg cache warm` instead of manual curl-based download scripts, simplifying the build and ensuring consistency with the CLI's model management.
-- **Vendored text embedding pipeline from fastembed-rs**: Replaced external `fastembed` dependency with vendored engine using `ort` + `tokenizers` + `hf-hub` directly for tighter integration and control.
-- **Embedding `embed()` now takes `&self` instead of `&mut self`**: Enables parallel embedding generation without mutable reference constraints. Internal engine uses `Arc<EmbeddingEngine>` for thread-safe concurrent inference.
-- **Reverted `LeakedModel` workaround removal**: ort rc.12 has a compilation error with VitisAI; staying on rc.11 with the `LeakedModel` safety workaround.
-- **Embedding model cache uses `Arc<EmbeddingEngine>`**: No Mutex contention on concurrent embed calls; lock-free concurrent inference.
-- **L2 normalization parallelized with rayon**: Embedding batches ≥ 64 vectors now use multi-threaded normalization for improved throughput.
+- **Layout preset default**: Changed from `"fast"` to `"accurate"`. The `Fast` variant has been removed. The `"fast"` string is still accepted for backwards compatibility.
+- **PaddleOCR default model tier**: Changed from `"server"` to `"mobile"`. Mobile models provide equivalent quality on standard documents while being 3-5x faster. Server tier remains available via `with_model_tier("server")`.
+- **PaddleOCR v2 models**: All models updated to v2 generation (PP-OCRv5 detection, PP-LCNet classification, unified multilingual recognition). V1 models remain available for older versions.
+- **Unified multilingual recognition models**: PP-OCRv5 unified server (84MB) and mobile (16.5MB) models replace per-script English and Chinese models. Per-script models retained for 9 other script families.
+- **Batch API unification**: `_with_configs` batch functions removed; per-file `FileExtractionConfig` is now an optional parameter on the unified batch functions.
+- **Layout pipeline no longer forces heuristic extraction**: Structure tree extraction proceeds normally when layout detection is enabled, preserving text quality.
+- **Global ONNX model caching**: Layout detection and SLANet models are cached globally and reused across extractions, avoiding expensive ONNX session recreation in batch scenarios.
+- **Vendored text embedding pipeline**: Replaced `fastembed` dependency with vendored engine using ONNX Runtime directly for tighter integration.
+- **Embedding `embed()` now takes `&self` instead of `&mut self`**: Enables parallel embedding generation without mutable reference constraints.
+- **L2 normalization parallelized**: Embedding batches >= 64 vectors now use multi-threaded normalization.
+- **`padding` field in PaddleOcrConfig**: Now exposed across Python, TypeScript, Ruby, and Go bindings (previously Rust-only).
+- **Language-agnostic section pattern recognition**: Headings ending with a period are now allowed when they match structural patterns (section symbol, all-caps, numbered sections). Improves heading detection for legal, academic, and multilingual documents.
+- **Layout classification guards**: Heading overrides from the layout model now have word count limits, punctuation checks, figure label detection, and body-font-size validation to prevent false heading promotions.
+- **Strong typing across bindings**: Replaced weak `Dictionary`/`Map`/`array` types with strongly typed config classes in C#, Java, and PHP. Added missing config types to Python stubs, Node.js, Ruby, Elixir, and PHP.
 
 ### Removed
 
 - **`fastembed` dependency**: Replaced by vendored embedding engine using ONNX Runtime directly.
-- **`EmbeddingModelType::FastEmbed` variant**: Use `Preset` or `Custom` variants instead for explicit control over embedding model selection.
+- **`EmbeddingModelType::FastEmbed` variant**: Use `Preset` or `Custom` variants instead.
 
 ### Fixed
 
-- **Go `MarshalJSON` cyclomatic complexity lint**: Extracted helper functions to reduce cyclomatic complexity and pass linter checks.
-- **Unused doc comment warning on `thread_local!` macro**: Suppressed incorrect rustdoc warnings on Rust macro definitions.
-- **Docker musl builds (CI Docker)**: Alpine/musl Docker images now install `onnxruntime-dev` from Alpine edge and set `ORT_LIB_LOCATION` to link against the system library, fixing the `ort-sys` build failure for `x86_64-unknown-linux-musl` targets. All features (embeddings, layout-detection) now work in musl CLI images.
-- **CI Python**: Fixed batch mock signatures in `test_ocr_backend_registration.py` to include the `file_configs` parameter. Fixed `EmbeddingPreset` doctest formatting.
-- **PDF `force_ocr` without explicit OCR config** (#495): `force_ocr=true` was silently ignored when no `ocr` config block was provided — the extractor fell back to native text parsing. Now `force_ocr` unconditionally triggers the OCR pipeline, defaulting to `OcrConfig::default()` (Tesseract) when OCR settings are unpopulated.
-- **Layout validation feature gate mismatch**: The `layout_validation` module was gated behind `#[cfg(feature = "layout-detection")]` but referenced unconditionally, breaking builds without the feature (R, WASM, Node clippy). Removed the module-level gate; individual functions inside retain their own feature gates.
-- **TATR model panic in rayon parallel closure**: `take_or_create_tatr().expect()` inside a rayon `par_iter` caused worker thread panics when the model was unavailable, crashing FFI callers (Java, C#). Replaced with graceful `None` handling that falls back to heuristic table extraction.
-- **C# `KeywordConfigTests` type mismatches**: Tests used `Dictionary<string, object?>` for `YakeParamsConfig`/`RakeParamsConfig` properties, but these are strongly-typed sealed classes. Fixed to use proper object initializers.
-- **CI layout model caching**: Added reusable `setup-layout-models` composite action to download and cache RT-DETR (~168 MB) and TATR (~30 MB) ONNX models from HuggingFace with SHA256 verification. Integrated across all 14 CI workflows (53 jobs) to prevent cold-download failures.
-- **CI WASM (Clippy)**: Added `#[allow(clippy::unnecessary_cast)]` for platform-dependent `c_ulong` → `u32` casts in pdfium bindings.
-- **CI C#/Java**: FFI batch functions now accept NULL for `file_config_jsons` (meaning "no per-file configs") instead of rejecting it.
-- **CI Elixir**: Added missing `acceleration` field to `ExtractionConfig.to_map/1` doctests.
-- **CI Go**: Updated all CI workflows to Go 1.26 (matching `go.work` requirement).
-- **CI R**: Vendor script now copies root `Cargo.lock` to ensure consistent dependency resolution.
-- **PDF image extraction** (#511): Fixed extracted images returning raw compressed data instead of properly decoded image bytes.
-- **Node.js `extractFileInWorker` mime_type passthrough** (#523): The `extract_file_in_worker` NAPI binding had its third parameter named `password` instead of `mime_type`, causing the MIME type passed from TypeScript to be silently injected into PDF password config while `None` was passed to `extract_file_sync`. Renamed the parameter and removed the incorrect password injection block so explicit MIME types are now correctly forwarded.
-- **DOCX parser type inference failure** (#519): Added explicit `as &[u8]` casts to all `name().as_ref()` and `local_name().as_ref()` calls in the DOCX and XML parsers. The `zip` 8.2.0 dependency introduced `typed-path`, creating ambiguity for the compiler when resolving `AsRef` on quick-xml's `LocalName` and `QName` types.
-- **Python `py.typed` and `.pyi` missing from sdist**: The `py.typed` marker file was not included in maturin's package include list, and `.pyi` type stubs were only included in wheels but not source distributions. Both are now included in both wheel and sdist formats.
+- **C# FFI struct layout mismatch** (#538): `CExtractionResult` struct layout between Rust and C# was mismatched, causing deserialization failures and overflow exceptions that made the C# library completely broken in 4.4.6.
+- **PDF `force_ocr` without explicit OCR config** (#495): `force_ocr=true` was silently ignored when no `ocr` config block was provided. Now unconditionally triggers the OCR pipeline with default settings.
+- **PDF image extraction** (#511): Extracted images returned raw compressed data instead of properly decoded image bytes. Now automatically decoded and re-encoded as standard formats (PNG/JPEG).
+- **Node.js `extractFileInWorker` mime_type passthrough** (#523): MIME type was silently injected into PDF password config instead of being forwarded to extraction. Now correctly passed through.
+- **DOCX parser type inference failure** (#519): The `zip` 8.2.0 dependency introduced type ambiguity in DOCX and XML parsers, causing compilation failures.
+- **Python `py.typed` and `.pyi` missing from sdist**: Type stubs and `py.typed` marker now included in both wheel and sdist formats.
+- **PDF broken CMap word spacing**: Geometric validation now vetoes false word boundaries in PDFs with broken font CMaps, fixing "co mputer" -> "computer" style errors.
+- **PDF structure tree heading trust**: Structure tree heading tags (H1-H6) are now trusted as author-intent metadata. Previously, font-size validation rejected valid headings close to body size.
+- **PDF structure tree extraction performance**: Text and style maps now built in a single pass, eliminating multi-second extraction times on complex pages.
+- **OCR Picture regions suppressing text**: Layout-detected Picture regions now preserve embedded text as plain paragraphs instead of silently dropping it.
+- **Non-transitive sort comparators**: Spatial reading-order sorts now use discrete row buckets instead of tolerance-based grouping, ensuring correct and stable ordering.
+- **Page furniture over-stripping**: Added bulk and per-paragraph guards to prevent aggressive furniture stripping from removing legitimate content.
+- **`KREUZBERG_CACHE_DIR` not respected by all caches**: Embeddings, OCR result cache, and document extraction cache now honor the environment variable.
+- **MSG PT_STRING8 encoding**: MSG files now correctly decode ANSI string properties using the declared Windows code page instead of UTF-8 lossy conversion.
+- **SLANet-Plus ONNX model**: Re-exported with shape fix, resolving inference failures that caused all SLANet table extractions to silently fail on macOS CoreML.
+- **TATR model panic in batch processing**: Model unavailability in parallel closures caused crashes in FFI callers (Java, C#). Now falls back gracefully to heuristic table extraction.
+- **Docker musl builds**: Alpine/musl Docker images now link against the system ONNX Runtime library, fixing build failures. All features work in musl CLI images.
+- **FFI batch functions null handling**: C#/Java FFI batch functions now accept NULL for `file_config_jsons` instead of rejecting it.
 
 ---
 

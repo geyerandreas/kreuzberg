@@ -116,7 +116,7 @@ The fastest way to try Kreuzberg - no SDK, no code, just your terminal.
     ---
 
     ```gradle
-    implementation 'dev.kreuzberg:kreuzberg:4.4.2'
+    implementation 'dev.kreuzberg:kreuzberg:4.5.0'
     ```
 
     [API Reference](../reference/api-java.md){ .install-btn .install-btn--ghost }
@@ -278,14 +278,14 @@ Both work with **pnpm** (`pnpm add`) and **yarn** (`yarn add`) as well.
     <dependency>
         <groupId>dev.kreuzberg</groupId>
         <artifactId>kreuzberg</artifactId>
-        <version>4.4.2</version>
+        <version>4.5.0</version>
     </dependency>
     ```
 
 === "Gradle"
 
     ```gradle
-    implementation 'dev.kreuzberg:kreuzberg:4.4.2'
+    implementation 'dev.kreuzberg:kreuzberg:4.5.0'
     ```
 
 Requires Java 25+ (FFM/Panama API). Native libraries are bundled in the JAR.
@@ -318,14 +318,14 @@ Add to Maven `pom.xml`:
 <dependency>
     <groupId>dev.kreuzberg</groupId>
     <artifactId>kreuzberg</artifactId>
-    <version>4.4.6</version>
+    <version>4.5.0</version>
 </dependency>
 ```
 
 Or pin a version in `Cargo.toml`:
 
 ```gradle title="build.gradle"
-implementation 'dev.kreuzberg:kreuzberg:4.4.6'
+implementation 'dev.kreuzberg:kreuzberg:4.5.0'
 ```
 
 ### C / C++ <span class="version-badge unreleased">Unreleased</span>
