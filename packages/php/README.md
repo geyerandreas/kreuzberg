@@ -86,6 +86,12 @@ composer require kreuzberg/kreuzberg
 - Optional: [ONNX Runtime](https://github.com/microsoft/onnxruntime/releases) version 1.22.x for embeddings support
 - Optional: [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) for OCR functionality
 
+### Platform Support
+
+- **Linux (x86_64, aarch64)**: Fully supported
+- **macOS (Intel, Apple Silicon)**: Fully supported
+- **Windows**: Temporarily unavailable. The Windows build is disabled due to a transitive dependency conflict (`ort-sys` → `lzma-rust2` → `crc` version collision). This will be resolved when upstream `ort` updates its `lzma-rust2` dependency. Please use Linux or macOS for now, or use the Docker image for Windows environments.
+
 
 
 ## Quick Start

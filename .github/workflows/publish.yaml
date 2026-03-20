@@ -1787,9 +1787,10 @@ jobs:
           - os: macos-latest
             label: macos-arm64
             platform: macos-arm64
-          - os: windows-latest
-            label: windows-x86_64
-            platform: windows-x86_64
+          # Windows-GNU disabled: ort-sys 2.0.0-rc.12 build-dep lzma-rust2 0.15.x has crc version collision on windows-gnu target
+          # - os: windows-latest
+          #   label: windows-x86_64
+          #   platform: windows-x86_64
     steps:
       - name: Checkout
         uses: actions/checkout@v6

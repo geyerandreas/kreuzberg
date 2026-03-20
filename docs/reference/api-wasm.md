@@ -4,6 +4,45 @@ Complete reference for the Kreuzberg WebAssembly binding (`@kreuzberg/wasm`).
 
 The WASM binding provides a browser-compatible, runtime-agnostic interface to Kreuzberg's document extraction capabilities. It works in browsers, Node.js, Deno, Bun, and Cloudflare Workers.
 
+## Platform Limitations
+
+WASM runs in single-threaded environments without access to ONNX Runtime, which constrains some features:
+
+### Unsupported Features
+
+The following configuration options are not supported in WASM:
+
+- **Layout Detection** – Requires RT-DETR model inference via ONNX Runtime, which is unavailable in WebAssembly. Attempting to use `LayoutDetectionConfig` will result in an error.
+- **Hardware Acceleration** – No GPU or accelerator support. `AccelerationConfig` is not applicable and cannot be used.
+- **Concurrency Configuration** – Single-threaded WASM environment. `ConcurrencyConfig.maxThreads` is ignored; all extraction runs on a single thread.
+- **Email Codepage Configuration** – `EmailConfig` is not supported in WASM bindings.
+
+### Supported Features
+
+All other Kreuzberg features work fully in WASM:
+
+- **Text Extraction** – All 88+ file formats supported
+- **OCR via Tesseract WASM** – Browser-native Tesseract for scanned documents and images
+- **Embeddings** – FastEmbed-based local vector generation
+- **Chunking** – Text segmentation for RAG pipelines
+- **Metadata Extraction** – Document properties, creation dates, page counts
+- **Table Extraction** – Structured table data from PDFs and spreadsheets
+- **Language Detection** – Multi-language identification with confidence scores
+- **Image Extraction** – Embedded images from documents
+- **Post-processing** – Chunking, quality normalization, keyword extraction, and plugins
+
+### Platform Capabilities by Runtime
+
+| Capability | Browser | Node.js | Deno | Cloudflare Workers |
+|---|---|---|---|---|
+| **Text Extraction** | ✅ | ✅ | ✅ | ✅ |
+| **OCR (Tesseract)** | ✅ | ✅ | ✅ | ⚠️ Memory limited |
+| **Chunking** | ✅ | ✅ | ✅ | ✅ |
+| **Embeddings** | ✅ | ✅ | ✅ | ⚠️ Model size |
+| **Layout Detection** | ❌ | ❌ | ❌ | ❌ |
+| **Hardware Acceleration** | ❌ | ❌ | ❌ | ❌ |
+| **Concurrency** | ❌ | ❌ | ❌ | ❌ |
+
 ## Installation
 
 ```bash title="npm"

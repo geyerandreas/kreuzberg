@@ -214,7 +214,7 @@ Detect and classify document regions using ONNX-based deep learning models. Layo
 
 Layout detection includes SLANet table structure recognition for HTML table recovery with colspan/rowspan, heading detection with confidence-based overrides, and GPU acceleration via ONNX Runtime (CUDA, CoreML, TensorRT).
 
-Models are automatically downloaded and cached from HuggingFace on first use. Available across all language bindings.
+Models are automatically downloaded and cached from HuggingFace on first use. Available across all language bindings **except WebAssembly** -- WASM does not support layout detection because ONNX Runtime is unavailable in browser environments.
 
 For configuration and usage examples, see the [Layout Detection Guide](guides/layout-detection.md).
 
@@ -271,7 +271,7 @@ Kreuzberg's Rust core is exposed through native bindings for 12 languages. All b
 **Subset or constrained environment** -- TypeScript/WASM (browser/edge, no filesystem or server modes), PHP, Elixir, R, C (FFI)
 
 !!! note "TypeScript: Native vs WASM"
-    **Native** (`@kreuzberg/node`) runs at full speed with complete feature parity including servers, plugins, and config file discovery. **WASM** (`@kreuzberg/wasm`) runs in browsers and edge runtimes at 60-80% of native speed with no native dependencies, but lacks filesystem access, server modes, and file-based configuration. Choose Native for server-side Node.js; choose WASM for browser or edge deployments.
+    **Native** (`@kreuzberg/node`) runs at full speed with complete feature parity including servers, plugins, and config file discovery. **WASM** (`@kreuzberg/wasm`) runs in browsers and edge runtimes at 60-80% of native speed with no native dependencies, but lacks filesystem access, server modes, file-based configuration, layout detection (requires ONNX Runtime), hardware acceleration config, concurrency config, and email config. Choose Native for server-side Node.js; choose WASM for browser or edge deployments.
 
 ### Rust Feature Flags
 

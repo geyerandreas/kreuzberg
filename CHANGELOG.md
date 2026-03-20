@@ -74,6 +74,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Docker musl builds**: Alpine/musl Docker images now link against the system ONNX Runtime library, fixing build failures. All features work in musl CLI images.
 - **FFI batch functions null handling**: C#/Java FFI batch functions now accept NULL for `file_config_jsons` instead of rejecting it.
 
+### Known Issues
+
+- **PHP PIE Windows package temporarily unavailable**: The Windows build for the PHP PIE extension is disabled due to a transitive dependency conflict (`ort-sys` → `lzma-rust2` → `crc` version collision on the `x86_64-pc-windows-gnu` target). Linux and macOS PHP packages are unaffected. Will be resolved when upstream `ort` updates its `lzma-rust2` dependency.
+- **WASM: no layout detection, acceleration, or email config**: ONNX Runtime does not support WebAssembly, so layout detection (RT-DETR), hardware acceleration config, and concurrency config are unavailable in the WASM binding. OCR via Tesseract WASM and embeddings are supported.
+
 ---
 
 ## [4.4.6]

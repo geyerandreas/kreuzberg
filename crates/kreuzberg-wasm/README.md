@@ -488,6 +488,30 @@ For advanced configuration options including language detection, table extractio
 
 **[Configuration Guide](https://kreuzberg.dev/guides/configuration/)**
 
+## Platform Limitations
+
+WASM runs in single-threaded environments without access to ONNX Runtime, which constrains some features:
+
+### Unsupported Features
+
+- **Layout Detection** – Requires RT-DETR model inference via ONNX Runtime, which is unavailable in WebAssembly
+- **Hardware Acceleration** – No GPU support (AccelerationConfig is not applicable)
+- **Concurrency Configuration** – Single-threaded WASM environment (ConcurrencyConfig does not apply)
+- **Email Codepage Configuration** – EmailConfig is not supported in WASM
+
+### Supported Features
+
+- **Text Extraction** – Full text content from all supported formats
+- **OCR via Tesseract WASM** – Scanned document and image OCR using browser-native Tesseract
+- **Embeddings** – FastEmbed-based vector generation
+- **Chunking** – Text segmentation for RAG pipelines
+- **Metadata Extraction** – Document properties, creation dates, page counts
+- **Table Extraction** – Structured table data from PDFs and spreadsheets
+- **Language Detection** – Identify document language
+- **Image Extraction** – Embedded images from documents
+
+All 88+ file formats supported by Kreuzberg are available in WASM, with the exception that features requiring ONNX Runtime (layout detection) will fail gracefully with an unsupported error.
+
 ## Documentation
 
 - **[Official Documentation](https://kreuzberg.dev/)**

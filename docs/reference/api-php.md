@@ -14,6 +14,8 @@ composer require kreuzberg/kreuzberg
 
 The Kreuzberg PHP package requires the native extension to be installed and enabled.
 
+> **Windows Notice**: The Windows PHP extension is temporarily unavailable due to a transitive dependency conflict in `ort-sys`. Linux and macOS packages are fully supported. See [Platform Support](#platform-support) for more details.
+
 **1. Install the extension:**
 
 Download the appropriate extension for your platform from the releases page, or build from source.
@@ -39,6 +41,12 @@ if (!extension_loaded('kreuzberg')) {
 echo "Kreuzberg extension loaded successfully!\n";
 echo "Version: " . \Kreuzberg\Kreuzberg::version() . "\n";
 ```
+
+## Platform Support
+
+- **Linux (x86_64, aarch64)**: Fully supported
+- **macOS (Intel, Apple Silicon)**: Fully supported
+- **Windows**: Temporarily unavailable due to a transitive dependency conflict (`ort-sys` → `lzma-rust2` → `crc` version collision on the `x86_64-pc-windows-gnu` target). Will be resolved when upstream `ort` updates its `lzma-rust2` dependency. Please use Linux or macOS for now, or deploy using Docker.
 
 ## Quick Start
 

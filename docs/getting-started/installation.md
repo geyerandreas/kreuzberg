@@ -270,6 +270,16 @@ Both work with **pnpm** (`pnpm add`) and **yarn** (`yarn add`) as well.
 
 **Supported runtimes:** Chrome 74+, Firefox 79+, Safari 14+, Edge 79+, Node.js 22+, Deno 1.35+, Cloudflare Workers.
 
+!!! warning "WASM Platform Limitations"
+    The WASM binding does not support:
+
+    - **Layout detection** (RT-DETR model inference requires ONNX Runtime unavailable in WebAssembly)
+    - **Hardware acceleration config** (single-threaded WASM, no GPU access)
+    - **Concurrency config** (single-threaded environment, `maxThreads` is ignored)
+    - **Email codepage config** (EmailConfig not available)
+
+    All other features (text extraction, OCR via Tesseract WASM, chunking, embeddings, metadata, tables, language detection, image extraction) work fully in WASM. See the [WASM API Reference](../reference/api-wasm.md#platform-limitations) for details.
+
 ### Java
 
 === "Maven"
