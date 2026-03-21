@@ -183,10 +183,11 @@ mod tests {
     fn test_is_language_cached_present() {
         let temp_dir = TempDir::new().unwrap();
         let manager = TessdataManager::new(Some(temp_dir.path().to_path_buf()));
-        fs::write(temp_dir.path().join("eng.traineddata"), "fake").unwrap();
+        std::fs::write(temp_dir.path().join("eng.traineddata"), "fake").unwrap();
         assert!(manager.is_language_cached("eng"));
     }
 
+    #[cfg(feature = "paddle-ocr")]
     #[test]
     fn test_all_download_codes_includes_osd() {
         let codes = all_download_codes();
@@ -195,6 +196,7 @@ mod tests {
         assert!(codes.contains(&"fra"));
     }
 
+    #[cfg(feature = "paddle-ocr")]
     #[test]
     fn test_all_download_codes_sorted() {
         let codes = all_download_codes();

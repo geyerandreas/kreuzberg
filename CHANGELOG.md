@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Bundled eng.traineddata**: The `kreuzberg-tesseract` build now downloads and bundles `eng.traineddata` (tessdata_fast, ~4MB) so English OCR works out of the box with zero runtime configuration.
+- **Tessdata in `cache warm`**: `kreuzberg-cli cache warm` now downloads all tessdata_fast language files (~120 languages) to `KREUZBERG_CACHE_DIR/tessdata/`, giving full Tesseract language support without system packages.
+- **Tessdata in `cache manifest`**: `kreuzberg-cli cache manifest` now includes all tessdata files with source URLs, enabling `--sync-cache` to download tessdata alongside models.
+- **`KREUZBERG_CACHE_DIR/tessdata` resolution**: `resolve_tessdata_path()` now checks `KREUZBERG_CACHE_DIR/tessdata` and the bundled build path before falling back to system paths. Resolution order: `TESSDATA_PREFIX` env → `KREUZBERG_CACHE_DIR/tessdata` → bundled tessdata → system paths.
 - **CLI `embed` command**: Generate vector embeddings from text via `kreuzberg embed --text "..." --preset balanced`. Supports stdin, multiple texts, JSON/text output. Feature-gated on `embeddings`.
 - **CLI `chunk` command**: Split text into chunks via `kreuzberg chunk --text "..." --chunk-size 512`. Configurable size, overlap, chunker type, tokenizer model.
 - **CLI `completions` command**: Generate shell completions for bash, zsh, fish, powershell via `kreuzberg completions <shell>`.

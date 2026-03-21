@@ -150,11 +150,18 @@ pub fn manifest_command(format: OutputFormat) -> Result<()> {
                 } else {
                     "unknown".to_string()
                 };
+                let sha_display = if entry.sha256.len() >= 12 {
+                    &entry.sha256[..12]
+                } else if entry.sha256.is_empty() {
+                    "-"
+                } else {
+                    &entry.sha256
+                };
                 println!(
                     "{:<50} {:>12} {}",
                     entry.relative_path,
                     size_str,
-                    style::dim(&entry.sha256[..12])
+                    style::dim(sha_display)
                 );
             }
             println!();
