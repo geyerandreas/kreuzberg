@@ -544,11 +544,11 @@ pub(super) fn mark_cross_page_repeating_text(all_pages: &mut [Vec<PdfParagraph>]
     // Fuzzy-match repeating set: an alphanum key that appears on >50% of pages
     // means ALL exact variants that share that key are running headers.
     for (alphanum_key, count) in alphanum_page_count {
-        if count > threshold {
-            if let Some(exact_variants) = alphanum_to_exact.get(&alphanum_key) {
-                for variant in exact_variants {
-                    repeating.insert(variant.clone());
-                }
+        if count > threshold
+            && let Some(exact_variants) = alphanum_to_exact.get(&alphanum_key)
+        {
+            for variant in exact_variants {
+                repeating.insert(variant.clone());
             }
         }
     }
@@ -817,9 +817,18 @@ mod tests {
         };
         let mut pages = vec![
             // Even pages: copyright symbol extracted as "O" with spaces
-            vec![make_body("O ISO 2021 All rights reserved"), make_body("Section content A")],
-            vec![make_body("O ISO 2021 All rights reserved"), make_body("Section content B")],
-            vec![make_body("O ISO 2021 All rights reserved"), make_body("Section content C")],
+            vec![
+                make_body("O ISO 2021 All rights reserved"),
+                make_body("Section content A"),
+            ],
+            vec![
+                make_body("O ISO 2021 All rights reserved"),
+                make_body("Section content B"),
+            ],
+            vec![
+                make_body("O ISO 2021 All rights reserved"),
+                make_body("Section content C"),
+            ],
             // Odd pages: copyright symbol merged, no spaces, punctuation variant
             vec![make_body("OISO 2021Allrightsreserved"), make_body("Section content D")],
             vec![make_body("OISO 2021Allrightsreserved"), make_body("Section content E")],
@@ -828,8 +837,14 @@ mod tests {
         mark_cross_page_repeating_text(&mut pages);
         // Both variants reduce to "oiso2021allrightsreserved" (alphanum-only key)
         // and appear on all 6 pages (>50%) → both should be marked as furniture.
-        assert!(pages[0][0].is_page_furniture, "even-page copyright variant should be furniture");
-        assert!(pages[3][0].is_page_furniture, "odd-page copyright variant should be furniture");
+        assert!(
+            pages[0][0].is_page_furniture,
+            "even-page copyright variant should be furniture"
+        );
+        assert!(
+            pages[3][0].is_page_furniture,
+            "odd-page copyright variant should be furniture"
+        );
         // Unique body content should NOT be marked as furniture.
         assert!(!pages[0][1].is_page_furniture);
         assert!(!pages[3][1].is_page_furniture);

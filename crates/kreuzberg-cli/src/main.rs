@@ -238,6 +238,13 @@ enum Commands {
         port: u16,
     },
 
+    /// API utilities
+    #[cfg(feature = "api")]
+    Api {
+        #[command(subcommand)]
+        command: ApiCommands,
+    },
+
     /// Generate embeddings for text
     ///
     /// Generates vector embeddings for one or more text inputs using a specified preset model.
@@ -301,6 +308,16 @@ enum Commands {
         #[arg(value_enum)]
         shell: clap_complete::Shell,
     },
+}
+
+#[cfg(feature = "api")]
+#[derive(Subcommand)]
+enum ApiCommands {
+    /// Output the OpenAPI schema (JSON)
+    ///
+    /// Prints the full OpenAPI 3.1 specification for the kreuzberg REST API.
+    /// Useful for code generation, documentation, and API client tooling.
+    Schema,
 }
 
 #[derive(Subcommand)]
@@ -498,19 +515,6 @@ fn validate_batch_paths(paths: &[PathBuf]) -> Result<()> {
     Ok(())
 }
 
-/// Merges a JSON value into an existing extraction config.
-///
-/// This function performs a field-by-field merge where JSON fields override
-/// config fields when present. Unspecified fields in the JSON retain their
-/// values from the base config.
-///
-/// # Strategy
-///
-/// For each field in the JSON:
-/// - If present in JSON, override the config value
-/// - If not present in JSON, keep the config value
-/// - This enables partial config updates via CLI flags
-
 /// Apply inline JSON or base64 JSON overrides to an extraction config.
 fn apply_json_overrides(
     config: &mut kreuzberg::ExtractionConfig,
@@ -535,6 +539,7 @@ fn apply_json_overrides(
     Ok(())
 }
 
+/// Merges a JSON value into an existing extraction config via field-by-field override.
 fn merge_json_into_config(
     base_config: &kreuzberg::ExtractionConfig,
     json_value: serde_json::Value,
@@ -740,6 +745,13 @@ fn main() -> Result<()> {
                 embedding_model,
             } => {
                 warm_command(cache_dir, format, all_embeddings, embedding_model)?;
+            }
+        },
+
+        #[cfg(feature = "api")]
+        Commands::Api { command } => match command {
+            ApiCommands::Schema => {
+                println!("{}", kreuzberg::api::openapi::openapi_json());
             }
         },
 
