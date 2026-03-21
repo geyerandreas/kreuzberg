@@ -218,6 +218,11 @@ tasks:
     cmds:
       - prek run --all-files
 
+  check:publish:
+    desc: Check all registries and GitHub release assets for a given version
+    cmds:
+      - python3 scripts/publish/check_all_registries.py {{.CLI_ARGS}}
+
   e2e:generate:all:
     desc: Generate all E2E tests from fixtures across all supported languages
     cmds:

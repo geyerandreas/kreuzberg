@@ -11,13 +11,17 @@
 //! - Outputs JSON to stdout: {"content": "...", "_extraction_time_ms": 123.4, "_ocr_used": false}
 //! - On error: {"error": "message"}
 
-use kreuzberg::{ExtractionConfig, FormatMetadata, OcrConfig, extract_file_sync};
+use kreuzberg::{
+    ExtractionConfig, FileExtractionConfig, FormatMetadata, OcrConfig, batch_extract_file_sync, extract_file_sync,
+};
 use serde_json::json;
 use std::io::{self, BufRead, Write};
+use std::path::PathBuf;
 use std::time::Instant;
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
+    let batch_mode = args.iter().any(|a| a == "batch");
     let ocr_enabled = args.iter().any(|a| a == "--ocr");
 
     // Parse --ocr-backend <backend> (default: tesseract)
@@ -74,7 +78,46 @@ fn main() {
         let _ = std::fs::remove_file(&warmup_path);
     }
 
-    // Signal readiness
+    // Batch mode: receive file paths as positional args, output JSON array
+    if batch_mode {
+        // Collect file paths: everything after "batch" that isn't a flag
+        let batch_idx = args.iter().position(|a| a == "batch").unwrap();
+        let file_paths: Vec<PathBuf> = args[batch_idx + 1..]
+            .iter()
+            .filter(|a| !a.starts_with('-'))
+            .map(PathBuf::from)
+            .collect();
+
+        let items: Vec<(PathBuf, Option<FileExtractionConfig>)> = file_paths.into_iter().map(|p| (p, None)).collect();
+
+        let start = Instant::now();
+        match batch_extract_file_sync(items, &config) {
+            Ok(results) => {
+                let total_ms = start.elapsed().as_secs_f64() * 1000.0;
+                let per_file_ms = total_ms / results.len().max(1) as f64;
+                let output: Vec<serde_json::Value> = results
+                    .into_iter()
+                    .map(|r| {
+                        json!({
+                            "content": r.content,
+                            "_extraction_time_ms": per_file_ms,
+                            "_batch_total_ms": total_ms,
+                            "_ocr_used": ocr_enabled,
+                        })
+                    })
+                    .collect();
+                println!("{}", serde_json::Value::Array(output));
+                io::stdout().flush().unwrap();
+            }
+            Err(e) => {
+                eprintln!("Batch extraction failed: {}", e);
+                std::process::exit(1);
+            }
+        }
+        return;
+    }
+
+    // Signal readiness (persistent server mode)
     println!("READY");
     io::stdout().flush().unwrap();
 

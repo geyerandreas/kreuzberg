@@ -362,6 +362,26 @@ jobs:
           SUMMARY_LABEL: C FFI
         run: scripts/publish/check-release-assets.sh
 
+  check-elixir-release:
+    name: Check if Elixir release assets already published
+    needs: prepare
+    if: ${{ needs.prepare.outputs.is_tag == 'true' && needs.prepare.outputs.release_elixir == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      exists: ${{ steps.check.outputs.exists }}
+    steps:
+      - name: Check release for existing Elixir artifacts
+        id: check
+        uses: kreuzberg-dev/actions/check-registry@v1
+        with:
+          registry: github-release
+          package: kreuzberg
+          version: ${{ needs.prepare.outputs.version }}
+          tag: ${{ needs.prepare.outputs.tag }}
+          asset-prefix: libkreuzberg_rustler-
+
   check-cratesio:
     name: Check if Rust crate exists on crates.io
     needs: prepare
@@ -2792,12 +2812,13 @@ jobs:
 
   upload-elixir-release:
     name: Upload Elixir binaries to GitHub Release
-    needs: [prepare, validate-versions, elixir-natives, elixir-natives-musl]
+    needs: [prepare, validate-versions, elixir-natives, elixir-natives-musl, check-elixir-release]
     if: |
       always() &&
       needs.prepare.outputs.dry_run != 'true' &&
       needs.prepare.outputs.is_tag == 'true' &&
       needs.prepare.outputs.release_elixir == 'true' &&
+      needs.check-elixir-release.outputs.exists != 'true' &&
       (needs.elixir-natives.result == 'success' || needs.elixir-natives-musl.result == 'success')
     runs-on: ubuntu-latest
     permissions:
@@ -2878,16 +2899,11 @@ jobs:
 
       - name: Re-check Hex.pm before publish
         id: recheck
-        run: |
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-            --retry 3 --retry-delay 5 --connect-timeout 30 --max-time 60 \
-            "https://hex.pm/api/packages/kreuzberg/releases/${{ needs.prepare.outputs.version }}")
-          if [ "$HTTP_CODE" = "200" ]; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "Package kreuzberg@${{ needs.prepare.outputs.version }} already exists on Hex.pm — skipping publish"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
+        uses: kreuzberg-dev/actions/check-registry@v1
+        with:
+          registry: hex
+          package: kreuzberg
+          version: ${{ needs.prepare.outputs.version }}
 
       - name: Publish to Hex.pm
         if: ${{ needs.prepare.outputs.dry_run != 'true' && steps.recheck.outputs.exists != 'true' }}
@@ -2942,7 +2958,16 @@ jobs:
           ls -lh dist/ 2>/dev/null || echo "No packages found"
         shell: bash
 
+      - name: Re-check PyPI before publish
+        id: recheck
+        uses: kreuzberg-dev/actions/check-registry@v1
+        with:
+          registry: pypi
+          package: kreuzberg
+          version: ${{ needs.prepare.outputs.version }}
+
       - name: Publish to PyPI
+        if: ${{ steps.recheck.outputs.exists != 'true' }}
         uses: pypa/gh-action-pypi-publish@v1.13.0
         with:
           packages-dir: dist
@@ -3031,23 +3056,15 @@ jobs:
 
       - name: Re-check RubyGems before publish
         id: recheck
-        run: |
-          scripts/publish/check_rubygems.sh "${{ needs.prepare.outputs.version }}" >> "$GITHUB_OUTPUT"
+        uses: kreuzberg-dev/actions/check-registry@v1
+        with:
+          registry: rubygems
+          package: kreuzberg
+          version: ${{ needs.prepare.outputs.version }}
 
       - name: Configure trusted publishing credentials
         if: ${{ needs.prepare.outputs.dry_run != 'true' && steps.recheck.outputs.exists != 'true' }}
-        run: |
-          OIDC_TOKEN=$(curl --silent --fail \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=rubygems.org" \
-            | jq -r '.value')
-          GEM_API_KEY=$(curl --silent --fail \
-            -X POST "https://rubygems.org/api/v1/oidc/api_key_roles/exchange" \
-            -H "Authorization: Bearer ${OIDC_TOKEN}" \
-            | jq -r '.rubygems_api_key')
-          mkdir -p ~/.gem
-          printf -- "---\n:rubygems_api_key: %s\n" "${GEM_API_KEY}" > ~/.gem/credentials
-          chmod 0600 ~/.gem/credentials
+        uses: rubygems/configure-rubygems-credentials@v1.0.0
 
       - name: Publish gems to RubyGems
         if: ${{ needs.prepare.outputs.dry_run != 'true' && steps.recheck.outputs.exists != 'true' }}
@@ -3128,8 +3145,11 @@ jobs:
 
       - name: Re-check npm before publish
         id: recheck
-        run: |
-          scripts/publish/check_npm.sh "${{ needs.prepare.outputs.version }}" >> "$GITHUB_OUTPUT"
+        uses: kreuzberg-dev/actions/check-registry@v1
+        with:
+          registry: npm
+          package: "@kreuzberg/node"
+          version: ${{ needs.prepare.outputs.version }}
 
       - name: Publish native binary packages
         if: ${{ needs.prepare.outputs.dry_run != 'true' && steps.recheck.outputs.exists != 'true' }}
@@ -3294,9 +3314,11 @@ jobs:
       - name: Check Maven Central for existing release
         id: maven_check
         if: ${{ needs.prepare.outputs.dry_run != 'true' }}
-        env:
-          VERSION: ${{ needs.prepare.outputs.version }}
-        run: scripts/publish/check_maven.sh "${VERSION}" >> "$GITHUB_OUTPUT"
+        uses: kreuzberg-dev/actions/check-registry@v1
+        with:
+          registry: maven
+          package: "dev.kreuzberg:kreuzberg"
+          version: ${{ needs.prepare.outputs.version }}
 
       - name: Install system dependencies
         if: ${{ needs.prepare.outputs.dry_run != 'true' && steps.maven_check.outputs.exists != 'true' }}
@@ -3435,7 +3457,16 @@ jobs:
           name: csharp-nuget
           path: dist
 
+      - name: Re-check NuGet before publish
+        id: recheck
+        uses: kreuzberg-dev/actions/check-registry@v1
+        with:
+          registry: nuget
+          package: Kreuzberg
+          version: ${{ needs.prepare.outputs.version }}
+
       - name: Publish to NuGet
+        if: ${{ steps.recheck.outputs.exists != 'true' }}
         uses: kreuzberg-dev/actions/publish-nuget@v1
         with:
           packages-dir: dist
@@ -3474,7 +3505,16 @@ jobs:
       - name: List PHP artifacts
         run: ls -lah dist/php/
 
+      - name: Re-check Packagist before publish
+        id: recheck
+        uses: kreuzberg-dev/actions/check-registry@v1
+        with:
+          registry: packagist
+          package: kreuzberg/kreuzberg
+          version: ${{ needs.prepare.outputs.version }}
+
       - name: Trigger Packagist update
+        if: ${{ steps.recheck.outputs.exists != 'true' }}
         uses: kreuzberg-dev/actions/publish-packagist@v1
         with:
           packagist-username: Goldziher
@@ -3486,11 +3526,13 @@ jobs:
           PACKAGIST_API_TOKEN: ${{ secrets.PACKAGIST_API_TOKEN }}
 
       - name: Ensure GitHub release exists
+        if: ${{ steps.recheck.outputs.exists != 'true' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: scripts/publish/ensure-github-release-exists.sh "${{ needs.prepare.outputs.tag }}"
 
       - name: Upload PIE packages to GitHub release
+        if: ${{ steps.recheck.outputs.exists != 'true' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.prepare.outputs.tag }}
@@ -3505,6 +3547,7 @@ jobs:
           echo "PHP PIE packages uploaded to GitHub release" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Generate release summary
+        if: ${{ steps.recheck.outputs.exists != 'true' }}
         run: |
           {
             echo "## PHP Package Published"
@@ -3552,17 +3595,12 @@ jobs:
 
       - name: Re-check Homebrew tap before publish
         id: recheck
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.prepare.outputs.version }}
-        run: |
-          api_response=$(timeout 120s gh api repos/kreuzberg-dev/homebrew-tap/contents/Formula/kreuzberg.rb --jq '.content' 2>/dev/null || echo "")
-          if [[ -n "$api_response" ]] && [[ "$api_response" != "null" ]] && echo "$api_response" | base64 -d 2>/dev/null | grep -q "version \"${VERSION}\""; then
-            echo "exists=true" >> "$GITHUB_OUTPUT"
-            echo "Homebrew formula already contains version ${VERSION} — skipping publish"
-          else
-            echo "exists=false" >> "$GITHUB_OUTPUT"
-          fi
+        uses: kreuzberg-dev/actions/check-registry@v1
+        with:
+          registry: homebrew
+          package: kreuzberg
+          version: ${{ needs.prepare.outputs.version }}
+          tap-repo: kreuzberg-dev/homebrew-tap
 
       - name: Setup Git credentials
         if: ${{ steps.recheck.outputs.exists != 'true' }}

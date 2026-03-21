@@ -418,6 +418,26 @@ fn find_kreuzberg_extract_binary() -> Result<PathBuf> {
     ))
 }
 
+/// Create Rust batch adapter (batch_extract_file_sync via subprocess)
+///
+/// Uses the `kreuzberg-extract` binary with `batch` subcommand for fair
+/// subprocess overhead comparison with other language batch adapters.
+pub fn create_rust_batch_adapter(ocr_enabled: bool) -> Result<SubprocessAdapter> {
+    let binary_path = find_kreuzberg_extract_binary()?;
+
+    let mut args = vec![ocr_flag(ocr_enabled)];
+    args.push("batch".to_string());
+
+    let supported_formats = get_kreuzberg_supported_formats();
+    Ok(SubprocessAdapter::with_batch_support(
+        "kreuzberg-rust-batch",
+        binary_path,
+        args,
+        vec![],
+        supported_formats,
+    ))
+}
+
 /// Create Python adapter (persistent server mode)
 pub fn create_python_adapter(ocr_enabled: bool) -> Result<SubprocessAdapter> {
     let script_path = get_script_path("kreuzberg_extract.py")?;

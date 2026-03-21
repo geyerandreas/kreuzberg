@@ -62,7 +62,7 @@ jobs:
   setup:
     name: Build harness + native libs
     needs: validate-ground-truth
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -156,7 +156,7 @@ jobs:
   bench-native:
     name: kreuzberg-rust (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -221,7 +221,7 @@ jobs:
   bench-native-paddle:
     name: kreuzberg-rust-paddle (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -289,7 +289,7 @@ jobs:
   bench-python:
     name: kreuzberg-python (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -345,6 +345,8 @@ jobs:
         uses: kreuzberg-dev/actions/install-task@v1
 
       - name: Build Python bindings
+        env:
+          RUSTUP_TOOLCHAIN: stable
         run: task python:build:bindings
 
       - name: Run benchmark
@@ -366,7 +368,7 @@ jobs:
   bench-node:
     name: kreuzberg-node (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -423,7 +425,8 @@ jobs:
 
       - name: Build Node bindings and install locally
         env:
-          TARGET: x86_64-unknown-linux-gnu
+          TARGET: aarch64-unknown-linux-gnu
+          RUSTUP_TOOLCHAIN: stable
         run: task node:build:bindings
 
       - name: Run benchmark
@@ -445,7 +448,7 @@ jobs:
   bench-wasm:
     name: kreuzberg-wasm (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -498,6 +501,8 @@ jobs:
         uses: kreuzberg-dev/actions/install-wasi-sdk@v1
 
       - name: Build WASM bindings
+        env:
+          RUSTUP_TOOLCHAIN: stable
         run: task wasm:build:bindings
 
       - name: Run benchmark
@@ -520,7 +525,7 @@ jobs:
   bench-ruby:
     name: kreuzberg-ruby (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -577,7 +582,7 @@ jobs:
         run: |
           set -euo pipefail
           LIBCLANG_DIR=""
-          for dir in /usr/lib/llvm-*/lib /usr/lib/x86_64-linux-gnu /usr/lib64; do
+          for dir in /usr/lib/llvm-*/lib /usr/lib/aarch64-linux-gnu /usr/lib/x86_64-linux-gnu /usr/lib64; do
             if ls "$dir"/libclang*.so* &>/dev/null; then
               LIBCLANG_DIR="$dir"
               break
@@ -620,7 +625,7 @@ jobs:
 
       - name: Build Ruby native gem
         env:
-          PLATFORM: x86_64-linux
+          PLATFORM: aarch64-linux
           RUSTUP_TOOLCHAIN: stable
         run: task ruby:build:bindings
 
@@ -643,7 +648,7 @@ jobs:
   bench-r:
     name: kreuzberg-r (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -734,7 +739,7 @@ jobs:
   bench-go:
     name: kreuzberg-go (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -812,6 +817,8 @@ jobs:
         run: go mod download
 
       - name: Build Go bindings
+        env:
+          RUSTUP_TOOLCHAIN: stable
         run: task go:build:bindings
 
       - name: Run benchmark
@@ -834,7 +841,7 @@ jobs:
   bench-java:
     name: kreuzberg-java (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -908,6 +915,8 @@ jobs:
           echo "LD_LIBRARY_PATH=${{ github.workspace }}/target/release:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
 
       - name: Build Java bindings
+        env:
+          RUSTUP_TOOLCHAIN: stable
         run: task java:build:bindings
 
       - name: Run benchmark
@@ -929,7 +938,7 @@ jobs:
   bench-csharp:
     name: kreuzberg-csharp (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1003,6 +1012,8 @@ jobs:
           echo "LD_LIBRARY_PATH=${{ github.workspace }}/target/release:$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
 
       - name: Build C# bindings
+        env:
+          RUSTUP_TOOLCHAIN: stable
         run: task csharp:build:bindings
 
       - name: Run benchmark
@@ -1024,7 +1035,7 @@ jobs:
   bench-elixir:
     name: kreuzberg-elixir (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1082,6 +1093,7 @@ jobs:
       - name: Build Elixir bindings
         env:
           KREUZBERG_BUILD: "1"
+          RUSTUP_TOOLCHAIN: stable
         run: task elixir:build:bindings
 
       - name: Run benchmark
@@ -1104,7 +1116,7 @@ jobs:
   bench-php:
     name: kreuzberg-php (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1158,7 +1170,7 @@ jobs:
           set -euo pipefail
           # Search common llvm lib paths directly (ldconfig may not index them)
           LIBCLANG_DIR=""
-          for dir in /usr/lib/llvm-*/lib /usr/lib/x86_64-linux-gnu /usr/lib64; do
+          for dir in /usr/lib/llvm-*/lib /usr/lib/aarch64-linux-gnu /usr/lib/x86_64-linux-gnu /usr/lib64; do
             if ls "$dir"/libclang*.so* &>/dev/null; then
               LIBCLANG_DIR="$dir"
               break
@@ -1228,7 +1240,7 @@ jobs:
   bench-c:
     name: kreuzberg-c (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1293,7 +1305,7 @@ jobs:
   bench-docling:
     name: docling (${{ matrix.mode }}, shard ${{ matrix.shard }}/3)
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1357,7 +1369,7 @@ jobs:
   bench-markitdown:
     name: markitdown (${{ matrix.mode }}, shard ${{ matrix.shard }}/3)
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1422,7 +1434,7 @@ jobs:
   bench-pandoc:
     name: pandoc (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1486,7 +1498,7 @@ jobs:
   bench-unstructured:
     name: unstructured (${{ matrix.mode }}, shard ${{ matrix.shard }}/4)
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1550,7 +1562,7 @@ jobs:
   bench-tika:
     name: tika (${{ matrix.mode }}, shard ${{ matrix.shard }}/3)
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1614,7 +1626,7 @@ jobs:
   bench-pymupdf4llm:
     name: pymupdf4llm (${{ matrix.mode }}, shard ${{ matrix.shard }}/3)
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1679,7 +1691,7 @@ jobs:
   bench-pdfplumber:
     name: pdfplumber (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1742,7 +1754,7 @@ jobs:
   bench-mineru:
     name: mineru (${{ matrix.mode }}, shard ${{ matrix.shard }}/3)
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1806,7 +1818,7 @@ jobs:
   bench-pypdf:
     name: pypdf (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1869,7 +1881,7 @@ jobs:
   bench-pdfminer:
     name: pdfminer (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1932,7 +1944,7 @@ jobs:
   bench-pdftotext:
     name: pdftotext (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read
@@ -1995,7 +2007,7 @@ jobs:
   bench-playa-pdf:
     name: playa-pdf (${{ matrix.mode }})
     needs: setup
-    runs-on: runner-large
+    runs-on: runner-medium-arm64
     timeout-minutes: 360
     permissions:
       contents: read

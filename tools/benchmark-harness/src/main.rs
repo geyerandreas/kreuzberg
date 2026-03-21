@@ -352,24 +352,38 @@ async fn main() -> Result<()> {
             }
 
             // Register kreuzberg-rust adapter
-            // Default: subprocess mode for fair timing comparisons (same overhead as all other frameworks)
+            // Batch mode: use batch subprocess adapter (fair comparison with other binding batch adapters)
+            // Single-file mode: persistent subprocess (fair comparison with other frameworks)
             // Fallback: in-process NativeAdapter if kreuzberg-extract binary is not built
             let mut kreuzberg_count = 0;
             if should_init("kreuzberg-rust") {
-                use benchmark_harness::adapters::create_rust_subprocess_adapter;
-                match create_rust_subprocess_adapter(ocr) {
-                    Ok(adapter) => {
-                        registry.register(Arc::new(adapter))?;
-                        eprintln!("[adapter] ✓ kreuzberg-rust (subprocess mode)");
-                        kreuzberg_count += 1;
+                if matches!(config.benchmark_mode, BenchmarkMode::Batch) {
+                    use benchmark_harness::adapters::create_rust_batch_adapter;
+                    match create_rust_batch_adapter(ocr) {
+                        Ok(adapter) => {
+                            registry.register(Arc::new(adapter))?;
+                            eprintln!("[adapter] ✓ kreuzberg-rust (batch subprocess mode)");
+                            kreuzberg_count += 1;
+                        }
+                        Err(err) => {
+                            eprintln!("[adapter] ✗ kreuzberg-rust batch (initialization failed: {})", err);
+                        }
                     }
-                    Err(_) => {
-                        // Fallback to in-process mode if binary not found
-                        registry.register(Arc::new(NativeAdapter::with_config(extraction_config)))?;
-                        eprintln!(
-                            "[adapter] ✓ kreuzberg-rust (in-process mode, build kreuzberg-extract for fair benchmarks)"
-                        );
-                        kreuzberg_count += 1;
+                } else {
+                    use benchmark_harness::adapters::create_rust_subprocess_adapter;
+                    match create_rust_subprocess_adapter(ocr) {
+                        Ok(adapter) => {
+                            registry.register(Arc::new(adapter))?;
+                            eprintln!("[adapter] ✓ kreuzberg-rust (subprocess mode)");
+                            kreuzberg_count += 1;
+                        }
+                        Err(_) => {
+                            registry.register(Arc::new(NativeAdapter::with_config(extraction_config)))?;
+                            eprintln!(
+                                "[adapter] ✓ kreuzberg-rust (in-process fallback, build kreuzberg-extract for fair benchmarks)"
+                            );
+                            kreuzberg_count += 1;
+                        }
                     }
                 }
             }
@@ -389,23 +403,45 @@ async fn main() -> Result<()> {
                 }
             }
 
-            use benchmark_harness::adapters::{
-                create_c_adapter, create_csharp_adapter, create_elixir_adapter, create_go_adapter, create_java_adapter,
-                create_node_adapter, create_php_adapter, create_python_adapter, create_r_adapter, create_ruby_adapter,
-                create_wasm_adapter,
-            };
+            // Register batch adapters in batch mode (real batch API), single-file adapters otherwise
+            if matches!(config.benchmark_mode, BenchmarkMode::Batch) {
+                use benchmark_harness::adapters::{
+                    create_c_batch_adapter, create_csharp_batch_adapter, create_elixir_batch_adapter,
+                    create_go_batch_adapter, create_java_batch_adapter, create_node_batch_adapter,
+                    create_php_batch_adapter, create_python_batch_adapter, create_r_batch_adapter,
+                    create_ruby_batch_adapter, create_wasm_batch_adapter,
+                };
 
-            try_register!("kreuzberg-python", || create_python_adapter(ocr), kreuzberg_count);
-            try_register!("kreuzberg-go", || create_go_adapter(ocr), kreuzberg_count);
-            try_register!("kreuzberg-node", || create_node_adapter(ocr), kreuzberg_count);
-            try_register!("kreuzberg-wasm", || create_wasm_adapter(ocr), kreuzberg_count);
-            try_register!("kreuzberg-ruby", || create_ruby_adapter(ocr), kreuzberg_count);
-            try_register!("kreuzberg-java", || create_java_adapter(ocr), kreuzberg_count);
-            try_register!("kreuzberg-csharp", || create_csharp_adapter(ocr), kreuzberg_count);
-            try_register!("kreuzberg-php", || create_php_adapter(ocr), kreuzberg_count);
-            try_register!("kreuzberg-elixir", || create_elixir_adapter(ocr), kreuzberg_count);
-            try_register!("kreuzberg-r", || create_r_adapter(ocr), kreuzberg_count);
-            try_register!("kreuzberg-c", || create_c_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-python", || create_python_batch_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-go", || create_go_batch_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-node", || create_node_batch_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-wasm", || create_wasm_batch_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-ruby", || create_ruby_batch_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-java", || create_java_batch_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-csharp", || create_csharp_batch_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-php", || create_php_batch_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-elixir", || create_elixir_batch_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-r", || create_r_batch_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-c", || create_c_batch_adapter(ocr), kreuzberg_count);
+            } else {
+                use benchmark_harness::adapters::{
+                    create_c_adapter, create_csharp_adapter, create_elixir_adapter, create_go_adapter,
+                    create_java_adapter, create_node_adapter, create_php_adapter, create_python_adapter,
+                    create_r_adapter, create_ruby_adapter, create_wasm_adapter,
+                };
+
+                try_register!("kreuzberg-python", || create_python_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-go", || create_go_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-node", || create_node_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-wasm", || create_wasm_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-ruby", || create_ruby_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-java", || create_java_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-csharp", || create_csharp_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-php", || create_php_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-elixir", || create_elixir_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-r", || create_r_adapter(ocr), kreuzberg_count);
+                try_register!("kreuzberg-c", || create_c_adapter(ocr), kreuzberg_count);
+            }
 
             let total_requested = if frameworks.is_empty() { 13 } else { frameworks.len() };
             eprintln!(
@@ -413,26 +449,33 @@ async fn main() -> Result<()> {
                 kreuzberg_count, total_requested
             );
 
-            use benchmark_harness::adapters::{
-                create_docling_adapter, create_markitdown_adapter, create_mineru_adapter, create_pandoc_adapter,
-                create_pdfminer_adapter, create_pdfplumber_adapter, create_pdftotext_adapter, create_playa_pdf_adapter,
-                create_pymupdf4llm_adapter, create_pypdf_adapter, create_tika_adapter, create_unstructured_adapter,
-            };
-
+            // Skip third-party frameworks in batch mode — they don't have batch APIs,
+            // so benchmarking them sequentially alongside kreuzberg's real batch is not apples-to-apples.
             let mut external_count = 0;
 
-            try_register!("docling", || create_docling_adapter(ocr), external_count);
-            try_register!("markitdown", || create_markitdown_adapter(ocr), external_count);
-            try_register!("pandoc", create_pandoc_adapter, external_count);
-            try_register!("unstructured", || create_unstructured_adapter(ocr), external_count);
-            try_register!("tika", || create_tika_adapter(ocr), external_count);
-            try_register!("pymupdf4llm", || create_pymupdf4llm_adapter(ocr), external_count);
-            try_register!("pdfplumber", || create_pdfplumber_adapter(ocr), external_count);
-            try_register!("mineru", || create_mineru_adapter(ocr), external_count);
-            try_register!("pypdf", || create_pypdf_adapter(ocr), external_count);
-            try_register!("pdfminer", || create_pdfminer_adapter(ocr), external_count);
-            try_register!("pdftotext", || create_pdftotext_adapter(ocr), external_count);
-            try_register!("playa-pdf", || create_playa_pdf_adapter(ocr), external_count);
+            if !matches!(config.benchmark_mode, BenchmarkMode::Batch) {
+                use benchmark_harness::adapters::{
+                    create_docling_adapter, create_markitdown_adapter, create_mineru_adapter, create_pandoc_adapter,
+                    create_pdfminer_adapter, create_pdfplumber_adapter, create_pdftotext_adapter,
+                    create_playa_pdf_adapter, create_pymupdf4llm_adapter, create_pypdf_adapter, create_tika_adapter,
+                    create_unstructured_adapter,
+                };
+
+                try_register!("docling", || create_docling_adapter(ocr), external_count);
+                try_register!("markitdown", || create_markitdown_adapter(ocr), external_count);
+                try_register!("pandoc", create_pandoc_adapter, external_count);
+                try_register!("unstructured", || create_unstructured_adapter(ocr), external_count);
+                try_register!("tika", || create_tika_adapter(ocr), external_count);
+                try_register!("pymupdf4llm", || create_pymupdf4llm_adapter(ocr), external_count);
+                try_register!("pdfplumber", || create_pdfplumber_adapter(ocr), external_count);
+                try_register!("mineru", || create_mineru_adapter(ocr), external_count);
+                try_register!("pypdf", || create_pypdf_adapter(ocr), external_count);
+                try_register!("pdfminer", || create_pdfminer_adapter(ocr), external_count);
+                try_register!("pdftotext", || create_pdftotext_adapter(ocr), external_count);
+                try_register!("playa-pdf", || create_playa_pdf_adapter(ocr), external_count);
+            } else {
+                eprintln!("[adapter] Batch mode: skipping third-party frameworks (no batch API support)");
+            }
 
             eprintln!(
                 "[adapter] Open source extraction frameworks: {}/12 available",
