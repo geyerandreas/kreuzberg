@@ -121,3 +121,136 @@ pub fn take_or_create_tatr() -> Option<models::tatr::TatrModel> {
 pub fn return_tatr(model: models::tatr::TatrModel) {
     CACHED_TATR.put(model);
 }
+
+// ---------------------------------------------------------------------------
+// SLANeXT table model caching
+// ---------------------------------------------------------------------------
+
+/// Global cached SLANeXT wired model.
+static CACHED_SLANET_WIRED: ModelCache<models::slanet::SlanetModel> = ModelCache::new();
+
+/// Global cached SLANeXT wireless model.
+static CACHED_SLANET_WIRELESS: ModelCache<models::slanet::SlanetModel> = ModelCache::new();
+
+/// Global cached SLANet-plus model.
+static CACHED_SLANET_PLUS: ModelCache<models::slanet::SlanetModel> = ModelCache::new();
+
+/// Global cached table classifier model.
+static CACHED_TABLE_CLASSIFIER: ModelCache<models::table_classifier::TableClassifier> = ModelCache::new();
+
+/// Tracks whether SLANeXT loading has been attempted per variant.
+static SLANET_WIRED_TRIED: OnceLock<bool> = OnceLock::new();
+static SLANET_WIRELESS_TRIED: OnceLock<bool> = OnceLock::new();
+static SLANET_PLUS_TRIED: OnceLock<bool> = OnceLock::new();
+static TABLE_CLASSIFIER_TRIED: OnceLock<bool> = OnceLock::new();
+
+/// Which table structure model to use.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TableModelBackend {
+    /// TATR (Table Transformer) — default, 30MB.
+    Tatr,
+    /// SLANeXT wired variant — 365MB, optimized for bordered tables.
+    SlanetWired,
+    /// SLANeXT wireless variant — 365MB, optimized for borderless tables.
+    SlanetWireless,
+    /// SLANet-plus — 7.78MB, lightweight general-purpose.
+    SlanetPlus,
+    /// Classifier-routed SLANeXT: auto-select wired/wireless per table.
+    /// Uses PP-LCNet classifier (6.78MB) + both SLANeXT variants (730MB total).
+    SlanetAuto,
+}
+
+impl TableModelBackend {
+    /// Parse from config string.
+    pub fn from_config(s: Option<&str>) -> Self {
+        match s {
+            Some("slanet_wired") => Self::SlanetWired,
+            Some("slanet_wireless") => Self::SlanetWireless,
+            Some("slanet_plus") => Self::SlanetPlus,
+            Some("slanet_auto") => Self::SlanetAuto,
+            Some("tatr") | None => Self::Tatr,
+            Some(unknown) => {
+                tracing::warn!(table_model = unknown, "Unknown table model, falling back to TATR");
+                Self::Tatr
+            }
+        }
+    }
+}
+
+/// Take a cached SLANeXT model for the given variant, or create a new one.
+pub fn take_or_create_slanet(variant: &str) -> Option<models::slanet::SlanetModel> {
+    let (cache, tried) = match variant {
+        "slanet_wired" => (&CACHED_SLANET_WIRED, &SLANET_WIRED_TRIED),
+        "slanet_wireless" => (&CACHED_SLANET_WIRELESS, &SLANET_WIRELESS_TRIED),
+        "slanet_plus" => (&CACHED_SLANET_PLUS, &SLANET_PLUS_TRIED),
+        _ => return None,
+    };
+
+    if let Some(&false) = tried.get() {
+        return None;
+    }
+
+    let result = cache.take_or_create(|| {
+        crate::ort_discovery::ensure_ort_available();
+        let manager = LayoutModelManager::new(None);
+        let model_path = manager.ensure_slanet_model(variant)?;
+        models::slanet::SlanetModel::from_file(&model_path.to_string_lossy())
+    });
+
+    match result {
+        Ok(model) => {
+            tried.get_or_init(|| true);
+            Some(model)
+        }
+        Err(e) => {
+            tried.get_or_init(|| {
+                tracing::warn!(variant, "SLANeXT model unavailable: {e}");
+                false
+            });
+            None
+        }
+    }
+}
+
+/// Return a SLANeXT model to the global cache for reuse.
+pub fn return_slanet(variant: &str, model: models::slanet::SlanetModel) {
+    match variant {
+        "slanet_wired" => CACHED_SLANET_WIRED.put(model),
+        "slanet_wireless" => CACHED_SLANET_WIRELESS.put(model),
+        "slanet_plus" => CACHED_SLANET_PLUS.put(model),
+        _ => {}
+    }
+}
+
+/// Take a cached table classifier, or create a new one.
+pub fn take_or_create_table_classifier() -> Option<models::table_classifier::TableClassifier> {
+    if let Some(&false) = TABLE_CLASSIFIER_TRIED.get() {
+        return None;
+    }
+
+    let result = CACHED_TABLE_CLASSIFIER.take_or_create(|| {
+        crate::ort_discovery::ensure_ort_available();
+        let manager = LayoutModelManager::new(None);
+        let model_path = manager.ensure_table_classifier()?;
+        models::table_classifier::TableClassifier::from_file(&model_path.to_string_lossy())
+    });
+
+    match result {
+        Ok(model) => {
+            TABLE_CLASSIFIER_TRIED.get_or_init(|| true);
+            Some(model)
+        }
+        Err(e) => {
+            TABLE_CLASSIFIER_TRIED.get_or_init(|| {
+                tracing::warn!("Table classifier unavailable: {e}");
+                false
+            });
+            None
+        }
+    }
+}
+
+/// Return a table classifier to the global cache for reuse.
+pub fn return_table_classifier(model: models::table_classifier::TableClassifier) {
+    CACHED_TABLE_CLASSIFIER.put(model);
+}

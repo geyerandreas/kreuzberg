@@ -230,6 +230,58 @@ fn build_config(pipeline: Pipeline) -> kreuzberg::ExtractionConfig {
             ..base
         },
         Pipeline::Docling | Pipeline::PaddleOcrPython | Pipeline::RapidOcr => base, // Vendored pipelines read from file, not used here
+        Pipeline::LayoutSlanetWired => kreuzberg::ExtractionConfig {
+            layout: Some(LayoutDetectionConfig {
+                preset: "accurate".to_string(),
+                table_model: Some("slanet_wired".to_string()),
+                ..Default::default()
+            }),
+            ocr: Some(OcrConfig {
+                backend: "tesseract".to_string(),
+                language: "eng".to_string(),
+                ..Default::default()
+            }),
+            ..base
+        },
+        Pipeline::LayoutSlanetWireless => kreuzberg::ExtractionConfig {
+            layout: Some(LayoutDetectionConfig {
+                preset: "accurate".to_string(),
+                table_model: Some("slanet_wireless".to_string()),
+                ..Default::default()
+            }),
+            ocr: Some(OcrConfig {
+                backend: "tesseract".to_string(),
+                language: "eng".to_string(),
+                ..Default::default()
+            }),
+            ..base
+        },
+        Pipeline::LayoutSlanetPlus => kreuzberg::ExtractionConfig {
+            layout: Some(LayoutDetectionConfig {
+                preset: "accurate".to_string(),
+                table_model: Some("slanet_plus".to_string()),
+                ..Default::default()
+            }),
+            ocr: Some(OcrConfig {
+                backend: "tesseract".to_string(),
+                language: "eng".to_string(),
+                ..Default::default()
+            }),
+            ..base
+        },
+        Pipeline::LayoutSlanetAuto => kreuzberg::ExtractionConfig {
+            layout: Some(LayoutDetectionConfig {
+                preset: "accurate".to_string(),
+                table_model: Some("slanet_auto".to_string()),
+                ..Default::default()
+            }),
+            ocr: Some(OcrConfig {
+                backend: "tesseract".to_string(),
+                language: "eng".to_string(),
+                ..Default::default()
+            }),
+            ..base
+        },
     }
 }
 

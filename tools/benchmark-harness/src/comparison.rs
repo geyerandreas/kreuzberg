@@ -42,6 +42,14 @@ pub enum Pipeline {
     PaddleOcrPython,
     /// RapidOCR vendored extraction (read from file)
     RapidOcr,
+    /// Native pdfium + layout detection + SLANeXT wired table model (forced)
+    LayoutSlanetWired,
+    /// Native pdfium + layout detection + SLANeXT wireless table model (forced)
+    LayoutSlanetWireless,
+    /// Native pdfium + layout detection + SLANet_plus table model
+    LayoutSlanetPlus,
+    /// Native pdfium + layout detection + classifier-routed SLANeXT (wired/wireless auto)
+    LayoutSlanetAuto,
 }
 
 impl Pipeline {
@@ -60,6 +68,10 @@ impl Pipeline {
             Pipeline::Docling => "docling",
             Pipeline::PaddleOcrPython => "paddleocr-python",
             Pipeline::RapidOcr => "rapidocr",
+            Pipeline::LayoutSlanetWired => "layout+slanet-wired",
+            Pipeline::LayoutSlanetWireless => "layout+slanet-wireless",
+            Pipeline::LayoutSlanetPlus => "layout+slanet-plus",
+            Pipeline::LayoutSlanetAuto => "layout+slanet-auto",
         }
     }
 
@@ -80,6 +92,12 @@ impl Pipeline {
             "docling" => Some(Pipeline::Docling),
             "paddleocr-python" => Some(Pipeline::PaddleOcrPython),
             "rapidocr" => Some(Pipeline::RapidOcr),
+            "layout+slanet-wired" | "layout-slanet-wired" => Some(Pipeline::LayoutSlanetWired),
+            "layout+slanet-wireless" | "layout-slanet-wireless" => Some(Pipeline::LayoutSlanetWireless),
+            "layout+slanet-plus" | "layout-slanet-plus" => Some(Pipeline::LayoutSlanetPlus),
+            "layout+slanet-auto" | "layout-slanet-auto" | "layout+slanet" | "layout-slanet" => {
+                Some(Pipeline::LayoutSlanetAuto)
+            }
             _ => None,
         }
     }
@@ -251,7 +269,59 @@ fn build_extraction_config(pipeline: Pipeline) -> kreuzberg::ExtractionConfig {
             }),
             ..base
         },
+        Pipeline::LayoutSlanetAuto => kreuzberg::ExtractionConfig {
+            layout: Some(LayoutDetectionConfig {
+                preset: "accurate".to_string(),
+                table_model: Some("slanet_auto".to_string()),
+                ..Default::default()
+            }),
+            ocr: Some(kreuzberg::core::config::OcrConfig {
+                backend: "tesseract".to_string(),
+                language: "eng".to_string(),
+                ..Default::default()
+            }),
+            ..base
+        },
         Pipeline::Docling | Pipeline::PaddleOcrPython | Pipeline::RapidOcr => base, // Not used for extraction — read from file
+        Pipeline::LayoutSlanetWired => kreuzberg::ExtractionConfig {
+            layout: Some(LayoutDetectionConfig {
+                preset: "accurate".to_string(),
+                table_model: Some("slanet_wired".to_string()),
+                ..Default::default()
+            }),
+            ocr: Some(kreuzberg::core::config::OcrConfig {
+                backend: "tesseract".to_string(),
+                language: "eng".to_string(),
+                ..Default::default()
+            }),
+            ..base
+        },
+        Pipeline::LayoutSlanetWireless => kreuzberg::ExtractionConfig {
+            layout: Some(LayoutDetectionConfig {
+                preset: "accurate".to_string(),
+                table_model: Some("slanet_wireless".to_string()),
+                ..Default::default()
+            }),
+            ocr: Some(kreuzberg::core::config::OcrConfig {
+                backend: "tesseract".to_string(),
+                language: "eng".to_string(),
+                ..Default::default()
+            }),
+            ..base
+        },
+        Pipeline::LayoutSlanetPlus => kreuzberg::ExtractionConfig {
+            layout: Some(LayoutDetectionConfig {
+                preset: "accurate".to_string(),
+                table_model: Some("slanet_plus".to_string()),
+                ..Default::default()
+            }),
+            ocr: Some(kreuzberg::core::config::OcrConfig {
+                backend: "tesseract".to_string(),
+                language: "eng".to_string(),
+                ..Default::default()
+            }),
+            ..base
+        },
     }
 }
 

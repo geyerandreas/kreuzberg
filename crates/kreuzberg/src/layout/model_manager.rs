@@ -39,6 +39,38 @@ const MODELS: &[ModelDefinition] = &[
         sha256_checksum: "c11f4033da75e9c4d41c403ef356e89caa0a37a7d111b55461e7d5ba856bb6b6",
         size_bytes: 30_158_413,
     },
+    ModelDefinition {
+        model_type: "slanet_wired",
+        hf_repo_id: "Kreuzberg/paddleocr-onnx-models",
+        remote_filename: "v2/table/SLANeXt_wired.onnx",
+        local_filename: "slanet_wired.onnx",
+        sha256_checksum: "64990fa026a7e2e2c2d4ad2c810bc9c6992da76d5f91b54771dfc900927ca3d0",
+        size_bytes: 365_355_622,
+    },
+    ModelDefinition {
+        model_type: "slanet_wireless",
+        hf_repo_id: "Kreuzberg/paddleocr-onnx-models",
+        remote_filename: "v2/table/SLANeXt_wireless.onnx",
+        local_filename: "slanet_wireless.onnx",
+        sha256_checksum: "b29ae2b4fe0ff8bbf7efd73fda0951227eb1abaedcaa046ad016191c779b7766",
+        size_bytes: 365_355_622,
+    },
+    ModelDefinition {
+        model_type: "slanet_plus",
+        hf_repo_id: "Kreuzberg/paddleocr-onnx-models",
+        remote_filename: "v2/table/SLANet_plus.onnx",
+        local_filename: "slanet_plus.onnx",
+        sha256_checksum: "e48a401a4ebcddd47fe3822427db24d867a557324f58e438692f588bbe9231de",
+        size_bytes: 7_781_309,
+    },
+    ModelDefinition {
+        model_type: "table_classifier",
+        hf_repo_id: "Kreuzberg/paddleocr-onnx-models",
+        remote_filename: "v2/classifiers/PP-LCNet_x1_0_table_cls.onnx",
+        local_filename: "table_cls.onnx",
+        sha256_checksum: "f02bf087e924dadfb109e3b7887d7d56dc961b80e08c64cacf1030f97345b3c3",
+        size_bytes: 6_775_213,
+    },
 ];
 
 /// Manages layout model downloading, caching, and path resolution.
@@ -105,14 +137,26 @@ impl LayoutModelManager {
         self.cache_dir.join("rtdetr").join("model.onnx").exists()
     }
 
-    /// Ensure the SLANet-plus table structure recognition model exists locally, downloading if needed.
+    /// Ensure the TATR table structure recognition model exists locally, downloading if needed.
     pub fn ensure_tatr_model(&self) -> Result<PathBuf, LayoutError> {
         self.ensure_model("tatr")
     }
 
-    /// Check if the SLANet-plus model is cached.
+    /// Check if the TATR model is cached.
     pub fn is_tatr_cached(&self) -> bool {
         self.cache_dir.join("tatr").join("tatr.onnx").exists()
+    }
+
+    /// Ensure a SLANeXT table structure model exists locally, downloading if needed.
+    ///
+    /// `variant` must be one of: `"slanet_wired"`, `"slanet_wireless"`, `"slanet_plus"`.
+    pub fn ensure_slanet_model(&self, variant: &str) -> Result<PathBuf, LayoutError> {
+        self.ensure_model(variant)
+    }
+
+    /// Ensure the table classifier model exists locally, downloading if needed.
+    pub fn ensure_table_classifier(&self) -> Result<PathBuf, LayoutError> {
+        self.ensure_model("table_classifier")
     }
 
     /// Get the cache directory path.

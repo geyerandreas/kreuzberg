@@ -24,6 +24,8 @@ use super::types::{LayoutHint, LayoutHintClass, PdfParagraph};
 pub(super) use heading::looks_like_figure_label;
 #[cfg(feature = "layout-detection")]
 pub(super) use table_recognition::recognize_tables_for_native_page;
+#[cfg(feature = "layout-detection")]
+pub(super) use table_recognition::recognize_tables_slanet;
 pub(super) use tables::extract_tables_from_layout_hints;
 
 /// A layout region with its assigned segment indices.

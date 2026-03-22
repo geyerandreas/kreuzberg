@@ -516,6 +516,7 @@ pub fn render_document_as_markdown_with_tables(
     #[cfg(feature = "layout-detection")] layout_results: Option<&[crate::pdf::layout_runner::PageLayoutResult]>,
     #[cfg(not(feature = "layout-detection"))] _layout_results: Option<()>,
     allow_single_column: bool,
+    table_model: Option<&str>,
 ) -> Result<(String, bool)> {
     let pages = document.pages();
     let page_count = pages.len();
@@ -701,90 +702,247 @@ pub fn render_document_as_markdown_with_tables(
             });
         }
 
-        // Phase 2 (parallel): Run TATR inference + heuristic fallback on prepared pages.
-        // Each rayon worker gets its own TATR model via thread-local storage.
+        // Phase 2 (parallel): Run table structure inference + heuristic fallback.
+        // Supports TATR (default) and SLANeXT table models via `table_model` config.
         #[cfg(feature = "layout-detection")]
         {
+            use crate::layout::TableModelBackend;
             use std::cell::RefCell;
+
+            let table_backend = TableModelBackend::from_config(table_model);
+
             thread_local! {
                 static TL_TATR: RefCell<Option<crate::layout::models::tatr::TatrModel>> = const { RefCell::new(None) };
+                static TL_SLANET: RefCell<Option<crate::layout::models::slanet::SlanetModel>> = const { RefCell::new(None) };
+                static TL_SLANET_ALT: RefCell<Option<crate::layout::models::slanet::SlanetModel>> = const { RefCell::new(None) };
+                static TL_CLASSIFIER: RefCell<Option<crate::layout::models::table_classifier::TableClassifier>> = const { RefCell::new(None) };
             }
 
-            // Seed one thread-local with the cached model (avoids loading from disk)
-            #[cfg(feature = "layout-detection")]
-            let seed_model = if layout_images.is_some() {
-                crate::layout::take_or_create_tatr()
-            } else {
-                None
+            // Determine which table model to use and seed thread-locals
+            let slanet_variant = match table_backend {
+                TableModelBackend::SlanetWired => Some("slanet_wired"),
+                TableModelBackend::SlanetWireless => Some("slanet_wireless"),
+                TableModelBackend::SlanetPlus => Some("slanet_plus"),
+                TableModelBackend::SlanetAuto => Some("slanet_wired"), // primary=wired, alt=wireless
+                TableModelBackend::Tatr => None,
             };
-            let has_tatr = seed_model.is_some();
+            let is_auto = table_backend == TableModelBackend::SlanetAuto;
+
+            let has_table_model = if let Some(variant) = slanet_variant {
+                // SLANeXT path
+                let seed = if layout_images.is_some() {
+                    crate::layout::take_or_create_slanet(variant)
+                } else {
+                    None
+                };
+                let has = seed.is_some();
+                if let Some(model) = seed {
+                    TL_SLANET.with(|cell| {
+                        *cell.borrow_mut() = Some(model);
+                    });
+                }
+                // For auto mode, also seed wireless model + classifier
+                if is_auto && has {
+                    if let Some(alt) = crate::layout::take_or_create_slanet("slanet_wireless") {
+                        TL_SLANET_ALT.with(|cell| {
+                            *cell.borrow_mut() = Some(alt);
+                        });
+                    }
+                    if let Some(cls) = crate::layout::take_or_create_table_classifier() {
+                        TL_CLASSIFIER.with(|cell| {
+                            *cell.borrow_mut() = Some(cls);
+                        });
+                    }
+                }
+                has
+            } else {
+                // TATR path (default)
+                let seed = if layout_images.is_some() {
+                    crate::layout::take_or_create_tatr()
+                } else {
+                    None
+                };
+                let has = seed.is_some();
+                if let Some(model) = seed {
+                    TL_TATR.with(|cell| {
+                        *cell.borrow_mut() = Some(model);
+                    });
+                }
+                has
+            };
+
             tracing::debug!(
-                has_tatr,
+                has_table_model,
+                table_backend = ?table_backend,
                 table_page_count = table_pages.len(),
-                "Table extraction phase 2: TATR availability"
+                "Table extraction phase 2: model availability"
             );
-            if !has_tatr && !table_pages.is_empty() {
-                return Err(crate::pdf::error::PdfError::TextExtractionFailed(
-                    "Layout detection found table regions but TATR model is not available. \
-                     Ensure the TATR ONNX model is downloaded. Tables cannot be extracted without it."
-                        .to_string(),
-                ));
-            }
-            if let Some(model) = seed_model {
-                TL_TATR.with(|cell| {
-                    *cell.borrow_mut() = Some(model);
-                });
+            if !has_table_model && !table_pages.is_empty() {
+                let model_name = slanet_variant.unwrap_or("tatr");
+                return Err(crate::pdf::error::PdfError::TextExtractionFailed(format!(
+                    "Layout detection found table regions but {model_name} model is not available. \
+                         Ensure the ONNX model is downloaded. Tables cannot be extracted without it."
+                )));
             }
 
-            if has_tatr {
+            if has_table_model {
                 if let (Some(images), Some(results)) = (layout_images, layout_results) {
                     let parallel_tables: Vec<Vec<crate::types::Table>> = table_pages
                         .par_iter()
                         .map(|tp| {
-                            TL_TATR.with(|cell| {
-                                let mut tatr_ref = cell.borrow_mut();
-                                if tatr_ref.is_none() {
-                                    *tatr_ref = crate::layout::take_or_create_tatr();
-                                }
-                                let Some(tatr) = tatr_ref.as_mut() else {
-                                    tracing::warn!("TATR model unavailable in worker thread");
-                                    return Vec::new();
-                                };
-
-                                if let (Some(page_image), Some(page_result)) =
-                                    (images.get(tp.page_idx), results.get(tp.page_idx))
-                                {
-                                    let hints = &hints_pages[tp.page_idx];
-                                    let tatr_tables = super::regions::recognize_tables_for_native_page(
-                                        page_image,
-                                        hints,
-                                        &tp.words,
-                                        page_result,
-                                        tp.page_height,
-                                        tp.page_idx,
-                                        tatr,
-                                    );
-                                    tracing::trace!(
-                                        page = tp.page_idx,
-                                        tatr_tables = tatr_tables.len(),
-                                        "TATR table recognition result"
-                                    );
-                                    if !tatr_tables.is_empty() {
-                                        return tatr_tables;
+                            if slanet_variant.is_some() {
+                                // SLANeXT path — ensure models are loaded in thread-local
+                                TL_SLANET.with(|cell| {
+                                    let mut slanet_ref = cell.borrow_mut();
+                                    if slanet_ref.is_none() {
+                                        *slanet_ref = crate::layout::take_or_create_slanet(slanet_variant.unwrap());
                                     }
+                                });
+                                if is_auto {
+                                    TL_SLANET_ALT.with(|cell| {
+                                        let mut alt_ref = cell.borrow_mut();
+                                        if alt_ref.is_none() {
+                                            *alt_ref = crate::layout::take_or_create_slanet("slanet_wireless");
+                                        }
+                                    });
+                                    TL_CLASSIFIER.with(|cell| {
+                                        let mut cls_ref = cell.borrow_mut();
+                                        if cls_ref.is_none() {
+                                            *cls_ref = crate::layout::take_or_create_table_classifier();
+                                        }
+                                    });
                                 }
 
-                                // Fallback: heuristic table reconstruction
-                                let hints = &hints_pages[tp.page_idx];
-                                super::regions::extract_tables_from_layout_hints(
-                                    &tp.words,
-                                    hints,
-                                    tp.page_idx,
-                                    tp.page_height,
-                                    0.5,
-                                    allow_single_column,
-                                )
-                            })
+                                // Now borrow all needed models and run recognition
+                                TL_SLANET.with(|slanet_cell| {
+                                    let mut slanet_ref = slanet_cell.borrow_mut();
+                                    let Some(slanet) = slanet_ref.as_mut() else {
+                                        tracing::warn!("SLANeXT model unavailable in worker thread");
+                                        return Vec::new();
+                                    };
+
+                                    if let (Some(page_image), Some(page_result)) =
+                                        (images.get(tp.page_idx), results.get(tp.page_idx))
+                                    {
+                                        let hints = &hints_pages[tp.page_idx];
+
+                                        // In auto mode, build the classifier tuple
+                                        // Since we can't borrow multiple RefCells simultaneously,
+                                        // take the alt model and classifier temporarily.
+                                        let mut classifier_pair = if is_auto {
+                                            let alt = TL_SLANET_ALT.with(|c| c.borrow_mut().take());
+                                            let cls = TL_CLASSIFIER.with(|c| c.borrow_mut().take());
+                                            match (cls, alt) {
+                                                (Some(c), Some(a)) => Some((c, a)),
+                                                (c, a) => {
+                                                    // Put back anything we took
+                                                    if let Some(cls) = c {
+                                                        TL_CLASSIFIER.with(|cell| {
+                                                            *cell.borrow_mut() = Some(cls);
+                                                        });
+                                                    }
+                                                    if let Some(alt) = a {
+                                                        TL_SLANET_ALT.with(|cell| {
+                                                            *cell.borrow_mut() = Some(alt);
+                                                        });
+                                                    }
+                                                    None
+                                                }
+                                            }
+                                        } else {
+                                            None
+                                        };
+
+                                        let classifier_arg =
+                                            classifier_pair.as_mut().map(|(cls, alt)| {
+                                                (cls as &mut crate::layout::models::table_classifier::TableClassifier,
+                                                         alt as &mut crate::layout::models::slanet::SlanetModel)
+                                            });
+
+                                        let slanet_tables = super::regions::recognize_tables_slanet(
+                                            page_image,
+                                            hints,
+                                            &tp.words,
+                                            page_result,
+                                            tp.page_height,
+                                            tp.page_idx,
+                                            slanet,
+                                            classifier_arg,
+                                        );
+
+                                        // Return borrowed models
+                                        if let Some((cls, alt)) = classifier_pair {
+                                            TL_CLASSIFIER.with(|cell| {
+                                                *cell.borrow_mut() = Some(cls);
+                                            });
+                                            TL_SLANET_ALT.with(|cell| {
+                                                *cell.borrow_mut() = Some(alt);
+                                            });
+                                        }
+
+                                        if !slanet_tables.is_empty() {
+                                            return slanet_tables;
+                                        }
+                                    }
+
+                                    // Fallback: heuristic
+                                    let hints = &hints_pages[tp.page_idx];
+                                    super::regions::extract_tables_from_layout_hints(
+                                        &tp.words,
+                                        hints,
+                                        tp.page_idx,
+                                        tp.page_height,
+                                        0.5,
+                                        allow_single_column,
+                                    )
+                                })
+                            } else {
+                                // TATR path (default)
+                                TL_TATR.with(|cell| {
+                                    let mut tatr_ref = cell.borrow_mut();
+                                    if tatr_ref.is_none() {
+                                        *tatr_ref = crate::layout::take_or_create_tatr();
+                                    }
+                                    let Some(tatr) = tatr_ref.as_mut() else {
+                                        tracing::warn!("TATR model unavailable in worker thread");
+                                        return Vec::new();
+                                    };
+
+                                    if let (Some(page_image), Some(page_result)) =
+                                        (images.get(tp.page_idx), results.get(tp.page_idx))
+                                    {
+                                        let hints = &hints_pages[tp.page_idx];
+                                        let tatr_tables = super::regions::recognize_tables_for_native_page(
+                                            page_image,
+                                            hints,
+                                            &tp.words,
+                                            page_result,
+                                            tp.page_height,
+                                            tp.page_idx,
+                                            tatr,
+                                        );
+                                        tracing::trace!(
+                                            page = tp.page_idx,
+                                            tatr_tables = tatr_tables.len(),
+                                            "TATR table recognition result"
+                                        );
+                                        if !tatr_tables.is_empty() {
+                                            return tatr_tables;
+                                        }
+                                    }
+
+                                    // Fallback: heuristic
+                                    let hints = &hints_pages[tp.page_idx];
+                                    super::regions::extract_tables_from_layout_hints(
+                                        &tp.words,
+                                        hints,
+                                        tp.page_idx,
+                                        tp.page_height,
+                                        0.5,
+                                        allow_single_column,
+                                    )
+                                })
+                            }
                         })
                         .collect();
 
@@ -792,12 +950,32 @@ pub fn render_document_as_markdown_with_tables(
                         layout_tables.extend(tables);
                     }
 
-                    // Return thread-local TATR models to global cache
-                    TL_TATR.with(|cell| {
-                        if let Some(model) = cell.borrow_mut().take() {
-                            crate::layout::return_tatr(model);
+                    // Return thread-local models to global cache
+                    if slanet_variant.is_some() {
+                        TL_SLANET.with(|cell| {
+                            if let Some(model) = cell.borrow_mut().take() {
+                                crate::layout::return_slanet(slanet_variant.unwrap(), model);
+                            }
+                        });
+                        if is_auto {
+                            TL_SLANET_ALT.with(|cell| {
+                                if let Some(model) = cell.borrow_mut().take() {
+                                    crate::layout::return_slanet("slanet_wireless", model);
+                                }
+                            });
+                            TL_CLASSIFIER.with(|cell| {
+                                if let Some(model) = cell.borrow_mut().take() {
+                                    crate::layout::return_table_classifier(model);
+                                }
+                            });
                         }
-                    });
+                    } else {
+                        TL_TATR.with(|cell| {
+                            if let Some(model) = cell.borrow_mut().take() {
+                                crate::layout::return_tatr(model);
+                            }
+                        });
+                    }
                 }
             } else {
                 // No TATR — run heuristic fallback sequentially

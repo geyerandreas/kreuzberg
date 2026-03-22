@@ -1,4 +1,6 @@
 pub mod rtdetr;
+pub mod slanet;
+pub mod table_classifier;
 pub mod tatr;
 pub mod yolo;
 
