@@ -76,7 +76,7 @@ Uses an RT-DETR v2 model with NMS-free detection. Detects all 17 layout classes 
 
 `DocumentIndex`, `Code`, `CheckboxSelected`, `CheckboxUnselected`, `Form`, `KeyValueRegion`
 
-## Table Structure Models <span class="version-badge">unreleased</span>
+## Table Structure Models <span class="version-badge">v4.5.3</span>
 
 When layout detection identifies a table region, a **table structure model** analyzes its internal structure (rows, columns, headers, spanning cells) to produce accurate markdown tables.
 

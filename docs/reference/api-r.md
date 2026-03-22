@@ -1,4 +1,4 @@
-# R API Reference <span class="version-badge unreleased">Unreleased</span>
+# R API Reference <span class="version-badge v4.5.3">Unreleased</span>
 
 Complete reference for the Kreuzberg R API.
 

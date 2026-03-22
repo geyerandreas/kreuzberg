@@ -1,4 +1,4 @@
-# PHP API Reference <span class="version-badge unreleased">Unreleased</span>
+# PHP API Reference <span class="version-badge v4.5.3">Unreleased</span>
 
 Complete reference for the Kreuzberg PHP API.
 
