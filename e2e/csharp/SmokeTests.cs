@@ -12,6 +12,19 @@ namespace Kreuzberg.E2E.Smoke
     public class SmokeTests
     {
         [SkippableFact]
+        public void SmokeCacheNamespace()
+        {
+            TestHelpers.SkipIfLegacyOfficeDisabled("text/report.txt");
+            TestHelpers.SkipIfOfficeTestOnWindows("text/report.txt");
+            var documentPath = TestHelpers.EnsureDocument("text/report.txt", true);
+            var config = TestHelpers.BuildConfig("{\"cache_namespace\":\"test_tenant\",\"cache_ttl_secs\":3600,\"use_cache\":true}");
+
+            var result = KreuzbergClient.ExtractFileSync(documentPath, config);
+            TestHelpers.AssertExpectedMime(result, new[] { "text/plain" });
+            TestHelpers.AssertMinContentLength(result, 5);
+        }
+
+        [SkippableFact]
         public void SmokeDocxBasic()
         {
             TestHelpers.SkipIfLegacyOfficeDisabled("docx/fake.docx");

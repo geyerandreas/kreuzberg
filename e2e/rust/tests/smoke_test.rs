@@ -7,6 +7,36 @@ use e2e_rust::{assertions, resolve_document};
 use kreuzberg::core::config::ExtractionConfig;
 
 #[test]
+fn test_smoke_cache_namespace() {
+    // Smoke test: Extraction with cache namespace and TTL configuration
+
+    let document_path = resolve_document("text/report.txt");
+    if !document_path.exists() {
+        println!(
+            "Skipping smoke_cache_namespace: missing document at {}",
+            document_path.display()
+        );
+        return;
+    }
+    let config: ExtractionConfig = serde_json::from_str(
+        r#"{
+  "cache_namespace": "test_tenant",
+  "cache_ttl_secs": 3600,
+  "use_cache": true
+}"#,
+    )
+    .expect("Fixture config should deserialize");
+
+    let result = match kreuzberg::extract_file_sync(&document_path, None, &config) {
+        Err(err) => panic!("Extraction failed for smoke_cache_namespace: {err:?}"),
+        Ok(result) => result,
+    };
+
+    assertions::assert_expected_mime(&result, &["text/plain"]);
+    assertions::assert_min_content_length(&result, 5);
+}
+
+#[test]
 fn test_smoke_docx_basic() {
     // Smoke test: DOCX with formatted text
 

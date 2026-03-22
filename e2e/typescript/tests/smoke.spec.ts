@@ -4,14 +4,41 @@
 // Tests for smoke fixtures.
 
 import { existsSync, readFileSync } from "node:fs";
+import type { ExtractionResult } from "@kreuzberg/node";
+import { extractFileSync } from "@kreuzberg/node";
 import { describe, it } from "vitest";
 import { assertions, buildConfig, resolveDocument, shouldSkipFixture } from "./helpers.js";
-import { extractFileSync } from "@kreuzberg/node";
-import type { ExtractionResult } from "@kreuzberg/node";
 
 const TEST_TIMEOUT_MS = 60_000;
 
 describe("smoke fixtures", () => {
+	it(
+		"smoke_cache_namespace",
+		() => {
+			const documentPath = resolveDocument("text/report.txt");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping smoke_cache_namespace: missing document at", documentPath);
+				return;
+			}
+			const config = buildConfig({ cache_namespace: "test_tenant", cache_ttl_secs: 3600, use_cache: true });
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (shouldSkipFixture(error, "smoke_cache_namespace", [], undefined)) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["text/plain"]);
+			assertions.assertMinContentLength(result, 5);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
 	it(
 		"smoke_docx_basic",
 		() => {

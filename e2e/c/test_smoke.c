@@ -4,6 +4,14 @@
 #include "helpers.h"
 #include <stdio.h>
 
+static void test_smoke_smoke_cache_namespace(void) {
+    CExtractionResult *result = run_extraction("text/report.txt", "{\"cache_namespace\":\"test_tenant\",\"cache_ttl_secs\":3600,\"use_cache\":true}");
+    if (!result) return; /* skipped */
+    assert_expected_mime(result, (const char *[]){"text/plain"}, 1);
+    assert_min_content_length(result, 5);
+    kreuzberg_free_result(result);
+}
+
 static void test_smoke_smoke_docx_basic(void) {
     CExtractionResult *result = run_extraction("docx/fake.docx", NULL);
     if (!result) return; /* skipped */
@@ -71,6 +79,7 @@ static void test_smoke_smoke_xlsx_basic(void) {
 }
 
 int main(void) {
+    test_smoke_smoke_cache_namespace();
     test_smoke_smoke_docx_basic();
     test_smoke_smoke_html_basic();
     test_smoke_smoke_image_png();

@@ -167,7 +167,9 @@ def test_pdf_layout_detection() -> None:
     if not document_path.exists():
         pytest.skip(f"Skipping pdf_layout_detection: missing document at {document_path}")
 
-    config = helpers.build_config({"layout": {"preset": "fast"}, "output_format": "markdown"})
+    config = helpers.build_config(
+        {"layout": {"preset": "accurate", "table_model": "tatr"}, "output_format": "markdown"}
+    )
 
     result = extract_file_sync(document_path, None, config)
 

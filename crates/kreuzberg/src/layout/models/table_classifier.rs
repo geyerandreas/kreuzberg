@@ -21,11 +21,13 @@ use crate::layout::session::build_session;
 /// PP-LCNet fixed input dimensions.
 const INPUT_SIZE: u32 = 224;
 
-/// ImageNet normalization mean (RGB channel order).
-const IMAGENET_MEAN_RGB: [f32; 3] = [0.485, 0.456, 0.406];
+/// ImageNet normalization mean, applied in BGR channel order.
+///
+/// PaddleOCR uses OpenCV (BGR) convention: B=0.485, G=0.456, R=0.406.
+const IMAGENET_MEAN_BGR: [f32; 3] = [0.485, 0.456, 0.406];
 
-/// ImageNet normalization std (RGB channel order).
-const IMAGENET_STD_RGB: [f32; 3] = [0.229, 0.224, 0.225];
+/// ImageNet normalization std, applied in BGR channel order.
+const IMAGENET_STD_BGR: [f32; 3] = [0.229, 0.224, 0.225];
 
 // ---------------------------------------------------------------------------
 // Types
@@ -185,17 +187,16 @@ fn preprocess_lcnet(img: &RgbImage) -> Array4<f32> {
     let h = INPUT_SIZE as usize;
     let hw = h * w;
 
-    // Normalization constants applied in BGR channel order.
-    // PaddleOCR uses cv2.split() which gives BGR; the ImageNet mean/std
-    // values [0.485, 0.456, 0.406] are applied per-channel in that order.
-    // Since our input is RGB, we swap: channel 0 (R) gets index 2 constants.
+    // Output tensor is BGR (channel 0=B, 1=G, 2=R).
+    // Input pixels are RGB, so we swap R↔B in the write loop below.
+    // Normalization: pixel * (scale/std) + (-mean/std)
     const INV_255: f32 = 1.0 / 255.0;
-    let alpha_b = INV_255 / IMAGENET_STD_RGB[0]; // B channel: mean=0.485, std=0.229
-    let alpha_g = INV_255 / IMAGENET_STD_RGB[1]; // G channel: mean=0.456, std=0.224
-    let alpha_r = INV_255 / IMAGENET_STD_RGB[2]; // R channel: mean=0.406, std=0.225
-    let beta_b = -IMAGENET_MEAN_RGB[0] / IMAGENET_STD_RGB[0];
-    let beta_g = -IMAGENET_MEAN_RGB[1] / IMAGENET_STD_RGB[1];
-    let beta_r = -IMAGENET_MEAN_RGB[2] / IMAGENET_STD_RGB[2];
+    let alpha_b = INV_255 / IMAGENET_STD_BGR[0]; // B channel: mean=0.485, std=0.229
+    let alpha_g = INV_255 / IMAGENET_STD_BGR[1]; // G channel: mean=0.456, std=0.224
+    let alpha_r = INV_255 / IMAGENET_STD_BGR[2]; // R channel: mean=0.406, std=0.225
+    let beta_b = -IMAGENET_MEAN_BGR[0] / IMAGENET_STD_BGR[0];
+    let beta_g = -IMAGENET_MEAN_BGR[1] / IMAGENET_STD_BGR[1];
+    let beta_r = -IMAGENET_MEAN_BGR[2] / IMAGENET_STD_BGR[2];
 
     let mut data = vec![0.0f32; 3 * hw];
     let pixels = cropped.as_raw();

@@ -527,9 +527,10 @@ pub(in crate::pdf::markdown) fn recognize_tables_slanet(
             "SLANeXT: cells matched to table hint"
         );
 
-        // Filter words overlapping the table hint bbox (in PDF coords)
-        let hint_pdf_top = (page_height - hint.top).max(0.0);
-        let hint_pdf_bottom = (page_height - hint.bottom).max(0.0);
+        // Filter words overlapping the table hint bbox.
+        // HocrWord uses image coordinates (y=0 at top), so flip the hint's PDF y-coords.
+        let hint_img_top = (page_height - hint.top).max(0.0);
+        let hint_img_bottom = (page_height - hint.bottom).max(0.0);
 
         let table_words: Vec<&crate::pdf::table_reconstruct::HocrWord> = words
             .iter()
@@ -537,7 +538,7 @@ pub(in crate::pdf::markdown) fn recognize_tables_slanet(
                 if w.text.trim().is_empty() {
                     return false;
                 }
-                word_hint_iow(w, hint.left, hint_pdf_top, hint.right, hint_pdf_bottom) >= 0.2
+                word_hint_iow(w, hint.left, hint_img_top, hint.right, hint_img_bottom) >= 0.2
             })
             .collect();
 

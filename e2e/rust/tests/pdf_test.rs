@@ -265,7 +265,8 @@ fn test_pdf_layout_detection() {
     let config: ExtractionConfig = serde_json::from_str(
         r#"{
   "layout": {
-    "preset": "fast"
+    "preset": "accurate",
+    "table_model": "tatr"
   },
   "output_format": "markdown"
 }"#,

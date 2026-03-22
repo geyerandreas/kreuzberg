@@ -22,6 +22,7 @@ from kreuzberg import (
     KeywordAlgorithm,
     KeywordConfig,
     LanguageDetectionConfig,
+    LayoutDetectionConfig,
     OcrConfig,
     OutputFormat,
     PageConfig,
@@ -91,6 +92,8 @@ def _build_config_objects(config: dict[str, Any], kwargs: dict[str, Any]) -> Non
         kwargs["token_reduction"] = TokenReductionConfig(**token_reduction)
     if (language_detection := config.get("language_detection")) is not None:
         kwargs["language_detection"] = LanguageDetectionConfig(**language_detection)
+    if (layout := config.get("layout")) is not None:
+        kwargs["layout"] = LayoutDetectionConfig(**layout)
     if (keywords_data := config.get("keywords")) is not None:
         kwargs["keywords"] = _build_keywords(keywords_data)
     if (postprocessor := config.get("postprocessor")) is not None:

@@ -5,9 +5,27 @@
 #
 # Tests for smoke fixtures.
 
+# rubocop:disable Metrics/BlockLength
 require_relative 'spec_helper'
 
 RSpec.describe 'smoke fixtures' do
+  it 'smoke_cache_namespace' do
+    E2ERuby.run_fixture(
+      'smoke_cache_namespace',
+      'text/report.txt',
+      { cache_namespace: 'test_tenant', cache_ttl_secs: 3_600, use_cache: true },
+      requirements: [],
+      notes: nil,
+      skip_if_missing: true
+    ) do |result|
+      E2ERuby::Assertions.assert_expected_mime(
+        result,
+        ['text/plain']
+      )
+      E2ERuby::Assertions.assert_min_content_length(result, 5)
+    end
+  end
+
   it 'smoke_docx_basic' do
     E2ERuby.run_fixture(
       'smoke_docx_basic',
@@ -127,12 +145,11 @@ RSpec.describe 'smoke fixtures' do
         ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
       )
       E2ERuby::Assertions.assert_min_content_length(result, 100)
-      E2ERuby::Assertions.assert_content_contains_all(result,
-                                                      ['Team', 'Location', 'Stanley Cups', 'Blues', 'Flyers',
-                                                       'Maple Leafs', 'STL', 'PHI', 'TOR'])
+      E2ERuby::Assertions.assert_content_contains_all(result, ['Team', 'Location', 'Stanley Cups', 'Blues', 'Flyers', 'Maple Leafs', 'STL', 'PHI', 'TOR'])
       E2ERuby::Assertions.assert_table_count(result, 1, nil)
       E2ERuby::Assertions.assert_metadata_expectation(result, 'sheet_count', { gte: 2 })
       E2ERuby::Assertions.assert_metadata_expectation(result, 'sheet_names', { contains: ['Stanley Cups'] })
     end
   end
 end
+# rubocop:enable Metrics/BlockLength

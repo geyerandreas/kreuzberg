@@ -212,7 +212,7 @@ class PdfTest extends TestCase
 
         Helpers::skipIfFeatureUnavailable('layout-detection');
 
-        $config = Helpers::buildConfig(['layout' => ['preset' => 'fast'], 'output_format' => 'markdown']);
+        $config = Helpers::buildConfig(['layout' => ['preset' => 'accurate', 'table_model' => 'tatr'], 'output_format' => 'markdown']);
 
         $kreuzberg = new Kreuzberg($config);
         $result = $kreuzberg->extractFile($documentPath);

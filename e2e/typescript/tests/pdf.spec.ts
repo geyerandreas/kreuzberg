@@ -4,10 +4,10 @@
 // Tests for pdf fixtures.
 
 import { existsSync, readFileSync } from "node:fs";
+import type { ExtractionResult } from "@kreuzberg/node";
+import { extractFileSync } from "@kreuzberg/node";
 import { describe, it } from "vitest";
 import { assertions, buildConfig, resolveDocument, shouldSkipFixture } from "./helpers.js";
-import { extractFileSync } from "@kreuzberg/node";
-import type { ExtractionResult } from "@kreuzberg/node";
 
 const TEST_TIMEOUT_MS = 60_000;
 
@@ -288,7 +288,7 @@ describe("pdf fixtures", () => {
 				console.warn("Notes: Requires layout-detection feature with ONNX Runtime");
 				return;
 			}
-			const config = buildConfig({ layout: { preset: "fast" }, output_format: "markdown" });
+			const config = buildConfig({ layout: { preset: "accurate", table_model: "tatr" }, output_format: "markdown" });
 			let result: ExtractionResult | null = null;
 			try {
 				result = extractFileSync(documentPath, null, config);

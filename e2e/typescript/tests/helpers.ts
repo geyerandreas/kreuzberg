@@ -2,7 +2,6 @@
 // To regenerate: cargo run -p kreuzberg-e2e-generator -- generate --lang typescript
 
 import { join, resolve } from "node:path";
-import { expect } from "vitest";
 import type {
 	ChunkingConfig,
 	ExtractionConfig,
@@ -10,12 +9,14 @@ import type {
 	ImageExtractionConfig,
 	KeywordConfig,
 	LanguageDetectionConfig,
+	LayoutDetectionConfig,
 	OcrConfig,
 	PdfConfig,
 	PostProcessorConfig,
 	TesseractConfig,
 	TokenReductionConfig,
 } from "@kreuzberg/node";
+import { expect } from "vitest";
 
 const WORKSPACE_ROOT = resolve(__dirname, "../../..");
 const TEST_DOCUMENTS = join(WORKSPACE_ROOT, "test_documents");
@@ -330,6 +331,24 @@ export function buildConfig(raw: unknown): ExtractionConfig {
 
 	if (isPlainRecord(source.language_detection)) {
 		result.languageDetection = mapLanguageDetectionConfig(source.language_detection as PlainRecord);
+	}
+
+	if (isPlainRecord(source.layout)) {
+		const layout = source.layout as PlainRecord;
+		const layoutConfig: LayoutDetectionConfig = {};
+		if (typeof layout.preset === "string") {
+			layoutConfig.preset = layout.preset;
+		}
+		if (typeof layout.confidence_threshold === "number") {
+			layoutConfig.confidenceThreshold = layout.confidence_threshold;
+		}
+		if (typeof layout.apply_heuristics === "boolean") {
+			layoutConfig.applyHeuristics = layout.apply_heuristics;
+		}
+		if (typeof layout.table_model === "string") {
+			layoutConfig.tableModel = layout.table_model;
+		}
+		result.layout = layoutConfig;
 	}
 
 	if (isPlainRecord(source.postprocessor)) {

@@ -16,6 +16,25 @@ use PHPUnit\Framework\TestCase;
 class SmokeTest extends TestCase
 {
     /**
+     * Smoke test: Extraction with cache namespace and TTL configuration
+     */
+    public function test_smoke_cache_namespace(): void
+    {
+        $documentPath = Helpers::resolveDocument('text/report.txt');
+        if (!file_exists($documentPath)) {
+            $this->markTestSkipped('Skipping smoke_cache_namespace: missing document at ' . $documentPath);
+        }
+
+        $config = Helpers::buildConfig(['cache_namespace' => 'test_tenant', 'cache_ttl_secs' => 3600, 'use_cache' => true]);
+
+        $kreuzberg = new Kreuzberg($config);
+        $result = $kreuzberg->extractFile($documentPath);
+
+        Helpers::assertExpectedMime($result, ['text/plain']);
+        Helpers::assertMinContentLength($result, 5);
+    }
+
+    /**
      * Smoke test: DOCX with formatted text
      */
     public function test_smoke_docx_basic(): void
