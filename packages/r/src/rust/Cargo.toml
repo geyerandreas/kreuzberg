@@ -39,6 +39,7 @@ default = []
 kreuzberg = { path = "../../vendor/kreuzberg", default-features = false, features = [
     "pdf",
     "office",
+    "iwork",
     "mdx",
     "email",
     "html",
