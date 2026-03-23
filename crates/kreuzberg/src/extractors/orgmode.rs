@@ -1016,4 +1016,24 @@ mod tests {
             "Link should be formatted as [description] when description exists"
         );
     }
+
+    #[test]
+    fn test_emoji_and_cjk_with_inline_markup() {
+        // Multi-byte characters with OrgMode inline markup — must not panic
+        let (text, annotations) = OrgModeExtractor::parse_inline_markup("🎉 *太字* テスト");
+        assert!(text.contains("🎉"), "Emoji preserved");
+        assert!(text.contains("太字"), "Bold content present");
+        assert!(text.contains("テスト"), "Trailing CJK preserved");
+        assert!(!annotations.is_empty(), "Should have bold annotation");
+    }
+
+    #[test]
+    fn test_cjk_heading_with_markup() {
+        let org_text = "* 見出し\n\n🎉 *太字* テスト";
+        let lines: Vec<String> = org_text.lines().map(|s| s.to_string()).collect();
+        let org = Org::from_vec(&lines).expect("Failed to parse org");
+        let content = OrgModeExtractor::extract_content(&org);
+        assert!(content.contains("見出し"), "CJK heading preserved");
+        assert!(content.contains("太字"), "Bold CJK text present");
+    }
 }

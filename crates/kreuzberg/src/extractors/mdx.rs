@@ -1204,4 +1204,32 @@ Content here.
         assert!(result.contains("# Getting started"), "Heading should be preserved");
         assert!(result.contains("Content here"), "Content should be preserved");
     }
+
+    #[tokio::test]
+    async fn test_trimmed_paragraph_with_emoji_mdx() {
+        let mdx = b"  **bold** \xf0\x9f\x8e\x89 text  ";
+
+        let extractor = MdxExtractor::new();
+        let result = extractor
+            .extract_bytes(mdx, "text/mdx", &ExtractionConfig::default())
+            .await
+            .expect("Should handle emoji in trimmed MDX paragraph");
+
+        assert!(result.content.contains("bold"), "Bold text preserved");
+        assert!(result.content.contains("\u{1F389}"), "Emoji preserved after trim");
+    }
+
+    #[tokio::test]
+    async fn test_cjk_paragraph_with_formatting_mdx() {
+        let mdx = "# CJK\n\nこれは**太字**テスト".as_bytes();
+
+        let extractor = MdxExtractor::new();
+        let result = extractor
+            .extract_bytes(mdx, "text/mdx", &ExtractionConfig::default())
+            .await
+            .expect("Should handle CJK with bold formatting");
+
+        assert!(result.content.contains("太字"), "Bold CJK content present");
+        assert!(result.content.contains("これは"), "Leading CJK preserved");
+    }
 }

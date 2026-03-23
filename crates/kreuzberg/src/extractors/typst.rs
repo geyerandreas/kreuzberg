@@ -1143,4 +1143,23 @@ Actual content"#;
 
         assert!(output.contains("*") || output.contains("_") || (output.contains("bold") && output.contains("italic")));
     }
+
+    #[test]
+    fn test_cjk_with_inline_formatting() {
+        // CJK text with bold markers — must not panic on multi-byte chars
+        let content = "これは*太字*テスト";
+        let (output, _) = TypstExtractor::extract_from_typst(content);
+        assert!(output.contains("太字"), "Bold content should be present");
+        assert!(output.contains("これは"), "Leading CJK text preserved");
+        assert!(output.contains("テスト"), "Trailing CJK text preserved");
+    }
+
+    #[test]
+    fn test_emoji_with_inline_formatting() {
+        let content = "Hello 🎉 *bold* world 🌍";
+        let (output, _) = TypstExtractor::extract_from_typst(content);
+        assert!(output.contains("🎉"), "Emoji preserved");
+        assert!(output.contains("bold"), "Bold content present");
+        assert!(output.contains("🌍"), "Trailing emoji preserved");
+    }
 }

@@ -483,4 +483,34 @@ mod tests {
         assert!(result.content.contains("bold"));
         assert!(result.content.contains("italic"));
     }
+
+    #[tokio::test]
+    async fn test_trimmed_paragraph_with_emoji_djot() {
+        let djot = "  *bold* \u{1F389} text  ".as_bytes();
+        let extractor = DjotExtractor::new();
+        let config = ExtractionConfig::default();
+
+        let result = extractor
+            .extract_bytes(djot, "text/djot", &config)
+            .await
+            .expect("Should handle emoji in trimmed djot paragraph");
+
+        assert!(result.content.contains("bold"), "Bold text preserved");
+        assert!(result.content.contains("\u{1F389}"), "Emoji preserved after trim");
+    }
+
+    #[tokio::test]
+    async fn test_cjk_paragraph_with_formatting_djot() {
+        let djot = "# CJK\n\nこれは*太字*テスト".as_bytes();
+        let extractor = DjotExtractor::new();
+        let config = ExtractionConfig::default();
+
+        let result = extractor
+            .extract_bytes(djot, "text/djot", &config)
+            .await
+            .expect("Should handle CJK with bold formatting");
+
+        assert!(result.content.contains("太字"), "Bold CJK content present");
+        assert!(result.content.contains("これは"), "Leading CJK preserved");
+    }
 }

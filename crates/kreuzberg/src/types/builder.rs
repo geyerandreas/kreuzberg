@@ -328,7 +328,7 @@ impl DocumentStructureBuilder {
     /// Set format-specific attributes on an existing node.
     pub fn set_attributes(&mut self, index: NodeIndex, attrs: AHashMap<String, String>) {
         if let Some(node) = self.doc.nodes.get_mut(index.0 as usize) {
-            node.attributes = Some(attrs);
+            node.attributes = Some(attrs.into_iter().collect());
         }
     }
 

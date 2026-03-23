@@ -1077,4 +1077,34 @@ nested:
 
         assert!(result.images.is_none());
     }
+
+    #[tokio::test]
+    async fn test_trimmed_paragraph_with_emoji() {
+        // Trimming paragraph text with multi-byte emoji must not produce
+        // annotations pointing past the trimmed text end.
+        let md = b"  **bold** \xf0\x9f\x8e\x89 text  ";
+
+        let extractor = MarkdownExtractor::new();
+        let result = extractor
+            .extract_bytes(md, "text/markdown", &ExtractionConfig::default())
+            .await
+            .expect("Should handle emoji in trimmed paragraph");
+
+        assert!(result.content.contains("bold"), "Bold text preserved");
+        assert!(result.content.contains("\u{1F389}"), "Emoji preserved after trim");
+    }
+
+    #[tokio::test]
+    async fn test_cjk_paragraph_with_formatting() {
+        let md = "# CJK\n\nこれは**太字**テスト".as_bytes();
+
+        let extractor = MarkdownExtractor::new();
+        let result = extractor
+            .extract_bytes(md, "text/markdown", &ExtractionConfig::default())
+            .await
+            .expect("Should handle CJK with bold formatting");
+
+        assert!(result.content.contains("太字"), "Bold CJK content present");
+        assert!(result.content.contains("これは"), "Leading CJK preserved");
+    }
 }

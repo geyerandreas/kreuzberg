@@ -543,7 +543,7 @@ impl DocumentExtractor for DocxExtractor {
         let mut parsed_keywords: Option<Vec<String>> = None;
         let mut docx_core_properties = None;
         let mut docx_app_properties = None;
-        let mut docx_custom_properties: Option<HashMap<String, serde_json::Value>> = None;
+        let mut docx_custom_properties: Option<std::collections::HashMap<String, serde_json::Value>> = None;
 
         if let Ok(core) = office_metadata::extract_core_properties(&mut archive) {
             if let Some(ref title) = core.title {

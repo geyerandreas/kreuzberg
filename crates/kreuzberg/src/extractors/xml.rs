@@ -37,8 +37,8 @@ fn build_xml_document_structure(
     loop {
         match reader.read_event_into(&mut buf) {
             Ok(Event::Start(e)) => {
-                let name: Cow<str> = String::from_utf8_lossy(e.name().as_ref());
-                let name_owned = name.to_string();
+                let name_bytes = e.name().as_ref().to_vec();
+                let name_owned = String::from_utf8_lossy(&name_bytes).into_owned();
 
                 // Extract element attributes
                 let mut attrs = AHashMap::new();
@@ -83,7 +83,8 @@ fn build_xml_document_structure(
                 }
             }
             Ok(Event::Empty(e)) => {
-                let name: Cow<str> = String::from_utf8_lossy(e.name().as_ref());
+                let name_bytes = e.name().as_ref().to_vec();
+                let name = String::from_utf8_lossy(&name_bytes).into_owned();
 
                 let mut attrs = AHashMap::new();
                 for attr in e.attributes().flatten() {
