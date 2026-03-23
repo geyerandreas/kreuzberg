@@ -348,10 +348,7 @@ pub(crate) async fn extract_with_ocr(
 
     let backend = {
         let registry = get_ocr_backend_registry();
-        let registry = registry.read().map_err(|e| crate::KreuzbergError::Plugin {
-            message: format!("Failed to acquire read lock on OCR backend registry: {}", e),
-            plugin_name: "ocr-registry".to_string(),
-        })?;
+        let registry = registry.read();
         registry.get(&ocr_config.backend)?
     };
 
@@ -659,10 +656,7 @@ pub(crate) async fn run_ocr_pipeline(
     let requested_backends: Vec<String> = stages.iter().map(|s| s.backend.clone()).collect();
     let available_stages: Vec<_> = {
         let registry = get_ocr_backend_registry();
-        let registry = registry.read().map_err(|e| crate::KreuzbergError::Plugin {
-            message: format!("Failed to acquire read lock on OCR backend registry: {}", e),
-            plugin_name: "ocr-registry".to_string(),
-        })?;
+        let registry = registry.read();
         stages
             .into_iter()
             .filter(|s| registry.get(&s.backend).is_ok())

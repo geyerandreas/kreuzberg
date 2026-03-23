@@ -29,9 +29,7 @@ pub fn list_post_processors() -> crate::Result<Vec<String>> {
     use crate::plugins::registry::get_post_processor_registry;
 
     let registry = get_post_processor_registry();
-    let registry = registry
-        .read()
-        .expect("~keep Failed to acquire read lock on post-processor registry"); // ~keep
+    let registry = registry.read();
 
     Ok(registry.list())
 }

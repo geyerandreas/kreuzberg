@@ -290,11 +290,11 @@ async fn test_pipeline_preserves_tables() {
 async fn test_pipeline_empty_content() {
     {
         let registry = crate::plugins::registry::get_post_processor_registry();
-        registry.write().unwrap().shutdown_all().unwrap();
+        registry.write().shutdown_all().unwrap();
     }
     {
         let registry = crate::plugins::registry::get_validator_registry();
-        registry.write().unwrap().shutdown_all().unwrap();
+        registry.write().shutdown_all().unwrap();
     }
 
     let result = ExtractionResult {
@@ -609,17 +609,17 @@ async fn test_postprocessor_runs_before_validator() {
     let val_registry = crate::plugins::registry::get_validator_registry();
 
     clear_processor_cache().unwrap();
-    pp_registry.write().unwrap().shutdown_all().unwrap();
-    val_registry.write().unwrap().shutdown_all().unwrap();
+    pp_registry.write().shutdown_all().unwrap();
+    val_registry.write().shutdown_all().unwrap();
     clear_processor_cache().unwrap();
 
     {
-        let mut registry = pp_registry.write().unwrap();
+        let mut registry = pp_registry.write();
         registry.register(Arc::new(TestPostProcessor), 0).unwrap();
     }
 
     {
-        let mut registry = val_registry.write().unwrap();
+        let mut registry = val_registry.write();
         registry.register(Arc::new(TestValidator)).unwrap();
     }
 
@@ -662,8 +662,8 @@ async fn test_postprocessor_runs_before_validator() {
 
     let processed = run_pipeline(result, &config).await;
 
-    pp_registry.write().unwrap().shutdown_all().unwrap();
-    val_registry.write().unwrap().shutdown_all().unwrap();
+    pp_registry.write().shutdown_all().unwrap();
+    val_registry.write().shutdown_all().unwrap();
 
     assert!(processed.is_ok(), "Validator should have seen post-processor metadata");
     let processed = processed.unwrap();
@@ -724,7 +724,7 @@ async fn test_quality_processing_runs_before_validator() {
 
     let val_registry = crate::plugins::registry::get_validator_registry();
     {
-        let mut registry = val_registry.write().unwrap();
+        let mut registry = val_registry.write();
         registry.register(Arc::new(QualityValidator)).unwrap();
     }
 
@@ -760,7 +760,7 @@ async fn test_quality_processing_runs_before_validator() {
     let processed = run_pipeline(result, &config).await;
 
     {
-        let mut registry = val_registry.write().unwrap();
+        let mut registry = val_registry.write();
         registry.remove("quality-validator").unwrap();
     }
 
@@ -913,18 +913,18 @@ async fn test_multiple_postprocessors_run_before_validator() {
     let pp_registry = crate::plugins::registry::get_post_processor_registry();
     let val_registry = crate::plugins::registry::get_validator_registry();
 
-    pp_registry.write().unwrap().shutdown_all().unwrap();
-    val_registry.write().unwrap().shutdown_all().unwrap();
+    pp_registry.write().shutdown_all().unwrap();
+    val_registry.write().shutdown_all().unwrap();
     clear_processor_cache().unwrap();
 
     {
-        let mut registry = pp_registry.write().unwrap();
+        let mut registry = pp_registry.write();
         registry.register(Arc::new(EarlyProcessor), 0).unwrap();
         registry.register(Arc::new(LateProcessor), 0).unwrap();
     }
 
     {
-        let mut registry = val_registry.write().unwrap();
+        let mut registry = val_registry.write();
         registry.register(Arc::new(OrderValidator)).unwrap();
     }
 
@@ -955,8 +955,8 @@ async fn test_multiple_postprocessors_run_before_validator() {
 
     let processed = run_pipeline(result, &config).await;
 
-    pp_registry.write().unwrap().shutdown_all().unwrap();
-    val_registry.write().unwrap().shutdown_all().unwrap();
+    pp_registry.write().shutdown_all().unwrap();
+    val_registry.write().shutdown_all().unwrap();
     clear_processor_cache().unwrap();
 
     assert!(processed.is_ok(), "All processors should run before validator");

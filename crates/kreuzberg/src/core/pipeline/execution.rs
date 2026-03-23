@@ -78,9 +78,7 @@ fn should_processor_run(pp_config: &Option<&crate::core::config::PostProcessorCo
 pub(super) async fn execute_validators(result: &ExtractionResult, config: &ExtractionConfig) -> Result<()> {
     let validator_registry = crate::plugins::registry::get_validator_registry();
     let validators = {
-        let registry = validator_registry
-            .read()
-            .map_err(|e| crate::KreuzbergError::Other(format!("Validator registry lock poisoned: {}", e)))?;
+        let registry = validator_registry.read();
         registry.get_all()
     };
 

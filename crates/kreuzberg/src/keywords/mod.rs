@@ -159,9 +159,7 @@ pub fn ensure_initialized() -> Result<()> {
 /// ```
 pub fn register_keyword_processor() -> Result<()> {
     let registry = get_post_processor_registry();
-    let mut registry = registry
-        .write()
-        .map_err(|e| crate::KreuzbergError::Other(format!("Post-processor registry lock poisoned: {}", e)))?;
+    let mut registry = registry.write();
 
     registry.register(Arc::new(KeywordExtractor), 50)?;
 

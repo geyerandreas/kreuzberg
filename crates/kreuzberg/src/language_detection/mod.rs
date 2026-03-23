@@ -194,9 +194,7 @@ fn lang_to_iso639_3(lang: Lang) -> String {
 /// Explicit calling is optional.
 pub fn register_language_detection_processor() -> Result<()> {
     let registry = crate::plugins::registry::get_post_processor_registry();
-    let mut registry = registry
-        .write()
-        .map_err(|e| crate::KreuzbergError::Other(format!("Post-processor registry lock poisoned: {}", e)))?;
+    let mut registry = registry.write();
 
     registry.register(Arc::new(LanguageDetector), 40)?;
 

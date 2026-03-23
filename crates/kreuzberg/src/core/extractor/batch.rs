@@ -268,11 +268,11 @@ pub async fn batch_extract_bytes(
     // of its bytes without cloning. This avoids the memory regression of
     // Arc<Vec<(Vec<u8>, ...)>> which would keep all byte arrays alive for the
     // entire batch duration.
-    type BytesSlot = std::sync::Mutex<Option<(Vec<u8>, String, Option<FileExtractionConfig>)>>;
+    type BytesSlot = parking_lot::Mutex<Option<(Vec<u8>, String, Option<FileExtractionConfig>)>>;
     let slots: Arc<Vec<BytesSlot>> = Arc::new(
         items
             .into_iter()
-            .map(|item| std::sync::Mutex::new(Some(item)))
+            .map(|item| parking_lot::Mutex::new(Some(item)))
             .collect(),
     );
 
@@ -280,11 +280,7 @@ pub async fn batch_extract_bytes(
         let cfg = Arc::clone(&config_arc);
         let slots = Arc::clone(&slots);
         async move {
-            let (bytes, mime_type, file_config) = slots[index]
-                .lock()
-                .unwrap()
-                .take()
-                .expect("batch item already consumed");
+            let (bytes, mime_type, file_config) = slots[index].lock().take().expect("batch item already consumed");
             let resolved = resolve_config(&cfg, &file_config);
             run_timed_extraction(index, sem, || async move {
                 extract_bytes(&bytes, &mime_type, &resolved).await

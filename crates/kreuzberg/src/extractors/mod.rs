@@ -281,9 +281,7 @@ pub fn ensure_initialized() -> Result<()> {
         })?;
 
     let registry = get_document_extractor_registry();
-    let registry_guard = registry
-        .read()
-        .map_err(|e| crate::KreuzbergError::Other(format!("Document extractor registry lock poisoned: {}", e)))?;
+    let registry_guard = registry.read();
 
     if registry_guard.list().is_empty() {
         drop(registry_guard);
@@ -313,9 +311,7 @@ pub fn ensure_initialized() -> Result<()> {
 /// ```
 pub fn register_default_extractors() -> Result<()> {
     let registry = get_document_extractor_registry();
-    let mut registry = registry
-        .write()
-        .map_err(|e| crate::KreuzbergError::Other(format!("Document extractor registry lock poisoned: {}", e)))?;
+    let mut registry = registry.write();
 
     registry.register(Arc::new(PlainTextExtractor::new()))?;
     registry.register(Arc::new(MarkdownExtractor::new()))?;

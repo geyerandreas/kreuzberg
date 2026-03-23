@@ -16,7 +16,8 @@ pub use validator::ValidatorRegistry;
 
 use crate::{KreuzbergError, Result};
 use once_cell::sync::Lazy;
-use std::sync::{Arc, RwLock};
+use parking_lot::RwLock;
+use std::sync::Arc;
 
 /// Validate a plugin name before registration.
 ///
@@ -90,27 +91,15 @@ mod tests {
     #[test]
     fn test_global_registry_access() {
         let ocr_registry = get_ocr_backend_registry();
-        let _ = ocr_registry
-            .read()
-            .expect("Failed to acquire read lock on OCR registry in test")
-            .list();
+        let _ = ocr_registry.read().list();
 
         let extractor_registry = get_document_extractor_registry();
-        let _ = extractor_registry
-            .read()
-            .expect("Failed to acquire read lock on extractor registry in test")
-            .list();
+        let _ = extractor_registry.read().list();
 
         let processor_registry = get_post_processor_registry();
-        let _ = processor_registry
-            .read()
-            .expect("Failed to acquire read lock on processor registry in test")
-            .list();
+        let _ = processor_registry.read().list();
 
         let validator_registry = get_validator_registry();
-        let _ = validator_registry
-            .read()
-            .expect("Failed to acquire read lock on validator registry in test")
-            .list();
+        let _ = validator_registry.read().list();
     }
 }

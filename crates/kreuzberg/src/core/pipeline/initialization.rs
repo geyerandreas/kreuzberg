@@ -4,6 +4,8 @@
 //! required for pipeline execution.
 
 use crate::Result;
+#[cfg(feature = "quality")]
+use std::sync::OnceLock;
 
 use super::cache::{PROCESSOR_CACHE, ProcessorCache};
 
@@ -33,18 +35,18 @@ pub(super) fn initialize_features() {
 
     #[cfg(feature = "quality")]
     {
-        let registry = crate::plugins::registry::get_post_processor_registry();
-        if let Ok(mut reg) = registry.write() {
+        static QUALITY_INIT: OnceLock<()> = OnceLock::new();
+        QUALITY_INIT.get_or_init(|| {
+            let registry = crate::plugins::registry::get_post_processor_registry();
+            let mut reg = registry.write();
             let _ = reg.register(std::sync::Arc::new(crate::text::QualityProcessor), 30);
-        }
+        });
     }
 }
 
 /// Initialize the processor cache if not already initialized.
 pub(super) fn initialize_processor_cache() -> Result<()> {
-    let mut cache_lock = PROCESSOR_CACHE
-        .write()
-        .map_err(|e| crate::KreuzbergError::Other(format!("Processor cache lock poisoned: {}", e)))?;
+    let mut cache_lock = PROCESSOR_CACHE.write();
     if cache_lock.is_none() {
         *cache_lock = Some(ProcessorCache::new()?);
     }
@@ -53,9 +55,7 @@ pub(super) fn initialize_processor_cache() -> Result<()> {
 
 /// Get processors from the cache, organized by stage.
 pub(super) fn get_processors_from_cache() -> Result<ProcessorStages> {
-    let cache_lock = PROCESSOR_CACHE
-        .read()
-        .map_err(|e| crate::KreuzbergError::Other(format!("Processor cache lock poisoned: {}", e)))?;
+    let cache_lock = PROCESSOR_CACHE.read();
     let cache = cache_lock
         .as_ref()
         .ok_or_else(|| crate::KreuzbergError::Other("Processor cache not initialized".to_string()))?;

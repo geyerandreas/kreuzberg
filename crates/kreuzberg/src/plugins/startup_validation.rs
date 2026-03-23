@@ -55,16 +55,16 @@ impl PluginHealthStatus {
     /// ```
     pub fn check() -> Self {
         let ocr_registry = get_ocr_backend_registry();
-        let ocr_backends = ocr_registry.read().map(|r| r.list()).unwrap_or_default();
+        let ocr_backends = ocr_registry.read().list();
 
         let extractor_registry = get_document_extractor_registry();
-        let extractors = extractor_registry.read().map(|r| r.list()).unwrap_or_default();
+        let extractors = extractor_registry.read().list();
 
         let processor_registry = get_post_processor_registry();
-        let post_processors = processor_registry.read().map(|r| r.list()).unwrap_or_default();
+        let post_processors = processor_registry.read().list();
 
         let validator_registry = get_validator_registry();
-        let validators = validator_registry.read().map(|r| r.list()).unwrap_or_default();
+        let validators = validator_registry.read().list();
 
         let ocr_backends_count = ocr_backends.len();
         let extractors_count = extractors.len();

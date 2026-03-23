@@ -6,8 +6,8 @@
 use crate::Result;
 use crate::plugins::{PostProcessor, ProcessingStage};
 use once_cell::sync::Lazy;
+use parking_lot::RwLock;
 use std::sync::Arc;
-use std::sync::RwLock as StdRwLock;
 
 /// Cached post-processors for each stage to reduce lock contention.
 ///
@@ -24,9 +24,7 @@ impl ProcessorCache {
     /// Create a new processor cache by fetching from the registry.
     pub(super) fn new() -> Result<Self> {
         let processor_registry = crate::plugins::registry::get_post_processor_registry();
-        let registry = processor_registry
-            .read()
-            .map_err(|e| crate::KreuzbergError::Other(format!("Post-processor registry lock poisoned: {}", e)))?;
+        let registry = processor_registry.read();
 
         Ok(Self {
             early: Arc::new(registry.get_for_stage(ProcessingStage::Early)),
@@ -47,13 +45,11 @@ impl ProcessorCache {
 }
 
 /// Lazy processor cache - initialized on first use, then cached.
-pub(super) static PROCESSOR_CACHE: Lazy<StdRwLock<Option<ProcessorCache>>> = Lazy::new(|| StdRwLock::new(None));
+pub(super) static PROCESSOR_CACHE: Lazy<RwLock<Option<ProcessorCache>>> = Lazy::new(|| RwLock::new(None));
 
 /// Clear the processor cache (primarily for testing when registry changes).
 pub fn clear_processor_cache() -> Result<()> {
-    let mut cache = PROCESSOR_CACHE
-        .write()
-        .map_err(|e| crate::KreuzbergError::Other(format!("Processor cache lock poisoned: {}", e)))?;
+    let mut cache = PROCESSOR_CACHE.write();
     *cache = None;
     Ok(())
 }

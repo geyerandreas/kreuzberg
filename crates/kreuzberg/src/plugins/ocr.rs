@@ -385,10 +385,7 @@ pub fn register_ocr_backend(backend: Arc<dyn OcrBackend>) -> crate::Result<()> {
     use crate::plugins::registry::get_ocr_backend_registry;
 
     let registry = get_ocr_backend_registry();
-    // ~keep: Lock poisoning indicates a panic in another thread holding the lock.
-    let mut registry = registry
-        .write()
-        .expect("OCR backend registry lock poisoned - critical runtime error");
+    let mut registry = registry.write();
 
     registry.register(backend)
 }
@@ -420,10 +417,7 @@ pub fn unregister_ocr_backend(name: &str) -> crate::Result<()> {
     use crate::plugins::registry::get_ocr_backend_registry;
 
     let registry = get_ocr_backend_registry();
-    // ~keep: Lock poisoning indicates a panic in another thread holding the lock.
-    let mut registry = registry
-        .write()
-        .expect("OCR backend registry lock poisoned - critical runtime error");
+    let mut registry = registry.write();
 
     registry.remove(name)
 }
@@ -453,10 +447,7 @@ pub fn list_ocr_backends() -> crate::Result<Vec<String>> {
     use crate::plugins::registry::get_ocr_backend_registry;
 
     let registry = get_ocr_backend_registry();
-    // ~keep: Lock poisoning indicates a panic in another thread holding the lock.
-    let registry = registry
-        .read()
-        .expect("OCR backend registry lock poisoned - critical runtime error");
+    let registry = registry.read();
 
     Ok(registry.list())
 }
@@ -484,10 +475,7 @@ pub fn clear_ocr_backends() -> crate::Result<()> {
     use crate::plugins::registry::get_ocr_backend_registry;
 
     let registry = get_ocr_backend_registry();
-    // ~keep: Lock poisoning indicates a panic in another thread holding the lock.
-    let mut registry = registry
-        .write()
-        .expect("OCR backend registry lock poisoned - critical runtime error");
+    let mut registry = registry.write();
 
     registry.shutdown_all()
 }

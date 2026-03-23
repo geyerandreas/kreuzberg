@@ -3620,14 +3620,8 @@ fn test_jats_history_dates() {
         "JATS metadata should have history date keys (date_received, date_accepted, etc.), got keys: {:?}",
         additional.keys().collect::<Vec<_>>()
     );
-    assert!(
-        additional.contains_key("date_received"),
-        "should have date_received"
-    );
-    assert!(
-        additional.contains_key("date_accepted"),
-        "should have date_accepted"
-    );
+    assert!(additional.contains_key("date_received"), "should have date_received");
+    assert!(additional.contains_key("date_accepted"), "should have date_accepted");
 }
 
 #[cfg(feature = "xml")]

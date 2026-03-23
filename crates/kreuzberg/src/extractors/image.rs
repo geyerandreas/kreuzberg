@@ -39,10 +39,7 @@ impl ImageExtractor {
 
         let backend = {
             let registry = get_ocr_backend_registry();
-            let registry = registry.read().map_err(|e| crate::KreuzbergError::Plugin {
-                message: format!("Failed to acquire read lock on OCR backend registry: {}", e),
-                plugin_name: "ocr-registry".to_string(),
-            })?;
+            let registry = registry.read();
             registry.get(&ocr_config.backend)?
         };
 
@@ -149,10 +146,7 @@ impl ImageExtractor {
         // 4. Get OCR backend
         let backend = {
             let registry = get_ocr_backend_registry();
-            let registry = registry.read().map_err(|e| crate::KreuzbergError::Plugin {
-                message: format!("Failed to acquire read lock on OCR backend registry: {}", e),
-                plugin_name: "ocr-registry".to_string(),
-            })?;
+            let registry = registry.read();
             registry.get(&ocr_config.backend)?
         };
 

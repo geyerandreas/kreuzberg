@@ -6,11 +6,10 @@
 
 use ext_php_rs::binary_slice::BinarySlice;
 use ext_php_rs::prelude::*;
-use parking_lot::Mutex;
 use std::sync::Arc;
 
 use crate::config::{parse_config_from_json, parse_file_config_from_json};
-use crate::deferred::{DeferredInner, DeferredResult};
+use crate::deferred::{DeferredInner, DeferredResult, DeferredShared};
 use crate::extraction::should_extract_tables;
 use crate::worker_runtime;
 
@@ -49,8 +48,8 @@ pub fn kreuzberg_extract_file_async(
 
     let extract_tables = should_extract_tables(&config_json)?;
 
-    let slot = Arc::new(Mutex::new(DeferredInner::Single(None)));
-    let slot_clone = Arc::clone(&slot);
+    let shared = DeferredShared::new_single();
+    let shared_clone = Arc::clone(&shared);
 
     worker_runtime()?.spawn(async move {
         let result = kreuzberg::extract_file(&path, mime_type.as_deref(), &rust_config)
@@ -58,10 +57,11 @@ pub fn kreuzberg_extract_file_async(
             .map_err(|e| e.to_string())
             .map(Arc::new);
 
-        *slot_clone.lock() = DeferredInner::Single(Some(result));
+        *shared_clone.inner.lock() = DeferredInner::Single(Some(result));
+        shared_clone.ready.notify_all();
     });
 
-    Ok(DeferredResult::new_single(slot, extract_tables))
+    Ok(DeferredResult::new_single(shared, extract_tables))
 }
 
 /// Extract content from bytes asynchronously.
@@ -100,8 +100,8 @@ pub fn kreuzberg_extract_bytes_async(
     let bytes: &[u8] = data.as_ref();
     let data_owned: Vec<u8> = bytes.to_vec();
 
-    let slot = Arc::new(Mutex::new(DeferredInner::Single(None)));
-    let slot_clone = Arc::clone(&slot);
+    let shared = DeferredShared::new_single();
+    let shared_clone = Arc::clone(&shared);
 
     worker_runtime()?.spawn(async move {
         let result = kreuzberg::extract_bytes(&data_owned, &mime_type, &rust_config)
@@ -109,10 +109,11 @@ pub fn kreuzberg_extract_bytes_async(
             .map_err(|e| e.to_string())
             .map(Arc::new);
 
-        *slot_clone.lock() = DeferredInner::Single(Some(result));
+        *shared_clone.inner.lock() = DeferredInner::Single(Some(result));
+        shared_clone.ready.notify_all();
     });
 
-    Ok(DeferredResult::new_single(slot, extract_tables))
+    Ok(DeferredResult::new_single(shared, extract_tables))
 }
 
 /// Batch extract content from multiple files asynchronously.
@@ -175,8 +176,8 @@ pub fn kreuzberg_batch_extract_files_async(
         None => paths.into_iter().map(|p| (std::path::PathBuf::from(p), None)).collect(),
     };
 
-    let slot = Arc::new(Mutex::new(DeferredInner::Batch(None)));
-    let slot_clone = Arc::clone(&slot);
+    let shared = DeferredShared::new_batch();
+    let shared_clone = Arc::clone(&shared);
 
     worker_runtime()?.spawn(async move {
         let result = kreuzberg::batch_extract_file(items, &rust_config)
@@ -184,10 +185,11 @@ pub fn kreuzberg_batch_extract_files_async(
             .map_err(|e| e.to_string())
             .map(|results| results.into_iter().map(Arc::new).collect());
 
-        *slot_clone.lock() = DeferredInner::Batch(Some(result));
+        *shared_clone.inner.lock() = DeferredInner::Batch(Some(result));
+        shared_clone.ready.notify_all();
     });
 
-    Ok(DeferredResult::new_batch(slot, extract_tables))
+    Ok(DeferredResult::new_batch(shared, extract_tables))
 }
 
 /// Batch extract content from multiple byte arrays asynchronously.
@@ -275,8 +277,8 @@ pub fn kreuzberg_batch_extract_bytes_async(
             .collect(),
     };
 
-    let slot = Arc::new(Mutex::new(DeferredInner::Batch(None)));
-    let slot_clone = Arc::clone(&slot);
+    let shared = DeferredShared::new_batch();
+    let shared_clone = Arc::clone(&shared);
 
     worker_runtime()?.spawn(async move {
         let result = kreuzberg::batch_extract_bytes(items, &rust_config)
@@ -284,10 +286,11 @@ pub fn kreuzberg_batch_extract_bytes_async(
             .map_err(|e| e.to_string())
             .map(|results| results.into_iter().map(Arc::new).collect());
 
-        *slot_clone.lock() = DeferredInner::Batch(Some(result));
+        *shared_clone.inner.lock() = DeferredInner::Batch(Some(result));
+        shared_clone.ready.notify_all();
     });
 
-    Ok(DeferredResult::new_batch(slot, extract_tables))
+    Ok(DeferredResult::new_batch(shared, extract_tables))
 }
 
 /// Returns all function builders for the async extraction module.

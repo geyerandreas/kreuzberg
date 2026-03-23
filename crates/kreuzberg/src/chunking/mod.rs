@@ -100,9 +100,7 @@ pub fn ensure_initialized() -> Result<()> {
 /// Explicit calling is optional.
 pub fn register_chunking_processor() -> Result<()> {
     let registry = crate::plugins::registry::get_post_processor_registry();
-    let mut registry = registry
-        .write()
-        .map_err(|e| crate::KreuzbergError::Other(format!("Post-processor registry lock poisoned: {}", e)))?;
+    let mut registry = registry.write();
 
     registry.register(Arc::new(ChunkingProcessor), 50)?;
 

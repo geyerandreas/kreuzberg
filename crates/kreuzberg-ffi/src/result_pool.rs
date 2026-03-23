@@ -508,6 +508,20 @@ pub unsafe extern "C" fn kreuzberg_extract_file_into_pool_view(
     create_result_view(unsafe { &*result_ptr })
 }
 
+/// Returns a reference to the shared Tokio runtime for FFI calls.
+///
+/// Initialised once on first use; reused for all subsequent FFI invocations to
+/// avoid the overhead of creating a new runtime on every call.
+fn get_ffi_runtime() -> &'static tokio::runtime::Runtime {
+    static RUNTIME: std::sync::OnceLock<tokio::runtime::Runtime> = std::sync::OnceLock::new();
+    RUNTIME.get_or_init(|| {
+        tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("Failed to create FFI Tokio runtime")
+    })
+}
+
 /// Internal extraction function.
 fn extract_file_internal(
     file_path: &str,
@@ -519,7 +533,7 @@ fn extract_file_internal(
         return Err(format!("File not found: {}", file_path));
     }
 
-    let rt = tokio::runtime::Runtime::new().map_err(|e| format!("Failed to create runtime: {}", e))?;
+    let rt = get_ffi_runtime();
 
     rt.block_on(async {
         kreuzberg::core::extractor::extract_file(path, None, config)

@@ -64,9 +64,7 @@ pub fn register_validator(validator: Arc<dyn Validator>) -> crate::Result<()> {
     use crate::plugins::registry::get_validator_registry;
 
     let registry = get_validator_registry();
-    let mut registry = registry
-        .write()
-        .expect("~keep Failed to acquire write lock on validator registry"); // ~keep
+    let mut registry = registry.write();
 
     registry.register(validator)
 }
@@ -98,9 +96,7 @@ pub fn unregister_validator(name: &str) -> crate::Result<()> {
     use crate::plugins::registry::get_validator_registry;
 
     let registry = get_validator_registry();
-    let mut registry = registry
-        .write()
-        .expect("~keep Failed to acquire write lock on validator registry"); // ~keep
+    let mut registry = registry.write();
 
     registry.remove(name)
 }
@@ -130,9 +126,7 @@ pub fn list_validators() -> crate::Result<Vec<String>> {
     use crate::plugins::registry::get_validator_registry;
 
     let registry = get_validator_registry();
-    let registry = registry
-        .read()
-        .expect("~keep Failed to acquire read lock on validator registry"); // ~keep
+    let registry = registry.read();
 
     Ok(registry.list())
 }
@@ -160,9 +154,7 @@ pub fn clear_validators() -> crate::Result<()> {
     use crate::plugins::registry::get_validator_registry;
 
     let registry = get_validator_registry();
-    let mut registry = registry
-        .write()
-        .expect("~keep Failed to acquire write lock on validator registry"); // ~keep
+    let mut registry = registry.write();
 
     registry.shutdown_all()
 }
