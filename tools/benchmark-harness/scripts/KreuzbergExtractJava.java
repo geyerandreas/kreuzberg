@@ -214,7 +214,9 @@ public final class KreuzbergExtractJava {
             } else {
                 System.out.print("[");
                 for (int i = 0; i < results.size(); i++) {
-                    if (i > 0) { System.out.print(","); }
+                    if (i > 0) {
+                        System.out.print(",");
+                    }
                     System.out.print(toJsonWithBatch(results.get(i), perFileMs, totalMs, ocrEnabled));
                 }
                 System.out.print("]");

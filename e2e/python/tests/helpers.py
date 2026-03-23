@@ -288,6 +288,34 @@ def _get_heading_context(chunk: Any) -> Any:
     return metadata.get("heading_context") if isinstance(metadata, dict) else getattr(metadata, "heading_context", None)
 
 
+def _assert_chunks_content(chunks: Any) -> None:
+    for i, chunk in enumerate(chunks):
+        if not getattr(chunk, "content", None):
+            pytest.fail(f"Chunk {i} has no content")
+
+
+def _assert_chunks_embedding(chunks: Any) -> None:
+    for i, chunk in enumerate(chunks):
+        if not getattr(chunk, "embedding", None):
+            pytest.fail(f"Chunk {i} has no embedding")
+
+
+def _assert_chunks_heading_context(chunks: Any, expected: bool) -> None:
+    for i, chunk in enumerate(chunks):
+        hc = _get_heading_context(chunk)
+        if expected and hc is None:
+            pytest.fail(f"Chunk {i} has no heading_context")
+        if not expected and hc is not None:
+            pytest.fail(f"Chunk {i} should have no heading_context")
+
+
+def _assert_chunks_heading_prefix(chunks: Any) -> None:
+    for i, chunk in enumerate(chunks):
+        content = getattr(chunk, "content", None)
+        if not isinstance(content, str) or content[0:1] != chr(35):
+            pytest.fail(f"Chunk {i} content does not start with a heading")
+
+
 def assert_chunks(
     result: Any,
     min_count: int | None = None,
@@ -306,27 +334,13 @@ def assert_chunks(
     if max_count is not None and count > max_count:
         pytest.fail(f"Expected at most {max_count} chunks, found {count}")
     if each_has_content:
-        for i, chunk in enumerate(chunks):
-            if not getattr(chunk, "content", None):
-                pytest.fail(f"Chunk {i} has no content")
+        _assert_chunks_content(chunks)
     if each_has_embedding:
-        for i, chunk in enumerate(chunks):
-            if not getattr(chunk, "embedding", None):
-                pytest.fail(f"Chunk {i} has no embedding")
+        _assert_chunks_embedding(chunks)
     if each_has_heading_context is not None:
-        for i, chunk in enumerate(chunks):
-            hc = _get_heading_context(chunk)
-            if each_has_heading_context and hc is None:
-                pytest.fail(f"Chunk {i} has no heading_context")
-            if not each_has_heading_context and hc is not None:
-                pytest.fail(f"Chunk {i} should have no heading_context")
+        _assert_chunks_heading_context(chunks, each_has_heading_context)
     if content_starts_with_heading:
-        for i, chunk in enumerate(chunks):
-            if _get_heading_context(chunk) is None:
-                continue
-            content = getattr(chunk, "content", None)
-            if not isinstance(content, str) or content[0:1] != "#":
-                pytest.fail(f"Chunk {i} content does not start with a heading")
+        _assert_chunks_heading_prefix(chunks)
 
 
 def assert_images(

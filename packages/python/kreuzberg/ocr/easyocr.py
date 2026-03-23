@@ -302,6 +302,7 @@ class EasyOCRBackend:
             raise RuntimeError(msg)
 
         from pathlib import Path as PathLib  # noqa: PLC0415
+
         suffix = PathLib(path).suffix.lower()
 
         if suffix == ".pdf":
@@ -310,6 +311,7 @@ class EasyOCRBackend:
         # Fallback for image files (including multi-page TIFFs)
         try:
             from PIL import Image, ImageSequence  # noqa: PLC0415
+
             with Image.open(path) as img:
                 pages = []
                 for page in ImageSequence.Iterator(img):
@@ -327,6 +329,7 @@ class EasyOCRBackend:
         try:
             # Try pdf2image first
             from pdf2image import convert_from_path  # noqa: PLC0415
+
             images = convert_from_path(path)
             pages = [self._process_pil_image(img, language) for img in images]
             return self._aggregate_pages(pages)
@@ -334,12 +337,14 @@ class EasyOCRBackend:
             try:
                 # Try pymupdf (fitz)
                 import fitz  # noqa: PLC0415
+
                 doc = fitz.open(path)
                 pages = []
                 for page_num in range(len(doc)):
                     page = doc.load_page(page_num)
                     pix = page.get_pixmap()
                     from PIL import Image as PILImage  # noqa: PLC0415
+
                     img = PILImage.frombytes("RGB", [pix.width, pix.height], pix.samples)
                     pages.append(self._process_pil_image(img, language))
                 doc.close()
@@ -348,12 +353,13 @@ class EasyOCRBackend:
                 msg = "PDF processing requires 'pdf2image' or 'pymupdf'. Install with: pip install pdf2image"
                 raise OCRError(msg) from e
 
-    def _process_pil_image(self, image: Any, language: str) -> dict[str, Any]:
+    def _process_pil_image(self, image: Any, language: str) -> dict[str, Any]:  # noqa: ARG002
         """Process a PIL Image object."""
         import numpy as np  # noqa: PLC0415  # type: ignore[import-not-found]
+
         width, height = image.size
         image_array = np.array(image.convert("RGB"))
-        result = self._reader.readtext(image_array, beamWidth=self.beam_width)  # type: ignore[unreachable]
+        result = self._reader.readtext(image_array, beamWidth=self.beam_width)  # type: ignore[union-attr]
         content, confidence, text_regions = self._process_easyocr_result(result)
         return {
             "content": content,

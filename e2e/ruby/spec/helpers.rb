@@ -241,12 +241,8 @@ module E2ERuby
       elsif each_has_heading_context == false
         chunks.each { |chunk| expect(chunk.metadata&.heading_context).to be_nil }
       end
-      if content_starts_with_heading == true
-        chunks.each do |chunk|
-          next if chunk.metadata&.heading_context.nil?
-          expect(chunk.content).to start_with('#')
-        end
-      end
+      return unless content_starts_with_heading == true
+      chunks.each { |chunk| expect(chunk.content).to start_with('#') }
     end
 
     def self.assert_images(result, min_count: nil, max_count: nil, formats_include: nil)

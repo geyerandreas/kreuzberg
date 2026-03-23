@@ -220,7 +220,7 @@ namespace Kreuzberg.E2E.Contract
             var result = KreuzbergClient.ExtractFileSync(documentPath, config);
             TestHelpers.AssertExpectedMime(result, new[] { "application/pdf" });
             TestHelpers.AssertMinContentLength(result, 10);
-            TestHelpers.AssertChunks(result, 1, null, true, null, null);
+            TestHelpers.AssertChunks(result, 1, null, true, null, null, null);
         }
 
         [SkippableFact]
@@ -234,7 +234,7 @@ namespace Kreuzberg.E2E.Contract
 
             var result = KreuzbergClient.ExtractFileSync(documentPath, config);
             TestHelpers.AssertMinContentLength(result, 10);
-            TestHelpers.AssertChunks(result, 2, null, true, null, true);
+            TestHelpers.AssertChunks(result, 2, null, true, null, true, null);
         }
 
         [SkippableFact]
@@ -249,7 +249,7 @@ namespace Kreuzberg.E2E.Contract
             var result = KreuzbergClient.ExtractFileSync(documentPath, config);
             TestHelpers.AssertExpectedMime(result, new[] { "application/pdf" });
             TestHelpers.AssertMinContentLength(result, 10);
-            TestHelpers.AssertChunks(result, 1, null, true, null, null);
+            TestHelpers.AssertChunks(result, 1, null, true, null, null, null);
         }
 
         [SkippableFact]
@@ -263,7 +263,21 @@ namespace Kreuzberg.E2E.Contract
 
             var result = KreuzbergClient.ExtractFileSync(documentPath, config);
             TestHelpers.AssertMinContentLength(result, 10);
-            TestHelpers.AssertChunks(result, 2, null, true, null, false);
+            TestHelpers.AssertChunks(result, 2, null, true, null, false, null);
+        }
+
+        [SkippableFact]
+        public void ConfigChunkingPrependHeadingContext()
+        {
+            TestHelpers.SkipIfFeatureUnavailable("chunking");
+            TestHelpers.SkipIfLegacyOfficeDisabled("markdown/extraction_test.md");
+            TestHelpers.SkipIfOfficeTestOnWindows("markdown/extraction_test.md");
+            var documentPath = TestHelpers.EnsureDocument("markdown/extraction_test.md", true);
+            var config = TestHelpers.BuildConfig("{\"chunking\":{\"chunker_type\":\"markdown\",\"max_chars\":300,\"max_overlap\":50,\"prepend_heading_context\":true}}");
+
+            var result = KreuzbergClient.ExtractFileSync(documentPath, config);
+            TestHelpers.AssertMinContentLength(result, 10);
+            TestHelpers.AssertChunks(result, 2, null, true, null, true, true);
         }
 
         [SkippableFact]
@@ -278,7 +292,7 @@ namespace Kreuzberg.E2E.Contract
             var result = KreuzbergClient.ExtractFileSync(documentPath, config);
             TestHelpers.AssertExpectedMime(result, new[] { "application/pdf" });
             TestHelpers.AssertMinContentLength(result, 10);
-            TestHelpers.AssertChunks(result, 2, null, true, null, null);
+            TestHelpers.AssertChunks(result, 2, null, true, null, null, null);
         }
 
         [SkippableFact]
@@ -292,7 +306,7 @@ namespace Kreuzberg.E2E.Contract
             var result = KreuzbergClient.ExtractFileSync(documentPath, config);
             TestHelpers.AssertExpectedMime(result, new[] { "application/pdf" });
             TestHelpers.AssertMinContentLength(result, 10);
-            TestHelpers.AssertChunks(result, 1, null, true, null, null);
+            TestHelpers.AssertChunks(result, 1, null, true, null, null, null);
         }
 
         [SkippableFact]
@@ -306,7 +320,7 @@ namespace Kreuzberg.E2E.Contract
 
             var result = KreuzbergClient.ExtractFileSync(documentPath, config);
             TestHelpers.AssertMinContentLength(result, 10);
-            TestHelpers.AssertChunks(result, 2, null, true, null, null);
+            TestHelpers.AssertChunks(result, 2, null, true, null, null, null);
         }
 
         [SkippableFact]

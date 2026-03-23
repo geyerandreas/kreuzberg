@@ -1616,8 +1616,7 @@ fn render_assertions(assertions: &Assertions) -> String {
             .unwrap_or_else(|| "null".to_string());
         buffer.push_str(&format!(
             "                E2EHelpers.Assertions.assertChunks(result, {}, {}, {}, {}, {}, {});\n",
-            min_literal, max_literal, has_content, has_embedding, has_heading_context,
-            content_starts_with_heading
+            min_literal, max_literal, has_content, has_embedding, has_heading_context, content_starts_with_heading
         ));
     }
 

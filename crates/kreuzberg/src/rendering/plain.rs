@@ -47,30 +47,25 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String) {
         | NodeContent::Footnote { text } => {
             out.push_str(text);
             out.push_str("\n\n");
-            return;
         }
         NodeContent::ListItem { text } => {
             out.push_str(text);
             out.push('\n');
-            return;
         }
         NodeContent::List { .. } => {
             for child_idx in &node.children {
                 render_node(doc, *child_idx, out);
             }
             out.push('\n');
-            return;
         }
         NodeContent::Table { grid } => {
             render_table_plain(out, grid);
             out.push('\n');
-            return;
         }
         NodeContent::Image { description, .. } => {
             if let Some(desc) = description {
                 out.push_str(&format!("[Image: {}]\n\n", desc));
             }
-            return;
         }
         NodeContent::Code { text, .. } => {
             out.push_str(text);
@@ -78,18 +73,15 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String) {
                 out.push('\n');
             }
             out.push('\n');
-            return;
         }
         NodeContent::Quote => {
             for child_idx in &node.children {
                 render_node(doc, *child_idx, out);
             }
-            return;
         }
         NodeContent::Formula { text } => {
             out.push_str(text);
             out.push_str("\n\n");
-            return;
         }
         NodeContent::Group { heading_text, .. } => {
             // If the group has heading_text but no Heading child, render it as
@@ -107,11 +99,9 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String) {
             for child_idx in &node.children {
                 render_node(doc, *child_idx, out);
             }
-            return;
         }
         NodeContent::PageBreak => {
             out.push('\n');
-            return;
         }
         NodeContent::Slide { title, .. } => {
             if let Some(t) = title {
@@ -121,25 +111,21 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String) {
             for child_idx in &node.children {
                 render_node(doc, *child_idx, out);
             }
-            return;
         }
         NodeContent::DefinitionList => {
             for child_idx in &node.children {
                 render_node(doc, *child_idx, out);
             }
-            return;
         }
         NodeContent::DefinitionItem { term, definition } => {
             out.push_str(term);
             out.push_str(": ");
             out.push_str(definition);
             out.push_str("\n\n");
-            return;
         }
         NodeContent::Citation { text, .. } => {
             out.push_str(text);
             out.push_str("\n\n");
-            return;
         }
         NodeContent::Admonition { kind, title } => {
             if let Some(t) = title {
@@ -151,7 +137,6 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String) {
             for child_idx in &node.children {
                 render_node(doc, *child_idx, out);
             }
-            return;
         }
         NodeContent::RawBlock { content, .. } => {
             out.push_str(content);
@@ -159,7 +144,6 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String) {
                 out.push('\n');
             }
             out.push('\n');
-            return;
         }
         NodeContent::MetadataBlock { entries } => {
             for (key, value) in entries {
@@ -169,7 +153,6 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String) {
                 out.push('\n');
             }
             out.push('\n');
-            return;
         }
     }
 }

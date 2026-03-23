@@ -3,7 +3,7 @@
 /// Consolidated from hwpers parser/record.rs, parser/header.rs, and
 /// parser/body_text.rs.
 use super::error::{HwpError, Result};
-use super::model::{Paragraph, ParaText, Section};
+use super::model::{ParaText, Paragraph, Section};
 use super::reader::{StreamReader, decompress_stream};
 
 // ---------------------------------------------------------------------------
@@ -70,9 +70,7 @@ pub struct Record {
 impl Record {
     pub fn parse(reader: &mut StreamReader) -> Result<Self> {
         if reader.remaining() < 4 {
-            return Err(HwpError::ParseError(
-                "Not enough data for record header".to_string(),
-            ));
+            return Err(HwpError::ParseError("Not enough data for record header".to_string()));
         }
 
         // Single 32-bit packed header:
@@ -123,11 +121,7 @@ const TAG_PARA_TEXT: u16 = 0x51;
 /// Returns the list of sections found. Each section contains zero or more
 /// paragraphs that carry the plain-text content.
 pub fn parse_body_text(data: Vec<u8>, is_compressed: bool) -> Result<Vec<Section>> {
-    let data = if is_compressed {
-        decompress_stream(&data)?
-    } else {
-        data
-    };
+    let data = if is_compressed { decompress_stream(&data)? } else { data };
 
     let mut reader = StreamReader::new(data);
     let mut sections: Vec<Section> = Vec::new();
@@ -149,10 +143,10 @@ pub fn parse_body_text(data: Vec<u8>, is_compressed: bool) -> Result<Vec<Section
                 current_paragraph = Some(Paragraph::default());
             }
             TAG_PARA_TEXT => {
-                if let Some(ref mut para) = current_paragraph {
-                    if let Ok(text) = ParaText::from_record(&record) {
-                        para.text = Some(text);
-                    }
+                if let Some(ref mut para) = current_paragraph
+                    && let Ok(text) = ParaText::from_record(&record)
+                {
+                    para.text = Some(text);
                 }
             }
             _ => {

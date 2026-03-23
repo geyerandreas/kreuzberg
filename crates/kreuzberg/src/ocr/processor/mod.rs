@@ -65,7 +65,11 @@ impl OcrProcessor {
         self.cache.get_stats()
     }
 
-    pub fn process_image_file(&self, file_path: &str, config: &TesseractConfig) -> Result<OcrExtractionResult, OcrError> {
+    pub fn process_image_file(
+        &self,
+        file_path: &str,
+        config: &TesseractConfig,
+    ) -> Result<OcrExtractionResult, OcrError> {
         execution::process_image_file_with_cache(file_path, config, &self.cache, None)
     }
 

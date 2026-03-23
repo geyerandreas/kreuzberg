@@ -266,7 +266,7 @@ def test_easyocr_process_document() -> None:
 
     backend = EasyOCRBackend(languages=["en"], use_gpu=False)
     backend._reader = Mock()
-    
+
     # Mock readtext to return a known mock result
     backend._reader.readtext.return_value = [
         ([[0, 0], [10, 0], [10, 10], [0, 10]], "Extracted Header", 0.99),

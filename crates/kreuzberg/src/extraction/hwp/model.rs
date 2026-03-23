@@ -22,11 +22,11 @@ impl HwpDocument {
         let mut out = String::new();
         for section in &self.sections {
             for para in &section.paragraphs {
-                if let Some(ref t) = para.text {
-                    if !t.content.is_empty() {
-                        out.push_str(&t.content);
-                        out.push('\n');
-                    }
+                if let Some(ref t) = para.text
+                    && !t.content.is_empty()
+                {
+                    out.push_str(&t.content);
+                    out.push('\n');
                 }
             }
         }
@@ -82,13 +82,13 @@ impl ParaText {
         let mut content = String::with_capacity(chars.len());
         for &ch in &chars {
             match ch {
-                0x0000 => {}                        // null — skip
-                0x0001..=0x0008 => {}               // other low controls — skip
-                0x0009 => content.push('\t'),        // horizontal tab
-                0x000A => content.push('\n'),        // line feed
-                0x000D => content.push('\r'),        // carriage return
+                0x0000 => {}                            // null — skip
+                0x0001..=0x0008 => {}                   // other low controls — skip
+                0x0009 => content.push('\t'),           // horizontal tab
+                0x000A => content.push('\n'),           // line feed
+                0x000D => content.push('\r'),           // carriage return
                 0x000B..=0x000C | 0x000E..=0x001F => {} // skip remaining C0 controls
-                0xF020..=0xF07F => {}               // HWP private-use controls — skip
+                0xF020..=0xF07F => {}                   // HWP private-use controls — skip
                 _ => {
                     if let Some(c) = char::from_u32(ch as u32) {
                         content.push(c);

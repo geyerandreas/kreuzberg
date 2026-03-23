@@ -752,7 +752,6 @@ impl PdfExtractor {
             annotations: None,
         })
     }
-
 }
 
 /// Loads a PDF from a byte slice, using the config's passwords if needed,

@@ -327,6 +327,22 @@ RSpec.describe 'contract fixtures' do
     end
   end
 
+  it 'config_chunking_prepend_heading_context' do
+    E2ERuby.skip_if_feature_unavailable('chunking')
+    E2ERuby.run_fixture(
+      'config_chunking_prepend_heading_context',
+      'markdown/extraction_test.md',
+      { chunking: { chunker_type: 'markdown', max_chars: 300, max_overlap: 50, prepend_heading_context: true } },
+      requirements: %w[chunking],
+      notes: nil,
+      skip_if_missing: true
+    ) do |result|
+      E2ERuby::Assertions.assert_min_content_length(result, 10)
+      E2ERuby::Assertions.assert_chunks(result, min_count: 2, each_has_content: true, each_has_heading_context: true,
+                                                content_starts_with_heading: true)
+    end
+  end
+
   it 'config_chunking_small' do
     E2ERuby.skip_if_feature_unavailable('chunking')
     E2ERuby.run_fixture(

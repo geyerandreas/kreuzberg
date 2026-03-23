@@ -578,7 +578,10 @@ mod tests {
             .chunks
             .iter()
             .any(|c| c.content.contains("# Title") || c.content.contains("## Section"));
-        assert!(has_section, "Expected at least one chunk with heading breadcrumb in content");
+        assert!(
+            has_section,
+            "Expected at least one chunk with heading breadcrumb in content"
+        );
     }
 
     #[test]

@@ -49,7 +49,6 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String, depth:
             out.push_str("# ");
             push_annotated(out, text, &node.annotations);
             out.push_str("\n\n");
-            return;
         }
         NodeContent::Heading { level, text } => {
             for _ in 0..*level {
@@ -58,48 +57,43 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String, depth:
             out.push(' ');
             push_annotated(out, text, &node.annotations);
             out.push_str("\n\n");
-            return;
         }
         NodeContent::Paragraph { text } => {
             push_annotated(out, text, &node.annotations);
             out.push_str("\n\n");
-            return;
         }
         NodeContent::List { .. } => {
             // Children are list items
             for (i, child_idx) in node.children.iter().enumerate() {
-                if let Some(child) = doc.get(*child_idx) {
-                    if let NodeContent::ListItem { text } = &child.content {
-                        let ordered = matches!(node.content, NodeContent::List { ordered: true });
-                        let indent = "  ".repeat(depth);
-                        if ordered {
-                            out.push_str(&format!("{}{}. ", indent, i + 1));
-                        } else {
-                            out.push_str(&format!("{}- ", indent));
-                        }
-                        push_annotated(out, text, &child.annotations);
-                        out.push('\n');
-                        // Render nested children of this list item (e.g. nested lists) with increased depth
-                        for grandchild_idx in &child.children {
-                            render_node(doc, *grandchild_idx, out, depth + 1);
-                        }
+                if let Some(child) = doc.get(*child_idx)
+                    && let NodeContent::ListItem { text } = &child.content
+                {
+                    let ordered = matches!(node.content, NodeContent::List { ordered: true });
+                    let indent = "  ".repeat(depth);
+                    if ordered {
+                        out.push_str(&format!("{}{}. ", indent, i + 1));
+                    } else {
+                        out.push_str(&format!("{}- ", indent));
+                    }
+                    push_annotated(out, text, &child.annotations);
+                    out.push('\n');
+                    // Render nested children of this list item (e.g. nested lists) with increased depth
+                    for grandchild_idx in &child.children {
+                        render_node(doc, *grandchild_idx, out, depth + 1);
                     }
                 }
             }
-            out.push('\n');
-            return; // Children already handled
+            out.push('\n'); // Children already handled
         }
         NodeContent::ListItem { text } => {
             // Standalone list item (shouldn't happen normally)
             out.push_str("- ");
             push_annotated(out, text, &node.annotations);
             out.push_str("\n\n");
-            return;
         }
         NodeContent::Table { grid } => {
             render_table_grid(out, grid);
             out.push('\n');
-            return;
         }
         NodeContent::Image { description, .. } => {
             out.push_str("![");
@@ -107,7 +101,6 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String, depth:
                 out.push_str(desc);
             }
             out.push_str("]()\n\n");
-            return;
         }
         NodeContent::Code { text, language } => {
             out.push_str("```");
@@ -120,7 +113,6 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String, depth:
                 out.push('\n');
             }
             out.push_str("```\n\n");
-            return;
         }
         NodeContent::Quote => {
             // Children carry the quoted content
@@ -133,8 +125,7 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String, depth:
                     out.push('\n');
                 }
             }
-            out.push('\n');
-            return; // Children already handled
+            out.push('\n'); // Children already handled
         }
         NodeContent::Formula { text } => {
             out.push_str("$$\n");
@@ -143,12 +134,10 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String, depth:
                 out.push('\n');
             }
             out.push_str("$$\n\n");
-            return;
         }
         NodeContent::Footnote { text } => {
             push_annotated(out, text, &node.annotations);
             out.push_str("\n\n");
-            return;
         }
         NodeContent::Group {
             heading_level,
@@ -161,25 +150,21 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String, depth:
                 doc.get(*child_idx)
                     .is_some_and(|c| matches!(c.content, NodeContent::Heading { .. }))
             });
-            if !has_heading_child {
-                if let (Some(level), Some(text)) = (heading_level, heading_text) {
-                    for _ in 0..*level {
-                        out.push('#');
-                    }
-                    out.push(' ');
-                    out.push_str(text);
-                    out.push_str("\n\n");
+            if !has_heading_child && let (Some(level), Some(text)) = (heading_level, heading_text) {
+                for _ in 0..*level {
+                    out.push('#');
                 }
+                out.push(' ');
+                out.push_str(text);
+                out.push_str("\n\n");
             }
             // Container — render children
             for child_idx in &node.children {
                 render_node(doc, *child_idx, out, depth);
-            }
-            return; // Children already handled
+            } // Children already handled
         }
         NodeContent::PageBreak => {
             out.push_str("\n<!-- page break -->\n\n");
-            return;
         }
         NodeContent::Slide { .. } => {
             out.push_str("\n---\n\n");
@@ -187,24 +172,20 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String, depth:
             for child_idx in &node.children {
                 render_node(doc, *child_idx, out, depth);
             }
-            return;
         }
         NodeContent::DefinitionList => {
             for child_idx in &node.children {
                 render_node(doc, *child_idx, out, depth);
             }
-            return;
         }
         NodeContent::DefinitionItem { term, definition } => {
             out.push_str(term);
             out.push_str("\n: ");
             out.push_str(definition);
             out.push_str("\n\n");
-            return;
         }
         NodeContent::Citation { key, text } => {
             out.push_str(&format!("[^{}]: {}\n\n", key, text));
-            return;
         }
         NodeContent::Admonition { kind, title } => {
             out.push_str("> **");
@@ -229,7 +210,6 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String, depth:
                 }
             }
             out.push('\n');
-            return;
         }
         NodeContent::RawBlock { content, .. } => {
             out.push_str(content);
@@ -237,14 +217,12 @@ fn render_node(doc: &DocumentStructure, idx: NodeIndex, out: &mut String, depth:
                 out.push('\n');
             }
             out.push('\n');
-            return;
         }
         NodeContent::MetadataBlock { entries } => {
             for (key, value) in entries {
                 out.push_str(&format!("**{}**: {}\n", key, value));
             }
             out.push('\n');
-            return;
         }
     }
 }

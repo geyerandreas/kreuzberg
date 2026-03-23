@@ -18,8 +18,7 @@ impl CfbReader<Cursor<Vec<u8>>> {
     /// Open a CFB compound file from raw bytes.
     pub fn from_bytes(bytes: &[u8]) -> Result<Self> {
         let cursor = Cursor::new(bytes.to_vec());
-        let cfb = CompoundFile::open(cursor)
-            .map_err(|e| HwpError::Cfb(format!("Failed to open CFB: {e}")))?;
+        let cfb = CompoundFile::open(cursor).map_err(|e| HwpError::Cfb(format!("Failed to open CFB: {e}")))?;
         Ok(Self { cfb })
     }
 }

@@ -280,9 +280,6 @@ func assertChunks(t *testing.T, result *kreuzberg.ExtractionResult, minCount, ma
 	}
 	if contentStartsWithHeading != nil && *contentStartsWithHeading {
 		for i, chunk := range result.Chunks {
-			if chunk.Metadata.HeadingContext == nil {
-				continue
-			}
 			if !strings.HasPrefix(chunk.Content, "#") {
 				t.Fatalf("chunk %d content does not start with '#'", i)
 			}

@@ -331,6 +331,25 @@ def test_config_chunking_no_headings() -> None:
     helpers.assert_chunks(result, min_count=2, each_has_content=True, each_has_heading_context=False)
 
 
+def test_config_chunking_prepend_heading_context() -> None:
+    """Tests markdown chunker prepends heading hierarchy to chunk content"""
+
+    document_path = helpers.resolve_document("markdown/extraction_test.md")
+    if not document_path.exists():
+        pytest.skip(f"Skipping config_chunking_prepend_heading_context: missing document at {document_path}")
+
+    config = helpers.build_config(
+        {"chunking": {"chunker_type": "markdown", "max_chars": 300, "max_overlap": 50, "prepend_heading_context": True}}
+    )
+
+    result = extract_file_sync(document_path, None, config)
+
+    helpers.assert_min_content_length(result, 10)
+    helpers.assert_chunks(
+        result, min_count=2, each_has_content=True, each_has_heading_context=True, content_starts_with_heading=True
+    )
+
+
 def test_config_chunking_small() -> None:
     """Tests chunking with very small chunk size produces more chunks"""
 

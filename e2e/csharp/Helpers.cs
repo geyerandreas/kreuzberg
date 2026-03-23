@@ -463,7 +463,8 @@ public static class TestHelpers
         int? maxCount,
         bool? eachHasContent,
         bool? eachHasEmbedding,
-        bool? eachHasHeadingContext = null)
+        bool? eachHasHeadingContext = null,
+        bool? contentStartsWithHeading = null)
     {
         var chunks = result.Chunks;
         if (chunks is null)
@@ -516,6 +517,17 @@ public static class TestHelpers
                 if (chunks[i].Metadata?.HeadingContext is not null)
                 {
                     throw new XunitException($"Chunk {i} should have no heading_context");
+                }
+            }
+        }
+        if (contentStartsWithHeading == true)
+        {
+            var headingChar = new string(new[] { (char)35 });
+            for (var i = 0; i < chunks.Count; i++)
+            {
+                if (string.IsNullOrEmpty(chunks[i].Content) || !chunks[i].Content!.StartsWith(headingChar))
+                {
+                    throw new XunitException($"Chunk {i} content does not start with a heading");
                 }
             }
         }

@@ -26,7 +26,6 @@ impl Drop for BackendRegistryGuard {
     }
 }
 
-
 struct MockOcrBackend {
     name: String,
     return_text: String,
@@ -261,7 +260,7 @@ impl Plugin for DocumentProcessingOcrBackend {
 impl OcrBackend for DocumentProcessingOcrBackend {
     async fn process_image(&self, _image_bytes: &[u8], _config: &OcrConfig) -> Result<ExtractionResult> {
         self.image_call_count.fetch_add(1, Ordering::SeqCst);
-        
+
         use std::borrow::Cow;
         Ok(ExtractionResult {
             content: "Processed via image extraction".to_string(),
@@ -269,14 +268,18 @@ impl OcrBackend for DocumentProcessingOcrBackend {
             ..Default::default()
         })
     }
-    
+
     fn supports_document_processing(&self) -> bool {
         self.supports_doc_override
     }
-    
-    async fn process_document(&self, _document_path: &std::path::Path, _config: &OcrConfig) -> Result<ExtractionResult> {
+
+    async fn process_document(
+        &self,
+        _document_path: &std::path::Path,
+        _config: &OcrConfig,
+    ) -> Result<ExtractionResult> {
         self.document_call_count.fetch_add(1, Ordering::SeqCst);
-        
+
         use std::borrow::Cow;
         Ok(ExtractionResult {
             content: "Processed natively as document".to_string(),
@@ -1012,9 +1015,9 @@ fn test_ocr_backend_document_processing_override() {
 fn test_ocr_backend_document_processing_missing_path_fallback() {
     let _guard = BackendRegistryGuard;
     let test_document = concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_documents/pdf/ocr_test.pdf");
-    
+
     let bytes = std::fs::read(test_document).expect("Failed to read test document");
-    
+
     let backend = std::sync::Arc::new(DocumentProcessingOcrBackend {
         name: "missing-path-ocr".to_string(),
         image_call_count: std::sync::atomic::AtomicUsize::new(0),

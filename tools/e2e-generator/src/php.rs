@@ -1168,7 +1168,11 @@ fn render_assertions(assertions: &Assertions) -> String {
         writeln!(
             buffer,
             "        Helpers::assertChunks($result, {}, {}, {}, {}, {}, {});",
-            min_count, max_count, each_has_content, each_has_embedding, each_has_heading_context,
+            min_count,
+            max_count,
+            each_has_content,
+            each_has_embedding,
+            each_has_heading_context,
             content_starts_with_heading
         )
         .unwrap();

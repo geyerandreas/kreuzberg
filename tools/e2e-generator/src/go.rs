@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 use std::fmt::Write as _;
 use std::fs;
 
-const GO_HELPERS_TEMPLATE: &str = r#"package e2e
+const GO_HELPERS_TEMPLATE: &str = r##"package e2e
 
 import (
 	"context"
@@ -657,7 +657,7 @@ func assertAnnotations(t *testing.T, result *kreuzberg.ExtractionResult, hasAnno
 		}
 	}
 }
-"#;
+"##;
 
 pub fn generate(fixtures: &[Fixture], output_root: &Utf8Path) -> Result<()> {
     let go_root = output_root.join("go");
@@ -958,7 +958,11 @@ fn render_assertions(assertions: &Assertions) -> String {
         writeln!(
             buffer,
             "    assertChunks(t, result, {}, {}, {}, {}, {}, {})",
-            min_count, max_count, each_has_content, each_has_embedding, each_has_heading_context,
+            min_count,
+            max_count,
+            each_has_content,
+            each_has_embedding,
+            each_has_heading_context,
             content_starts_with_heading
         )
         .unwrap();

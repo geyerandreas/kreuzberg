@@ -1304,7 +1304,11 @@ fn render_assertions(buffer: &mut String, assertions: &Assertions) -> Result<()>
         writeln!(
             buffer,
             "            TestHelpers.AssertChunks(result, {}, {}, {}, {}, {}, {});",
-            min_count, max_count, each_has_content, each_has_embedding, each_has_heading_context,
+            min_count,
+            max_count,
+            each_has_content,
+            each_has_embedding,
+            each_has_heading_context,
             content_starts_with_heading
         )?;
     }

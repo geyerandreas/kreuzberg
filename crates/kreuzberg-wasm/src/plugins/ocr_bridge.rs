@@ -164,7 +164,11 @@ impl OcrBackend for JsOcrBackendWrapper {
         })
     }
 
-    async fn process_image_file(&self, path: &std::path::Path, config: &OcrConfig) -> kreuzberg::Result<ExtractionResult> {
+    async fn process_image_file(
+        &self,
+        path: &std::path::Path,
+        config: &OcrConfig,
+    ) -> kreuzberg::Result<ExtractionResult> {
         use kreuzberg::core::io;
         let bytes = io::read_file_sync(path)?;
         self.process_image(&bytes, config).await
@@ -194,7 +198,11 @@ impl OcrBackend for JsOcrBackendWrapper {
         })
     }
 
-    async fn process_image_file(&self, _path: &std::path::Path, _config: &OcrConfig) -> kreuzberg::Result<ExtractionResult> {
+    async fn process_image_file(
+        &self,
+        _path: &std::path::Path,
+        _config: &OcrConfig,
+    ) -> kreuzberg::Result<ExtractionResult> {
         Ok(ExtractionResult {
             mime_type: Cow::Borrowed("image/jpeg"),
             ..Default::default()

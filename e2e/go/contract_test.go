@@ -181,6 +181,20 @@ func TestContractConfigChunkingNoHeadings(t *testing.T) {
 	assertChunks(t, result, intPtr(2), nil, boolPtr(true), nil, boolPtr(false), nil)
 }
 
+func TestContractConfigChunkingPrependHeadingContext(t *testing.T) {
+	skipIfFeatureUnavailable(t, "chunking")
+	result := runExtraction(t, "markdown/extraction_test.md", []byte(`{
+"chunking": {
+	"chunker_type": "markdown",
+	"max_chars": 300,
+	"max_overlap": 50,
+	"prepend_heading_context": true
+}
+}`))
+	assertMinContentLength(t, result, 10)
+	assertChunks(t, result, intPtr(2), nil, boolPtr(true), nil, boolPtr(true), boolPtr(true))
+}
+
 func TestContractConfigChunkingSmall(t *testing.T) {
 	skipIfFeatureUnavailable(t, "chunking")
 	result := runExtraction(t, "pdf/fake_memo.pdf", []byte(`{
