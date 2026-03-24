@@ -62,6 +62,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Backend registry robustness**: Hardened backend registry tests with drop guards and comprehensive mock coverage.
 
+### Added
+
+- **PST (Outlook Personal Folders) extraction**: New `PstExtractor` backed by the `outlook-pst` crate. Traverses the full IPM folder hierarchy iteratively, extracts subject, sender, recipients (TO/CC/BCC), body, and date from every message in the archive. Enabled via the existing `email` feature flag. MIME type: `application/vnd.ms-outlook-pst`.
+
 ### Fixed
 
 - **PDF image extraction panic on mismatched buffer lengths** (#552): Replaced `assert!` in `pdf/images.rs` with graceful error handling. Malformed PDF images with wrong buffer sizes are now skipped instead of panicking. Regression from v4.5.0.
