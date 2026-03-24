@@ -166,14 +166,14 @@ pub fn extract_gzip_text_content(bytes: &[u8], limits: &SecurityLimits) -> Resul
     Ok(contents)
 }
 
+/// Return type for `extract_gzip_with_bytes`: metadata, text content map, and raw file bytes map.
+type GzipWithBytesResult = (ArchiveMetadata, HashMap<String, String>, HashMap<String, Vec<u8>>);
+
 /// Extract metadata, text content, and raw file bytes from gzip in a single pass.
 ///
 /// Similar to `extract_gzip` but also returns the raw file bytes for recursive extraction.
 /// For TAR-within-GZIP, delegates to TAR file bytes extraction.
-pub fn extract_gzip_with_bytes(
-    bytes: &[u8],
-    limits: &SecurityLimits,
-) -> Result<(ArchiveMetadata, HashMap<String, String>, HashMap<String, Vec<u8>>)> {
+pub fn extract_gzip_with_bytes(bytes: &[u8], limits: &SecurityLimits) -> Result<GzipWithBytesResult> {
     let decompressed = decompress_gzip_limited(bytes, limits.max_archive_size as u64)?;
 
     // Check if the decompressed data is a TAR archive

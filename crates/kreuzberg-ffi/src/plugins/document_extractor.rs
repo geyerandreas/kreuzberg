@@ -302,14 +302,7 @@ pub unsafe extern "C" fn kreuzberg_register_document_extractor(
         ));
 
         let registry = kreuzberg::plugins::registry::get_document_extractor_registry();
-        let mut registry_guard = match registry.write() {
-            Ok(guard) => guard,
-            Err(e) => {
-                // ~keep: Lock poisoning indicates a panic in another thread holding the lock.
-                set_last_error(format!("Failed to acquire registry write lock: {}", e));
-                return false;
-            }
-        };
+        let mut registry_guard = registry.write();
 
         match registry_guard.register(extractor) {
             Ok(()) => true,
@@ -356,14 +349,7 @@ pub unsafe extern "C" fn kreuzberg_unregister_document_extractor(name: *const c_
         };
 
         let registry = kreuzberg::plugins::registry::get_document_extractor_registry();
-        let mut registry_guard = match registry.write() {
-            Ok(guard) => guard,
-            Err(e) => {
-                // ~keep: Lock poisoning indicates a panic in another thread holding the lock.
-                set_last_error(format!("Failed to acquire registry write lock: {}", e));
-                return false;
-            }
-        };
+        let mut registry_guard = registry.write();
 
         match registry_guard.remove(name_str) {
             Ok(()) => true,
@@ -387,14 +373,7 @@ pub unsafe extern "C" fn kreuzberg_list_document_extractors() -> *mut c_char {
         clear_last_error();
 
         let registry = kreuzberg::plugins::registry::get_document_extractor_registry();
-        let registry_guard = match registry.read() {
-            Ok(guard) => guard,
-            Err(e) => {
-                // ~keep: Lock poisoning indicates a panic in another thread holding the lock.
-                set_last_error(format!("Failed to acquire registry read lock: {}", e));
-                return ptr::null_mut();
-            }
-        };
+        let registry_guard = registry.read();
 
         match serde_json::to_string(&registry_guard.list()) {
             Ok(json) => match CString::new(json) {
@@ -434,14 +413,7 @@ pub unsafe extern "C" fn kreuzberg_clear_document_extractors() -> bool {
         clear_last_error();
 
         let registry = kreuzberg::plugins::registry::get_document_extractor_registry();
-        let mut registry_guard = match registry.write() {
-            Ok(guard) => guard,
-            Err(e) => {
-                // ~keep: Lock poisoning indicates a panic in another thread holding the lock.
-                set_last_error(format!("Failed to acquire registry write lock: {}", e));
-                return false;
-            }
-        };
+        let mut registry_guard = registry.write();
 
         *registry_guard = Default::default();
         true

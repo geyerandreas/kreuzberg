@@ -489,6 +489,7 @@ fn dict_to_extraction_result(_py: Python<'_>, dict: &Bound<'_, PyAny>) -> Result
         quality_score: None,
         processing_warnings: vec![],
         annotations: None,
+        children: None,
     })
 }
 
@@ -715,9 +716,7 @@ pub fn register_ocr_backend(py: Python<'_>, backend: Py<PyAny>) -> PyResult<()> 
 
     py.detach(|| {
         let registry = get_ocr_backend_registry();
-        let mut registry = registry.write().map_err(|e| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to acquire write lock on OCR registry: {}", e))
-        })?;
+        let mut registry = registry.write();
 
         registry.register(arc_backend).map_err(|e| {
             pyo3::exceptions::PyRuntimeError::new_err(format!(

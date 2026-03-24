@@ -147,6 +147,7 @@ impl RustOcrBackend for JsOcrBackend {
             quality_score: None,
             processing_warnings: vec![],
             annotations: None,
+            children: None,
         })
     }
 
@@ -266,12 +267,7 @@ pub fn register_ocr_backend(_env: Env, backend: Object) -> Result<()> {
 
     let arc_backend: Arc<dyn RustOcrBackend> = Arc::new(js_ocr_backend);
     let registry = get_ocr_backend_registry();
-    let mut registry = registry.write().map_err(|e| {
-        napi::Error::new(
-            napi::Status::GenericFailure,
-            format!("Failed to acquire write lock on OCR backend registry: {}", e),
-        )
-    })?;
+    let mut registry = registry.write();
 
     registry.register(arc_backend).map_err(|e| {
         napi::Error::new(

@@ -12,6 +12,18 @@ const QUALITY_VALIDATION_MARKER: &str = "quality_validation_test";
 const POSTPROCESSOR_VALIDATION_MARKER: &str = "postprocessor_validation_test";
 const ORDER_VALIDATION_MARKER: &str = "order_validation_test";
 
+/// Ensure the quality processor is registered and cache is fresh.
+/// Needed because other tests may call `shutdown_all()` on the registry,
+/// and the `OnceLock` in `initialize_features` prevents re-registration.
+#[cfg(feature = "quality")]
+fn ensure_quality_processor() {
+    let registry = crate::plugins::registry::get_post_processor_registry();
+    let mut reg = registry.write();
+    let _ = reg.register(std::sync::Arc::new(crate::text::QualityProcessor), 30);
+    drop(reg);
+    let _ = clear_processor_cache();
+}
+
 #[tokio::test]
 #[serial]
 async fn test_run_pipeline_basic() {
@@ -55,6 +67,7 @@ async fn test_run_pipeline_basic() {
 #[serial]
 #[cfg(feature = "quality")]
 async fn test_pipeline_with_quality_processing() {
+    ensure_quality_processor();
     let result = ExtractionResult {
         content: "This is a test document with some meaningful content.".to_string(),
         mime_type: Cow::Borrowed("text/plain"),
@@ -334,6 +347,8 @@ async fn test_pipeline_empty_content() {
 #[serial]
 #[cfg(feature = "chunking")]
 async fn test_pipeline_with_all_features() {
+    #[cfg(feature = "quality")]
+    ensure_quality_processor();
     let result = ExtractionResult {
         content: "This is a comprehensive test document. ".repeat(50),
         mime_type: Cow::Borrowed("text/plain"),
@@ -377,12 +392,10 @@ async fn test_pipeline_with_all_features() {
 async fn test_pipeline_with_keyword_extraction() {
     crate::plugins::registry::get_validator_registry()
         .write()
-        .unwrap()
         .shutdown_all()
         .unwrap();
     crate::plugins::registry::get_post_processor_registry()
         .write()
-        .unwrap()
         .shutdown_all()
         .unwrap();
 
@@ -486,12 +499,10 @@ async fn test_pipeline_without_keyword_config() {
 async fn test_pipeline_keyword_extraction_short_content() {
     crate::plugins::registry::get_validator_registry()
         .write()
-        .unwrap()
         .shutdown_all()
         .unwrap();
     crate::plugins::registry::get_post_processor_registry()
         .write()
-        .unwrap()
         .shutdown_all()
         .unwrap();
 
@@ -691,6 +702,7 @@ async fn test_postprocessor_runs_before_validator() {
 #[serial]
 #[cfg(feature = "quality")]
 async fn test_quality_processing_runs_before_validator() {
+    ensure_quality_processor();
     use crate::plugins::{Plugin, Validator};
     use async_trait::async_trait;
     use std::sync::Arc;

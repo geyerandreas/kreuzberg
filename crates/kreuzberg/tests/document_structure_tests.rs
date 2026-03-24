@@ -544,10 +544,6 @@ async fn test_document_structure_markdown() {
     assert!(result.document.is_some(), "document should be populated");
     let doc = result.document.as_ref().unwrap();
 
-    // When the `office` feature is enabled, the EnhancedMarkdownExtractor takes
-    // priority and delegates document structure to the pipeline fallback, which
-    // does not set source_format. The basic MarkdownExtractor (always registered)
-    // sets source_format = "markdown" natively.
     if doc.source_format.is_some() {
         assert_eq!(
             doc.source_format.as_deref(),
@@ -2148,7 +2144,7 @@ async fn test_orgmode_todo_keywords_and_tags() {
     let group = group.unwrap();
     let attrs = group.attributes.as_ref().expect("heading group should have attributes");
     assert_eq!(attrs.get("todo").map(|s| s.as_str()), Some("TODO"));
-    assert!(attrs.get("tags").map_or(false, |t| t.contains("shopping")));
+    assert!(attrs.get("tags").is_some_and(|t| t.contains("shopping")));
 }
 
 #[cfg(feature = "office")]
@@ -2861,18 +2857,18 @@ async fn test_pptx_strikethrough_annotation() {
         true,
     );
 
-    if let Ok(result) = result {
-        if let Some(ref doc) = result.document {
-            let has_strikethrough = doc.nodes.iter().any(|n| {
-                n.annotations
-                    .iter()
-                    .any(|a| matches!(a.kind, AnnotationKind::Strikethrough))
-            });
-            assert!(
-                has_strikethrough,
-                "should find strikethrough annotation on text with strike='sngStrike'"
-            );
-        }
+    if let Ok(result) = result
+        && let Some(ref doc) = result.document
+    {
+        let has_strikethrough = doc.nodes.iter().any(|n| {
+            n.annotations
+                .iter()
+                .any(|a| matches!(a.kind, AnnotationKind::Strikethrough))
+        });
+        assert!(
+            has_strikethrough,
+            "should find strikethrough annotation on text with strike='sngStrike'"
+        );
     }
 }
 
@@ -3843,7 +3839,9 @@ mod archive_recursive {
         ]);
 
         let config = ExtractionConfig::default();
-        let result = extract_bytes(&zip_bytes, "application/zip", &config).await.expect("ZIP extraction should succeed");
+        let result = extract_bytes(&zip_bytes, "application/zip", &config)
+            .await
+            .expect("ZIP extraction should succeed");
 
         let children = result.children.expect("children should be populated");
         assert_eq!(children.len(), 2, "should have 2 child entries");
@@ -3891,7 +3889,9 @@ mod archive_recursive {
         let zip_bytes = create_test_zip(&[("readme.md", markdown_content)]);
 
         let config = ExtractionConfig::default();
-        let result = extract_bytes(&zip_bytes, "application/zip", &config).await.expect("ZIP extraction should succeed");
+        let result = extract_bytes(&zip_bytes, "application/zip", &config)
+            .await
+            .expect("ZIP extraction should succeed");
 
         let children = result.children.expect("children should be populated");
         assert_eq!(children.len(), 1, "should have 1 child entry");

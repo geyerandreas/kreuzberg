@@ -95,35 +95,35 @@ fn extract_para_with_annotations_jats(
                 }
 
                 // Check if this closes an inline element on our stack
-                if let Some(&(kind, open_depth, start, ref href)) = inline_stack.last() {
-                    if open_depth == depth {
-                        let end = text.len() as u32;
-                        // Skip any leading whitespace separator that was prepended
-                        let actual_start = if (start as usize) < text.len() {
-                            let span = &text[start as usize..end as usize];
-                            let trimmed = span.trim_start();
-                            end - trimmed.len() as u32
-                        } else {
-                            start
+                if let Some(&(kind, open_depth, start, ref href)) = inline_stack.last()
+                    && open_depth == depth
+                {
+                    let end = text.len() as u32;
+                    // Skip any leading whitespace separator that was prepended
+                    let actual_start = if (start as usize) < text.len() {
+                        let span = &text[start as usize..end as usize];
+                        let trimmed = span.trim_start();
+                        end - trimmed.len() as u32
+                    } else {
+                        start
+                    };
+                    if end > actual_start {
+                        let href_clone = href.clone();
+                        let annotation = match kind {
+                            "bold" => builder::bold(actual_start, end),
+                            "italic" => builder::italic(actual_start, end),
+                            "underline" => builder::underline(actual_start, end),
+                            "subscript" => builder::subscript(actual_start, end),
+                            "superscript" => builder::superscript(actual_start, end),
+                            "link" => {
+                                let url = href_clone.as_deref().unwrap_or("");
+                                builder::link(actual_start, end, url, None)
+                            }
+                            _ => unreachable!(),
                         };
-                        if end > actual_start {
-                            let href_clone = href.clone();
-                            let annotation = match kind {
-                                "bold" => builder::bold(actual_start, end),
-                                "italic" => builder::italic(actual_start, end),
-                                "underline" => builder::underline(actual_start, end),
-                                "subscript" => builder::subscript(actual_start, end),
-                                "superscript" => builder::superscript(actual_start, end),
-                                "link" => {
-                                    let url = href_clone.as_deref().unwrap_or("");
-                                    builder::link(actual_start, end, url, None)
-                                }
-                                _ => unreachable!(),
-                            };
-                            annotations.push(annotation);
-                        }
-                        inline_stack.pop();
+                        annotations.push(annotation);
                     }
+                    inline_stack.pop();
                 }
 
                 depth -= 1;
@@ -295,7 +295,7 @@ fn build_jats_document_structure(content: &str) -> crate::Result<crate::types::d
                     }
                     "table" if in_table => {
                         if !current_table.is_empty() {
-                            builder.push_table_simple(&current_table, None);
+                            builder.push_table_from_cells(&current_table, None);
                             current_table.clear();
                         }
                         in_table = false;

@@ -74,6 +74,7 @@ impl TypstExtractor {
 
         let lines: Vec<&str> = content.lines().collect();
         let mut line_idx = 0;
+        let image_re = Regex::new(r#"#image\("([^"]*)""#).ok();
 
         while line_idx < lines.len() {
             let trimmed = lines[line_idx].trim();
@@ -266,8 +267,8 @@ impl TypstExtractor {
             if trimmed.starts_with("#image(") {
                 Self::flush_paragraph(&mut paragraph_buf, &mut builder);
                 // Extract path from #image("path") or #image("path", ...)
-                let re = Regex::new(r#"#image\("([^"]*)""#).ok();
-                let description = re
+                let description = image_re
+                    .as_ref()
                     .and_then(|r| r.captures(trimmed))
                     .and_then(|c| c.get(1))
                     .map(|m| m.as_str());
@@ -298,15 +299,16 @@ impl TypstExtractor {
 
         while byte_pos < raw.len() {
             // Handle #link("url")[text]
-            if raw.as_bytes()[byte_pos] == b'#' && raw[byte_pos..].starts_with("#link(\"") {
-                if let Some((url, display, consumed)) = Self::parse_link_at(&raw[byte_pos..]) {
-                    let start = text.len() as u32;
-                    text.push_str(&display);
-                    let end = text.len() as u32;
-                    annotations.push(builder::link(start, end, &url, None));
-                    byte_pos += consumed;
-                    continue;
-                }
+            if raw.as_bytes()[byte_pos] == b'#'
+                && raw[byte_pos..].starts_with("#link(\"")
+                && let Some((url, display, consumed)) = Self::parse_link_at(&raw[byte_pos..])
+            {
+                let start = text.len() as u32;
+                text.push_str(&display);
+                let end = text.len() as u32;
+                annotations.push(builder::link(start, end, &url, None));
+                byte_pos += consumed;
+                continue;
             }
 
             // Handle #footnote[text] inline (emit text in brackets as-is with a
@@ -377,12 +379,7 @@ impl TypstExtractor {
     /// Find the byte index of a closing ASCII marker character starting from byte position `start`.
     fn find_closing_marker_byte(raw: &str, start: usize, marker: u8) -> Option<usize> {
         let bytes = raw.as_bytes();
-        for idx in start..bytes.len() {
-            if bytes[idx] == marker {
-                return Some(idx);
-            }
-        }
-        None
+        (start..bytes.len()).find(|&idx| bytes[idx] == marker)
     }
 
     /// Parse a `#link("url")[text]` pattern at the beginning of a string slice.
@@ -452,7 +449,7 @@ impl TypstExtractor {
         // Arrange cells into rows
         let effective_cols = if num_cols > 0 { num_cols } else { cells.len() };
         let rows: Vec<Vec<String>> = cells.chunks(effective_cols).map(|chunk| chunk.to_vec()).collect();
-        builder.push_table_simple(&rows, None);
+        builder.push_table_from_cells(&rows, None);
     }
 }
 

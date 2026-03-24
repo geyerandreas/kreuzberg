@@ -161,7 +161,7 @@ impl DocumentStructureBuilder {
     /// Push a table from a simple cell grid (`Vec<Vec<String>>`).
     ///
     /// Assumes the first row is the header row.
-    pub fn push_table_simple(&mut self, cells: &[Vec<String>], page: Option<u32>) -> NodeIndex {
+    pub fn push_table_from_cells(&mut self, cells: &[Vec<String>], page: Option<u32>) -> NodeIndex {
         let grid = cells_to_grid(cells);
         self.push_table(grid, page, None)
     }
@@ -662,7 +662,7 @@ mod tests {
     #[test]
     fn test_table_simple() {
         let mut b = DocumentStructureBuilder::new();
-        b.push_table_simple(
+        b.push_table_from_cells(
             &[
                 vec!["Name".to_string(), "Age".to_string()],
                 vec!["Alice".to_string(), "30".to_string()],

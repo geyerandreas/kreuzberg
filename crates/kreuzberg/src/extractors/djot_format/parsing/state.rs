@@ -4,7 +4,7 @@
 
 use crate::types::{Attributes, FormattedBlock, InlineElement, InlineType};
 
-/// Enhanced state tracking using a block stack for proper nesting.
+/// State tracking using a block stack for proper nesting.
 pub(super) struct ExtractionState {
     pub block_stack: Vec<FormattedBlock>,   // Stack for nested blocks
     pub inline_type_stack: Vec<InlineType>, // Stack for nested inline element types

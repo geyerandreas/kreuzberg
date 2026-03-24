@@ -427,19 +427,18 @@ impl FictionBookExtractor {
                 Ok(Event::Start(e)) => {
                     let name = e.name();
                     let tag = crate::utils::xml_tag_name(name.as_ref());
-                    if tag == "table" {
-                        if let Ok(cells) = Self::extract_table(&mut reader) {
-                            if !cells.is_empty() {
-                                let markdown = cells_to_markdown(&cells);
-                                tables.push(Table {
-                                    cells,
-                                    markdown,
-                                    page_number: table_index + 1,
-                                    bounding_box: None,
-                                });
-                                table_index += 1;
-                            }
-                        }
+                    if tag == "table"
+                        && let Ok(cells) = Self::extract_table(&mut reader)
+                        && !cells.is_empty()
+                    {
+                        let markdown = cells_to_markdown(&cells);
+                        tables.push(Table {
+                            cells,
+                            markdown,
+                            page_number: table_index + 1,
+                            bounding_box: None,
+                        });
+                        table_index += 1;
                     }
                 }
                 Ok(Event::Eof) => break,
@@ -645,6 +644,32 @@ impl FictionBookExtractor {
                             annotation_text.push(' ');
                         }
                         annotation_text.push_str(trimmed);
+                    }
+                }
+                // Self-closing tags (e.g. <sequence ... />) produce Event::Empty, not Event::Start
+                Ok(Event::Empty(e)) => {
+                    let name = e.name();
+                    let tag = crate::utils::xml_tag_name(name.as_ref());
+                    if tag == "sequence" && in_title_info {
+                        let mut seq_name = String::new();
+                        let mut seq_number = String::new();
+                        for attr in e.attributes().flatten() {
+                            let attr_name = String::from_utf8_lossy(attr.key.as_ref());
+                            let attr_value = String::from_utf8_lossy(attr.value.as_ref());
+                            if attr_name == "name" {
+                                seq_name = attr_value.to_string();
+                            } else if attr_name == "number" {
+                                seq_number = attr_value.to_string();
+                            }
+                        }
+                        if !seq_name.is_empty() {
+                            let entry = if seq_number.is_empty() {
+                                seq_name
+                            } else {
+                                format!("{} #{}", seq_name, seq_number)
+                            };
+                            sequences.push(entry);
+                        }
                     }
                 }
                 Ok(Event::Eof) => break,
@@ -1205,15 +1230,15 @@ impl FictionBookExtractor {
                             _ => {}
                         },
                         "table" => {
-                            if let Ok(table_cells) = Self::extract_table(reader) {
-                                if !table_cells.is_empty() {
-                                    if plain {
-                                        content.push_str(&cells_to_text(&table_cells));
-                                    } else {
-                                        content.push_str(&cells_to_markdown(&table_cells));
-                                    }
-                                    content.push_str("\n\n");
+                            if let Ok(table_cells) = Self::extract_table(reader)
+                                && !table_cells.is_empty()
+                            {
+                                if plain {
+                                    content.push_str(&cells_to_text(&table_cells));
+                                } else {
+                                    content.push_str(&cells_to_markdown(&table_cells));
                                 }
+                                content.push_str("\n\n");
                             }
                         }
                         "empty-line" => {

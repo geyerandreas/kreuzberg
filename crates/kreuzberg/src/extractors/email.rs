@@ -133,10 +133,10 @@ impl SyncExtractor for EmailExtractor {
                                 let list_idx = builder.push_list(*ordered, None);
                                 // Collect list item children from the HTML doc
                                 for &child_idx in &node.children {
-                                    if let Some(child) = html_doc.nodes.get(child_idx.0 as usize) {
-                                        if let crate::types::NodeContent::ListItem { text } = &child.content {
-                                            builder.push_list_item(list_idx, text, None);
-                                        }
+                                    if let Some(child) = html_doc.nodes.get(child_idx.0 as usize)
+                                        && let crate::types::NodeContent::ListItem { text } = &child.content
+                                    {
+                                        builder.push_list_item(list_idx, text, None);
                                     }
                                 }
                             }

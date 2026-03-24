@@ -979,10 +979,10 @@ fn extract_raw_headers(data: &[u8]) -> HashMap<String, String> {
     }
 
     // Flush last header
-    if let Some(key) = current_key {
-        if !current_value.is_empty() {
-            headers.insert(key.to_string(), current_value);
-        }
+    if let Some(key) = current_key
+        && !current_value.is_empty()
+    {
+        headers.insert(key.to_string(), current_value);
     }
 
     headers

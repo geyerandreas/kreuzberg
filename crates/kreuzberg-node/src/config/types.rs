@@ -1162,6 +1162,8 @@ pub struct JsExtractionConfig {
     pub cache_namespace: Option<String>,
     /// Per-request cache TTL in seconds (0 = skip cache)
     pub cache_ttl_secs: Option<u32>,
+    /// Maximum recursion depth for archive extraction (default: 3)
+    pub max_archive_depth: Option<u32>,
 }
 
 impl TryFrom<JsPageConfig> for kreuzberg::core::config::PageConfig {
@@ -1246,6 +1248,7 @@ impl TryFrom<JsExtractionConfig> for ExtractionConfig {
             concurrency: val.concurrency.map(Into::into),
             cache_namespace: val.cache_namespace,
             cache_ttl_secs: val.cache_ttl_secs.map(|v| v as u64),
+            max_archive_depth: val.max_archive_depth.map(|v| v as usize).unwrap_or(3),
         })
     }
 }
@@ -1419,6 +1422,7 @@ impl TryFrom<ExtractionConfig> for JsExtractionConfig {
             }),
             cache_namespace: val.cache_namespace,
             cache_ttl_secs: val.cache_ttl_secs.map(|v| v as u32),
+            max_archive_depth: Some(val.max_archive_depth as u32),
         })
     }
 }

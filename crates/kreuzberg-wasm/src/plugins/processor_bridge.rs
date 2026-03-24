@@ -217,7 +217,7 @@ pub fn register_post_processor(processor: JsValue) -> Result<(), JsValue> {
 
     let wrapper = JsPostProcessorWrapper::new(processor, name.clone(), stage);
     let registry = kreuzberg::plugins::registry::get_post_processor_registry();
-    let mut registry = acquire_write_lock(&registry, "POST_PROCESSORS").map_err(|e| JsValue::from_str(&e))?;
+    let mut registry = acquire_write_lock(&registry, "POST_PROCESSORS");
 
     registry
         .register(Arc::new(wrapper), 0)
@@ -242,7 +242,7 @@ pub fn register_post_processor(processor: JsValue) -> Result<(), JsValue> {
 #[wasm_bindgen]
 pub fn unregister_post_processor(name: String) -> Result<(), JsValue> {
     let registry = kreuzberg::plugins::registry::get_post_processor_registry();
-    let mut registry = acquire_write_lock(&registry, "POST_PROCESSORS").map_err(|e| JsValue::from_str(&e))?;
+    let mut registry = acquire_write_lock(&registry, "POST_PROCESSORS");
 
     registry
         .remove(&name)
@@ -263,7 +263,7 @@ pub fn unregister_post_processor(name: String) -> Result<(), JsValue> {
 #[wasm_bindgen]
 pub fn clear_post_processors() -> Result<(), JsValue> {
     let registry = kreuzberg::plugins::registry::get_post_processor_registry();
-    let mut registry = acquire_write_lock(&registry, "POST_PROCESSORS").map_err(|e| JsValue::from_str(&e))?;
+    let mut registry = acquire_write_lock(&registry, "POST_PROCESSORS");
 
     let names = registry.list();
     for name in names {
@@ -290,7 +290,7 @@ pub fn clear_post_processors() -> Result<(), JsValue> {
 #[wasm_bindgen]
 pub fn list_post_processors() -> Result<js_sys::Array, JsValue> {
     let registry = kreuzberg::plugins::registry::get_post_processor_registry();
-    let registry = acquire_read_lock(&registry, "POST_PROCESSORS").map_err(|e| JsValue::from_str(&e))?;
+    let registry = acquire_read_lock(&registry, "POST_PROCESSORS");
 
     let names = registry.list();
     let arr = js_sys::Array::new();

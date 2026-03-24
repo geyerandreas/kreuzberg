@@ -271,12 +271,12 @@ impl<'a, 'b> HtmlWalker<'a, 'b> {
             return;
         }
 
-        if let Some(ref mut fig) = self.figure {
-            if fig.in_caption {
-                let cap = fig.caption.get_or_insert_with(String::new);
-                cap.push_str(&decoded);
-                return;
-            }
+        if let Some(ref mut fig) = self.figure
+            && fig.in_caption
+        {
+            let cap = fig.caption.get_or_insert_with(String::new);
+            cap.push_str(&decoded);
+            return;
         }
 
         self.text_buf.push_str(&decoded);
@@ -681,7 +681,7 @@ impl<'a, 'b> HtmlWalker<'a, 'b> {
                 .iter()
                 .map(|r| r.iter().map(|c| c.text.clone()).collect())
                 .collect();
-            self.builder.push_table_simple(&simple, None);
+            self.builder.push_table_from_cells(&simple, None);
             return;
         }
 

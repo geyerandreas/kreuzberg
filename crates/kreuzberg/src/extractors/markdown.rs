@@ -1,4 +1,4 @@
-//! Enhanced Markdown extractor with YAML frontmatter support.
+//! Markdown extractor with YAML frontmatter support.
 //!
 //! This extractor provides:
 //! - Comprehensive markdown parsing using pulldown-cmark
@@ -11,32 +11,25 @@
 //! - Code block and link extraction
 //! - Data URI image extraction
 //!
-//! Requires the `office` feature (which includes `pulldown-cmark`).
-
-#[cfg(feature = "office")]
 use super::frontmatter_utils::{
     cells_to_markdown, extract_frontmatter, extract_metadata_from_yaml, extract_title_from_content,
 };
-#[cfg(feature = "office")]
 use crate::Result;
-#[cfg(feature = "office")]
 use crate::core::config::ExtractionConfig;
-#[cfg(feature = "office")]
 use crate::plugins::{DocumentExtractor, Plugin};
-#[cfg(feature = "office")]
 use crate::types::builder::DocumentStructureBuilder;
-#[cfg(feature = "office")]
 use crate::types::document_structure::DocumentStructure;
-#[cfg(feature = "office")]
 use crate::types::{ExtractionResult, Metadata, Table};
-#[cfg(feature = "office")]
 use async_trait::async_trait;
-#[cfg(feature = "office")]
 use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
-#[cfg(feature = "office")]
 use std::borrow::Cow;
 
-/// Enhanced Markdown extractor with metadata and table support.
+/// Annotation tracking entry: (kind_tag, byte_start, optional link data).
+///
+/// kind_tag: 0=bold, 1=italic, 2=strikethrough, 3=code, 4=link
+type AnnotationEntry = (u8, u32, Option<(String, Option<String>)>);
+
+/// Markdown extractor with metadata and table support.
 ///
 /// Parses markdown documents with YAML frontmatter, extracting:
 /// - Metadata from YAML frontmatter
@@ -44,10 +37,8 @@ use std::borrow::Cow;
 /// - Tables as structured data
 /// - Document structure (headings, links, code blocks)
 /// - Images from data URIs
-#[cfg(feature = "office")]
 pub struct MarkdownExtractor;
 
-#[cfg(feature = "office")]
 impl MarkdownExtractor {
     /// Create a new Markdown extractor.
     pub fn new() -> Self {
@@ -183,7 +174,7 @@ impl MarkdownExtractor {
         // Annotation tracking: stack of (annotation_kind_tag, byte_start) for the
         // active text buffer (paragraph_text when in_paragraph).
         // kind_tag: 0=bold, 1=italic, 2=strikethrough, 3=code, 4=link
-        let mut annotation_starts: Vec<(u8, u32, Option<(String, Option<String>)>)> = Vec::new();
+        let mut annotation_starts: Vec<AnnotationEntry> = Vec::new();
 
         /// Get the current length of the active text buffer as u32.
         fn text_offset(paragraph_text: &str, in_paragraph: bool) -> u32 {
@@ -256,16 +247,15 @@ impl MarkdownExtractor {
                     }
                 }
                 Event::End(TagEnd::Strong) => {
-                    if in_paragraph {
-                        if let Some((0, start, _)) = annotation_starts
+                    if in_paragraph
+                        && let Some((0, start, _)) = annotation_starts
                             .iter()
                             .rposition(|(k, _, _)| *k == 0)
-                            .and_then(|i| Some(annotation_starts.remove(i)))
-                        {
-                            let end = text_offset(&paragraph_text, in_paragraph);
-                            if start < end {
-                                paragraph_annotations.push(builder::bold(start, end));
-                            }
+                            .map(|i| annotation_starts.remove(i))
+                    {
+                        let end = text_offset(&paragraph_text, in_paragraph);
+                        if start < end {
+                            paragraph_annotations.push(builder::bold(start, end));
                         }
                     }
                 }
@@ -275,16 +265,15 @@ impl MarkdownExtractor {
                     }
                 }
                 Event::End(TagEnd::Emphasis) => {
-                    if in_paragraph {
-                        if let Some((1, start, _)) = annotation_starts
+                    if in_paragraph
+                        && let Some((1, start, _)) = annotation_starts
                             .iter()
                             .rposition(|(k, _, _)| *k == 1)
-                            .and_then(|i| Some(annotation_starts.remove(i)))
-                        {
-                            let end = text_offset(&paragraph_text, in_paragraph);
-                            if start < end {
-                                paragraph_annotations.push(builder::italic(start, end));
-                            }
+                            .map(|i| annotation_starts.remove(i))
+                    {
+                        let end = text_offset(&paragraph_text, in_paragraph);
+                        if start < end {
+                            paragraph_annotations.push(builder::italic(start, end));
                         }
                     }
                 }
@@ -294,16 +283,15 @@ impl MarkdownExtractor {
                     }
                 }
                 Event::End(TagEnd::Strikethrough) => {
-                    if in_paragraph {
-                        if let Some((2, start, _)) = annotation_starts
+                    if in_paragraph
+                        && let Some((2, start, _)) = annotation_starts
                             .iter()
                             .rposition(|(k, _, _)| *k == 2)
-                            .and_then(|i| Some(annotation_starts.remove(i)))
-                        {
-                            let end = text_offset(&paragraph_text, in_paragraph);
-                            if start < end {
-                                paragraph_annotations.push(builder::strikethrough(start, end));
-                            }
+                            .map(|i| annotation_starts.remove(i))
+                    {
+                        let end = text_offset(&paragraph_text, in_paragraph);
+                        if start < end {
+                            paragraph_annotations.push(builder::strikethrough(start, end));
                         }
                     }
                 }
@@ -319,16 +307,15 @@ impl MarkdownExtractor {
                     }
                 }
                 Event::End(TagEnd::Link) => {
-                    if in_paragraph {
-                        if let Some((4, start, Some((url, title)))) = annotation_starts
+                    if in_paragraph
+                        && let Some((4, start, Some((url, title)))) = annotation_starts
                             .iter()
                             .rposition(|(k, _, _)| *k == 4)
-                            .and_then(|i| Some(annotation_starts.remove(i)))
-                        {
-                            let end = text_offset(&paragraph_text, in_paragraph);
-                            if start < end {
-                                paragraph_annotations.push(builder::link(start, end, &url, title.as_deref()));
-                            }
+                            .map(|i| annotation_starts.remove(i))
+                    {
+                        let end = text_offset(&paragraph_text, in_paragraph);
+                        if start < end {
+                            paragraph_annotations.push(builder::link(start, end, &url, title.as_deref()));
                         }
                     }
                 }
@@ -388,7 +375,7 @@ impl MarkdownExtractor {
                 }
                 Event::End(TagEnd::Table) => {
                     if !table_rows.is_empty() {
-                        builder.push_table_simple(&table_rows, None);
+                        builder.push_table_from_cells(&table_rows, None);
                     }
                     table_rows.clear();
                 }
@@ -486,14 +473,12 @@ impl MarkdownExtractor {
     }
 }
 
-#[cfg(feature = "office")]
 impl Default for MarkdownExtractor {
     fn default() -> Self {
         Self::new()
     }
 }
 
-#[cfg(feature = "office")]
 impl Plugin for MarkdownExtractor {
     fn name(&self) -> &str {
         "markdown-extractor"
@@ -520,7 +505,6 @@ impl Plugin for MarkdownExtractor {
     }
 }
 
-#[cfg(feature = "office")]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 impl DocumentExtractor for MarkdownExtractor {
@@ -627,7 +611,7 @@ impl DocumentExtractor for MarkdownExtractor {
     }
 }
 
-#[cfg(all(test, feature = "office"))]
+#[cfg(test)]
 mod tests {
     use super::super::frontmatter_utils::{cells_to_markdown, extract_frontmatter, extract_metadata_from_yaml};
     use super::*;

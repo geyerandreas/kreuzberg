@@ -183,12 +183,7 @@ pub fn register_validator(_env: Env, validator: Object) -> Result<()> {
 
     let arc_validator: Arc<dyn RustValidator> = Arc::new(js_validator);
     let registry = get_validator_registry();
-    let mut registry = registry.write().map_err(|e| {
-        napi::Error::new(
-            napi::Status::GenericFailure,
-            format!("Failed to acquire write lock on Validator registry: {}", e),
-        )
-    })?;
+    let mut registry = registry.write();
 
     registry.register(arc_validator).map_err(|e| {
         napi::Error::new(
@@ -204,12 +199,7 @@ pub fn register_validator(_env: Env, validator: Object) -> Result<()> {
 #[napi]
 pub fn unregister_validator(name: String) -> Result<()> {
     let registry = get_validator_registry();
-    let mut registry = registry.write().map_err(|e| {
-        napi::Error::new(
-            napi::Status::GenericFailure,
-            format!("Failed to acquire write lock on Validator registry: {}", e),
-        )
-    })?;
+    let mut registry = registry.write();
 
     registry.remove(&name).map_err(|e| {
         napi::Error::new(
@@ -224,12 +214,7 @@ pub fn unregister_validator(name: String) -> Result<()> {
 #[napi]
 pub fn clear_validators() -> Result<()> {
     let registry = get_validator_registry();
-    let mut registry = registry.write().map_err(|e| {
-        napi::Error::new(
-            napi::Status::GenericFailure,
-            format!("Failed to acquire write lock on Validator registry: {}", e),
-        )
-    })?;
+    let mut registry = registry.write();
 
     *registry = Default::default();
     Ok(())
@@ -239,12 +224,7 @@ pub fn clear_validators() -> Result<()> {
 #[napi]
 pub fn list_validators() -> Result<Vec<String>> {
     let registry = get_validator_registry();
-    let registry = registry.read().map_err(|e| {
-        napi::Error::new(
-            napi::Status::GenericFailure,
-            format!("Failed to acquire read lock on Validator registry: {}", e),
-        )
-    })?;
+    let registry = registry.read();
 
     Ok(registry.list())
 }

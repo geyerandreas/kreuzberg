@@ -753,7 +753,7 @@ mod tests {
             ),
         ];
 
-        let stats = ResourceMonitor::calculate_stats(&samples, &snapshots);
+        let stats = ResourceMonitor::calculate_stats(&samples, &snapshots, 0);
 
         assert_eq!(stats.peak_memory_bytes, 200);
         assert_eq!(stats.peak_vm_bytes, 600);
@@ -767,7 +767,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_resource_stats_empty() {
-        let stats = ResourceMonitor::calculate_stats(&[], &[]);
+        let stats = ResourceMonitor::calculate_stats(&[], &[], 0);
         assert_eq!(stats.peak_memory_bytes, 0);
         assert_eq!(stats.sample_count, 0);
     }
@@ -808,7 +808,7 @@ mod tests {
             cpu_percent: 0.0,
             timestamp_ms: 20,
         }];
-        let stats = ResourceMonitor::calculate_stats(&samples, &snapshots);
+        let stats = ResourceMonitor::calculate_stats(&samples, &snapshots, 0);
         assert!(
             stats.leak_detected,
             "Should detect leak with >5% growth and >20% retention"
@@ -851,7 +851,7 @@ mod tests {
             cpu_percent: 0.0,
             timestamp_ms: 20,
         }];
-        let stats = ResourceMonitor::calculate_stats(&samples, &snapshots);
+        let stats = ResourceMonitor::calculate_stats(&samples, &snapshots, 0);
         assert!(!stats.leak_detected, "Should not detect leak when memory is released");
     }
 

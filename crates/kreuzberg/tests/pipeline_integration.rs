@@ -120,9 +120,7 @@ impl PostProcessor for FailingProcessor {
 
 fn clear_processor_registry() {
     let registry = get_post_processor_registry();
-    let mut reg = registry
-        .write()
-        .expect("Failed to acquire write lock on registry in test");
+    let mut reg = registry.write();
     let _ = reg.shutdown_all();
     drop(reg);
     let _ = clear_processor_cache();
@@ -151,9 +149,7 @@ async fn test_pipeline_single_processor_per_stage() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         let early = Arc::new(OrderTrackingProcessor {
             name: "early".to_string(),
@@ -191,9 +187,7 @@ async fn test_pipeline_multiple_processors_per_stage() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         let early_high = Arc::new(OrderTrackingProcessor {
             name: "early-high".to_string(),
@@ -231,9 +225,7 @@ async fn test_pipeline_all_stages_enabled() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         for stage in [ProcessingStage::Early, ProcessingStage::Middle, ProcessingStage::Late] {
             let processor = Arc::new(OrderTrackingProcessor {
@@ -262,9 +254,7 @@ async fn test_pipeline_postprocessing_disabled() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         let processor = Arc::new(OrderTrackingProcessor {
             name: "processor".to_string(),
@@ -300,9 +290,7 @@ async fn test_pipeline_early_stage_runs_first() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         let late = Arc::new(OrderTrackingProcessor {
             name: "late".to_string(),
@@ -335,9 +323,7 @@ async fn test_pipeline_middle_stage_runs_second() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         let early = Arc::new(OrderTrackingProcessor {
             name: "early".to_string(),
@@ -370,9 +356,7 @@ async fn test_pipeline_late_stage_runs_last() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         for stage in [ProcessingStage::Late, ProcessingStage::Early, ProcessingStage::Middle] {
             let processor = Arc::new(OrderTrackingProcessor {
@@ -401,9 +385,7 @@ async fn test_pipeline_within_stage_priority_order() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         for (name, priority) in [("p1", 100), ("p2", 10), ("p3", 50), ("p4", 75)] {
             let processor = Arc::new(OrderTrackingProcessor {
@@ -432,9 +414,7 @@ async fn test_pipeline_cross_stage_data_flow() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         let early = Arc::new(MetadataAddingProcessor {
             name: "early".to_string(),
@@ -523,9 +503,7 @@ async fn test_pipeline_early_stage_error_recorded() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
         reg.register(Arc::new(EarlyFailingProcessor), 50)
             .expect("Operation failed");
     }
@@ -555,9 +533,7 @@ async fn test_pipeline_middle_stage_error_propagation() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         let failing = Arc::new(FailingProcessor {
             name: "middle-failing".to_string(),
@@ -620,9 +596,7 @@ async fn test_pipeline_late_stage_error_doesnt_affect_earlier_stages() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         let early = Arc::new(OrderTrackingProcessor {
             name: "early".to_string(),
@@ -659,9 +633,7 @@ async fn test_pipeline_processor_error_doesnt_stop_other_processors() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         let p1 = Arc::new(OrderTrackingProcessor {
             name: "p1".to_string(),
@@ -773,9 +745,7 @@ async fn test_pipeline_multiple_processor_errors() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         for (name, stage) in [
             ("fail1", ProcessingStage::Early),
@@ -815,9 +785,7 @@ async fn test_pipeline_error_context_preservation() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         let failing = Arc::new(FailingProcessor {
             name: "context-test".to_string(),
@@ -852,9 +820,7 @@ async fn test_pipeline_metadata_added_in_early_visible_in_middle() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         let early = Arc::new(MetadataAddingProcessor {
             name: "early".to_string(),
@@ -925,9 +891,7 @@ async fn test_pipeline_content_modified_in_middle_visible_in_late() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         let middle = Arc::new(OrderTrackingProcessor {
             name: "middle-content".to_string(),
@@ -984,9 +948,7 @@ async fn test_pipeline_multiple_processors_modifying_same_metadata() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         for i in 1..=3 {
             struct MetadataOverwritingProcessor {
@@ -1056,9 +1018,7 @@ async fn test_pipeline_processors_reading_previous_output() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         struct CountingProcessor {
             name: String,
@@ -1165,9 +1125,7 @@ async fn test_pipeline_large_content_modification() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
         reg.register(Arc::new(LargeContentProcessor), 50)
             .expect("Operation failed");
     }
@@ -1190,9 +1148,7 @@ async fn test_pipeline_enabled_processors_whitelist() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         for name in ["proc1", "proc2", "proc3"] {
             let processor = Arc::new(OrderTrackingProcessor {
@@ -1232,9 +1188,7 @@ async fn test_pipeline_disabled_processors_blacklist() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         for name in ["proc1", "proc2", "proc3"] {
             let processor = Arc::new(OrderTrackingProcessor {
@@ -1274,9 +1228,7 @@ async fn test_pipeline_no_filtering_runs_all() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         for name in ["proc1", "proc2", "proc3"] {
             let processor = Arc::new(OrderTrackingProcessor {
@@ -1307,9 +1259,7 @@ async fn test_pipeline_empty_whitelist_runs_none() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry
-            .write()
-            .expect("Failed to acquire write lock on registry in test");
+        let mut reg = registry.write();
 
         for name in ["proc1", "proc2"] {
             let processor = Arc::new(OrderTrackingProcessor {

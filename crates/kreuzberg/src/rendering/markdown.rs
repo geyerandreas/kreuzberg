@@ -436,7 +436,7 @@ mod tests {
     #[test]
     fn test_render_table() {
         let mut b = DocumentStructureBuilder::new();
-        b.push_table_simple(
+        b.push_table_from_cells(
             &[
                 vec!["Name".to_string(), "Age".to_string()],
                 vec!["Alice".to_string(), "30".to_string()],
@@ -540,7 +540,7 @@ mod tests {
     #[test]
     fn test_table_with_pipe_in_content() {
         let mut b = DocumentStructureBuilder::new();
-        b.push_table_simple(
+        b.push_table_from_cells(
             &[
                 vec!["Header".to_string(), "Value".to_string()],
                 vec!["a | b".to_string(), "x|y".to_string()],

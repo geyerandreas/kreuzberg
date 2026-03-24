@@ -460,6 +460,7 @@ mod tests {
             quality_score: None,
             processing_warnings: vec![],
             annotations: None,
+            children: None,
         }
     }
 
@@ -732,6 +733,7 @@ mod tests {
             quality_score: None,
             processing_warnings: vec![],
             annotations: None,
+            children: None,
         };
 
         let result_ptr = &result as *const ExtractionResult;

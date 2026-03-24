@@ -175,6 +175,7 @@ impl OcrBackend for FfiOcrBackend {
             quality_score: None,
             processing_warnings: vec![],
             annotations: None,
+            children: None,
         })
     }
 
@@ -253,14 +254,7 @@ pub unsafe extern "C" fn kreuzberg_register_ocr_backend(name: *const c_char, cal
         let backend = Arc::new(FfiOcrBackend::new(name_str.to_string(), callback, None));
 
         let registry = get_ocr_backend_registry();
-        let mut registry_guard = match registry.write() {
-            Ok(guard) => guard,
-            Err(e) => {
-                // ~keep: Lock poisoning indicates a panic in another thread holding the lock.
-                set_last_error(format!("Failed to acquire registry write lock: {}", e));
-                return false;
-            }
-        };
+        let mut registry_guard = registry.write();
 
         match registry_guard.register(backend) {
             Ok(()) => true,
@@ -327,14 +321,7 @@ pub unsafe extern "C" fn kreuzberg_register_ocr_backend_with_languages(
         let backend = Arc::new(FfiOcrBackend::new(name_str.to_string(), callback, supported_languages));
 
         let registry = get_ocr_backend_registry();
-        let mut registry_guard = match registry.write() {
-            Ok(guard) => guard,
-            Err(e) => {
-                // ~keep: Lock poisoning indicates a panic in another thread holding the lock.
-                set_last_error(format!("Failed to acquire registry write lock: {}", e));
-                return false;
-            }
-        };
+        let mut registry_guard = registry.write();
 
         match registry_guard.register(backend) {
             Ok(()) => true,

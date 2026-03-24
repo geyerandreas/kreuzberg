@@ -36,8 +36,7 @@ pub mod ocr_bridge;
 pub mod processor_bridge;
 pub mod validator_bridge;
 
-#[allow(unused_imports)]
-use std::sync::{RwLock, RwLockReadGuard, RwLockWriteGuard};
+use parking_lot::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 use wasm_bindgen::prelude::*;
 
 // Re-export public API
@@ -47,53 +46,24 @@ pub use processor_bridge::{
 };
 pub use validator_bridge::{clear_validators, list_validators, register_validator, unregister_validator};
 
-/// Attempt to acquire a write lock with detailed error context and poisoning recovery.
+/// Acquire a write lock on a parking_lot::RwLock registry.
 ///
-/// When lock poisoning occurs, this function:
-/// 1. Extracts the inner guard (which may still be usable)
-/// 2. Logs a warning to the browser console about the poisoning
-/// 3. Returns the guard for recovery attempts
+/// parking_lot::RwLock does not have lock poisoning, so this always succeeds.
 ///
 /// # Context Provided
-/// - Which registry failed (POST_PROCESSORS, VALIDATORS, or OCR_BACKENDS)
-/// - Clear indication that the data may be in an inconsistent state
-pub(crate) fn acquire_write_lock<'a, T>(
-    registry: &'a RwLock<T>,
-    registry_name: &str,
-) -> Result<RwLockWriteGuard<'a, T>, String> {
-    match registry.write() {
-        Ok(guard) => Ok(guard),
-        Err(poison) => {
-            let guard = poison.into_inner();
-            web_sys::console::warn_1(
-                &format!(
-                    "WARN: {} registry write lock was poisoned but recovered; data may be in inconsistent state",
-                    registry_name
-                )
-                .into(),
-            );
-            Ok(guard)
-        }
-    }
+/// - Which registry is being locked (POST_PROCESSORS, VALIDATORS, or OCR_BACKENDS)
+pub(crate) fn acquire_write_lock<'a, T>(registry: &'a RwLock<T>, _registry_name: &str) -> RwLockWriteGuard<'a, T> {
+    registry.write()
 }
 
-/// Attempt to acquire a read lock with detailed error context about poisoning.
+/// Acquire a read lock on a parking_lot::RwLock registry.
 ///
-/// For read operations, we cannot safely recover from poisoning since we can't verify
-/// the data is uncorrupted. Returns a contextual error message indicating:
-/// - Which registry failed
-/// - That the lock is poisoned
-/// - A hint that a previous operation may have panicked
-pub(crate) fn acquire_read_lock<'a, T>(
-    registry: &'a RwLock<T>,
-    registry_name: &str,
-) -> Result<RwLockReadGuard<'a, T>, String> {
-    registry.read().map_err(|_| {
-        format!(
-            "Failed to acquire {} registry read lock: lock poisoned (possible panic in previous operation)",
-            registry_name
-        )
-    })
+/// parking_lot::RwLock does not have lock poisoning, so this always succeeds.
+///
+/// # Context Provided
+/// - Which registry is being locked (POST_PROCESSORS, VALIDATORS, or OCR_BACKENDS)
+pub(crate) fn acquire_read_lock<'a, T>(registry: &'a RwLock<T>, _registry_name: &str) -> RwLockReadGuard<'a, T> {
+    registry.read()
 }
 
 /// Wrapper that makes non-Send futures Send in WASM single-threaded contexts.

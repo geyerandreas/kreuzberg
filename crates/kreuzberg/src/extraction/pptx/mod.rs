@@ -423,7 +423,7 @@ fn build_slide_structure(
                     })
                     .collect();
                 if !cells.is_empty() {
-                    doc_builder.push_table_simple(&cells, None);
+                    doc_builder.push_table_from_cells(&cells, None);
                 }
             }
             SlideElement::List(list, _) => {
@@ -440,7 +440,7 @@ fn build_slide_structure(
             }
             SlideElement::Image(img_ref, _) => {
                 // Prefer alt text description, fall back to target path
-                let desc = img_ref.description.as_deref().or_else(|| {
+                let desc = img_ref.description.as_deref().or({
                     if img_ref.target.is_empty() {
                         None
                     } else {

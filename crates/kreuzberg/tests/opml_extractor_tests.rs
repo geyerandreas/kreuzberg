@@ -510,7 +510,7 @@ async fn test_opml_extractor_registration() {
     ensure_initialized().expect("Should initialize extractors");
 
     let registry = get_document_extractor_registry();
-    let registry_guard = registry.read().expect("Should acquire read lock on registry");
+    let registry_guard = registry.read();
 
     let extractor_names = registry_guard.list();
 

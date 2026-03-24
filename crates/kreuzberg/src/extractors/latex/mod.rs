@@ -23,7 +23,7 @@ use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::plugins::{DocumentExtractor, Plugin};
 use crate::types::builder::DocumentStructureBuilder;
-use crate::types::document_structure::{AnnotationKind, DocumentStructure, NodeContent, TextAnnotation};
+use crate::types::document_structure::{AnnotationKind, DocumentStructure, TextAnnotation};
 use crate::types::{ExtractionResult, Metadata, Table};
 use async_trait::async_trait;
 
@@ -137,26 +137,23 @@ impl LatexExtractor {
         ];
 
         for (prefix, kind) in commands {
-            if text.starts_with(prefix) {
-                let after = &text[prefix.len()..];
-                if let Some((content, consumed)) = Self::read_braced_content(after) {
-                    return Some((kind.clone(), content, prefix.len() + consumed));
-                }
+            if let Some(after) = text.strip_prefix(prefix)
+                && let Some((content, consumed)) = Self::read_braced_content(after)
+            {
+                return Some((kind.clone(), content, prefix.len() + consumed));
             }
         }
 
         // Handle \href{url}{text}
-        if text.starts_with("\\href{") {
-            let after_href = &text["\\href{".len()..];
-            if let Some((url, url_consumed)) = Self::read_braced_content(after_href) {
-                let after_url = &after_href[url_consumed..];
-                if after_url.starts_with('{') {
-                    let after_brace = &after_url[1..];
-                    if let Some((link_text, text_consumed)) = Self::read_braced_content(after_brace) {
-                        let total = "\\href{".len() + url_consumed + 1 + text_consumed;
-                        return Some((AnnotationKind::Link { url, title: None }, link_text, total));
-                    }
-                }
+        if let Some(after_href) = text.strip_prefix("\\href{")
+            && let Some((url, url_consumed)) = Self::read_braced_content(after_href)
+        {
+            let after_url = &after_href[url_consumed..];
+            if let Some(after_brace) = after_url.strip_prefix('{')
+                && let Some((link_text, text_consumed)) = Self::read_braced_content(after_brace)
+            {
+                let total = "\\href{".len() + url_consumed + 1 + text_consumed;
+                return Some((AnnotationKind::Link { url, title: None }, link_text, total));
             }
         }
 
@@ -246,10 +243,10 @@ impl LatexExtractor {
         // Extract metadata from preamble (\title, \author, \date)
         let mut metadata_entries: Vec<(String, String)> = Vec::new();
         for &cmd in &["title", "author", "date"] {
-            if let Some(value) = utilities::extract_braced(source, cmd) {
-                if !value.is_empty() {
-                    metadata_entries.push((cmd.to_string(), value));
-                }
+            if let Some(value) = utilities::extract_braced(source, cmd)
+                && !value.is_empty()
+            {
+                metadata_entries.push((cmd.to_string(), value));
             }
         }
         if !metadata_entries.is_empty() {
@@ -297,7 +294,7 @@ impl LatexExtractor {
                         let (env_content, new_i) = collect_environment(&lines, i, "tabular");
                         let cells = Self::parse_tabular_cells(&env_content);
                         if !cells.is_empty() {
-                            builder.push_table_simple(&cells, None);
+                            builder.push_table_from_cells(&cells, None);
                         }
                         i = new_i;
                         continue;
@@ -317,7 +314,7 @@ impl LatexExtractor {
                             let (inner_content, _) = collect_environment(&inner_lines, 0, "tabular");
                             let cells = Self::parse_tabular_cells(&inner_content);
                             if !cells.is_empty() {
-                                let idx = builder.push_table_simple(&cells, None);
+                                let idx = builder.push_table_from_cells(&cells, None);
                                 if let Some(cap) = caption {
                                     let mut attrs = ahash::AHashMap::new();
                                     attrs.insert("caption".to_string(), cap);
@@ -396,12 +393,12 @@ impl LatexExtractor {
 
             if !handled && !trimmed.is_empty() && !trimmed.starts_with('%') {
                 // Handle standalone \includegraphics outside figure environments
-                if trimmed.contains("\\includegraphics") {
-                    if let Some(path) = Self::extract_includegraphics_path(trimmed) {
-                        builder.push_image(Some(&path), None, None, None);
-                        i += 1;
-                        continue;
-                    }
+                if trimmed.contains("\\includegraphics")
+                    && let Some(path) = Self::extract_includegraphics_path(trimmed)
+                {
+                    builder.push_image(Some(&path), None, None, None);
+                    i += 1;
+                    continue;
                 }
 
                 // Handle display math \[...\]
@@ -637,6 +634,7 @@ impl DocumentExtractor for LatexExtractor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::NodeContent;
 
     #[test]
     fn test_basic_title_extraction() {

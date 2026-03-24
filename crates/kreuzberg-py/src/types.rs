@@ -742,6 +742,7 @@ mod tests {
                     message: std::borrow::Cow::Borrowed("test warning"),
                 }],
                 annotations: None,
+                children: None,
             };
 
             let py_result =

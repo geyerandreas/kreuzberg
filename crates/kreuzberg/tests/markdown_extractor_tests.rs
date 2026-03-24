@@ -7,8 +7,6 @@
 //! - Complex formatting and structure preservation
 //! - Comparison with Pandoc's metadata extraction capabilities
 
-#![cfg(feature = "office")]
-
 use std::path::PathBuf;
 
 use kreuzberg::core::config::ExtractionConfig;

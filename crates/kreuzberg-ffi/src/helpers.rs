@@ -100,6 +100,7 @@ pub fn to_c_extraction_result(result: ExtractionResult) -> std::result::Result<*
         quality_score,
         processing_warnings,
         annotations,
+        children: _,
     } = result;
 
     let sanitized_content = if content.contains('\0') {
@@ -484,6 +485,7 @@ mod tests {
             quality_score: None,
             processing_warnings: vec![],
             annotations: None,
+            children: None,
         };
 
         let c_result = to_c_extraction_result(result);
@@ -529,6 +531,7 @@ mod tests {
             quality_score: None,
             processing_warnings: vec![],
             annotations: None,
+            children: None,
         };
 
         let c_result = to_c_extraction_result(result);
@@ -584,6 +587,7 @@ mod tests {
             quality_score: None,
             processing_warnings: vec![],
             annotations: None,
+            children: None,
         };
 
         let c_result = to_c_extraction_result(result);
@@ -674,6 +678,7 @@ mod tests {
             quality_score: None,
             processing_warnings: vec![],
             annotations: None,
+            children: None,
         };
 
         let c_result = to_c_extraction_result(result);

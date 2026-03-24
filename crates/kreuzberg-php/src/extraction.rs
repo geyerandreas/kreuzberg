@@ -183,6 +183,7 @@ pub fn kreuzberg_extract_bytes(
                         quality_score: None,
                         processing_warnings: vec![],
                         annotations: None,
+                        children: None,
                     };
 
                     return ExtractionResult::from_rust(rust_result);

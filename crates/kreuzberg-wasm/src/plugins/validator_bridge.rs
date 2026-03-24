@@ -212,7 +212,7 @@ pub fn register_validator(validator: JsValue) -> Result<(), JsValue> {
 
     let wrapper = JsValidatorWrapper::new(validator, name.clone(), priority);
     let registry = kreuzberg::plugins::registry::get_validator_registry();
-    let mut registry = acquire_write_lock(&registry, "VALIDATORS").map_err(|e| JsValue::from_str(&e))?;
+    let mut registry = acquire_write_lock(&registry, "VALIDATORS");
 
     registry
         .register(Arc::new(wrapper))
@@ -237,7 +237,7 @@ pub fn register_validator(validator: JsValue) -> Result<(), JsValue> {
 #[wasm_bindgen]
 pub fn unregister_validator(name: String) -> Result<(), JsValue> {
     let registry = kreuzberg::plugins::registry::get_validator_registry();
-    let mut registry = acquire_write_lock(&registry, "VALIDATORS").map_err(|e| JsValue::from_str(&e))?;
+    let mut registry = acquire_write_lock(&registry, "VALIDATORS");
 
     registry
         .remove(&name)
@@ -258,7 +258,7 @@ pub fn unregister_validator(name: String) -> Result<(), JsValue> {
 #[wasm_bindgen]
 pub fn clear_validators() -> Result<(), JsValue> {
     let registry = kreuzberg::plugins::registry::get_validator_registry();
-    let mut registry = acquire_write_lock(&registry, "VALIDATORS").map_err(|e| JsValue::from_str(&e))?;
+    let mut registry = acquire_write_lock(&registry, "VALIDATORS");
 
     let names = registry.list();
     for name in names {
@@ -285,7 +285,7 @@ pub fn clear_validators() -> Result<(), JsValue> {
 #[wasm_bindgen]
 pub fn list_validators() -> Result<js_sys::Array, JsValue> {
     let registry = kreuzberg::plugins::registry::get_validator_registry();
-    let registry = acquire_read_lock(&registry, "VALIDATORS").map_err(|e| JsValue::from_str(&e))?;
+    let registry = acquire_read_lock(&registry, "VALIDATORS");
 
     let names = registry.list();
     let arr = js_sys::Array::new();

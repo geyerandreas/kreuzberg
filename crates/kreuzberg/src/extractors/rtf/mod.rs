@@ -119,7 +119,7 @@ impl DocumentExtractor for RtfExtractor {
                 let lines: Vec<&str> = trimmed.lines().collect();
                 let is_table_like = lines.len() >= 2 && lines.iter().all(|l| l.contains('|'));
                 if is_table_like && table_idx < tables.len() {
-                    builder.push_table_simple(&tables[table_idx].cells, None);
+                    builder.push_table_from_cells(&tables[table_idx].cells, None);
                     table_idx += 1;
                 } else {
                     // Find the byte position of trimmed within extracted_text
@@ -132,7 +132,7 @@ impl DocumentExtractor for RtfExtractor {
 
             // Push any remaining tables that weren't matched inline
             while table_idx < tables.len() {
-                builder.push_table_simple(&tables[table_idx].cells, None);
+                builder.push_table_from_cells(&tables[table_idx].cells, None);
                 table_idx += 1;
             }
 
@@ -285,8 +285,10 @@ mod tests {
     async fn test_rtf_document_structure_with_annotations() {
         let rtf_content = r#"{\rtf1 Normal text\par {\b Bold paragraph}\par More normal text}"#;
         let extractor = RtfExtractor::new();
-        let mut config = ExtractionConfig::default();
-        config.include_document_structure = true;
+        let config = ExtractionConfig {
+            include_document_structure: true,
+            ..Default::default()
+        };
         let result = extractor
             .extract_bytes(rtf_content.as_bytes(), "application/rtf", &config)
             .await

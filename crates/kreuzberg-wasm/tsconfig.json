@@ -33,7 +33,8 @@
 		"forceConsistentCasingInFileNames": true,
 		"verbatimModuleSyntax": true,
 		"allowJs": false,
-		"checkJs": false
+		"checkJs": false,
+		"types": ["node"]
 	},
 	"include": ["typescript/**/*.ts", "typescript/**/*.d.ts"],
 	"exclude": ["node_modules", "dist", "**/*.spec.ts", "tests/**/*"]

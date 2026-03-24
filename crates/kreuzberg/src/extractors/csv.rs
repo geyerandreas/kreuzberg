@@ -115,7 +115,7 @@ impl DocumentExtractor for CsvExtractor {
         let document = if config.include_document_structure && !table.cells.is_empty() {
             use crate::types::builder::DocumentStructureBuilder;
             let mut builder = DocumentStructureBuilder::new().source_format("csv");
-            builder.push_table_simple(&table.cells, None);
+            builder.push_table_from_cells(&table.cells, None);
             Some(builder.build())
         } else {
             None

@@ -185,10 +185,10 @@ pub(super) fn parse_opf(xml: &str) -> Result<(OepbMetadata, Vec<String>)> {
                 }
             }
 
-            if let Some(cover_id) = cover_item_id {
-                if let Some(href) = manifest.get(&cover_id) {
-                    metadata.cover_image_href = Some(href.clone());
-                }
+            if let Some(cover_id) = cover_item_id
+                && let Some(href) = manifest.get(&cover_id)
+            {
+                metadata.cover_image_href = Some(href.clone());
             }
 
             for node in root.descendants() {

@@ -166,9 +166,9 @@ mod tests {
         let cache_key = "test_key";
         let data = b"test data".to_vec();
 
-        cache.set_simple(cache_key, data.clone(), None).unwrap();
+        cache.set_default(cache_key, data.clone(), None).unwrap();
 
-        let result = cache.get_simple(cache_key, None).unwrap();
+        let result = cache.get_default(cache_key, None).unwrap();
         assert_eq!(result, Some(data));
     }
 
@@ -184,7 +184,7 @@ mod tests {
         )
         .unwrap();
 
-        let result = cache.get_simple("nonexistent", None).unwrap();
+        let result = cache.get_default("nonexistent", None).unwrap();
         assert_eq!(result, None);
     }
 
@@ -213,11 +213,11 @@ mod tests {
         let data = b"cached data".to_vec();
 
         cache
-            .set_simple(cache_key, data.clone(), Some(source_file.to_str().unwrap()))
+            .set_default(cache_key, data.clone(), Some(source_file.to_str().unwrap()))
             .unwrap();
 
         let result = cache
-            .get_simple(cache_key, Some(source_file.to_str().unwrap()))
+            .get_default(cache_key, Some(source_file.to_str().unwrap()))
             .unwrap();
         assert_eq!(result, Some(data.clone()));
 
@@ -232,7 +232,7 @@ mod tests {
         drop(f);
 
         let result = cache
-            .get_simple(cache_key, Some(source_file.to_str().unwrap()))
+            .get_default(cache_key, Some(source_file.to_str().unwrap()))
             .unwrap();
         assert_eq!(result, None);
     }
@@ -272,14 +272,14 @@ mod tests {
         )
         .unwrap();
 
-        cache.set_simple("key1", b"data1".to_vec(), None).unwrap();
-        cache.set_simple("key2", b"data2".to_vec(), None).unwrap();
+        cache.set_default("key1", b"data1".to_vec(), None).unwrap();
+        cache.set_default("key2", b"data2".to_vec(), None).unwrap();
 
         let (removed, _freed) = cache.clear().unwrap();
         assert!(removed >= 2, "Should remove at least 2 cache entries (got {})", removed);
 
-        assert_eq!(cache.get_simple("key1", None).unwrap(), None);
-        assert_eq!(cache.get_simple("key2", None).unwrap(), None);
+        assert_eq!(cache.get_default("key1", None).unwrap(), None);
+        assert_eq!(cache.get_default("key2", None).unwrap(), None);
     }
 
     #[test]
@@ -294,8 +294,8 @@ mod tests {
         )
         .unwrap();
 
-        cache.set_simple("key1", b"test data 1".to_vec(), None).unwrap();
-        cache.set_simple("key2", b"test data 2".to_vec(), None).unwrap();
+        cache.set_default("key1", b"test data 1".to_vec(), None).unwrap();
+        cache.set_default("key2", b"test data 2".to_vec(), None).unwrap();
 
         let stats = cache.get_stats().unwrap();
         assert_eq!(stats.total_files, 2);
@@ -327,7 +327,7 @@ mod tests {
         let old_time = std::time::SystemTime::now() - std::time::Duration::from_secs(60);
         filetime::set_file_mtime(&cache_path, filetime::FileTime::from_system_time(old_time)).unwrap();
 
-        let result = cache.get_simple(cache_key, None).unwrap();
+        let result = cache.get_default(cache_key, None).unwrap();
         assert_eq!(result, None);
     }
 

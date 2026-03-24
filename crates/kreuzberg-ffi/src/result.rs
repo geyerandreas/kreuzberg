@@ -434,6 +434,7 @@ mod tests {
             quality_score: None,
             processing_warnings: vec![],
             annotations: None,
+            children: None,
         }
     }
 

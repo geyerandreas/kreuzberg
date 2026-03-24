@@ -269,12 +269,7 @@ pub fn register_validator(py: Python<'_>, validator: Py<PyAny>) -> PyResult<()> 
 
     py.detach(|| {
         let registry = get_validator_registry();
-        let mut registry = registry.write().map_err(|e| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Failed to acquire write lock on Validator registry: {}",
-                e
-            ))
-        })?;
+        let mut registry = registry.write();
 
         registry.register(arc_validator).map_err(|e| {
             pyo3::exceptions::PyRuntimeError::new_err(format!(
@@ -316,12 +311,7 @@ pub fn register_validator(py: Python<'_>, validator: Py<PyAny>) -> PyResult<()> 
 pub fn unregister_validator(py: Python<'_>, name: &str) -> PyResult<()> {
     py.detach(|| {
         let registry = get_validator_registry();
-        let mut registry = registry.write().map_err(|e| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Failed to acquire write lock on Validator registry: {}",
-                e
-            ))
-        })?;
+        let mut registry = registry.write();
 
         registry.remove(name).map_err(|e| {
             pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to unregister Validator '{}': {}", name, e))
@@ -348,12 +338,7 @@ pub fn unregister_validator(py: Python<'_>, name: &str) -> PyResult<()> {
 pub fn clear_validators(py: Python<'_>) -> PyResult<()> {
     py.detach(|| {
         let registry = get_validator_registry();
-        let mut registry = registry.write().map_err(|e| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Failed to acquire write lock on Validator registry: {}",
-                e
-            ))
-        })?;
+        let mut registry = registry.write();
 
         registry.shutdown_all().map_err(|e| {
             pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to clear Validator registry: {}", e))

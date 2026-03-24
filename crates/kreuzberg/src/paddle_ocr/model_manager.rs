@@ -54,8 +54,6 @@ struct RecModelDefinition {
     dict_sha256: &'static str,
 }
 
-/// Legacy v1 shared models — kept for backward compatibility with `ensure_shared_models()`.
-/// New code should use `ensure_v2_shared_models()` instead.
 const SHARED_MODELS: &[SharedModelDefinition] = &[
     SharedModelDefinition {
         model_type: "det",
@@ -294,30 +292,6 @@ impl ModelManager {
         &self.cache_dir
     }
 
-    /// Ensures shared models (detection + classification) exist locally.
-    ///
-    /// Downloads them from HuggingFace if not cached.
-    pub fn ensure_shared_models(&self) -> Result<SharedModelPaths, KreuzbergError> {
-        fs::create_dir_all(&self.cache_dir)?;
-
-        tracing::info!(cache_dir = ?self.cache_dir, "Checking shared PaddleOCR models");
-
-        for model in SHARED_MODELS {
-            let model_file = self.model_file_path(model.model_type);
-            if !model_file.exists() {
-                tracing::info!(model_type = model.model_type, "Downloading shared model...");
-                self.download_shared_model(model)?;
-            } else {
-                tracing::debug!(model_type = model.model_type, "Shared model found in cache");
-            }
-        }
-
-        Ok(SharedModelPaths {
-            det_model: self.model_path("det"),
-            cls_model: self.model_path("cls"),
-        })
-    }
-
     /// Ensures a recognition model for the given script family exists locally.
     ///
     /// Downloads the model and character dictionary from HuggingFace if not cached.
@@ -351,7 +325,7 @@ impl ModelManager {
 
     /// Backward-compatible method that ensures all models for English exist.
     pub fn ensure_models_exist(&self) -> Result<ModelPaths, KreuzbergError> {
-        let shared = self.ensure_shared_models()?;
+        let shared = self.ensure_shared_models("server")?;
         let rec = self.resolve_rec_model("english", "server")?;
 
         tracing::info!("All PaddleOCR models ready (english)");
@@ -385,6 +359,7 @@ impl ModelManager {
     }
 
     /// Download a shared model (det or cls) from HuggingFace Hub.
+    #[allow(dead_code)]
     fn download_shared_model(&self, model: &SharedModelDefinition) -> Result<(), KreuzbergError> {
         let model_dir = self.model_path(model.model_type);
         let model_file = model_dir.join(model.local_filename);
@@ -562,7 +537,7 @@ impl ModelManager {
     /// - All per-script rec models for uncovered scripts
     pub fn ensure_all_models(&self) -> Result<(), KreuzbergError> {
         // V2 shared models (both tiers)
-        self.ensure_v2_shared_models("server")?;
+        self.ensure_shared_models("server")?;
         self.ensure_v2_det_model("mobile")?; // cls is same for both tiers
 
         // Document orientation model
@@ -665,8 +640,8 @@ impl ModelManager {
         Ok(ori_dir)
     }
 
-    /// Ensures v2 shared models (det + cls) are cached for the given tier.
-    pub fn ensure_v2_shared_models(&self, tier: &str) -> Result<SharedModelPaths, KreuzbergError> {
+    /// Ensures shared models (det + cls) are cached for the given tier.
+    pub fn ensure_shared_models(&self, tier: &str) -> Result<SharedModelPaths, KreuzbergError> {
         let det_model = self.ensure_v2_det_model(tier)?;
         let cls_model = self.ensure_v2_cls_model()?;
         Ok(SharedModelPaths { det_model, cls_model })
@@ -964,12 +939,13 @@ mod tests {
         let manager = ModelManager::new(temp_dir.path().to_path_buf());
 
         // Pre-populate cache so ensure_models_exist doesn't try to download
-        // v1 shared models (det, cls)
-        for model_type in &["det", "cls"] {
-            let dir = manager.model_path(model_type);
-            fs::create_dir_all(&dir).unwrap();
-            fs::write(dir.join("model.onnx"), "fake").unwrap();
-        }
+        // v2 shared models (det server, cls)
+        let det_dir = temp_dir.path().join("v2").join("det").join("server");
+        fs::create_dir_all(&det_dir).unwrap();
+        fs::write(det_dir.join("model.onnx"), "fake").unwrap();
+        let cls_dir = temp_dir.path().join("v2").join("cls");
+        fs::create_dir_all(&cls_dir).unwrap();
+        fs::write(cls_dir.join("model.onnx"), "fake").unwrap();
         // v2 unified_server rec model (used by ensure_models_exist for english)
         let rec_dir = temp_dir.path().join("v2").join("rec").join("unified_server");
         fs::create_dir_all(&rec_dir).unwrap();
@@ -989,15 +965,16 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let manager = ModelManager::new(temp_dir.path().to_path_buf());
 
-        // Pre-populate
-        for model_type in &["det", "cls"] {
-            let dir = manager.model_path(model_type);
-            fs::create_dir_all(&dir).unwrap();
-            fs::write(dir.join("model.onnx"), "fake").unwrap();
-        }
+        // Pre-populate v2 shared model paths
+        let det_dir = temp_dir.path().join("v2").join("det").join("server");
+        fs::create_dir_all(&det_dir).unwrap();
+        fs::write(det_dir.join("model.onnx"), "fake").unwrap();
+        let cls_dir = temp_dir.path().join("v2").join("cls");
+        fs::create_dir_all(&cls_dir).unwrap();
+        fs::write(cls_dir.join("model.onnx"), "fake").unwrap();
 
-        let paths = manager.ensure_shared_models().unwrap();
-        assert!(paths.det_model.ends_with("det"));
+        let paths = manager.ensure_shared_models("server").unwrap();
+        assert!(paths.det_model.ends_with("server"));
         assert!(paths.cls_model.ends_with("cls"));
     }
 

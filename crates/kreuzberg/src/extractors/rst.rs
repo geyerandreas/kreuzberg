@@ -385,65 +385,32 @@ impl RstExtractor {
 
         while i < len {
             // **strong emphasis**
-            if i + 1 < len && bytes[i] == b'*' && bytes[i + 1] == b'*' {
-                if let Some(end) = Self::find_closing_marker(raw, i + 2, "**") {
-                    let inner = &raw[i + 2..end];
-                    let start = out.len() as u32;
-                    out.push_str(inner);
-                    let end_off = out.len() as u32;
-                    if start < end_off {
-                        annotations.push(TextAnnotation {
-                            start,
-                            end: end_off,
-                            kind: AnnotationKind::Bold,
-                        });
-                    }
-                    i = end + 2;
-                    continue;
+            if i + 1 < len
+                && bytes[i] == b'*'
+                && bytes[i + 1] == b'*'
+                && let Some(end) = Self::find_closing_marker(raw, i + 2, "**")
+            {
+                let inner = &raw[i + 2..end];
+                let start = out.len() as u32;
+                out.push_str(inner);
+                let end_off = out.len() as u32;
+                if start < end_off {
+                    annotations.push(TextAnnotation {
+                        start,
+                        end: end_off,
+                        kind: AnnotationKind::Bold,
+                    });
                 }
+                i = end + 2;
+                continue;
             }
             // *emphasis*  (single star, not followed by another star)
-            if bytes[i] == b'*' && (i + 1 >= len || bytes[i + 1] != b'*') {
-                if let Some(end) = Self::find_closing_marker(raw, i + 1, "*") {
-                    // Make sure this isn't inside a ** pair
-                    if end + 1 >= len || bytes[end + 1] != b'*' {
-                        let inner = &raw[i + 1..end];
-                        let start = out.len() as u32;
-                        out.push_str(inner);
-                        let end_off = out.len() as u32;
-                        if start < end_off {
-                            annotations.push(TextAnnotation {
-                                start,
-                                end: end_off,
-                                kind: AnnotationKind::Italic,
-                            });
-                        }
-                        i = end + 1;
-                        continue;
-                    }
-                }
-            }
-            // ``literal``
-            if i + 1 < len && bytes[i] == b'`' && bytes[i + 1] == b'`' {
-                if let Some(end) = Self::find_closing_marker(raw, i + 2, "``") {
-                    let inner = &raw[i + 2..end];
-                    let start = out.len() as u32;
-                    out.push_str(inner);
-                    let end_off = out.len() as u32;
-                    if start < end_off {
-                        annotations.push(TextAnnotation {
-                            start,
-                            end: end_off,
-                            kind: AnnotationKind::Code,
-                        });
-                    }
-                    i = end + 2;
-                    continue;
-                }
-            }
-            // `interpreted text`
-            if bytes[i] == b'`' && (i + 1 >= len || bytes[i + 1] != b'`') {
-                if let Some(end) = Self::find_closing_single_backtick(raw, i + 1) {
+            if bytes[i] == b'*'
+                && (i + 1 >= len || bytes[i + 1] != b'*')
+                && let Some(end) = Self::find_closing_marker(raw, i + 1, "*")
+            {
+                // Make sure this isn't inside a ** pair
+                if end + 1 >= len || bytes[end + 1] != b'*' {
                     let inner = &raw[i + 1..end];
                     let start = out.len() as u32;
                     out.push_str(inner);
@@ -452,12 +419,51 @@ impl RstExtractor {
                         annotations.push(TextAnnotation {
                             start,
                             end: end_off,
-                            kind: AnnotationKind::Code,
+                            kind: AnnotationKind::Italic,
                         });
                     }
                     i = end + 1;
                     continue;
                 }
+            }
+            // ``literal``
+            if i + 1 < len
+                && bytes[i] == b'`'
+                && bytes[i + 1] == b'`'
+                && let Some(end) = Self::find_closing_marker(raw, i + 2, "``")
+            {
+                let inner = &raw[i + 2..end];
+                let start = out.len() as u32;
+                out.push_str(inner);
+                let end_off = out.len() as u32;
+                if start < end_off {
+                    annotations.push(TextAnnotation {
+                        start,
+                        end: end_off,
+                        kind: AnnotationKind::Code,
+                    });
+                }
+                i = end + 2;
+                continue;
+            }
+            // `interpreted text`
+            if bytes[i] == b'`'
+                && (i + 1 >= len || bytes[i + 1] != b'`')
+                && let Some(end) = Self::find_closing_single_backtick(raw, i + 1)
+            {
+                let inner = &raw[i + 1..end];
+                let start = out.len() as u32;
+                out.push_str(inner);
+                let end_off = out.len() as u32;
+                if start < end_off {
+                    annotations.push(TextAnnotation {
+                        start,
+                        end: end_off,
+                        kind: AnnotationKind::Code,
+                    });
+                }
+                i = end + 1;
+                continue;
             }
             out.push(bytes[i] as char);
             i += 1;
@@ -496,16 +502,16 @@ impl RstExtractor {
         let bytes = line.as_bytes();
         let mut i = 0;
         while i < bytes.len() {
-            if bytes[i] == b'[' {
-                if let Some(close) = line[i + 1..].find(']') {
-                    let label_end = i + 1 + close;
-                    let label = &line[i + 1..label_end];
-                    // Check for trailing _
-                    if label_end + 1 < bytes.len() && bytes[label_end + 1] == b'_' {
-                        // Valid footnote ref: numeric or #-prefixed
-                        if label.chars().all(|c| c.is_ascii_digit()) || label.starts_with('#') {
-                            refs.push(label.to_string());
-                        }
+            if bytes[i] == b'['
+                && let Some(close) = line[i + 1..].find(']')
+            {
+                let label_end = i + 1 + close;
+                let label = &line[i + 1..label_end];
+                // Check for trailing _
+                if label_end + 1 < bytes.len() && bytes[label_end + 1] == b'_' {
+                    // Valid footnote ref: numeric or #-prefixed
+                    if label.chars().all(|c| c.is_ascii_digit()) || label.starts_with('#') {
+                        refs.push(label.to_string());
                     }
                 }
             }
@@ -515,7 +521,7 @@ impl RstExtractor {
     }
 
     /// Parse image directive options (`:alt:`, `:width:`, `:height:`) from indented lines.
-    fn parse_image_options<'a>(lines: &[&'a str], start: &mut usize) -> AHashMap<String, String> {
+    fn parse_image_options(lines: &[&str], start: &mut usize) -> AHashMap<String, String> {
         let mut opts = AHashMap::new();
         while *start < lines.len() {
             let line = lines[*start];
@@ -527,12 +533,12 @@ impl RstExtractor {
                 *start += 1;
                 break;
             }
-            if trimmed.starts_with(':') {
-                if let Some(colon2) = trimmed[1..].find(':') {
-                    let key = trimmed[1..1 + colon2].to_string();
-                    let value = trimmed[2 + colon2..].trim().to_string();
-                    opts.insert(key, value);
-                }
+            if trimmed.starts_with(':')
+                && let Some(colon2) = trimmed[1..].find(':')
+            {
+                let key = trimmed[1..1 + colon2].to_string();
+                let value = trimmed[2 + colon2..].trim().to_string();
+                opts.insert(key, value);
             }
             *start += 1;
         }
@@ -776,7 +782,7 @@ impl RstExtractor {
                 }
                 let cells = Self::parse_grid_table_cells(&table_lines);
                 if !cells.is_empty() {
-                    builder.push_table_simple(&cells, None);
+                    builder.push_table_from_cells(&cells, None);
                 }
                 continue;
             }

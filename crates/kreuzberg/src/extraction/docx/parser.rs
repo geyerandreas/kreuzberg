@@ -872,10 +872,12 @@ fn apply_run_formatting(e: &BytesStart, current_run: &mut Option<Run>) {
                 }
             }
             b"w:color" => {
-                if let Some(val) = get_val_attr_string(e) {
-                    if val != "auto" && val.len() == 6 && val.chars().all(|c| c.is_ascii_hexdigit()) {
-                        run.font_color = Some(val);
-                    }
+                if let Some(val) = get_val_attr_string(e)
+                    && val != "auto"
+                    && val.len() == 6
+                    && val.chars().all(|c| c.is_ascii_hexdigit())
+                {
+                    run.font_color = Some(val);
                 }
             }
             b"w:highlight" => {

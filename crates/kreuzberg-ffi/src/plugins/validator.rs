@@ -198,14 +198,7 @@ pub unsafe extern "C" fn kreuzberg_register_validator(
         let validator = Arc::new(FfiValidator::new(name_str.to_string(), callback, priority));
 
         let registry = kreuzberg::plugins::registry::get_validator_registry();
-        let mut registry_guard = match registry.write() {
-            Ok(guard) => guard,
-            Err(e) => {
-                // ~keep: Lock poisoning indicates a panic in another thread holding the lock.
-                set_last_error(format!("Failed to acquire registry write lock: {}", e));
-                return false;
-            }
-        };
+        let mut registry_guard = registry.write();
 
         match registry_guard.register(validator) {
             Ok(()) => true,
@@ -252,14 +245,7 @@ pub unsafe extern "C" fn kreuzberg_unregister_validator(name: *const c_char) -> 
         };
 
         let registry = kreuzberg::plugins::registry::get_validator_registry();
-        let mut registry_guard = match registry.write() {
-            Ok(guard) => guard,
-            Err(e) => {
-                // ~keep: Lock poisoning indicates a panic in another thread holding the lock.
-                set_last_error(format!("Failed to acquire registry write lock: {}", e));
-                return false;
-            }
-        };
+        let mut registry_guard = registry.write();
 
         match registry_guard.remove(name_str) {
             Ok(()) => true,
@@ -283,14 +269,7 @@ pub unsafe extern "C" fn kreuzberg_clear_validators() -> bool {
         clear_last_error();
 
         let registry = kreuzberg::plugins::registry::get_validator_registry();
-        let mut registry_guard = match registry.write() {
-            Ok(guard) => guard,
-            Err(e) => {
-                // ~keep: Lock poisoning indicates a panic in another thread holding the lock.
-                set_last_error(format!("Failed to acquire registry write lock: {}", e));
-                return false;
-            }
-        };
+        let mut registry_guard = registry.write();
 
         *registry_guard = Default::default();
         true
@@ -309,14 +288,7 @@ pub unsafe extern "C" fn kreuzberg_list_validators() -> *mut c_char {
         clear_last_error();
 
         let registry = kreuzberg::plugins::registry::get_validator_registry();
-        let registry_guard = match registry.read() {
-            Ok(guard) => guard,
-            Err(e) => {
-                // ~keep: Lock poisoning indicates a panic in another thread holding the lock.
-                set_last_error(format!("Failed to acquire registry read lock: {}", e));
-                return ptr::null_mut();
-            }
-        };
+        let registry_guard = registry.read();
 
         match serde_json::to_string(&registry_guard.list()) {
             Ok(json) => match CString::new(json) {

@@ -145,7 +145,7 @@ fn build_dbf_document_structure(parsed: &DbfParsed) -> crate::types::document_st
     table_rows.push(parsed.field_names.clone());
     table_rows.extend(parsed.rows.iter().cloned());
 
-    builder.push_table_simple(&table_rows, None);
+    builder.push_table_from_cells(&table_rows, None);
     builder.build()
 }
 

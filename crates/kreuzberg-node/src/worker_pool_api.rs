@@ -12,8 +12,8 @@ use napi_derive::napi;
 use std::sync::{Arc, Mutex};
 
 /// Global registry of worker pools
-static WORKER_POOLS: std::sync::LazyLock<Mutex<Vec<Arc<Mutex<Option<WorkerPool>>>>>> =
-    std::sync::LazyLock::new(|| Mutex::new(Vec::new()));
+type PoolRegistry = Mutex<Vec<Arc<Mutex<Option<WorkerPool>>>>>;
+static WORKER_POOLS: std::sync::LazyLock<PoolRegistry> = std::sync::LazyLock::new(|| Mutex::new(Vec::new()));
 
 /// Opaque handle to a worker pool
 #[napi]

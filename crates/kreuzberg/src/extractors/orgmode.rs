@@ -31,7 +31,6 @@ use ahash::AHashMap;
 #[cfg(feature = "office")]
 use async_trait::async_trait;
 #[cfg(feature = "office")]
-#[cfg(feature = "office")]
 use org::Org;
 #[cfg(feature = "office")]
 use std::borrow::Cow;
@@ -225,21 +224,23 @@ impl OrgModeExtractor {
 
         while i < len {
             // [[url][description]] or [[url]]
-            if i + 1 < len && bytes[i] == b'[' && bytes[i + 1] == b'[' {
-                if let Some((url, display, consumed_to)) = Self::parse_org_link(raw, i) {
-                    let start = out.len() as u32;
-                    out.push_str(&display);
-                    let end = out.len() as u32;
-                    if start < end {
-                        annotations.push(TextAnnotation {
-                            start,
-                            end,
-                            kind: AnnotationKind::Link { url, title: None },
-                        });
-                    }
-                    i = consumed_to;
-                    continue;
+            if i + 1 < len
+                && bytes[i] == b'['
+                && bytes[i + 1] == b'['
+                && let Some((url, display, consumed_to)) = Self::parse_org_link(raw, i)
+            {
+                let start = out.len() as u32;
+                out.push_str(&display);
+                let end = out.len() as u32;
+                if start < end {
+                    annotations.push(TextAnnotation {
+                        start,
+                        end,
+                        kind: AnnotationKind::Link { url, title: None },
+                    });
                 }
+                i = consumed_to;
+                continue;
             }
 
             // Org markup characters: *bold*, /italic/, _underline_, =verbatim=, ~code~, +strike+
@@ -248,30 +249,32 @@ impl OrgModeExtractor {
                 // Must be preceded by whitespace/BOL and followed by non-space
                 let preceded_ok =
                     i == 0 || bytes[i - 1].is_ascii_whitespace() || bytes[i - 1] == b'(' || bytes[i - 1] == b'"';
-                if preceded_ok && i + 1 < len && !bytes[i + 1].is_ascii_whitespace() {
-                    if let Some(close) = Self::find_org_markup_close(bytes, i + 1, marker) {
-                        let inner = &raw[i + 1..close];
-                        let start = out.len() as u32;
-                        out.push_str(inner);
-                        let end_off = out.len() as u32;
-                        let kind = match marker {
-                            b'*' => AnnotationKind::Bold,
-                            b'/' => AnnotationKind::Italic,
-                            b'_' => AnnotationKind::Underline,
-                            b'=' | b'~' => AnnotationKind::Code,
-                            b'+' => AnnotationKind::Strikethrough,
-                            _ => unreachable!(),
-                        };
-                        if start < end_off {
-                            annotations.push(TextAnnotation {
-                                start,
-                                end: end_off,
-                                kind,
-                            });
-                        }
-                        i = close + 1;
-                        continue;
+                if preceded_ok
+                    && i + 1 < len
+                    && !bytes[i + 1].is_ascii_whitespace()
+                    && let Some(close) = Self::find_org_markup_close(bytes, i + 1, marker)
+                {
+                    let inner = &raw[i + 1..close];
+                    let start = out.len() as u32;
+                    out.push_str(inner);
+                    let end_off = out.len() as u32;
+                    let kind = match marker {
+                        b'*' => AnnotationKind::Bold,
+                        b'/' => AnnotationKind::Italic,
+                        b'_' => AnnotationKind::Underline,
+                        b'=' | b'~' => AnnotationKind::Code,
+                        b'+' => AnnotationKind::Strikethrough,
+                        _ => unreachable!(),
+                    };
+                    if start < end_off {
+                        annotations.push(TextAnnotation {
+                            start,
+                            end: end_off,
+                            kind,
+                        });
                     }
+                    i = close + 1;
+                    continue;
                 }
             }
 
@@ -407,13 +410,14 @@ impl OrgModeExtractor {
                         break;
                     }
                     // Parse :KEY: value
-                    if pt.starts_with(':') && pt.len() > 1 {
-                        if let Some(colon2) = pt[1..].find(':') {
-                            let key = pt[1..1 + colon2].to_string();
-                            let value = pt[2 + colon2..].trim().to_string();
-                            if !key.is_empty() {
-                                props.push((key, value));
-                            }
+                    if pt.starts_with(':')
+                        && pt.len() > 1
+                        && let Some(colon2) = pt[1..].find(':')
+                    {
+                        let key = pt[1..1 + colon2].to_string();
+                        let value = pt[2 + colon2..].trim().to_string();
+                        if !key.is_empty() {
+                            props.push((key, value));
                         }
                     }
                     i += 1;
@@ -581,7 +585,7 @@ impl OrgModeExtractor {
                     i += 1;
                 }
                 if !table_cells.is_empty() {
-                    builder.push_table_simple(&table_cells, None);
+                    builder.push_table_from_cells(&table_cells, None);
                 }
                 continue;
             }
@@ -597,10 +601,10 @@ impl OrgModeExtractor {
                     }
                     let text = Self::strip_list_prefix(t);
                     // Check for checkbox: [ ] or [x] or [X]
-                    let (item_text, checkbox_state) = if text.starts_with("[ ] ") {
-                        (&text[4..], Some("unchecked"))
-                    } else if text.starts_with("[x] ") || text.starts_with("[X] ") {
-                        (&text[4..], Some("checked"))
+                    let (item_text, checkbox_state) = if let Some(rest) = text.strip_prefix("[ ] ") {
+                        (rest, Some("unchecked"))
+                    } else if let Some(rest) = text.strip_prefix("[x] ").or_else(|| text.strip_prefix("[X] ")) {
+                        (rest, Some("checked"))
                     } else {
                         (text, None)
                     };

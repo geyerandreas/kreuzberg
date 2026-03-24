@@ -45,7 +45,6 @@ office = [
     "dep:roxmltree",
     "dep:zip",
     "dep:quick-xml",
-    "dep:pulldown-cmark",
     "dep:biblatex",
     "dep:biblib",
     "dep:org",
@@ -58,7 +57,7 @@ email = ["dep:mail-parser", "dep:cfb"]
 html = ["dep:html-to-markdown-rs"]
 xml = ["dep:quick-xml", "dep:roxmltree"]
 archives = ["dep:zip", "dep:tar", "dep:sevenz-rust2", "dep:flate2"]
-mdx = ["dep:pulldown-cmark"]
+mdx = []
 
 ocr = [
     "dep:kreuzberg-tesseract",
@@ -118,7 +117,7 @@ layout-detection = [
     "ort-bundled",
 ]
 language-detection = ["dep:whatlang"]
-chunking = ["dep:text-splitter", "dep:pulldown-cmark"]
+chunking = ["dep:text-splitter"]
 chunking-tokenizers = ["chunking", "dep:tokenizers", "text-splitter/tokenizers"]
 embeddings = [
     "dep:hf-hub",
@@ -292,7 +291,7 @@ parking_lot = { workspace = true }
 pastey = "0.2"
 pdf_oxide = { workspace = true, optional = true }
 pdfium-render = { workspace = true, features = ["thread_safe", "image_latest"], optional = true }
-pulldown-cmark = { version = "0.13", optional = true }
+pulldown-cmark = { version = "0.13" }
 quick-xml = { version = "0.39.2", features = ["serialize"], optional = true }
 rake = { version = "0.3.6", optional = true }
 rayon = { workspace = true }

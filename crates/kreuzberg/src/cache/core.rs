@@ -300,7 +300,7 @@ impl GenericCache {
     }
 
     /// Backward-compatible get without namespace/TTL.
-    pub fn get_simple(&self, cache_key: &str, source_file: Option<&str>) -> Result<Option<Vec<u8>>> {
+    pub fn get_default(&self, cache_key: &str, source_file: Option<&str>) -> Result<Option<Vec<u8>>> {
         self.get(cache_key, source_file, None, None)
     }
 
@@ -347,7 +347,7 @@ impl GenericCache {
     }
 
     /// Backward-compatible set without namespace/TTL.
-    pub fn set_simple(&self, cache_key: &str, data: Vec<u8>, source_file: Option<&str>) -> Result<()> {
+    pub fn set_default(&self, cache_key: &str, data: Vec<u8>, source_file: Option<&str>) -> Result<()> {
         self.set(cache_key, data, source_file, None, None)
     }
 

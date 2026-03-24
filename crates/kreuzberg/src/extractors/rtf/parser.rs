@@ -534,16 +534,16 @@ pub fn spans_to_annotations(para_start: usize, para_end: usize, formatting: &Rtf
                 kind: AnnotationKind::Underline,
             });
         }
-        if span.color_index > 0 {
-            if let Some(color) = formatting.color_table.get(span.color_index as usize) {
-                if !color.is_empty() && color != "#000000" {
-                    annotations.push(TextAnnotation {
-                        start: s,
-                        end: e,
-                        kind: AnnotationKind::Color { value: color.clone() },
-                    });
-                }
-            }
+        if span.color_index > 0
+            && let Some(color) = formatting.color_table.get(span.color_index as usize)
+            && !color.is_empty()
+            && color != "#000000"
+        {
+            annotations.push(TextAnnotation {
+                start: s,
+                end: e,
+                kind: AnnotationKind::Color { value: color.clone() },
+            });
         }
     }
 

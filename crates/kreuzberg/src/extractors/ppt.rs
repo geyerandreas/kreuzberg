@@ -275,8 +275,10 @@ mod tests {
         }
         let content = std::fs::read(&test_file).expect("Failed to read test PPT");
         let extractor = PptExtractor::new();
-        let mut config = ExtractionConfig::default();
-        config.include_document_structure = true;
+        let config = ExtractionConfig {
+            include_document_structure: true,
+            ..Default::default()
+        };
         let result = extractor
             .extract_bytes(&content, "application/vnd.ms-powerpoint", &config)
             .await

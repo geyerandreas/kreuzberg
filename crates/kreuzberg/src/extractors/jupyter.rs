@@ -105,19 +105,18 @@ impl JupyterExtractor {
                 cell_entry.insert("index".into(), json!(cell_idx));
                 cell_entry.insert("cell_type".into(), json!(cell_type));
 
-                if cell_type == "code" {
-                    if let Some(exec_count) = cell.get("execution_count") {
-                        cell_entry.insert("execution_count".into(), exec_count.clone());
-                    }
+                if cell_type == "code"
+                    && let Some(exec_count) = cell.get("execution_count")
+                {
+                    cell_entry.insert("execution_count".into(), exec_count.clone());
                 }
                 if let Some(tags) = cell
                     .get("metadata")
                     .and_then(|m| m.get("tags"))
                     .and_then(|t| t.as_array())
+                    && !tags.is_empty()
                 {
-                    if !tags.is_empty() {
-                        cell_entry.insert("tags".into(), Value::Array(tags.clone()));
-                    }
+                    cell_entry.insert("tags".into(), Value::Array(tags.clone()));
                 }
                 cells_meta.push(Value::Object(cell_entry));
 
@@ -363,20 +362,21 @@ impl JupyterExtractor {
 
             if bytes[i] == b'*' && (i == 0 || bytes[i - 1] != b'*') {
                 // Italic: *...*  (but not **)
-                if i + 1 < len && bytes[i + 1] != b'*' {
-                    if let Some(end) = Self::find_closing_single_star(bytes, i + 1) {
-                        let inner = &text[i + 1..end];
-                        let start = out.len() as u32;
-                        out.push_str(inner);
-                        let ann_end = out.len() as u32;
-                        annotations.push(TextAnnotation {
-                            start,
-                            end: ann_end,
-                            kind: AnnotationKind::Italic,
-                        });
-                        i = end + 1;
-                        continue;
-                    }
+                if i + 1 < len
+                    && bytes[i + 1] != b'*'
+                    && let Some(end) = Self::find_closing_single_star(bytes, i + 1)
+                {
+                    let inner = &text[i + 1..end];
+                    let start = out.len() as u32;
+                    out.push_str(inner);
+                    let ann_end = out.len() as u32;
+                    annotations.push(TextAnnotation {
+                        start,
+                        end: ann_end,
+                        kind: AnnotationKind::Italic,
+                    });
+                    i = end + 1;
+                    continue;
                 }
             }
 
@@ -487,11 +487,10 @@ impl JupyterExtractor {
                         .get("metadata")
                         .and_then(|m| m.get("tags"))
                         .and_then(|t| t.as_array())
+                        && !tags.is_empty()
                     {
-                        if !tags.is_empty() {
-                            let tag_strs: Vec<&str> = tags.iter().filter_map(|v| v.as_str()).collect();
-                            attrs.insert("tags".to_string(), tag_strs.join(","));
-                        }
+                        let tag_strs: Vec<&str> = tags.iter().filter_map(|v| v.as_str()).collect();
+                        attrs.insert("tags".to_string(), tag_strs.join(","));
                     }
                     if !attrs.is_empty() {
                         builder.set_attributes(node_idx, attrs);

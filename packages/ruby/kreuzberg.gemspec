@@ -4,31 +4,9 @@ require_relative 'lib/kreuzberg/version'
 
 repo_root = File.expand_path('../..', __dir__)
 
-ruby_prefix = 'packages/ruby/'
-ruby_cmd = %(git -C "#{repo_root}" ls-files -z #{ruby_prefix})
-ruby_files =
-  `#{ruby_cmd}`.split("\x0")
-               .select { |path| path.start_with?(ruby_prefix) }
-               .map { |path| path.delete_prefix(ruby_prefix) }
-
-core_prefix = 'crates/kreuzberg/'
-core_cmd = %(git -C "#{repo_root}" ls-files -z #{core_prefix})
-core_files =
-  `#{core_cmd}`.split("\x0")
-               .select { |path| path.start_with?(core_prefix) }
-               .map { |path| path.delete_prefix('crates/') }
-               .map { |path| "vendor/#{path}" }
-
-ffi_prefix = 'crates/kreuzberg-ffi/'
-ffi_cmd = %(git -C "#{repo_root}" ls-files -z #{ffi_prefix})
-ffi_files =
-  `#{ffi_cmd}`.split("\x0")
-              .select { |path| path.start_with?(ffi_prefix) }
-              .map { |path| path.delete_prefix('crates/') }
-              .map { |path| "vendor/#{path}" }
-
-fallback_files = Dir.chdir(__dir__) do
-  ruby_fallback = Dir.glob(
+# Collect ruby package files via Dir.glob (no git dependency)
+ruby_files = Dir.chdir(__dir__) do
+  Dir.glob(
     %w[
       README.md
       LICENSE
@@ -46,9 +24,20 @@ fallback_files = Dir.chdir(__dir__) do
     ],
     File::FNM_DOTMATCH
   )
+end
 
-  core_fallback = Dir.chdir(repo_root) do
-    Dir.glob('crates/kreuzberg/**/*', File::FNM_DOTMATCH)
+# Collect crate source files for vendoring into the gem
+crate_files = Dir.chdir(repo_root) do
+  crate_dirs = %w[
+    kreuzberg
+    kreuzberg-ffi
+    kreuzberg-tesseract
+    kreuzberg-paddle-ocr
+    kreuzberg-pdfium-render
+  ]
+
+  crate_dirs.flat_map do |crate|
+    Dir.glob("crates/#{crate}/**/*", File::FNM_DOTMATCH)
        .reject { |f| File.directory?(f) }
        .reject { |f| f.include?('/.fastembed_cache/') }
        .reject { |f| f.include?('/target/') }
@@ -56,44 +45,6 @@ fallback_files = Dir.chdir(__dir__) do
        .grep_v(/~$/)
        .map { |path| "vendor/#{path.delete_prefix('crates/')}" }
   end
-
-  ffi_fallback = Dir.chdir(repo_root) do
-    Dir.glob('crates/kreuzberg-ffi/**/*', File::FNM_DOTMATCH)
-       .reject { |f| File.directory?(f) }
-       .reject { |f| f.include?('/target/') }
-       .grep_v(/\.(swp|bak|tmp)$/)
-       .grep_v(/~$/)
-       .map { |path| "vendor/#{path.delete_prefix('crates/')}" }
-  end
-
-  tesseract_fallback = Dir.chdir(repo_root) do
-    Dir.glob('crates/kreuzberg-tesseract/**/*', File::FNM_DOTMATCH)
-       .reject { |f| File.directory?(f) }
-       .reject { |f| f.include?('/target/') }
-       .grep_v(/\.(swp|bak|tmp)$/)
-       .grep_v(/~$/)
-       .map { |path| "vendor/#{path.delete_prefix('crates/')}" }
-  end
-
-  paddle_ocr_fallback = Dir.chdir(repo_root) do
-    Dir.glob('crates/kreuzberg-paddle-ocr/**/*', File::FNM_DOTMATCH)
-       .reject { |f| File.directory?(f) }
-       .reject { |f| f.include?('/target/') }
-       .grep_v(/\.(swp|bak|tmp)$/)
-       .grep_v(/~$/)
-       .map { |path| "vendor/#{path.delete_prefix('crates/')}" }
-  end
-
-  pdfium_render_fallback = Dir.chdir(repo_root) do
-    Dir.glob('crates/kreuzberg-pdfium-render/**/*', File::FNM_DOTMATCH)
-       .reject { |f| File.directory?(f) }
-       .reject { |f| f.include?('/target/') }
-       .grep_v(/\.(swp|bak|tmp)$/)
-       .grep_v(/~$/)
-       .map { |path| "vendor/#{path.delete_prefix('crates/')}" }
-  end
-
-  ruby_fallback + core_fallback + ffi_fallback + tesseract_fallback + paddle_ocr_fallback + pdfium_render_fallback
 end
 
 vendor_files = Dir.chdir(__dir__) do
@@ -179,14 +130,12 @@ ext_files_from_fs = Dir.chdir(__dir__) do
      .grep_v(/~$/)
 end
 
-files = if (ruby_files + core_files + ffi_files).empty?
-          fallback_files
-        elsif vendor_files.any?
-          # Use ext/ files from filesystem (modified by vendor script) + non-ext ruby files from git
+files = if vendor_files.any?
+          # Use ext/ files from filesystem (modified by vendor script) + non-ext ruby files
           non_ext_ruby_files = ruby_files.reject { |f| f.start_with?('ext/') }
           non_ext_ruby_files + ext_files_from_fs + vendor_files
         else
-          ruby_files + core_files + ffi_files
+          ruby_files + crate_files
         end
 
 native_artifacts = Dir.chdir(__dir__) do
@@ -217,7 +166,7 @@ Gem::Specification.new do |spec|
   DESC
   spec.homepage = 'https://github.com/kreuzberg-dev/kreuzberg'
   spec.license = 'MIT'
-  spec.required_ruby_version = '>= 3.2.0', '< 5.0'
+  spec.required_ruby_version = ['>= 3.2.0', '< 5.0']
 
   spec.metadata = {
     'homepage_uri' => spec.homepage,

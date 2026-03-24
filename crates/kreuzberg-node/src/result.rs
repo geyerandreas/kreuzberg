@@ -818,6 +818,7 @@ impl TryFrom<JsExtractionResult> for RustExtractionResult {
                     })
                     .collect()
             }),
+            children: None,
         })
     }
 }

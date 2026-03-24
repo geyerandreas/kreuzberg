@@ -268,7 +268,7 @@ mod tests {
         assert!(paths.contains(&"layout/slanet_wired/slanet_wired.onnx"));
         assert!(paths.contains(&"layout/slanet_wireless/slanet_wireless.onnx"));
         assert!(paths.contains(&"layout/slanet_plus/slanet_plus.onnx"));
-        assert!(paths.contains(&"layout/table_classifier/table_classifier.onnx"));
+        assert!(paths.contains(&"layout/table_classifier/table_cls.onnx"));
     }
 
     #[test]

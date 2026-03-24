@@ -181,12 +181,11 @@ fn build_document_structure(doc: &crate::extraction::docx::parser::Document) -> 
                         // Collect cell styling as attributes keyed by "cell_R_C_..."
                         if let Some(ref props) = cell.properties {
                             let prefix = format!("cell_{}_{}", row_idx, col_idx);
-                            if let Some(ref shading) = props.shading {
-                                if let Some(ref fill) = shading.fill {
-                                    if fill != "auto" {
-                                        cell_style_attrs.insert(format!("{}_shading_fill", prefix), fill.clone());
-                                    }
-                                }
+                            if let Some(ref shading) = props.shading
+                                && let Some(ref fill) = shading.fill
+                                && fill != "auto"
+                            {
+                                cell_style_attrs.insert(format!("{}_shading_fill", prefix), fill.clone());
                             }
                             if let Some(ref borders) = props.borders {
                                 if let Some(ref top) = borders.top {

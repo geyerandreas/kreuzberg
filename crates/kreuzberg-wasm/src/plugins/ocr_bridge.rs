@@ -304,7 +304,7 @@ pub fn register_ocr_backend(backend: JsValue) -> Result<(), JsValue> {
 
     let wrapper = JsOcrBackendWrapper::new(backend, name.clone(), supported_languages);
     let registry = kreuzberg::plugins::registry::get_ocr_backend_registry();
-    let mut registry = acquire_write_lock(&registry, "OCR_BACKENDS").map_err(|e| JsValue::from_str(&e))?;
+    let mut registry = acquire_write_lock(&registry, "OCR_BACKENDS");
 
     registry
         .register(Arc::new(wrapper))
@@ -329,7 +329,7 @@ pub fn register_ocr_backend(backend: JsValue) -> Result<(), JsValue> {
 #[wasm_bindgen]
 pub fn unregister_ocr_backend(name: String) -> Result<(), JsValue> {
     let registry = kreuzberg::plugins::registry::get_ocr_backend_registry();
-    let mut registry = acquire_write_lock(&registry, "OCR_BACKENDS").map_err(|e| JsValue::from_str(&e))?;
+    let mut registry = acquire_write_lock(&registry, "OCR_BACKENDS");
 
     registry
         .remove(&name)
@@ -350,7 +350,7 @@ pub fn unregister_ocr_backend(name: String) -> Result<(), JsValue> {
 #[wasm_bindgen]
 pub fn clear_ocr_backends() -> Result<(), JsValue> {
     let registry = kreuzberg::plugins::registry::get_ocr_backend_registry();
-    let mut registry = acquire_write_lock(&registry, "OCR_BACKENDS").map_err(|e| JsValue::from_str(&e))?;
+    let mut registry = acquire_write_lock(&registry, "OCR_BACKENDS");
 
     let names = registry.list();
     for name in names {
@@ -377,7 +377,7 @@ pub fn clear_ocr_backends() -> Result<(), JsValue> {
 #[wasm_bindgen]
 pub fn list_ocr_backends() -> Result<js_sys::Array, JsValue> {
     let registry = kreuzberg::plugins::registry::get_ocr_backend_registry();
-    let registry = acquire_read_lock(&registry, "OCR_BACKENDS").map_err(|e| JsValue::from_str(&e))?;
+    let registry = acquire_read_lock(&registry, "OCR_BACKENDS");
 
     let names = registry.list();
     let arr = js_sys::Array::new();

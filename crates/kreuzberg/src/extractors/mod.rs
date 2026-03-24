@@ -68,7 +68,6 @@ pub mod text;
 pub mod djot_format;
 pub mod frontmatter_utils;
 
-#[cfg(any(feature = "office", feature = "mdx"))]
 pub(crate) mod markdown_utils;
 
 #[cfg(feature = "archives")]
@@ -116,7 +115,6 @@ pub mod epub;
 #[cfg(feature = "office")]
 pub mod fictionbook;
 
-#[cfg(feature = "office")]
 pub mod markdown;
 
 #[cfg(feature = "mdx")]
@@ -165,8 +163,9 @@ pub mod xml;
 pub mod docbook;
 
 pub use csv::CsvExtractor;
+pub use markdown::MarkdownExtractor;
 pub use structured::StructuredExtractor;
-pub use text::{MarkdownExtractor, PlainTextExtractor};
+pub use text::PlainTextExtractor;
 
 #[cfg(any(feature = "ocr", feature = "ocr-wasm"))]
 pub use image::ImageExtractor;
@@ -211,9 +210,6 @@ pub use epub::EpubExtractor;
 pub use fictionbook::FictionBookExtractor;
 
 pub use djot_format::DjotExtractor;
-
-#[cfg(feature = "office")]
-pub use markdown::MarkdownExtractor as EnhancedMarkdownExtractor;
 
 #[cfg(feature = "mdx")]
 pub use mdx::MdxExtractor;
@@ -338,7 +334,6 @@ pub fn register_default_extractors() -> Result<()> {
 
     #[cfg(feature = "office")]
     {
-        registry.register(Arc::new(EnhancedMarkdownExtractor::new()))?;
         registry.register(Arc::new(BibtexExtractor::new()))?;
         registry.register(Arc::new(CitationExtractor::new()))?;
         registry.register(Arc::new(EpubExtractor::new()))?;
@@ -398,17 +393,13 @@ mod tests {
     fn test_register_default_extractors() {
         let registry = get_document_extractor_registry();
         {
-            let mut reg = registry
-                .write()
-                .expect("Failed to acquire write lock on registry in test");
+            let mut reg = registry.write();
             *reg = crate::plugins::registry::DocumentExtractorRegistry::new();
         }
 
         register_default_extractors().expect("Failed to register extractors");
 
-        let reg = registry
-            .read()
-            .expect("Failed to acquire read lock on registry in test");
+        let reg = registry.read();
         let extractor_names = reg.list();
 
         #[allow(unused_mut)]
@@ -447,8 +438,7 @@ mod tests {
 
         #[cfg(feature = "office")]
         {
-            expected_count += 18;
-            assert!(extractor_names.contains(&"markdown-extractor".to_string()));
+            expected_count += 17;
             assert!(extractor_names.contains(&"bibtex-extractor".to_string()));
             assert!(extractor_names.contains(&"citation-extractor".to_string()));
             assert!(extractor_names.contains(&"epub-extractor".to_string()));
@@ -477,9 +467,9 @@ mod tests {
         #[cfg(feature = "iwork")]
         {
             expected_count += 3;
-            assert!(extractor_names.contains(&"pages-extractor".to_string()));
-            assert!(extractor_names.contains(&"numbers-extractor".to_string()));
-            assert!(extractor_names.contains(&"keynote-extractor".to_string()));
+            assert!(extractor_names.contains(&"iwork-pages-extractor".to_string()));
+            assert!(extractor_names.contains(&"iwork-numbers-extractor".to_string()));
+            assert!(extractor_names.contains(&"iwork-keynote-extractor".to_string()));
         }
 
         #[cfg(feature = "mdx")]

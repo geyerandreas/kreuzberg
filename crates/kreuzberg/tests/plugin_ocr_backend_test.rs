@@ -20,9 +20,8 @@ struct BackendRegistryGuard;
 impl Drop for BackendRegistryGuard {
     fn drop(&mut self) {
         let registry = get_ocr_backend_registry();
-        if let Ok(mut reg) = registry.write() {
-            let _ = reg.shutdown_all();
-        }
+        let mut reg = registry.write();
+        let _ = reg.shutdown_all();
     }
 }
 
@@ -304,7 +303,7 @@ fn test_register_custom_ocr_backend() {
     let registry = get_ocr_backend_registry();
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 
@@ -317,7 +316,7 @@ fn test_register_custom_ocr_backend() {
     });
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         let result = reg.register(Arc::clone(&backend) as Arc<dyn OcrBackend>);
         assert!(result.is_ok(), "Failed to register OCR backend: {:?}", result.err());
     }
@@ -328,14 +327,14 @@ fn test_register_custom_ocr_backend() {
     );
 
     let list = {
-        let reg = registry.read().expect("Operation failed");
+        let reg = registry.read();
         reg.list()
     };
 
     assert!(list.contains(&"test-ocr".to_string()));
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 }
@@ -348,7 +347,7 @@ fn test_ocr_backend_used_for_image_extraction() {
     let registry = get_ocr_backend_registry();
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 
@@ -361,7 +360,7 @@ fn test_ocr_backend_used_for_image_extraction() {
     });
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.register(Arc::clone(&backend) as Arc<dyn OcrBackend>)
             .expect("Operation failed");
     }
@@ -396,7 +395,7 @@ fn test_ocr_backend_used_for_image_extraction() {
     );
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 }
@@ -409,7 +408,7 @@ fn test_ocr_backend_receives_correct_parameters() {
     let registry = get_ocr_backend_registry();
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 
@@ -422,7 +421,7 @@ fn test_ocr_backend_receives_correct_parameters() {
     });
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.register(Arc::clone(&backend) as Arc<dyn OcrBackend>)
             .expect("Operation failed");
     }
@@ -450,7 +449,7 @@ fn test_ocr_backend_receives_correct_parameters() {
     assert!(extraction_result.content.contains("(lang: deu)"));
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 }
@@ -463,7 +462,7 @@ fn test_ocr_backend_returns_correct_format() {
     let registry = get_ocr_backend_registry();
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 
@@ -472,7 +471,7 @@ fn test_ocr_backend_returns_correct_format() {
     });
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.register(backend as Arc<dyn OcrBackend>).expect("Operation failed");
     }
 
@@ -501,7 +500,7 @@ fn test_ocr_backend_returns_correct_format() {
     assert!(extraction_result.metadata.additional.contains_key("ocr_language"));
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 }
@@ -514,7 +513,7 @@ fn test_ocr_backend_error_handling() {
     let registry = get_ocr_backend_registry();
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 
@@ -523,7 +522,7 @@ fn test_ocr_backend_error_handling() {
     });
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.register(backend as Arc<dyn OcrBackend>).expect("Operation failed");
     }
 
@@ -551,7 +550,7 @@ fn test_ocr_backend_error_handling() {
     }
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 }
@@ -564,7 +563,7 @@ fn test_ocr_backend_validation_error() {
     let registry = get_ocr_backend_registry();
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 
@@ -574,7 +573,7 @@ fn test_ocr_backend_validation_error() {
     });
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.register(backend as Arc<dyn OcrBackend>).expect("Operation failed");
     }
 
@@ -602,7 +601,7 @@ fn test_ocr_backend_validation_error() {
     }
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 }
@@ -615,7 +614,7 @@ fn test_switching_between_ocr_backends() {
     let registry = get_ocr_backend_registry();
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 
@@ -636,7 +635,7 @@ fn test_switching_between_ocr_backends() {
     });
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.register(Arc::clone(&backend1) as Arc<dyn OcrBackend>)
             .expect("Operation failed");
         reg.register(Arc::clone(&backend2) as Arc<dyn OcrBackend>)
@@ -690,7 +689,7 @@ fn test_switching_between_ocr_backends() {
     assert_eq!(backend2.call_count.load(Ordering::SeqCst), 1);
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 }
@@ -702,7 +701,7 @@ fn test_ocr_backend_language_support() {
     let registry = get_ocr_backend_registry();
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 
@@ -715,7 +714,7 @@ fn test_ocr_backend_language_support() {
     });
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.register(Arc::clone(&backend) as Arc<dyn OcrBackend>)
             .expect("Operation failed");
     }
@@ -732,7 +731,7 @@ fn test_ocr_backend_language_support() {
     assert!(supported.contains(&"fra".to_string()));
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 }
@@ -759,7 +758,7 @@ fn test_ocr_backend_invalid_name() {
     let registry = get_ocr_backend_registry();
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 
@@ -772,7 +771,7 @@ fn test_ocr_backend_invalid_name() {
     });
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         let result = reg.register(backend);
 
         assert!(result.is_err());
@@ -783,7 +782,7 @@ fn test_ocr_backend_invalid_name() {
     }
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 }
@@ -795,7 +794,7 @@ fn test_ocr_backend_initialization_lifecycle() {
     let registry = get_ocr_backend_registry();
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 
@@ -813,7 +812,7 @@ fn test_ocr_backend_initialization_lifecycle() {
     );
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.register(Arc::clone(&backend) as Arc<dyn OcrBackend>)
             .expect("Operation failed");
     }
@@ -824,7 +823,7 @@ fn test_ocr_backend_initialization_lifecycle() {
     );
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 
@@ -841,7 +840,7 @@ fn test_unregister_ocr_backend() {
     let registry = get_ocr_backend_registry();
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 
@@ -854,18 +853,18 @@ fn test_unregister_ocr_backend() {
     });
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.register(Arc::clone(&backend) as Arc<dyn OcrBackend>)
             .expect("Operation failed");
     }
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.remove("unregister-ocr").expect("Operation failed");
     }
 
     let list = {
-        let reg = registry.read().expect("Operation failed");
+        let reg = registry.read();
         reg.list()
     };
 
@@ -884,7 +883,7 @@ fn test_ocr_backend_document_processing_fallback() {
     let registry = get_ocr_backend_registry();
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 
@@ -897,7 +896,7 @@ fn test_ocr_backend_document_processing_fallback() {
     });
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.register(Arc::clone(&backend) as Arc<dyn OcrBackend>)
             .expect("Operation failed");
     }
@@ -938,7 +937,7 @@ fn test_ocr_backend_document_processing_fallback() {
     );
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 }
@@ -951,7 +950,7 @@ fn test_ocr_backend_document_processing_override() {
     let registry = get_ocr_backend_registry();
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 
@@ -964,7 +963,7 @@ fn test_ocr_backend_document_processing_override() {
     });
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.register(Arc::clone(&backend) as Arc<dyn OcrBackend>)
             .expect("Operation failed");
     }
@@ -1005,7 +1004,7 @@ fn test_ocr_backend_document_processing_override() {
     );
 
     {
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.shutdown_all().expect("Operation failed");
     }
 }
@@ -1027,7 +1026,7 @@ fn test_ocr_backend_document_processing_missing_path_fallback() {
 
     {
         let registry = get_ocr_backend_registry();
-        let mut reg = registry.write().expect("Operation failed");
+        let mut reg = registry.write();
         reg.register(std::sync::Arc::clone(&backend) as std::sync::Arc<dyn OcrBackend>)
             .expect("Operation failed");
     }

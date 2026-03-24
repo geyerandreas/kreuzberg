@@ -80,7 +80,7 @@ impl PaddleOcrBackend {
             return Ok(p.clone());
         }
 
-        let shared = self.model_manager.ensure_v2_shared_models(&self.config.model_tier)?;
+        let shared = self.model_manager.ensure_shared_models(&self.config.model_tier)?;
         *paths = Some(shared.clone());
         Ok(shared)
     }

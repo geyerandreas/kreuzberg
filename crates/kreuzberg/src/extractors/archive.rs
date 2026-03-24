@@ -105,7 +105,14 @@ fn build_archive_result_sync(
     format_name: &'static str,
     mime_type: &str,
 ) -> ExtractionResult {
-    build_archive_result_inner(extraction_metadata, text_contents, format_name, mime_type, Vec::new(), Vec::new())
+    build_archive_result_inner(
+        extraction_metadata,
+        text_contents,
+        format_name,
+        mime_type,
+        Vec::new(),
+        Vec::new(),
+    )
 }
 
 /// Async version with recursive extraction of archive children.
@@ -160,7 +167,14 @@ async fn build_archive_result(
         }
     }
 
-    build_archive_result_inner(extraction_metadata, text_contents, format_name, mime_type, children, processing_warnings)
+    build_archive_result_inner(
+        extraction_metadata,
+        text_contents,
+        format_name,
+        mime_type,
+        children,
+        processing_warnings,
+    )
 }
 
 /// ZIP archive extractor.

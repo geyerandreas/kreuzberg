@@ -191,12 +191,7 @@ pub fn register_post_processor(_env: Env, processor: Object) -> Result<()> {
 
     let arc_processor: Arc<dyn RustPostProcessor> = Arc::new(js_processor);
     let registry = get_post_processor_registry();
-    let mut registry = registry.write().map_err(|e| {
-        napi::Error::new(
-            napi::Status::GenericFailure,
-            format!("Failed to acquire write lock on PostProcessor registry: {}", e),
-        )
-    })?;
+    let mut registry = registry.write();
 
     registry.register(arc_processor, 50).map_err(|e| {
         napi::Error::new(
@@ -212,12 +207,7 @@ pub fn register_post_processor(_env: Env, processor: Object) -> Result<()> {
 #[napi]
 pub fn unregister_post_processor(name: String) -> Result<()> {
     let registry = get_post_processor_registry();
-    let mut registry = registry.write().map_err(|e| {
-        napi::Error::new(
-            napi::Status::GenericFailure,
-            format!("Failed to acquire write lock on PostProcessor registry: {}", e),
-        )
-    })?;
+    let mut registry = registry.write();
 
     registry.remove(&name).map_err(|e| {
         napi::Error::new(
@@ -232,12 +222,7 @@ pub fn unregister_post_processor(name: String) -> Result<()> {
 #[napi]
 pub fn clear_post_processors() -> Result<()> {
     let registry = get_post_processor_registry();
-    let mut registry = registry.write().map_err(|e| {
-        napi::Error::new(
-            napi::Status::GenericFailure,
-            format!("Failed to acquire write lock on PostProcessor registry: {}", e),
-        )
-    })?;
+    let mut registry = registry.write();
 
     *registry = Default::default();
     Ok(())
@@ -247,12 +232,7 @@ pub fn clear_post_processors() -> Result<()> {
 #[napi]
 pub fn list_post_processors() -> Result<Vec<String>> {
     let registry = get_post_processor_registry();
-    let registry = registry.read().map_err(|e| {
-        napi::Error::new(
-            napi::Status::GenericFailure,
-            format!("Failed to acquire read lock on PostProcessor registry: {}", e),
-        )
-    })?;
+    let registry = registry.read();
 
     Ok(registry.list())
 }

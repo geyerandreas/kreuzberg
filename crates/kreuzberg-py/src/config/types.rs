@@ -147,6 +147,7 @@ impl ExtractionConfig {
                 cache_ttl_secs,
                 email: email.map(Into::into),
                 concurrency: concurrency.map(Into::into),
+                max_archive_depth: 3,
             },
             html_options_dict,
         })

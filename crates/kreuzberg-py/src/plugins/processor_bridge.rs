@@ -316,12 +316,7 @@ pub fn register_post_processor(py: Python<'_>, processor: Py<PyAny>) -> PyResult
 
     py.detach(|| {
         let registry = get_post_processor_registry();
-        let mut registry = registry.write().map_err(|e| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Failed to acquire write lock on PostProcessor registry: {}",
-                e
-            ))
-        })?;
+        let mut registry = registry.write();
 
         registry.register(arc_processor, 0).map_err(|e| {
             pyo3::exceptions::PyRuntimeError::new_err(format!(
@@ -363,12 +358,7 @@ pub fn register_post_processor(py: Python<'_>, processor: Py<PyAny>) -> PyResult
 pub fn unregister_post_processor(py: Python<'_>, name: &str) -> PyResult<()> {
     py.detach(|| {
         let registry = get_post_processor_registry();
-        let mut registry = registry.write().map_err(|e| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Failed to acquire write lock on PostProcessor registry: {}",
-                e
-            ))
-        })?;
+        let mut registry = registry.write();
 
         registry.remove(name).map_err(|e| {
             pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to unregister PostProcessor '{}': {}", name, e))
@@ -395,12 +385,7 @@ pub fn unregister_post_processor(py: Python<'_>, name: &str) -> PyResult<()> {
 pub fn clear_post_processors(py: Python<'_>) -> PyResult<()> {
     py.detach(|| {
         let registry = get_post_processor_registry();
-        let mut registry = registry.write().map_err(|e| {
-            pyo3::exceptions::PyRuntimeError::new_err(format!(
-                "Failed to acquire write lock on PostProcessor registry: {}",
-                e
-            ))
-        })?;
+        let mut registry = registry.write();
 
         registry.shutdown_all().map_err(|e| {
             pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to clear PostProcessor registry: {}", e))

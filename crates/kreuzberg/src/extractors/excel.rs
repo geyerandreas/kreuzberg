@@ -42,7 +42,7 @@ impl ExcelExtractor {
             if let Some(ref cells) = sheet.table_cells
                 && !cells.is_empty()
             {
-                builder.push_table_simple(cells, None);
+                builder.push_table_from_cells(cells, None);
             }
         }
 

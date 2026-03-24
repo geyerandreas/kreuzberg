@@ -21,6 +21,11 @@ use regex::Regex;
 use std::borrow::Cow;
 use std::sync::LazyLock;
 
+/// Annotation tracking entry: (kind_tag, byte_start, optional link data).
+///
+/// kind_tag: 0=bold, 1=italic, 2=strikethrough, 3=code, 4=link
+type AnnotationEntry = (u8, u32, Option<(String, Option<String>)>);
+
 /// Regex matching JSX component tags (capitalized tag names).
 /// Matches opening tags like `<Component prop="value">`, closing tags like `</Component>`,
 /// and self-closing tags like `<Component />`.
@@ -214,7 +219,7 @@ impl MdxExtractor {
 
         // Annotation tracking: stack of (kind_tag, byte_start, optional link data).
         // kind_tag: 0=bold, 1=italic, 2=strikethrough, 3=code, 4=link
-        let mut annotation_starts: Vec<(u8, u32, Option<(String, Option<String>)>)> = Vec::new();
+        let mut annotation_starts: Vec<AnnotationEntry> = Vec::new();
 
         fn text_offset(paragraph_text: &str, in_paragraph: bool) -> u32 {
             if in_paragraph { paragraph_text.len() as u32 } else { 0 }
@@ -285,16 +290,15 @@ impl MdxExtractor {
                     }
                 }
                 Event::End(TagEnd::Strong) => {
-                    if in_paragraph {
-                        if let Some((0, start, _)) = annotation_starts
+                    if in_paragraph
+                        && let Some((0, start, _)) = annotation_starts
                             .iter()
                             .rposition(|(k, _, _)| *k == 0)
-                            .and_then(|i| Some(annotation_starts.remove(i)))
-                        {
-                            let end = text_offset(&paragraph_text, in_paragraph);
-                            if start < end {
-                                paragraph_annotations.push(builder::bold(start, end));
-                            }
+                            .map(|i| annotation_starts.remove(i))
+                    {
+                        let end = text_offset(&paragraph_text, in_paragraph);
+                        if start < end {
+                            paragraph_annotations.push(builder::bold(start, end));
                         }
                     }
                 }
@@ -304,16 +308,15 @@ impl MdxExtractor {
                     }
                 }
                 Event::End(TagEnd::Emphasis) => {
-                    if in_paragraph {
-                        if let Some((1, start, _)) = annotation_starts
+                    if in_paragraph
+                        && let Some((1, start, _)) = annotation_starts
                             .iter()
                             .rposition(|(k, _, _)| *k == 1)
-                            .and_then(|i| Some(annotation_starts.remove(i)))
-                        {
-                            let end = text_offset(&paragraph_text, in_paragraph);
-                            if start < end {
-                                paragraph_annotations.push(builder::italic(start, end));
-                            }
+                            .map(|i| annotation_starts.remove(i))
+                    {
+                        let end = text_offset(&paragraph_text, in_paragraph);
+                        if start < end {
+                            paragraph_annotations.push(builder::italic(start, end));
                         }
                     }
                 }
@@ -323,16 +326,15 @@ impl MdxExtractor {
                     }
                 }
                 Event::End(TagEnd::Strikethrough) => {
-                    if in_paragraph {
-                        if let Some((2, start, _)) = annotation_starts
+                    if in_paragraph
+                        && let Some((2, start, _)) = annotation_starts
                             .iter()
                             .rposition(|(k, _, _)| *k == 2)
-                            .and_then(|i| Some(annotation_starts.remove(i)))
-                        {
-                            let end = text_offset(&paragraph_text, in_paragraph);
-                            if start < end {
-                                paragraph_annotations.push(builder::strikethrough(start, end));
-                            }
+                            .map(|i| annotation_starts.remove(i))
+                    {
+                        let end = text_offset(&paragraph_text, in_paragraph);
+                        if start < end {
+                            paragraph_annotations.push(builder::strikethrough(start, end));
                         }
                     }
                 }
@@ -348,16 +350,15 @@ impl MdxExtractor {
                     }
                 }
                 Event::End(TagEnd::Link) => {
-                    if in_paragraph {
-                        if let Some((4, start, Some((url, title)))) = annotation_starts
+                    if in_paragraph
+                        && let Some((4, start, Some((url, title)))) = annotation_starts
                             .iter()
                             .rposition(|(k, _, _)| *k == 4)
-                            .and_then(|i| Some(annotation_starts.remove(i)))
-                        {
-                            let end = text_offset(&paragraph_text, in_paragraph);
-                            if start < end {
-                                paragraph_annotations.push(builder::link(start, end, &url, title.as_deref()));
-                            }
+                            .map(|i| annotation_starts.remove(i))
+                    {
+                        let end = text_offset(&paragraph_text, in_paragraph);
+                        if start < end {
+                            paragraph_annotations.push(builder::link(start, end, &url, title.as_deref()));
                         }
                     }
                 }
@@ -417,7 +418,7 @@ impl MdxExtractor {
                 }
                 Event::End(TagEnd::Table) => {
                     if !table_rows.is_empty() {
-                        builder.push_table_simple(&table_rows, None);
+                        builder.push_table_from_cells(&table_rows, None);
                     }
                     table_rows.clear();
                 }

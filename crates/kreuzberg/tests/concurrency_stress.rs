@@ -352,7 +352,7 @@ async fn test_concurrent_pipeline_processing() {
 
     let registry = get_post_processor_registry();
     {
-        let mut reg = registry.write().expect("Should acquire write lock");
+        let mut reg = registry.write();
         let processor = Arc::new(ConcurrentTestProcessor);
         let _ = reg.remove("concurrent-test");
         reg.register(processor, 50).expect("Should register processor");
@@ -392,7 +392,7 @@ async fn test_concurrent_pipeline_processing() {
     }
 
     {
-        let mut reg = registry.write().expect("Should acquire write lock");
+        let mut reg = registry.write();
         let _ = reg.remove("concurrent-test");
     }
 }
@@ -412,7 +412,7 @@ async fn test_concurrent_registry_reads() {
         handles.push(tokio::spawn(async move {
             let start = std::time::Instant::now();
 
-            let reg = registry_clone.read().expect("Should acquire read lock");
+            let reg = registry_clone.read();
             let _extractor = reg.get("text/plain");
 
             start.elapsed()

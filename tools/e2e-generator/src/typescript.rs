@@ -1009,7 +1009,7 @@ fn render_category(category: &str, fixtures: &[&Fixture]) -> Result<String> {
     writeln!(buffer, "// Tests for {category} fixtures.\n")?;
     let needs_read_file_sync = fixtures
         .iter()
-        .any(|f| f.extractions().iter().any(|e| matches!(e.input_type, InputType::Bytes)));
+        .any(|f| matches!(f.extraction().input_type, InputType::Bytes));
     if needs_read_file_sync {
         writeln!(buffer, "import {{ existsSync, readFileSync }} from \"node:fs\";")?;
     } else {
