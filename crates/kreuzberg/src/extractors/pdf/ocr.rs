@@ -506,7 +506,7 @@ pub(crate) async fn extract_with_ocr(
     #[cfg(feature = "layout-detection")] layout_detections: Option<&[crate::layout::DetectionResult]>,
     config: &ExtractionConfig,
     path: Option<&std::path::Path>,
-) -> crate::Result<(String, Option<f64>)> {
+) -> crate::Result<(String, Option<f64>, Vec<crate::types::OcrElement>)> {
     use crate::plugins::registry::get_ocr_backend_registry;
     use image::ImageEncoder;
     use image::codecs::png::PngEncoder;
@@ -576,7 +576,8 @@ pub(crate) async fn extract_with_ocr(
             .get("mean_text_conf")
             .and_then(|v| v.as_f64())
             .map(|v| v / 100.0);
-        return Ok((result.content, mean_conf));
+        let ocr_elements = result.ocr_elements.unwrap_or_default();
+        return Ok((result.content, mean_conf, ocr_elements));
     }
 
     // Encode and OCR pages in bounded batches so that at most `batch_size`
@@ -671,6 +672,7 @@ pub(crate) async fn extract_with_ocr(
     let mut page_texts = Vec::with_capacity(images_to_use.len());
     let mut conf_sum: f64 = 0.0;
     let mut conf_count: usize = 0;
+    let mut all_ocr_elements: Vec<crate::types::OcrElement> = Vec::new();
 
     for (page_idx, ocr_result) in ocr_results.into_iter().enumerate() {
         // SAFETY: every slot was filled in the join loop above; None is unreachable.
@@ -688,6 +690,11 @@ pub(crate) async fn extract_with_ocr(
         {
             conf_sum += conf_val as f64;
             conf_count += 1;
+        }
+
+        // Accumulate OCR elements from this page (before the layout path consumes them).
+        if let Some(ref elems) = ocr_result.ocr_elements {
+            all_ocr_elements.extend(elems.iter().cloned());
         }
 
         // When layout detections are available and OCR produced elements,
@@ -812,7 +819,7 @@ pub(crate) async fn extract_with_ocr(
         }
         result.push_str(text);
     }
-    Ok((result, mean_text_conf))
+    Ok((result, mean_text_conf, all_ocr_elements))
 }
 
 /// Run a multi-backend OCR pipeline with quality-based fallback.
@@ -898,7 +905,7 @@ pub(crate) async fn run_ocr_pipeline(
         .await;
 
         match result {
-            Ok((text, mean_conf)) => {
+            Ok((text, mean_conf, _stage_ocr_elements)) => {
                 let text_score = compute_quality_score(&text, &pipeline.quality_thresholds);
 
                 // Blend the heuristic text score with the native Tesseract mean_text_conf
