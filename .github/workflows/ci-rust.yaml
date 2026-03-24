@@ -340,3 +340,28 @@ jobs:
         if: matrix.archive == 'zip'
         shell: pwsh
         run: scripts/ci/rust/test-cli-windows.ps1 -Target ${{ matrix.target }}
+
+  check-zip-dep:
+    name: Verify zip dependency is not 8.x (stable-Rust regression guard)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Rust
+        uses: kreuzberg-dev/actions/setup-rust@v1
+        with:
+          cache-key-prefix: check-zip-dep
+
+      - name: Assert no zip 8.x in kreuzberg-cli dependency tree
+        shell: bash
+        run: |
+          if cargo tree --locked -p kreuzberg-cli 2>/dev/null | grep -qE '^[[:space:]]*zip v[89]'; then
+            echo "ERROR: zip 8.x or 9.x detected in kreuzberg-cli dependency tree."
+            echo "zip >= 8.0 uses let_chains in edition 2021 and fails to compile on stable Rust."
+            echo "See Cargo.toml comment on the zip dependency for details."
+            exit 1
+          fi
+          echo "OK: no zip 8.x+ found in kreuzberg-cli dependency tree."
