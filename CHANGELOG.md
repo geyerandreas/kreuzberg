@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **`cargo install kreuzberg-cli` on stable Rust**: Constrained the `zip` dependency to `<7.4.0` to prevent automatic upgrades to `zip 8.x`, which uses `let_chains` with edition 2021 and fails to compile on any stable Rust toolchain (the feature is only stable in edition 2024, since Rust 1.88). Added a CI regression guard that verifies no `zip 8.x+` appears in the `kreuzberg-cli` dependency tree.
+
+---
+
 ## [4.6.0] - 2026-03-24
 
 ### Added
