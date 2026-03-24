@@ -149,13 +149,13 @@ async fn run_ocr_with_layout(
     content: &[u8],
     config: &ExtractionConfig,
     path: Option<&std::path::Path>,
-) -> crate::Result<String> {
+) -> crate::Result<(String, Vec<crate::types::OcrElement>)> {
     let default_ocr_config = crate::core::config::OcrConfig::default();
     let ocr_config = config.ocr.as_ref().unwrap_or(&default_ocr_config);
 
-    // Check for pipeline configuration
+    // Check for pipeline configuration (pipeline path does not propagate OcrElements).
     if let Some(pipeline) = ocr_config.effective_pipeline() {
-        return ocr::run_ocr_pipeline(
+        let text = ocr::run_ocr_pipeline(
             Some(content),
             None, // No images rendered yet
             #[cfg(feature = "layout-detection")]
@@ -164,7 +164,8 @@ async fn run_ocr_with_layout(
             &pipeline,
             path,
         )
-        .await;
+        .await?;
+        return Ok((text, Vec::new()));
     }
 
     let images = ocr::render_pages_for_ocr(content)?;
@@ -172,7 +173,7 @@ async fn run_ocr_with_layout(
     #[cfg(feature = "layout-detection")]
     let layout_detections = run_layout_detection_on_images(&images, config);
 
-    let (text, _mean_conf) = extract_with_ocr(
+    let (text, _mean_conf, ocr_elements) = extract_with_ocr(
         Some(content),
         Some(&images),
         #[cfg(feature = "layout-detection")]
@@ -181,7 +182,7 @@ async fn run_ocr_with_layout(
         path,
     )
     .await?;
-    Ok(text)
+    Ok((text, ocr_elements))
 }
 
 /// PDF document extractor using pypdfium2 and playa-pdf.
@@ -441,9 +442,11 @@ impl PdfExtractor {
             }
         };
 
-        #[cfg(feature = "ocr")]
+        let mut ocr_elements_from_ocr: Vec<crate::types::OcrElement> = Vec::new();
         let (text, used_ocr) = if config.force_ocr {
-            (run_ocr_with_layout(content, config, path).await?, true)
+            let (t, elems) = run_ocr_with_layout(content, config, path).await?;
+            ocr_elements_from_ocr = elems;
+            (t, true)
         } else if let Some(ref ocr_pages) = config.force_ocr_pages {
             if !ocr_pages.is_empty() {
                 if let Some(ref bounds) = boundaries {
@@ -541,7 +544,9 @@ impl PdfExtractor {
                 );
                 (native_text, false)
             } else if decision.fallback || has_font_encoding_issues {
-                (run_ocr_with_layout(content, config, path).await?, true)
+                let (t, elems) = run_ocr_with_layout(content, config, path).await?;
+                ocr_elements_from_ocr = elems;
+                (t, true)
             } else {
                 (native_text, false)
             }
@@ -759,6 +764,13 @@ impl PdfExtractor {
             images,
             djot_content: None,
             elements: None,
+            #[cfg(feature = "ocr")]
+            ocr_elements: if ocr_elements_from_ocr.is_empty() {
+                None
+            } else {
+                Some(ocr_elements_from_ocr)
+            },
+            #[cfg(not(feature = "ocr"))]
             ocr_elements: None,
             document: None,
             #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
