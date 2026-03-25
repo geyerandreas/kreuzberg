@@ -90,16 +90,17 @@ pub(super) fn format_table_as_text(table: &crate::types::Table) -> String {
 
 /// Process hierarchy blocks into Title and NarrativeText elements.
 ///
-/// Returns `true` when body-level blocks with bounding boxes were found, indicating
-/// the caller should skip the plain-text `process_content` pass (which has no
-/// coordinates) to avoid producing duplicate elements.
+/// Returns `true` when any body-level block was emitted, indicating
+/// the caller should skip the plain-text `process_content` pass to avoid
+/// producing duplicate elements. Body blocks without bounding boxes are still
+/// emitted (without coordinates); the flag is set regardless of bbox presence.
 pub(super) fn process_hierarchy(
     elements: &mut Vec<Element>,
     hierarchy: &crate::types::PageHierarchy,
     page_number: usize,
     title: &Option<String>,
 ) -> bool {
-    let mut has_body_with_bbox = false;
+    let mut has_any_body_blocks = false;
 
     for block in &hierarchy.blocks {
         let coords = block.bbox.as_ref().map(|(left, top, right, bottom)| BoundingBox {
@@ -116,9 +117,7 @@ pub(super) fn process_hierarchy(
                 if block.text.trim().is_empty() {
                     continue;
                 }
-                if coords.is_some() {
-                    has_body_with_bbox = true;
-                }
+                has_any_body_blocks = true;
                 let element_id =
                     generate_element_id(&block.text, ElementType::NarrativeText, Some(page_number));
                 elements.push(Element {
@@ -161,7 +160,7 @@ pub(super) fn process_hierarchy(
         });
     }
 
-    has_body_with_bbox
+    has_any_body_blocks
 }
 
 /// Process tables on a page into Table elements.

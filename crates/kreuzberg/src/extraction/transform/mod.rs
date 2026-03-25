@@ -692,9 +692,9 @@ mod tests {
         assert_eq!(coords.y1, 65.0);
     }
 
-    /// When hierarchy body blocks have no bboxes, fall back to process_content.
+    /// Body blocks without bboxes are emitted once by process_hierarchy; process_content is skipped.
     #[test]
-    fn test_body_hierarchy_without_bbox_falls_back_to_process_content() {
+    fn test_body_hierarchy_without_bbox_emits_once_without_coordinates() {
         use crate::types::{ElementType, ExtractionResult, HierarchicalBlock, PageContent, PageHierarchy};
 
         let result = ExtractionResult {
@@ -735,20 +735,16 @@ mod tests {
 
         let elements = transform_extraction_result_to_elements(&result);
 
-        // process_content fallback should split into paragraphs
+        // process_hierarchy emits the body block as NarrativeText (no bbox → no coords).
+        // Because a body block was emitted, process_content is skipped entirely — no duplicates.
         let narratives: Vec<_> = elements
             .iter()
             .filter(|e| e.element_type == ElementType::NarrativeText)
             .collect();
-        // The body block without bbox emits one element, then process_content also runs
-        // and splits the content into 2 paragraphs. Body block text is a duplicate so
-        // the total depends on implementation. What matters: no coordinates on bbox-less body.
-        for n in &narratives {
-            // None of these should have coordinates since no bbox was available
-            assert!(
-                n.metadata.coordinates.is_none(),
-                "NarrativeText without hierarchy bbox should have no coordinates"
-            );
-        }
+        assert_eq!(narratives.len(), 1, "bbox-less body block should produce exactly one NarrativeText element");
+        assert!(
+            narratives[0].metadata.coordinates.is_none(),
+            "NarrativeText without hierarchy bbox should have no coordinates"
+        );
     }
 }

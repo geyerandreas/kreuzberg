@@ -153,9 +153,9 @@ async fn run_ocr_with_layout(
     let default_ocr_config = crate::core::config::OcrConfig::default();
     let ocr_config = config.ocr.as_ref().unwrap_or(&default_ocr_config);
 
-    // Check for pipeline configuration (pipeline path does not propagate OcrElements).
+    // Check for pipeline configuration.
     if let Some(pipeline) = ocr_config.effective_pipeline() {
-        let text = ocr::run_ocr_pipeline(
+        let (text, ocr_elements) = ocr::run_ocr_pipeline(
             Some(content),
             None, // No images rendered yet
             #[cfg(feature = "layout-detection")]
@@ -165,7 +165,7 @@ async fn run_ocr_with_layout(
             path,
         )
         .await?;
-        return Ok((text, Vec::new()));
+        return Ok((text, ocr_elements));
     }
 
     let images = ocr::render_pages_for_ocr(content)?;
@@ -442,7 +442,9 @@ impl PdfExtractor {
             }
         };
 
+        #[cfg(feature = "ocr")]
         let mut ocr_elements_from_ocr: Vec<crate::types::OcrElement> = Vec::new();
+        #[cfg(feature = "ocr")]
         let (text, used_ocr) = if config.force_ocr {
             let (t, elems) = run_ocr_with_layout(content, config, path).await?;
             ocr_elements_from_ocr = elems;
