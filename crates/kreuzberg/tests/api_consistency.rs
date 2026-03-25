@@ -253,6 +253,13 @@ fn test_extraction_config_no_unknown_fields_in_default() {
         "output_format",
         "include_document_structure",
         "security_limits",
+        "acceleration",
+        "cache_namespace",
+        "cache_ttl_secs",
+        "concurrency",
+        "email",
+        "layout",
+        "max_archive_depth",
     ];
 
     for key in obj.keys() {

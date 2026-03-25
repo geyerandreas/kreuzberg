@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **OOM crash on multi-page scanned PDFs** (#570): Replaced pre-rendering all PDF pages into memory with batched rendering. Pages are now rendered and OCR'd in bounded batches, capping peak memory to `batch_size * page` instead of `page_count * page`.
 - **DocumentStructure missing Heading nodes for PDFs**: `push_heading_group` now inserts a `Heading` child inside each `Group` node (matching DOCX builder behavior). Fallback `add_paragraphs` now detects markdown heading markers and creates heading groups instead of flat paragraphs.
 - **Layout detection returns empty tables on scanned PDFs** (#574): Three independent bugs caused `result.tables` to always be `[]` for scanned/image-based PDFs: (1) layout detection was gated behind a `needs_structured` output-format check, silently skipping detection for `Plain` (the default); (2) TATR-recognized tables in the OCR path were inlined as markdown text but never converted to `Table` structs; (3) `run_ocr_with_layout` returned only text, discarding table data. All three paths now propagate tables correctly.
 - **PDF layout engine panic on malformed input** (#544): Replaced the panicking `.expect()` inside the thread-local `LayoutEngine` initializer in `layout_runner.rs` with proper `Result`-based error propagation. A failure to initialise the layout engine now returns a descriptive error instead of crashing the host process via FFI (Python, Node, etc.).
