@@ -49,7 +49,9 @@ struct LayoutDetectionBundle {
 fn run_layout_detection(content: &[u8], config: &ExtractionConfig) -> Option<LayoutDetectionBundle> {
     let layout_config = config.layout.as_ref()?;
 
-    // Only run for output formats that use the markdown pipeline.
+    // We no longer pre-render all images here because `detect_layout_for_document`
+    // now uses batched rendering under the hood to prevent OOMs.
+
     let needs_structured = matches!(
         config.output_format,
         OutputFormat::Markdown | OutputFormat::Djot | OutputFormat::Html
@@ -90,13 +92,13 @@ fn run_layout_detection(content: &[u8], config: &ExtractionConfig) -> Option<Lay
     result
 }
 
-/// Run layout detection on pre-rendered images, returning pixel-space results.
+/// Run layout detection on PDF bytes via batching, returning pixel-space results.
 ///
-/// Used by the OCR path to share rendered images with layout detection.
+/// Used by the OCR path to get layout detections without rendering all pages upfront.
 /// Returns `None` when layout detection is not configured or fails.
 #[cfg(all(feature = "pdf", feature = "layout-detection", feature = "ocr"))]
-fn run_layout_detection_on_images(
-    images: &[image::DynamicImage],
+fn run_layout_detection_ocr_pass(
+    content: &[u8],
     config: &ExtractionConfig,
 ) -> Option<Vec<crate::layout::DetectionResult>> {
     let layout_config = config.layout.as_ref()?;
@@ -117,33 +119,70 @@ fn run_layout_detection_on_images(
         }
     };
 
-    let result = match crate::pdf::layout_runner::detect_layout_for_images(images, &mut engine) {
-        Ok(results) => {
-            let total_detections: usize = results.iter().map(|r| r.detections.len()).sum();
-            tracing::info!(
-                page_count = results.len(),
-                total_detections,
-                "Layout detection on OCR images completed"
-            );
-            Some(results)
+    let mut all_results = Vec::new();
+    let batch_size = 10;
+    
+    let result = match crate::pdf::layout_runner::detect_layout_for_document_batched(
+        content,
+        &mut engine,
+        batch_size,
+        |batch_res, _timings, batch_imgs| {
+            // Reconstruct DetectionResult (pixel-space bbox) from PageLayoutResult (PDF-space bbox)
+            // We know:
+            // pixel_x * (page_width / img_width) = pdf_left
+            // page_height - pixel_y * (page_height / img_height) = pdf_top
+            // Solving for pixel_x and pixel_y:
+            // pixel_x = pdf_left * (img_width / page_width)
+            // pixel_y = (page_height - pdf_top) * (img_height / page_height)
+            
+            for res in batch_res {
+                let img_w = res.render_width_px as f32;
+                let img_h = res.render_height_px as f32;
+                let page_w = res.page_width_pts;
+                let page_h = res.page_height_pts;
+                
+                let sx = if page_w > 0.0 { img_w / page_w } else { 1.0 };
+                let sy = if page_h > 0.0 { img_h / page_h } else { 1.0 };
+                
+                let detections = res.regions.into_iter().map(|region| {
+                    let bbox = crate::layout::BBox {
+                        x1: region.bbox.left * sx,
+                        y1: (page_h - region.bbox.top) * sy,
+                        x2: region.bbox.right * sx,
+                        y2: (page_h - region.bbox.bottom) * sy,
+                    };
+                    crate::layout::LayoutDetection {
+                        class: region.class,
+                        confidence: region.confidence,
+                        bbox,
+                    }
+                }).collect();
+                
+                all_results.push(crate::layout::DetectionResult {
+                    page_width: res.render_width_px,
+                    page_height: res.render_height_px,
+                    detections,
+                });
+            }
+            Ok(())
         }
+    ) {
+        Ok(_) => Some(all_results),
         Err(e) => {
-            tracing::warn!("Layout detection on OCR images failed: {}", e);
+            tracing::warn!("Layout detection batched pass failed: {}", e);
             None
         }
     };
 
-    // Return engine to cache for reuse by subsequent extractions
     crate::layout::return_engine(engine);
     result
 }
 
-/// Render PDF pages, optionally run layout detection, then run OCR.
+/// Render PDF layout detections, then run OCR lazily.
 ///
-/// Renders images once and shares them between layout detection and OCR
-/// to avoid redundant PDF rendering. When a multi-backend pipeline is
-/// configured (or auto-constructed), uses quality-based fallback across
-/// backends.
+/// Layout caching is performed at 72 DPI to save memory. OCR rendering
+/// is executed dynamically at 300 DPI within batches via `extract_with_ocr`
+/// to avoid `Vec<DynamicImage>` out-of-memory errors on large PDFs.
 #[cfg(feature = "ocr")]
 async fn run_ocr_with_layout(
     content: &[u8],
@@ -167,20 +206,19 @@ async fn run_ocr_with_layout(
         .await;
     }
 
-    let images = ocr::render_pages_for_ocr(content)?;
-
     #[cfg(feature = "layout-detection")]
-    let layout_detections = run_layout_detection_on_images(&images, config);
+    let layout_detections = run_layout_detection_ocr_pass(content, config);
 
     let (text, _mean_conf) = extract_with_ocr(
         Some(content),
-        Some(&images),
+        None, // Lazy stream 300 DPI pages in extract_with_ocr's batch loop
         #[cfg(feature = "layout-detection")]
         layout_detections.as_deref(),
         config,
         path,
     )
     .await?;
+    
     Ok(text)
 }
 
