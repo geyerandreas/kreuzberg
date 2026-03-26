@@ -330,7 +330,7 @@ tokenizers = { version = "0.22", optional = true, default-features = false, feat
 tokio = { workspace = true, optional = true }
 toml = { workspace = true }
 tower = { version = "0.5", features = ["timeout", "limit", "util"], optional = true }
-tower-http = { version = "0.6", features = ["cors", "trace", "limit"], optional = true }
+tower-http = { version = "0.6", features = ["cors", "trace", "limit", "catch-panic", "request-id", "sensitive-headers", "compression-full"], optional = true }
 tracing = { workspace = true }
 tracing-opentelemetry = { version = "0.32", optional = true }
 unicode-normalization = { version = "0.1.25", optional = true }

@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Deeper instrumentation**: Pipeline post-processing stages (Early/Middle/Late), individual processor execution, OCR operations, and RT-DETR layout model inference now have semantic spans and duration metrics.
 - **API and MCP servers use ExtractionService**: Both consumers now route extractions through the Tower service stack, getting unified tracing, metrics, and middleware for free.
 - **Unified config merge**: JSON config merge logic deduplicated between CLI and MCP into a shared function.
+- **API server hardening**: Added response compression (gzip/brotli/zstd), panic recovery, request-ID correlation, and sensitive header redaction via tower-http middleware.
 
 ### Changed
 
@@ -30,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **`test_pipeline_with_all_features` assertion without `quality` feature**: `quality_score` assertion now gated behind `#[cfg(feature = "quality")]`.
+- **Node Windows publish failure**: Prepare script fallback used bash-specific `mkdir -p` and `echo >` which fail on Windows. Replaced with cross-platform `node -e` fallback.
 
 ---
 
