@@ -838,8 +838,7 @@ pub fn generate(fixtures: &[Fixture], output_root: &Utf8Path) -> Result<()> {
         let mut sorted = render_fixtures;
         sorted.sort_by(|a, b| a.id.cmp(&b.id));
         let content = render_render_category_c(&sorted)?;
-        fs::write(c_root.join("test_render.c"), content)
-            .context("Failed to write C render test file")?;
+        fs::write(c_root.join("test_render.c"), content).context("Failed to write C render test file")?;
         test_names.push("test_render".to_string());
     }
 
@@ -1840,10 +1839,7 @@ fn render_render_category_c(fixtures: &[&Fixture]) -> Result<String> {
 }
 
 fn render_render_test_c(fixture: &Fixture) -> Result<(String, String)> {
-    let fn_name = format!(
-        "test_render_{}",
-        to_snake_safe(&fixture.id)
-    );
+    let fn_name = format!("test_render_{}", to_snake_safe(&fixture.id));
     let mut code = String::new();
     let render = fixture.render.as_ref().expect("render spec required");
     let assertions = fixture.assertions().render.unwrap_or_default();
@@ -1863,7 +1859,10 @@ fn render_render_test_c(fixture: &Fixture) -> Result<(String, String)> {
                 "    struct CPageImage *page = kreuzberg_render_pdf_page(document_path, {page_index}, {dpi_val});"
             )?;
             writeln!(code, "    if (!page) {{")?;
-            writeln!(code, "        fprintf(stderr, \"FAIL: kreuzberg_render_pdf_page returned NULL\\n\");")?;
+            writeln!(
+                code,
+                "        fprintf(stderr, \"FAIL: kreuzberg_render_pdf_page returned NULL\\n\");"
+            )?;
             writeln!(code, "        exit(1);")?;
             writeln!(code, "    }}")?;
             render_render_assertions_c(&assertions, "page->data", "page->len", &mut code)?;
@@ -1875,12 +1874,18 @@ fn render_render_test_c(fixture: &Fixture) -> Result<(String, String)> {
                 "    struct CPdfPageIterator *iter = kreuzberg_pdf_page_iterator_new(document_path, {dpi_val});"
             )?;
             writeln!(code, "    if (!iter) {{")?;
-            writeln!(code, "        fprintf(stderr, \"FAIL: kreuzberg_pdf_page_iterator_new returned NULL\\n\");")?;
+            writeln!(
+                code,
+                "        fprintf(stderr, \"FAIL: kreuzberg_pdf_page_iterator_new returned NULL\\n\");"
+            )?;
             writeln!(code, "        exit(1);")?;
             writeln!(code, "    }}")?;
             writeln!(code, "    size_t page_count = 0;")?;
             writeln!(code, "    struct CPageIterResult *result = NULL;")?;
-            writeln!(code, "    while ((result = kreuzberg_pdf_page_iterator_next(iter)) != NULL) {{")?;
+            writeln!(
+                code,
+                "    while ((result = kreuzberg_pdf_page_iterator_next(iter)) != NULL) {{"
+            )?;
             writeln!(code, "        assert_is_png(result->data, result->len);")?;
             writeln!(code, "        kreuzberg_pdf_page_iterator_free_result(result);")?;
             writeln!(code, "        page_count++;")?;
@@ -1905,7 +1910,12 @@ fn render_render_test_c(fixture: &Fixture) -> Result<(String, String)> {
     Ok((fn_name, code))
 }
 
-fn render_render_assertions_c(assertions: &RenderAssertions, data_var: &str, len_var: &str, code: &mut String) -> Result<()> {
+fn render_render_assertions_c(
+    assertions: &RenderAssertions,
+    data_var: &str,
+    len_var: &str,
+    code: &mut String,
+) -> Result<()> {
     if assertions.is_png == Some(true) {
         writeln!(code, "    assert_is_png({data_var}, {len_var});")?;
     }

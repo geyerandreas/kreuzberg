@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **PDF page rendering API** (#583): New `render_pdf_page` function and `PdfPageIterator` for rendering individual PDF pages as PNG images. Available across all 11 language bindings with idiomatic patterns (Python context manager, Go Close(), Java AutoCloseable, C# IDisposable, Elixir Stream, etc.). Default 150 DPI, configurable per call.
+
+### Fixed
+
+- **Table recognition coordinate mismatch on scanned PDFs** (#582): Layout detection bboxes (640x640 model space) are now scaled to OCR render resolution before TATR table recognition. Previously, coordinate space mismatch caused zero tables to be found.
+- **OCR elements report `page_number: 1` for all pages** (#582): Tesseract resets page numbers per single-page render. Page numbers are now correctly stamped after OCR in the batch loop.
+- **Elixir doctest failures**: Updated `ExtractionConfig.to_map/1` doctests to include `force_ocr_pages` field.
+
+### Improved
+
+- **`version:sync` now syncs Go C header and DefaultVersion**: `sync_versions.py` copies the generated `kreuzberg.h` to Go bindings and updates the `DefaultVersion` constant. Also syncs Docker compose image tags.
+- **Publish pipeline commits Elixir checksums**: The Hex publish step now commits the regenerated NIF checksum file back to main, preventing stale checksums.
+- **Ruby gem bundles ONNX Runtime**: Added `ort-bundled` feature to Ruby native Cargo.toml for feature parity with Node.js bindings.
+- **WASM test app migrated to Deno**: Replaced Node.js/vitest with Deno test runner, fixing `fetch()` unavailability in Node WASM environments.
+- **Docs migrated from MkDocs to Zensical**: Replaced mkdocs with zensical static site generator (4-5x faster incremental builds).
+
+---
+
 ## [4.6.1] - 2026-03-25
 
 ### Added

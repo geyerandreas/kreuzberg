@@ -1,4 +1,6 @@
-use crate::fixtures::{Assertions, ExtractionMethod, Fixture, InputType, PluginAssertions, PluginTestSpec, RenderAssertions};
+use crate::fixtures::{
+    Assertions, ExtractionMethod, Fixture, InputType, PluginAssertions, PluginTestSpec, RenderAssertions,
+};
 use anyhow::{Context, Result};
 use camino::Utf8Path;
 use itertools::Itertools;
@@ -974,6 +976,25 @@ fn render_test(fixture: &Fixture) -> Result<String> {
             .any(|t| t == "paddle-ocr");
     if requires_paddle {
         writeln!(body, "        E2EHelpers.skipIfPaddleOcrUnavailable();")?;
+    }
+
+    let skip_platforms = &fixture.skip().skip_on_platform;
+    if !skip_platforms.is_empty() {
+        let conditions: Vec<String> = skip_platforms
+            .iter()
+            .filter_map(|triple| rust_triple_to_java_condition(triple))
+            .collect();
+        if !conditions.is_empty() {
+            let combined = conditions.join(" || ");
+            writeln!(body, "        if ({combined}) {{")?;
+            writeln!(
+                body,
+                "            org.junit.jupiter.api.Assumptions.assumeTrue(false, \"Skipping {}: not supported on this platform\");",
+                fixture.id
+            )?;
+            writeln!(body, "            return;")?;
+            writeln!(body, "        }}")?;
+        }
     }
 
     // Generate different code based on extraction method and input type
@@ -2452,14 +2473,14 @@ fn render_render_test_java(fixture: &Fixture) -> Result<String> {
 
     writeln!(body, "    @Test")?;
     writeln!(body, "    public void {method_name}() throws Exception {{")?;
-    writeln!(body, "        Path documentPath = E2EHelpers.resolveDocument({doc_path});")?;
+    writeln!(
+        body,
+        "        Path documentPath = E2EHelpers.resolveDocument({doc_path});"
+    )?;
     writeln!(body, "        assumeTrue(Files.exists(documentPath),")?;
     writeln!(body, "                \"Skipping {}: missing document\");", fixture.id)?;
 
-    let dpi_arg = render
-        .dpi
-        .map(|d| format!(", {d}"))
-        .unwrap_or_default();
+    let dpi_arg = render.dpi.map(|d| format!(", {d}")).unwrap_or_default();
 
     match render.mode.as_str() {
         "single_page" => {
@@ -2471,10 +2492,7 @@ fn render_render_test_java(fixture: &Fixture) -> Result<String> {
             render_render_assertions_java(&assertions, "pngData", &mut body, "        ")?;
         }
         "iterator" => {
-            writeln!(
-                body,
-                "        int pageCount = 0;"
-            )?;
+            writeln!(body, "        int pageCount = 0;")?;
             writeln!(
                 body,
                 "        try (PdfPageIterator iter = PdfPageIterator.open(documentPath{dpi_arg})) {{"
@@ -2486,10 +2504,7 @@ fn render_render_test_java(fixture: &Fixture) -> Result<String> {
             writeln!(body, "            }}")?;
             writeln!(body, "        }}")?;
             if let Some(page_count_gte) = assertions.page_count_gte {
-                writeln!(
-                    body,
-                    "        assertTrue(pageCount >= {page_count_gte},"
-                )?;
+                writeln!(body, "        assertTrue(pageCount >= {page_count_gte},")?;
                 writeln!(
                     body,
                     "                String.format(\"Expected at least {page_count_gte} pages, got %d\", pageCount));"
@@ -2503,7 +2518,12 @@ fn render_render_test_java(fixture: &Fixture) -> Result<String> {
     Ok(body)
 }
 
-fn render_render_assertions_java(assertions: &RenderAssertions, var: &str, code: &mut String, indent: &str) -> Result<()> {
+fn render_render_assertions_java(
+    assertions: &RenderAssertions,
+    var: &str,
+    code: &mut String,
+    indent: &str,
+) -> Result<()> {
     if assertions.is_png == Some(true) {
         writeln!(code, "{indent}E2EHelpers.assertIsPng({var});")?;
     }
@@ -2511,4 +2531,18 @@ fn render_render_assertions_java(assertions: &RenderAssertions, var: &str, code:
         writeln!(code, "{indent}E2EHelpers.assertMinByteLength({var}, {min_len});")?;
     }
     Ok(())
+}
+
+fn rust_triple_to_java_condition(triple: &str) -> Option<String> {
+    let (arch, os_name) = match triple {
+        "aarch64-unknown-linux-gnu" | "aarch64-unknown-linux-musl" => ("aarch64", "Linux"),
+        "x86_64-unknown-linux-gnu" | "x86_64-unknown-linux-musl" => ("amd64", "Linux"),
+        "aarch64-apple-darwin" => ("aarch64", "Mac OS X"),
+        "x86_64-apple-darwin" => ("x86_64", "Mac OS X"),
+        "x86_64-pc-windows-msvc" => ("amd64", "Windows"),
+        _ => return None,
+    };
+    Some(format!(
+        "(System.getProperty(\"os.arch\").equals(\"{arch}\") && System.getProperty(\"os.name\").startsWith(\"{os_name}\"))"
+    ))
 }

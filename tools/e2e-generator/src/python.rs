@@ -1,4 +1,6 @@
-use crate::fixtures::{Assertions, ExtractionMethod, Fixture, InputType, PluginAssertions, PluginTestSpec, RenderAssertions};
+use crate::fixtures::{
+    Assertions, ExtractionMethod, Fixture, InputType, PluginAssertions, PluginTestSpec, RenderAssertions,
+};
 use anyhow::{Context, Result};
 use camino::Utf8Path;
 use itertools::Itertools;
@@ -728,8 +730,7 @@ pub fn generate(fixtures: &[Fixture], output_root: &Utf8Path) -> Result<()> {
         let mut sorted = render_fixtures;
         sorted.sort_by(|a, b| a.id.cmp(&b.id));
         let content = render_render_category(&sorted)?;
-        fs::write(tests_dir.join("test_render.py"), content)
-            .context("Failed to write Python render test file")?;
+        fs::write(tests_dir.join("test_render.py"), content).context("Failed to write Python render test file")?;
     }
 
     Ok(())
@@ -866,6 +867,25 @@ fn render_test(fixture: &Fixture) -> Result<String> {
         fixture.id
     )?;
     writeln!(code)?;
+
+    let skip_platforms = &fixture.skip().skip_on_platform;
+    if !skip_platforms.is_empty() {
+        let conditions: Vec<String> = skip_platforms
+            .iter()
+            .filter_map(|triple| rust_triple_to_python_condition(triple))
+            .collect();
+        if !conditions.is_empty() {
+            let combined = conditions.join(" or ");
+            writeln!(code, "    import platform as _platform")?;
+            writeln!(code, "    if {combined}:")?;
+            writeln!(
+                code,
+                "        pytest.skip(\"Skipping {}: not supported on this platform\")",
+                fixture.id
+            )?;
+            writeln!(code)?;
+        }
+    }
 
     let config_literal = render_config_literal(&extraction.config);
     writeln!(code, "    config = helpers.build_config({})", config_literal)?;
@@ -1385,10 +1405,7 @@ fn render_render_test(fixture: &Fixture) -> Result<String> {
     )?;
     writeln!(code)?;
 
-    let dpi_arg = render
-        .dpi
-        .map(|d| format!(", dpi={d}"))
-        .unwrap_or_default();
+    let dpi_arg = render.dpi.map(|d| format!(", dpi={d}")).unwrap_or_default();
 
     match render.mode.as_str() {
         "single_page" => {
@@ -1401,18 +1418,12 @@ fn render_render_test(fixture: &Fixture) -> Result<String> {
             render_render_assertions_python(&assertions, "png_data", &mut code)?;
         }
         "iterator" => {
-            writeln!(
-                code,
-                "    pages = []"
-            )?;
+            writeln!(code, "    pages = []")?;
             writeln!(
                 code,
                 "    with PdfPageIterator(str(document_path){dpi_arg}) as page_iter:"
             )?;
-            writeln!(
-                code,
-                "        for _page_index, png_data in page_iter:"
-            )?;
+            writeln!(code, "        for _page_index, png_data in page_iter:")?;
             writeln!(code, "            helpers.assert_is_png(png_data)")?;
             writeln!(code, "            pages.append(png_data)")?;
             writeln!(code)?;
@@ -1720,6 +1731,20 @@ fn generate_mime_extension_lookup_test(_fixture: &Fixture, test_spec: &PluginTes
     }
 
     Ok(())
+}
+
+fn rust_triple_to_python_condition(triple: &str) -> Option<String> {
+    let (machine, system) = match triple {
+        "aarch64-unknown-linux-gnu" | "aarch64-unknown-linux-musl" => ("aarch64", "Linux"),
+        "x86_64-unknown-linux-gnu" | "x86_64-unknown-linux-musl" => ("x86_64", "Linux"),
+        "aarch64-apple-darwin" => ("arm64", "Darwin"),
+        "x86_64-apple-darwin" => ("x86_64", "Darwin"),
+        "x86_64-pc-windows-msvc" => ("AMD64", "Windows"),
+        _ => return None,
+    };
+    Some(format!(
+        "(_platform.machine() == \"{machine}\" and _platform.system() == \"{system}\")"
+    ))
 }
 
 fn generate_object_property_assertions(assertions: &PluginAssertions, buf: &mut String) -> Result<()> {

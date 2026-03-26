@@ -2041,8 +2041,14 @@ fn render_render_category_ts(fixtures: &[&Fixture]) -> Result<String> {
     writeln!(buffer, "// Tests for render fixtures.\n")?;
     writeln!(buffer, "import {{ describe, it, expect }} from \"vitest\";")?;
     writeln!(buffer, "import {{ existsSync }} from \"node:fs\";")?;
-    writeln!(buffer, "import {{ renderPdfPageSync, PdfPageIterator }} from \"@kreuzberg/node\";")?;
-    writeln!(buffer, "import {{ assertions, resolveDocument }} from \"./helpers.js\";\n")?;
+    writeln!(
+        buffer,
+        "import {{ renderPdfPageSync, PdfPageIterator }} from \"@kreuzberg/node\";"
+    )?;
+    writeln!(
+        buffer,
+        "import {{ assertions, resolveDocument }} from \"./helpers.js\";\n"
+    )?;
 
     writeln!(buffer, "describe(\"render\", () => {{")?;
 
@@ -2066,10 +2072,7 @@ fn render_render_test_ts(fixture: &Fixture) -> Result<String> {
     writeln!(code, "        const documentPath = resolveDocument(\"{doc_path}\");")?;
     writeln!(code, "        if (!existsSync(documentPath)) return;")?;
 
-    let dpi_arg = render
-        .dpi
-        .map(|d| format!(", {{ dpi: {d} }}"))
-        .unwrap_or_default();
+    let dpi_arg = render.dpi.map(|d| format!(", {{ dpi: {d} }}")).unwrap_or_default();
 
     match render.mode.as_str() {
         "single_page" => {
@@ -2081,14 +2084,8 @@ fn render_render_test_ts(fixture: &Fixture) -> Result<String> {
             render_render_assertions_ts(&assertions, "pngData", &mut code, "        ")?;
         }
         "iterator" => {
-            writeln!(
-                code,
-                "        const pages: Buffer[] = [];"
-            )?;
-            writeln!(
-                code,
-                "        const iter = new PdfPageIterator(documentPath{dpi_arg});"
-            )?;
+            writeln!(code, "        const pages: Buffer[] = [];")?;
+            writeln!(code, "        const iter = new PdfPageIterator(documentPath{dpi_arg});")?;
             writeln!(code, "        let result = iter.next();")?;
             writeln!(code, "        while (result !== null) {{")?;
             writeln!(code, "            assertions.assertIsPng(result.data);")?;
@@ -2110,7 +2107,12 @@ fn render_render_test_ts(fixture: &Fixture) -> Result<String> {
     Ok(code)
 }
 
-fn render_render_assertions_ts(assertions: &RenderAssertions, var: &str, code: &mut String, indent: &str) -> Result<()> {
+fn render_render_assertions_ts(
+    assertions: &RenderAssertions,
+    var: &str,
+    code: &mut String,
+    indent: &str,
+) -> Result<()> {
     if assertions.is_png == Some(true) {
         writeln!(code, "{indent}assertions.assertIsPng({var});")?;
     }

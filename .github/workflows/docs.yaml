@@ -42,7 +42,7 @@ jobs:
       - name: Install dependencies and build docs
         run: |
           uv sync --group doc --no-editable --no-install-workspace --no-install-project
-          uv run --no-sync mkdocs build
+          uv run --no-sync zensical build --clean
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4

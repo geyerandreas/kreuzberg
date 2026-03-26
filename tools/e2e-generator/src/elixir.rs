@@ -858,8 +858,7 @@ pub fn generate(fixtures: &[Fixture], output_root: &Utf8Path) -> Result<()> {
         let mut sorted = render_fixtures;
         sorted.sort_by(|a, b| a.id.cmp(&b.id));
         let content = render_render_category_elixir(&sorted)?;
-        fs::write(e2e_dir.join("render_test.exs"), content)
-            .context("Failed to write Elixir render test file")?;
+        fs::write(e2e_dir.join("render_test.exs"), content).context("Failed to write Elixir render test file")?;
     }
 
     Ok(())
@@ -2007,10 +2006,7 @@ fn render_render_example_elixir(fixture: &Fixture) -> Result<String> {
     writeln!(code, "      :ok")?;
     writeln!(code, "    else")?;
 
-    let dpi_arg = render
-        .dpi
-        .map(|d| format!(", dpi: {d}"))
-        .unwrap_or_default();
+    let dpi_arg = render.dpi.map(|d| format!(", dpi: {d}")).unwrap_or_default();
 
     match render.mode.as_str() {
         "single_page" => {
@@ -2031,10 +2027,7 @@ fn render_render_example_elixir(fixture: &Fixture) -> Result<String> {
             writeln!(code, "        assert_is_png(png_data)")?;
             writeln!(code, "      end)")?;
             if let Some(page_count_gte) = assertions.page_count_gte {
-                writeln!(
-                    code,
-                    "      assert length(pages) >= {page_count_gte},"
-                )?;
+                writeln!(code, "      assert length(pages) >= {page_count_gte},")?;
                 writeln!(
                     code,
                     "        \"Expected at least {page_count_gte} pages, got #{{length(pages)}}\""

@@ -104,12 +104,6 @@ markdown_extensions:
 
 plugins:
   - search
-  # TODO: Add Algolia DocSearch for enhanced search
-  - social:
-      cards: false
-  - tags
-  - minify:
-      minify_html: true
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -125,11 +119,6 @@ plugins:
             show_submodules: false
             docstring_style: google
             docstring_section_style: spacy
-  - git-revision-date-localized:
-      enable_creation_date: true
-      type: timeago
-      fallback_to_build_date: true
-      enabled: true
 
 extra:
   social:

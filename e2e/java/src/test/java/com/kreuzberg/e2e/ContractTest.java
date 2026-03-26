@@ -1072,6 +1072,12 @@ public class ContractTest {
   @Test
   public void configPdfAnnotationsCount() throws Exception {
     JsonNode config = MAPPER.readTree("{\"pdf_options\":{\"extract_annotations\":true}}");
+    if ((System.getProperty("os.arch").equals("aarch64")
+        && System.getProperty("os.name").startsWith("Linux"))) {
+      org.junit.jupiter.api.Assumptions.assumeTrue(
+          false, "Skipping config_pdf_annotations_count: not supported on this platform");
+      return;
+    }
     E2EHelpers.runFixture(
         "config_pdf_annotations_count",
         "vendored/pdfplumber/pdf/annotations.pdf",

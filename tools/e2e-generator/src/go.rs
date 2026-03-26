@@ -712,8 +712,7 @@ pub fn generate(fixtures: &[Fixture], output_root: &Utf8Path) -> Result<()> {
         let mut sorted = render_fixtures;
         sorted.sort_by(|a, b| a.id.cmp(&b.id));
         let content = render_render_category(&sorted)?;
-        fs::write(go_root.join("render_test.go"), content)
-            .context("Failed to write Go render test file")?;
+        fs::write(go_root.join("render_test.go"), content).context("Failed to write Go render test file")?;
     }
 
     Ok(())
@@ -1841,16 +1840,17 @@ fn render_render_test(fixture: &Fixture) -> Result<String> {
     let render = fixture.render.as_ref().expect("render spec required");
     let assertions = fixture.assertions().render.unwrap_or_default();
 
-    let test_name = format!(
-        "TestRender{}",
-        to_go_pascal_case(&fixture.id)
-    );
+    let test_name = format!("TestRender{}", to_go_pascal_case(&fixture.id));
     let doc_path = go_string_literal(&fixture.document().path);
 
     writeln!(code, "func {test_name}(t *testing.T) {{")?;
     writeln!(code, "    documentPath := ensureDocument(t, {doc_path}, true)")?;
     writeln!(code, "    if _, err := os.Stat(documentPath); os.IsNotExist(err) {{")?;
-    writeln!(code, "        t.Skipf(\"Skipping %s: missing document at %s\", \"{}\", documentPath)", fixture.id)?;
+    writeln!(
+        code,
+        "        t.Skipf(\"Skipping %s: missing document at %s\", \"{}\", documentPath)",
+        fixture.id
+    )?;
     writeln!(code, "    }}")?;
 
     let dpi_val = render.dpi.unwrap_or(150);
@@ -1889,10 +1889,7 @@ fn render_render_test(fixture: &Fixture) -> Result<String> {
             writeln!(code, "        pageCount++")?;
             writeln!(code, "    }}")?;
             if let Some(page_count_gte) = assertions.page_count_gte {
-                writeln!(
-                    code,
-                    "    if pageCount < {page_count_gte} {{"
-                )?;
+                writeln!(code, "    if pageCount < {page_count_gte} {{")?;
                 writeln!(
                     code,
                     "        t.Fatalf(\"expected at least {page_count_gte} pages, got %d\", pageCount)"

@@ -716,7 +716,7 @@ pub(crate) async fn extract_with_ocr(
         // Sequential post-processing for this batch utilizing TATR.
         for offset in 0..batch_count {
             let page_idx = batch_start + offset;
-            let ocr_result = batch_ocr_results[offset].take().expect("OCR result missing for page");
+            let mut ocr_result = batch_ocr_results[offset].take().expect("OCR result missing for page");
             #[cfg(feature = "layout-detection")]
             let height = encoded_batch[offset].3;
 

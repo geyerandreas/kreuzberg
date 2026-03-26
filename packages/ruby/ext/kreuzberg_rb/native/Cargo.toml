@@ -36,6 +36,7 @@ kreuzberg = { path = "../../../../../crates/kreuzberg", default-features = false
     "chunking",
     "chunking-tokenizers",
     "embeddings",
+    "ort-bundled",
     "quality",
     "keywords",
     "api",

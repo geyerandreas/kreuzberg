@@ -89,8 +89,7 @@ pub fn generate(fixtures: &[Fixture], output_root: &Utf8Path) -> Result<()> {
         let mut sorted = render_fixtures;
         sorted.sort_by(|a, b| a.id.cmp(&b.id));
         let content = render_render_category_r(&sorted)?;
-        fs::write(test_dir.join("test-render.R"), content)
-            .context("Failed to write R render test file")?;
+        fs::write(test_dir.join("test-render.R"), content).context("Failed to write R render test file")?;
     }
 
     Ok(())
@@ -282,15 +281,19 @@ fn render_render_example_r(fixture: &Fixture, is_last: bool) -> Result<String> {
     let assertions = fixture.assertions().render.unwrap_or_default();
 
     writeln!(body, "test_that({}, {{", render_r_string(&fixture.id))?;
-    writeln!(body, "  document_path <- resolve_document({})", render_r_string(&fixture.document().path))?;
+    writeln!(
+        body,
+        "  document_path <- resolve_document({})",
+        render_r_string(&fixture.document().path)
+    )?;
     writeln!(body, "  if (!file.exists(document_path)) {{")?;
-    writeln!(body, "    testthat::skip(paste0(\"missing document at \", document_path))")?;
+    writeln!(
+        body,
+        "    testthat::skip(paste0(\"missing document at \", document_path))"
+    )?;
     writeln!(body, "  }}")?;
 
-    let dpi_arg = render
-        .dpi
-        .map(|d| format!(", dpi = {d}"))
-        .unwrap_or_default();
+    let dpi_arg = render.dpi.map(|d| format!(", dpi = {d}")).unwrap_or_default();
 
     match render.mode.as_str() {
         "single_page" => {
@@ -302,10 +305,7 @@ fn render_render_example_r(fixture: &Fixture, is_last: bool) -> Result<String> {
             render_render_assertions_r(&assertions, "png_data", &mut body)?;
         }
         "iterator" => {
-            writeln!(
-                body,
-                "  pages <- list()"
-            )?;
+            writeln!(body, "  pages <- list()")?;
             writeln!(
                 body,
                 "  render_pdf_pages_iter(document_path{dpi_arg}, callback = function(page_index, png_data) {{"
@@ -314,10 +314,7 @@ fn render_render_example_r(fixture: &Fixture, is_last: bool) -> Result<String> {
             writeln!(body, "    pages[[length(pages) + 1L]] <<- png_data")?;
             writeln!(body, "  }})")?;
             if let Some(page_count_gte) = assertions.page_count_gte {
-                writeln!(
-                    body,
-                    "  testthat::expect_gte(length(pages), {page_count_gte})"
-                )?;
+                writeln!(body, "  testthat::expect_gte(length(pages), {page_count_gte})")?;
             }
         }
         _ => anyhow::bail!("Unknown render mode: {}", render.mode),

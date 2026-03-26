@@ -491,7 +491,8 @@ async fn read_file_as_array_buffer(file: &web_sys::File) -> Result<Vec<u8>, Stri
 #[wasm_bindgen(js_name = renderPdfPageSync)]
 pub fn render_pdf_page_sync_wasm(data: Uint8Array, page_index: u32, dpi: Option<i32>) -> Result<Uint8Array, JsValue> {
     let bytes = data.to_vec();
-    let page = kreuzberg::pdf::render_pdf_page_to_png(&bytes, page_index as usize, dpi, None).map_err(|e| convert_error(e.into()))?;
+    let page = kreuzberg::pdf::render_pdf_page_to_png(&bytes, page_index as usize, dpi, None)
+        .map_err(|e| convert_error(e.into()))?;
 
     let arr = Uint8Array::new_with_length(page.len() as u32);
     arr.copy_from(&page);

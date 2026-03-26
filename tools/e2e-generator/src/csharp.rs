@@ -1,4 +1,6 @@
-use crate::fixtures::{Assertions, ExtractionMethod, Fixture, InputType, PluginAssertions, PluginTestSpec, RenderAssertions};
+use crate::fixtures::{
+    Assertions, ExtractionMethod, Fixture, InputType, PluginAssertions, PluginTestSpec, RenderAssertions,
+};
 use anyhow::{Context, Result};
 use camino::Utf8Path;
 use itertools::Itertools;
@@ -966,8 +968,7 @@ pub fn generate(fixtures: &[Fixture], output_root: &Utf8Path) -> Result<()> {
         let mut sorted = render_fixtures;
         sorted.sort_by(|a, b| a.id.cmp(&b.id));
         let content = render_render_category_csharp(&sorted)?;
-        fs::write(csharp_root.join("RenderTests.cs"), content)
-            .context("Failed to write C# render test file")?;
+        fs::write(csharp_root.join("RenderTests.cs"), content).context("Failed to write C# render test file")?;
     }
 
     Ok(())
@@ -2043,12 +2044,12 @@ fn render_render_test_csharp(buffer: &mut String, fixture: &Fixture) -> Result<(
     writeln!(buffer, "        [SkippableFact]")?;
     writeln!(buffer, "        public void {test_name}()")?;
     writeln!(buffer, "        {{")?;
-    writeln!(buffer, "            var documentPath = TestHelpers.EnsureDocument(\"{doc_path}\", true);")?;
+    writeln!(
+        buffer,
+        "            var documentPath = TestHelpers.EnsureDocument(\"{doc_path}\", true);"
+    )?;
 
-    let dpi_arg = render
-        .dpi
-        .map(|d| format!(", {d}"))
-        .unwrap_or_default();
+    let dpi_arg = render.dpi.map(|d| format!(", {d}")).unwrap_or_default();
 
     match render.mode.as_str() {
         "single_page" => {
@@ -2060,10 +2061,7 @@ fn render_render_test_csharp(buffer: &mut String, fixture: &Fixture) -> Result<(
             render_render_assertions_csharp(&assertions, "pngData", buffer, "            ")?;
         }
         "iterator" => {
-            writeln!(
-                buffer,
-                "            var pageCount = 0;"
-            )?;
+            writeln!(buffer, "            var pageCount = 0;")?;
             writeln!(
                 buffer,
                 "            using (var iter = PdfPageIterator.Open(documentPath{dpi_arg}))"
@@ -2076,10 +2074,7 @@ fn render_render_test_csharp(buffer: &mut String, fixture: &Fixture) -> Result<(
             writeln!(buffer, "                }}")?;
             writeln!(buffer, "            }}")?;
             if let Some(page_count_gte) = assertions.page_count_gte {
-                writeln!(
-                    buffer,
-                    "            Assert.True(pageCount >= {page_count_gte},"
-                )?;
+                writeln!(buffer, "            Assert.True(pageCount >= {page_count_gte},")?;
                 writeln!(
                     buffer,
                     "                $\"Expected at least {page_count_gte} pages, got {{pageCount}}\");"
@@ -2094,7 +2089,12 @@ fn render_render_test_csharp(buffer: &mut String, fixture: &Fixture) -> Result<(
     Ok(())
 }
 
-fn render_render_assertions_csharp(assertions: &RenderAssertions, var: &str, code: &mut String, indent: &str) -> Result<()> {
+fn render_render_assertions_csharp(
+    assertions: &RenderAssertions,
+    var: &str,
+    code: &mut String,
+    indent: &str,
+) -> Result<()> {
     if assertions.is_png == Some(true) {
         writeln!(code, "{indent}TestHelpers.AssertIsPng({var});")?;
     }

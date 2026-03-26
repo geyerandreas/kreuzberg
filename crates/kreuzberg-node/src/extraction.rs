@@ -191,8 +191,7 @@ pub fn render_pdf_page_sync(file_path: String, page_index: u32, dpi: Option<i32>
 pub async fn render_pdf_page(file_path: String, page_index: u32, dpi: Option<i32>) -> Result<Buffer> {
     let result = WORKER_POOL
         .spawn_blocking(move || {
-            let pdf_bytes =
-                std::fs::read(&file_path).map_err(|e| kreuzberg::KreuzbergError::Io(e))?;
+            let pdf_bytes = std::fs::read(&file_path).map_err(|e| kreuzberg::KreuzbergError::Io(e))?;
             kreuzberg::pdf::render_pdf_page_to_png(&pdf_bytes, page_index as usize, dpi, None)
                 .map_err(|e| kreuzberg::KreuzbergError::Other(e.to_string()))
         })
@@ -232,8 +231,8 @@ pub struct PdfPageResult {
 /// Array of `PdfPageResult` objects.
 #[napi]
 pub fn iterate_pdf_pages_sync(file_path: String, dpi: Option<i32>) -> Result<Vec<PdfPageResult>> {
-    let iter = kreuzberg::pdf::PdfPageIterator::from_file(&file_path, dpi, None)
-        .map_err(|e| convert_error(e.into()))?;
+    let iter =
+        kreuzberg::pdf::PdfPageIterator::from_file(&file_path, dpi, None).map_err(|e| convert_error(e.into()))?;
 
     let mut results = Vec::with_capacity(iter.page_count());
     for item in iter {
@@ -324,8 +323,8 @@ impl JsPdfPageIterator {
     /// * `dpi` - Optional DPI (default 150)
     #[napi(constructor)]
     pub fn new(file_path: String, dpi: Option<i32>) -> Result<Self> {
-        let iter = kreuzberg::pdf::PdfPageIterator::from_file(&file_path, dpi, None)
-            .map_err(|e| convert_error(e.into()))?;
+        let iter =
+            kreuzberg::pdf::PdfPageIterator::from_file(&file_path, dpi, None).map_err(|e| convert_error(e.into()))?;
         Ok(Self { inner: Some(iter) })
     }
 
@@ -377,7 +376,7 @@ impl JsPdfPageIterator {
 /// Number of pages in the PDF.
 #[napi]
 pub fn pdf_page_count(file_path: String, dpi: Option<i32>) -> Result<u32> {
-    let iter = kreuzberg::pdf::PdfPageIterator::from_file(&file_path, dpi, None)
-        .map_err(|e| convert_error(e.into()))?;
+    let iter =
+        kreuzberg::pdf::PdfPageIterator::from_file(&file_path, dpi, None).map_err(|e| convert_error(e.into()))?;
     Ok(iter.page_count() as u32)
 }
