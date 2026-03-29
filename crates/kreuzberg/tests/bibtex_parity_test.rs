@@ -2,6 +2,7 @@
 //! Comprehensive test for BibTeX extractor parity with Pandoc
 
 use kreuzberg::core::config::ExtractionConfig;
+use kreuzberg::extraction::derive::derive_extraction_result;
 use kreuzberg::extractors::BibtexExtractor;
 use kreuzberg::plugins::DocumentExtractor;
 
@@ -60,12 +61,16 @@ async fn test_all_entry_types() {
 
     for (bibtex_content, expected_type) in test_cases {
         let config = ExtractionConfig::default();
-        let result = extractor
+        let doc_result = extractor
             .extract_bytes(bibtex_content.as_bytes(), "application/x-bibtex", &config)
             .await;
 
-        assert!(result.is_ok(), "Failed to parse {} entry", expected_type);
-        let result = result.expect("Operation failed");
+        assert!(doc_result.is_ok(), "Failed to parse {} entry", expected_type);
+        let result = derive_extraction_result(
+            doc_result.expect("Operation failed"),
+            false,
+            kreuzberg::OutputFormat::Plain,
+        );
 
         if let Some(entry_types) = result.metadata.additional.get("entry_types") {
             assert!(entry_types.as_object().is_some(), "Entry types should be an object");
@@ -111,12 +116,16 @@ async fn test_all_common_fields() {
 "#;
 
     let config = ExtractionConfig::default();
-    let result = extractor
+    let doc_result = extractor
         .extract_bytes(bibtex_content.as_bytes(), "application/x-bibtex", &config)
         .await;
 
-    assert!(result.is_ok());
-    let result = result.expect("Operation failed");
+    assert!(doc_result.is_ok());
+    let result = derive_extraction_result(
+        doc_result.expect("Operation failed"),
+        false,
+        kreuzberg::OutputFormat::Plain,
+    );
 
     let content = &result.content;
 
@@ -178,12 +187,16 @@ async fn test_author_parsing() {
         let bibtex = format!("@article{{test, {}, title={{Test}}, year={{2023}}}}", author_field);
 
         let config = ExtractionConfig::default();
-        let result = extractor
+        let doc_result = extractor
             .extract_bytes(bibtex.as_bytes(), "application/x-bibtex", &config)
             .await;
 
-        assert!(result.is_ok());
-        let result = result.expect("Operation failed");
+        assert!(doc_result.is_ok());
+        let result = derive_extraction_result(
+            doc_result.expect("Operation failed"),
+            false,
+            kreuzberg::OutputFormat::Plain,
+        );
 
         if let Some(authors) = result.metadata.additional.get("authors") {
             let authors_array = authors.as_array().expect("Authors should be an array");
@@ -216,12 +229,16 @@ async fn test_special_characters() {
 "#;
 
     let config = ExtractionConfig::default();
-    let result = extractor
+    let doc_result = extractor
         .extract_bytes(bibtex_content.as_bytes(), "application/x-bibtex", &config)
         .await;
 
-    assert!(result.is_ok());
-    let result = result.expect("Operation failed");
+    assert!(doc_result.is_ok());
+    let result = derive_extraction_result(
+        doc_result.expect("Operation failed"),
+        false,
+        kreuzberg::OutputFormat::Plain,
+    );
 
     assert_eq!(
         result.metadata.additional.get("entry_count"),
@@ -245,12 +262,16 @@ async fn test_year_range_extraction() {
 "#;
 
     let config = ExtractionConfig::default();
-    let result = extractor
+    let doc_result = extractor
         .extract_bytes(bibtex_content.as_bytes(), "application/x-bibtex", &config)
         .await;
 
-    assert!(result.is_ok());
-    let result = result.expect("Operation failed");
+    assert!(doc_result.is_ok());
+    let result = derive_extraction_result(
+        doc_result.expect("Operation failed"),
+        false,
+        kreuzberg::OutputFormat::Plain,
+    );
 
     if let Some(year_range) = result.metadata.additional.get("year_range") {
         assert_eq!(year_range.get("min"), Some(&serde_json::json!(1990)));
@@ -276,12 +297,16 @@ async fn test_citation_keys_extraction() {
 "#;
 
     let config = ExtractionConfig::default();
-    let result = extractor
+    let doc_result = extractor
         .extract_bytes(bibtex_content.as_bytes(), "application/x-bibtex", &config)
         .await;
 
-    assert!(result.is_ok());
-    let result = result.expect("Operation failed");
+    assert!(doc_result.is_ok());
+    let result = derive_extraction_result(
+        doc_result.expect("Operation failed"),
+        false,
+        kreuzberg::OutputFormat::Plain,
+    );
 
     if let Some(citation_keys) = result.metadata.additional.get("citation_keys") {
         let keys_array = citation_keys.as_array().expect("Citation keys should be an array");
@@ -311,12 +336,16 @@ async fn test_entry_type_distribution() {
 "#;
 
     let config = ExtractionConfig::default();
-    let result = extractor
+    let doc_result = extractor
         .extract_bytes(bibtex_content.as_bytes(), "application/x-bibtex", &config)
         .await;
 
-    assert!(result.is_ok());
-    let result = result.expect("Operation failed");
+    assert!(doc_result.is_ok());
+    let result = derive_extraction_result(
+        doc_result.expect("Operation failed"),
+        false,
+        kreuzberg::OutputFormat::Plain,
+    );
 
     if let Some(entry_types) = result.metadata.additional.get("entry_types") {
         let types_obj = entry_types.as_object().expect("Entry types should be an object");
@@ -343,12 +372,16 @@ async fn test_unicode_support() {
 "#;
 
     let config = ExtractionConfig::default();
-    let result = extractor
+    let doc_result = extractor
         .extract_bytes(bibtex_content.as_bytes(), "application/x-bibtex", &config)
         .await;
 
-    assert!(result.is_ok());
-    let result = result.expect("Operation failed");
+    assert!(doc_result.is_ok());
+    let result = derive_extraction_result(
+        doc_result.expect("Operation failed"),
+        false,
+        kreuzberg::OutputFormat::Plain,
+    );
 
     assert_eq!(
         result.metadata.additional.get("entry_count"),
@@ -371,12 +404,16 @@ async fn test_empty_fields() {
 "#;
 
     let config = ExtractionConfig::default();
-    let result = extractor
+    let doc_result = extractor
         .extract_bytes(bibtex_content.as_bytes(), "application/x-bibtex", &config)
         .await;
 
-    assert!(result.is_ok());
-    let result = result.expect("Operation failed");
+    assert!(doc_result.is_ok());
+    let result = derive_extraction_result(
+        doc_result.expect("Operation failed"),
+        false,
+        kreuzberg::OutputFormat::Plain,
+    );
     assert_eq!(
         result.metadata.additional.get("entry_count"),
         Some(&serde_json::json!(1))
@@ -392,12 +429,16 @@ async fn test_comprehensive_file() {
         .unwrap_or_else(|err| panic!("Failed to read test file at {}: {}", fixture_path.display(), err));
 
     let config = ExtractionConfig::default();
-    let result = extractor
+    let doc_result = extractor
         .extract_bytes(&bibtex_content, "application/x-bibtex", &config)
         .await;
 
-    assert!(result.is_ok());
-    let result = result.expect("Operation failed");
+    assert!(doc_result.is_ok());
+    let result = derive_extraction_result(
+        doc_result.expect("Operation failed"),
+        false,
+        kreuzberg::OutputFormat::Plain,
+    );
 
     assert_eq!(
         result.metadata.additional.get("entry_count"),

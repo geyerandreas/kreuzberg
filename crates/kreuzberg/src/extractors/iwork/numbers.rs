@@ -4,10 +4,9 @@ use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::extractors::iwork::{dedup_text, extract_text_from_proto, read_iwa_file};
 use crate::plugins::{DocumentExtractor, Plugin};
-use crate::types::{ExtractionResult, Metadata};
-use ahash::AHashMap;
+use crate::types::internal::InternalDocument;
+use crate::types::internal_builder::InternalDocumentBuilder;
 use async_trait::async_trait;
-use std::borrow::Cow;
 
 /// Apple Numbers spreadsheet extractor.
 ///
@@ -97,8 +96,8 @@ impl DocumentExtractor for NumbersExtractor {
         &self,
         content: &[u8],
         mime_type: &str,
-        config: &ExtractionConfig,
-    ) -> Result<ExtractionResult> {
+        _config: &ExtractionConfig,
+    ) -> Result<InternalDocument> {
         let text = {
             #[cfg(feature = "tokio-runtime")]
             if crate::core::batch_mode::is_batch_mode() {
@@ -118,37 +117,9 @@ impl DocumentExtractor for NumbersExtractor {
             parse_numbers(content)?
         };
 
-        let document = if config.include_document_structure {
-            Some(build_numbers_document_structure(&text))
-        } else {
-            None
-        };
-
-        let additional: AHashMap<Cow<'static, str>, serde_json::Value> = AHashMap::new();
-
-        Ok(ExtractionResult {
-            content: text,
-            mime_type: mime_type.to_string().into(),
-            metadata: Metadata {
-                additional,
-                ..Default::default()
-            },
-            pages: None,
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-        })
+        let mut doc = build_numbers_internal_document(&text);
+        doc.mime_type = std::borrow::Cow::Owned(mime_type.to_string());
+        Ok(doc)
     }
 
     fn supported_mime_types(&self) -> &[&str] {
@@ -160,14 +131,11 @@ impl DocumentExtractor for NumbersExtractor {
     }
 }
 
-/// Build a `DocumentStructure` from extracted Numbers text.
+/// Build an `InternalDocument` from extracted Numbers text.
 ///
-/// Since Numbers extracts flat cell text values, we create a heading
-/// for "Sheet Data" and push each line as a paragraph.
-fn build_numbers_document_structure(text: &str) -> crate::types::document_structure::DocumentStructure {
-    use crate::types::builder::DocumentStructureBuilder;
-
-    let mut builder = DocumentStructureBuilder::new().source_format("numbers");
+/// Creates a heading for "Sheet Data" and pushes each line as a paragraph.
+fn build_numbers_internal_document(text: &str) -> InternalDocument {
+    let mut builder = InternalDocumentBuilder::new("numbers");
 
     if !text.trim().is_empty() {
         builder.push_heading(1, "Sheet Data", None, None);

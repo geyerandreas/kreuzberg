@@ -60,18 +60,13 @@
   </a>
 </div>
 
-
 Extract text, tables, images, and metadata from 91+ file formats including PDF, Office documents, and images. WebAssembly bindings for browsers, Deno, and Cloudflare Workers with portable deployment and multi-threading support.
-
 
 ## Installation
 
 ### Package Installation
 
-
 Install via one of the supported package managers:
-
-
 
 **npm:**
 
@@ -79,17 +74,11 @@ Install via one of the supported package managers:
 npm install @kreuzberg/wasm
 ```
 
-
-
-
 **pnpm:**
 
 ```bash
 pnpm add @kreuzberg/wasm
 ```
-
-
-
 
 **yarn:**
 
@@ -97,16 +86,10 @@ pnpm add @kreuzberg/wasm
 yarn add @kreuzberg/wasm
 ```
 
-
-
-
-
 ### System Requirements
 
 - Modern browser with WebAssembly support, or Deno 1.0+, or Cloudflare Workers
 - Optional: [Tesseract WASM](https://github.com/naptha/tesseract.js) for OCR functionality
-
-
 
 ## Quick Start
 
@@ -134,13 +117,11 @@ async function main() {
 main().catch(console.error);
 ```
 
-
 ### Common Use Cases
 
 #### Extract with Custom Configuration
 
 Most use cases benefit from configuration to control extraction behavior:
-
 
 **With OCR (for scanned documents):**
 
@@ -174,18 +155,11 @@ async function extractWithOcr() {
 extractWithOcr().catch(console.error);
 ```
 
-
-
-
 #### Table Extraction
-
 
 See [Table Extraction Guide](https://kreuzberg.dev/features/table-extraction/) for detailed examples.
 
-
-
 #### Processing Multiple Files
-
 
 ```ts
 import { extractBytes, initWasm } from "@kreuzberg/wasm";
@@ -223,10 +197,6 @@ async function _processBatch(documents: DocumentJob[], concurrency: number = 3) 
 }
 ```
 
-
-
-
-
 #### Async Processing
 
 For non-blocking document processing:
@@ -258,19 +228,12 @@ extractDocuments(fileBytes, mimes)
 	.catch(console.error);
 ```
 
-
-
-
-
-
 ### Next Steps
 
 - **[Installation Guide](https://kreuzberg.dev/getting-started/installation/)** - Platform-specific setup
 - **[API Documentation](https://kreuzberg.dev/api/)** - Complete API reference
 - **[Examples & Guides](https://kreuzberg.dev/guides/)** - Full code examples and usage guides
 - **[Configuration Guide](https://kreuzberg.dev/guides/configuration/)** - Advanced configuration options
-
-
 
 ## Features
 
@@ -333,9 +296,7 @@ extractDocuments(fileBytes, mimes)
 
 - **Async/Await** - Non-blocking document processing with concurrent operations
 
-
 - **Plugin System** - Extensible post-processing for custom text transformation
-
 
 - **Batch Processing** - Efficiently process multiple documents in parallel
 - **Memory Efficient** - Stream large files without loading entirely into memory
@@ -352,15 +313,11 @@ extractDocuments(fileBytes, mimes)
 | **Archives** | 5-50 MB/s | ~200MB per doc | ZIP, TAR, etc. |
 | **Web formats** | 50-200 MB/s | Streaming | HTML, XML, JSON |
 
-
-
 ## OCR Support
 
 Kreuzberg supports multiple OCR backends for extracting text from scanned documents and images:
 
-
 - **Tesseract-Wasm**
-
 
 ### OCR Configuration Example
 
@@ -394,9 +351,6 @@ async function extractWithOcr() {
 extractWithOcr().catch(console.error);
 ```
 
-
-
-
 ## Async Support
 
 This binding provides full async/await support for non-blocking document processing:
@@ -428,19 +382,11 @@ extractDocuments(fileBytes, mimes)
 	.catch(console.error);
 ```
 
-
-
-
 ## Plugin System
 
 Kreuzberg supports extensible post-processing plugins for custom text transformation and filtering.
 
 For detailed plugin documentation, visit [Plugin System Guide](https://kreuzberg.dev/guides/plugins/).
-
-
-
-
-
 
 ## Batch Processing
 
@@ -481,9 +427,6 @@ async function _processBatch(documents: DocumentJob[], concurrency: number = 3) 
 	return results;
 }
 ```
-
-
-
 
 ## Configuration
 

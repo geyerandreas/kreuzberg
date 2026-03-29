@@ -96,6 +96,7 @@ pub(crate) fn error_extraction_result(e: &KreuzbergError, elapsed_ms: Option<u64
         processing_warnings: Vec::new(),
         annotations: None,
         children: None,
+        formatted_content: None,
     }
 }
 

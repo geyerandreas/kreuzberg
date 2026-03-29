@@ -252,6 +252,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let formatted = format_extraction_result(&result);
@@ -291,6 +292,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let formatted = format_extraction_result(&result);
@@ -334,6 +336,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let formatted = format_extraction_result(&result);
@@ -364,6 +367,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let formatted = format_extraction_result(&result);

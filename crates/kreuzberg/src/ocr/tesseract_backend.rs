@@ -286,6 +286,7 @@ impl OcrBackend for TesseractBackend {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         })
     }
 
@@ -386,6 +387,7 @@ impl OcrBackend for TesseractBackend {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         })
     }
 

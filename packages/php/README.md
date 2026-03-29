@@ -60,25 +60,17 @@
   </a>
 </div>
 
-
 Extract text, tables, images, and metadata from 91+ file formats including PDF, Office documents, and images. PHP bindings with modern PHP 8.2+ support and type-safe API.
-
 
 ## Installation
 
 ### Package Installation
-
-
-
 
 Install via Composer:
 
 ```bash
 composer require kreuzberg/kreuzberg
 ```
-
-
-
 
 ### System Requirements
 
@@ -91,8 +83,6 @@ composer require kreuzberg/kreuzberg
 - **Linux (x86_64, aarch64)**: Fully supported
 - **macOS (Intel, Apple Silicon)**: Fully supported
 - **Windows**: Temporarily unavailable. The Windows build is disabled due to a transitive dependency conflict (`ort-sys` → `lzma-rust2` → `crc` version collision). This will be resolved when upstream `ort` updates its `lzma-rust2` dependency. Please use Linux or macOS for now, or use the Docker image for Windows environments.
-
-
 
 ## Quick Start
 
@@ -140,13 +130,11 @@ if (count($result->tables) > 0) {
 }
 ```
 
-
 ### Common Use Cases
 
 #### Extract with Custom Configuration
 
 Most use cases benefit from configuration to control extraction behavior:
-
 
 **With OCR (for scanned documents):**
 
@@ -278,18 +266,11 @@ if ($avgCharsPerPage < 100) {
 }
 ```
 
-
-
-
 #### Table Extraction
-
 
 See [Table Extraction Guide](https://kreuzberg.dev/features/table-extraction/) for detailed examples.
 
-
-
 #### Processing Multiple Files
-
 
 ```php title="batch_processing.php"
 <?php
@@ -446,21 +427,12 @@ foreach ($batches as $index => $batch) {
 echo "\n\nCompleted! Processed $totalProcessed files.\n";
 ```
 
-
-
-
-
-
-
-
 ### Next Steps
 
 - **[Installation Guide](https://kreuzberg.dev/getting-started/installation/)** - Platform-specific setup
 - **[API Documentation](https://kreuzberg.dev/api/)** - Complete API reference
 - **[Examples & Guides](https://kreuzberg.dev/guides/)** - Full code examples and usage guides
 - **[Configuration Guide](https://kreuzberg.dev/guides/configuration/)** - Advanced configuration options
-
-
 
 ## Features
 
@@ -521,9 +493,7 @@ echo "\n\nCompleted! Processed $totalProcessed files.\n";
 - **Image Extraction** - Extract embedded images and render page previews
 - **OCR Support** - Integrate multiple OCR backends for scanned documents
 
-
 - **Plugin System** - Extensible post-processing for custom text transformation
-
 
 - **Embeddings** - Generate vector embeddings using ONNX Runtime models
 
@@ -542,17 +512,13 @@ echo "\n\nCompleted! Processed $totalProcessed files.\n";
 | **Archives** | 5-50 MB/s | ~200MB per doc | ZIP, TAR, etc. |
 | **Web formats** | 50-200 MB/s | Streaming | HTML, XML, JSON |
 
-
-
 ## OCR Support
 
 Kreuzberg supports multiple OCR backends for extracting text from scanned documents and images:
 
-
 - **Tesseract**
 
 - **Paddleocr**
-
 
 ### OCR Configuration Example
 
@@ -684,26 +650,17 @@ if ($avgCharsPerPage < 100) {
 }
 ```
 
-
-
-
-
 ## Plugin System
 
 Kreuzberg supports extensible post-processing plugins for custom text transformation and filtering.
 
 For detailed plugin documentation, visit [Plugin System Guide](https://kreuzberg.dev/guides/plugins/).
 
-
-
-
 ## Embeddings Support
 
 Generate vector embeddings for extracted text using the built-in ONNX Runtime support. Requires ONNX Runtime installation.
 
 **[Embeddings Guide](https://kreuzberg.dev/features/#embeddings)**
-
-
 
 ## Batch Processing
 
@@ -863,9 +820,6 @@ foreach ($batches as $index => $batch) {
 
 echo "\n\nCompleted! Processed $totalProcessed files.\n";
 ```
-
-
-
 
 ## Configuration
 

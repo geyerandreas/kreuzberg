@@ -227,6 +227,7 @@ fn extract_pptx_from_container<R: std::io::Read + std::io::Seek>(
                     description,
                     ocr_result: None,
                     bounding_box: bbox,
+                    source_path: None,
                 });
             }
         }
@@ -488,7 +489,38 @@ impl elements::Slide {
             (pos.y, pos.x)
         });
 
+        // Find the slide title: first short text element in y-sorted order.
+        // We emit it first, then skip it in the main loop.
+        let title_idx = element_indices.iter().find_map(|&idx| {
+            if let SlideElement::Text(text, _) = &self.elements[idx] {
+                let plain = join_runs_with_spacing(&text.runs, Run::extract);
+                let normalized = plain.replace('\n', " ");
+                if normalized.len() < 100 && !normalized.trim().is_empty() {
+                    return Some(idx);
+                }
+            }
+            None
+        });
+
+        // Emit title first as a heading
+        if let Some(tidx) = title_idx
+            && let SlideElement::Text(text, _) = &self.elements[tidx]
+        {
+            let text_content: String = if config.plain {
+                join_runs_with_spacing(&text.runs, Run::extract)
+            } else {
+                join_runs_with_spacing(&text.runs, Run::render_as_md)
+            };
+            let normalized = text_content.replace('\n', " ");
+            builder.add_title(normalized.trim());
+        }
+
         for &idx in &element_indices {
+            // Skip the title element we already emitted
+            if Some(idx) == title_idx {
+                continue;
+            }
+
             match &self.elements[idx] {
                 SlideElement::Text(text, _) => {
                     let text_content: String = if config.plain {
@@ -497,36 +529,39 @@ impl elements::Slide {
                         join_runs_with_spacing(&text.runs, Run::render_as_md)
                     };
 
-                    let normalized = text_content.replace('\n', " ");
-                    let is_title = normalized.len() < 100 && !normalized.trim().is_empty();
-
-                    if is_title {
-                        builder.add_title(normalized.trim());
-                    } else {
-                        builder.add_text(&text_content);
-                    }
+                    // All remaining text elements are body text, not titles
+                    builder.add_text(&text_content);
                 }
                 SlideElement::Table(table, _) => {
+                    let extract_fn: fn(&Run) -> String = if config.plain { Run::extract } else { Run::render_as_md };
                     let table_rows: Vec<Vec<String>> = table
                         .rows
                         .iter()
                         .map(|row| {
                             row.cells
                                 .iter()
-                                .map(|cell| join_runs_with_spacing(&cell.runs, Run::extract))
+                                .map(|cell| join_runs_with_spacing(&cell.runs, extract_fn))
                                 .collect()
                         })
                         .collect();
                     builder.add_table(&table_rows);
                 }
                 SlideElement::List(list, _) => {
+                    let extract_fn: fn(&Run) -> String = if config.plain { Run::extract } else { Run::render_as_md };
                     for item in &list.items {
-                        let item_text = join_runs_with_spacing(&item.runs, Run::extract);
+                        let item_text = join_runs_with_spacing(&item.runs, extract_fn);
                         builder.add_list_item(item.level, item.is_ordered, &item_text);
                     }
                 }
                 SlideElement::Image(img_ref, _) => {
-                    builder.add_image(&img_ref.id, self.slide_number);
+                    // Resolve image target from rels
+                    let target = self
+                        .images
+                        .iter()
+                        .find(|rel| rel.id == img_ref.id)
+                        .map(|rel| rel.target.as_str())
+                        .unwrap_or("");
+                    builder.add_image_with_desc(&img_ref.id, img_ref.description.as_deref(), target);
                 }
                 SlideElement::Unknown => {}
             }

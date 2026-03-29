@@ -21,7 +21,9 @@ use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::plugins::{DocumentExtractor, Plugin};
 use crate::text::utf8_validation;
-use crate::types::{ExtractionResult, Metadata};
+use crate::types::Metadata;
+use crate::types::internal::InternalDocument;
+use crate::types::internal_builder::InternalDocumentBuilder;
 use async_trait::async_trait;
 use quick_xml::Reader;
 use quick_xml::events::Event;
@@ -160,12 +162,10 @@ fn extract_para_with_annotations_jats(
     Ok((text.trim().to_string(), annotations))
 }
 
-/// Build a `DocumentStructure` from JATS XML content.
-fn build_jats_document_structure(content: &str) -> crate::Result<crate::types::document_structure::DocumentStructure> {
-    use crate::types::builder::DocumentStructureBuilder;
-
+/// Build an `InternalDocument` from JATS XML content.
+fn build_jats_internal_document(content: &str) -> crate::Result<InternalDocument> {
     let mut reader = Reader::from_str(content);
-    let mut builder = DocumentStructureBuilder::new().source_format("jats");
+    let mut builder = InternalDocumentBuilder::new("jats");
 
     let mut in_article_meta = false;
     let mut in_body = false;
@@ -215,27 +215,16 @@ fn build_jats_document_structure(content: &str) -> crate::Result<crate::types::d
                         continue;
                     }
                     "fig" if in_body => {
-                        let text = jats_extract_text(&mut reader)?;
-                        let desc = if text.is_empty() { None } else { Some(text.as_str()) };
-                        builder.push_image(desc, None, None, None);
+                        // Skip figures in internal representation (no image data available)
+                        let _text = jats_extract_text(&mut reader)?;
                         continue;
                     }
-                    "disp-formula" if in_body => {
-                        let text = jats_extract_text(&mut reader)?;
-                        if !text.is_empty() {
-                            builder.push_formula(&text, None);
-                        }
-                        continue;
-                    }
-                    "inline-formula" if in_body => {
+                    "disp-formula" | "inline-formula" if in_body => {
                         let text = jats_extract_text(&mut reader)?;
                         if !text.is_empty() {
-                            builder.push_formula(&text, None);
+                            builder.push_formula(&text, None, None);
                         }
                         continue;
-                    }
-                    "table-wrap" if in_body => {
-                        // table-wrap contains <table>; let inner table handling deal with it
                     }
                     "table" => {
                         in_table = true;
@@ -260,7 +249,6 @@ fn build_jats_document_structure(content: &str) -> crate::Result<crate::types::d
                         in_ref_list = true;
                     }
                     "ref" if in_ref_list => {
-                        // Extract citation key from id attribute
                         let mut ref_id = String::new();
                         for attr in e.attributes() {
                             if let Ok(attr) = attr
@@ -272,7 +260,7 @@ fn build_jats_document_structure(content: &str) -> crate::Result<crate::types::d
                         let text = jats_extract_text(&mut reader)?;
                         if !text.is_empty() {
                             let key = if ref_id.is_empty() { "ref" } else { &ref_id };
-                            builder.push_citation(key, &text, None);
+                            builder.push_citation(&text, key, None);
                         }
                         continue;
                     }
@@ -295,7 +283,7 @@ fn build_jats_document_structure(content: &str) -> crate::Result<crate::types::d
                     }
                     "table" if in_table => {
                         if !current_table.is_empty() {
-                            builder.push_table_from_cells(&current_table, None);
+                            builder.push_table_from_cells(&current_table, None, None);
                             current_table.clear();
                         }
                         in_table = false;
@@ -371,7 +359,7 @@ impl DocumentExtractor for JatsExtractor {
     #[cfg_attr(
         feature = "otel",
         tracing::instrument(
-            skip(self, content, config),
+            skip(self, content, _config),
             fields(
                 extractor.name = self.name(),
                 content.size_bytes = content.len(),
@@ -382,13 +370,13 @@ impl DocumentExtractor for JatsExtractor {
         &self,
         content: &[u8],
         mime_type: &str,
-        config: &ExtractionConfig,
-    ) -> Result<ExtractionResult> {
+        _config: &ExtractionConfig,
+    ) -> Result<InternalDocument> {
         let jats_content = utf8_validation::from_utf8(content)
             .map(|s| s.to_string())
             .unwrap_or_else(|_| String::from_utf8_lossy(content).to_string());
 
-        let (jats_metadata, extracted_content, _title, tables) = extract_jats_all_in_one(&jats_content)?;
+        let (jats_metadata, _extracted_content, _title, _tables) = extract_jats_all_in_one(&jats_content)?;
 
         let mut metadata = Metadata::default();
         let mut subject_parts = Vec::new();
@@ -501,32 +489,11 @@ impl DocumentExtractor for JatsExtractor {
             metadata.subject = Some(subject_parts.join(" | "));
         }
 
-        let document = if config.include_document_structure {
-            Some(build_jats_document_structure(&jats_content)?)
-        } else {
-            None
-        };
+        let mut doc = build_jats_internal_document(&jats_content)?;
+        doc.mime_type = std::borrow::Cow::Owned(mime_type.to_string());
+        doc.metadata = metadata;
 
-        Ok(ExtractionResult {
-            content: extracted_content,
-            mime_type: mime_type.to_string().into(),
-            metadata,
-            tables,
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-        })
+        Ok(doc)
     }
 
     #[cfg(feature = "tokio-runtime")]
@@ -539,7 +506,7 @@ impl DocumentExtractor for JatsExtractor {
             )
         )
     )]
-    async fn extract_file(&self, path: &Path, mime_type: &str, config: &ExtractionConfig) -> Result<ExtractionResult> {
+    async fn extract_file(&self, path: &Path, mime_type: &str, config: &ExtractionConfig) -> Result<InternalDocument> {
         let bytes = tokio::fs::read(path).await?;
         self.extract_bytes(&bytes, mime_type, config).await
     }

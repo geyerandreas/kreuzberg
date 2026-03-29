@@ -60,16 +60,11 @@
   </a>
 </div>
 
-
 Extract text, tables, images, and metadata from 91+ file formats including PDF, Office documents, and images. .NET bindings with full type safety, async/await support, and .NET 10.0+ compatibility.
-
 
 ## Installation
 
 ### Package Installation
-
-
-
 
 Install via NuGet:
 
@@ -83,16 +78,11 @@ Or via NuGet Package Manager:
 Install-Package Kreuzberg
 ```
 
-
-
-
 ### System Requirements
 
 - **.NET 10.0+** required
 - Optional: [ONNX Runtime](https://github.com/microsoft/onnxruntime/releases) version 1.22.x for embeddings support
 - Optional: [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) for OCR functionality
-
-
 
 ## Quick Start
 
@@ -115,13 +105,11 @@ Console.WriteLine(result.Content);
 Console.WriteLine($"MIME Type: {result.MimeType}");
 ```
 
-
 ### Common Use Cases
 
 #### Extract with Custom Configuration
 
 Most use cases benefit from configuration to control extraction behavior:
-
 
 **With OCR (for scanned documents):**
 
@@ -145,18 +133,11 @@ var result = KreuzbergClient.ExtractFileSync("document.pdf", config);
 Console.WriteLine(result.Content);
 ```
 
-
-
-
 #### Table Extraction
-
 
 See [Table Extraction Guide](https://kreuzberg.dev/features/table-extraction/) for detailed examples.
 
-
-
 #### Processing Multiple Files
-
 
 ```cs
 using Kreuzberg;
@@ -207,10 +188,6 @@ class Program
 }
 ```
 
-
-
-
-
 #### Async Processing
 
 For non-blocking document processing:
@@ -251,19 +228,12 @@ class Program
 }
 ```
 
-
-
-
-
-
 ### Next Steps
 
 - **[Installation Guide](https://kreuzberg.dev/getting-started/installation/)** - Platform-specific setup
 - **[API Documentation](https://kreuzberg.dev/api/)** - Complete API reference
 - **[Examples & Guides](https://kreuzberg.dev/guides/)** - Full code examples and usage guides
 - **[Configuration Guide](https://kreuzberg.dev/guides/configuration/)** - Advanced configuration options
-
-
 
 ## Features
 
@@ -326,9 +296,7 @@ class Program
 
 - **Async/Await** - Non-blocking document processing with concurrent operations
 
-
 - **Plugin System** - Extensible post-processing for custom text transformation
-
 
 - **Embeddings** - Generate vector embeddings using ONNX Runtime models
 
@@ -347,17 +315,13 @@ class Program
 | **Archives** | 5-50 MB/s | ~200MB per doc | ZIP, TAR, etc. |
 | **Web formats** | 50-200 MB/s | Streaming | HTML, XML, JSON |
 
-
-
 ## OCR Support
 
 Kreuzberg supports multiple OCR backends for extracting text from scanned documents and images:
 
-
 - **Tesseract**
 
 - **Paddleocr**
-
 
 ### OCR Configuration Example
 
@@ -380,9 +344,6 @@ var config = new ExtractionConfig
 var result = KreuzbergClient.ExtractFileSync("document.pdf", config);
 Console.WriteLine(result.Content);
 ```
-
-
-
 
 ## Async Support
 
@@ -424,25 +385,17 @@ class Program
 }
 ```
 
-
-
-
 ## Plugin System
 
 Kreuzberg supports extensible post-processing plugins for custom text transformation and filtering.
 
 For detailed plugin documentation, visit [Plugin System Guide](https://kreuzberg.dev/guides/plugins/).
 
-
-
-
 ## Embeddings Support
 
 Generate vector embeddings for extracted text using the built-in ONNX Runtime support. Requires ONNX Runtime installation.
 
 **[Embeddings Guide](https://kreuzberg.dev/features/#embeddings)**
-
-
 
 ## Batch Processing
 
@@ -496,9 +449,6 @@ class Program
     }
 }
 ```
-
-
-
 
 ## Configuration
 

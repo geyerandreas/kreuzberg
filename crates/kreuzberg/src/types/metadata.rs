@@ -530,8 +530,8 @@ impl HtmlMetadata {
 }
 
 #[cfg(feature = "html")]
-impl From<html_to_markdown_rs::ExtendedMetadata> for HtmlMetadata {
-    fn from(metadata: html_to_markdown_rs::ExtendedMetadata) -> Self {
+impl From<html_to_markdown_rs::HtmlMetadata> for HtmlMetadata {
+    fn from(metadata: html_to_markdown_rs::HtmlMetadata) -> Self {
         let text_dir = metadata.document.text_direction.map(|td| match td {
             html_to_markdown_rs::TextDirection::LeftToRight => TextDirection::LeftToRight,
             html_to_markdown_rs::TextDirection::RightToLeft => TextDirection::RightToLeft,

@@ -3,7 +3,9 @@
 use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::plugins::{DocumentExtractor, Plugin};
-use crate::types::{ExtractionResult, Metadata};
+use crate::types::internal::InternalDocument;
+use crate::types::internal_builder::InternalDocumentBuilder;
+use crate::types::metadata::Metadata;
 use ahash::AHashMap;
 use async_trait::async_trait;
 use std::borrow::Cow;
@@ -23,6 +25,135 @@ impl Default for PptxExtractor {
 impl PptxExtractor {
     pub fn new() -> Self {
         Self
+    }
+}
+
+impl PptxExtractor {
+    /// Build an `InternalDocument` from PPTX extracted text.
+    ///
+    /// Splits content by double-newlines into slide-like blocks. Each block
+    /// becomes a slide element with its content as paragraphs.
+    ///
+    /// Note: For richer structure, the builder should be integrated into
+    /// `crate::extraction::pptx` alongside the existing `DocumentStructure` building.
+    /// Strip leading markdown heading markers (`# `, `## `, etc.) from a line.
+    fn strip_heading_prefix(line: &str) -> &str {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with('#') {
+            let after_hashes = trimmed.trim_start_matches('#');
+            if after_hashes.starts_with(' ') {
+                after_hashes.trim_start()
+            } else {
+                line
+            }
+        } else {
+            line
+        }
+    }
+
+    fn build_internal_document(content: &str, slide_count: u32) -> InternalDocument {
+        let mut builder = InternalDocumentBuilder::new("pptx");
+        let mut slide_num: u32 = 0;
+        let mut in_notes = false;
+
+        // Split the content into logical blocks separated by blank lines.
+        let blocks: Vec<&str> = content.split("\n\n").collect();
+
+        for block in &blocks {
+            let trimmed = block.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            // Skip notes sections (### Notes: or Notes:)
+            if trimmed.starts_with("### Notes:") || trimmed == "Notes:" {
+                in_notes = true;
+                continue;
+            }
+
+            // A `# Title` heading marks a new slide title.
+            // We render it as a ## heading (not a Slide element) to avoid
+            // the `---` separator that the Slide renderer inserts.
+            if let Some(title_text) = trimmed.strip_prefix("# ") {
+                in_notes = false;
+                slide_num += 1;
+                let title = title_text.trim();
+                if !title.is_empty() {
+                    builder.push_heading(2, title, None, None);
+                }
+                continue;
+            }
+
+            // If we're inside a notes section, skip until next slide
+            if in_notes {
+                continue;
+            }
+
+            // Table block: starts with |
+            if trimmed.starts_with('|') {
+                let cells = Self::parse_markdown_table(trimmed);
+                if !cells.is_empty() {
+                    builder.push_table_from_cells(&cells, Some(slide_num), None);
+                }
+                continue;
+            }
+
+            // Process remaining lines: lists and paragraphs
+            for line in trimmed.lines() {
+                let lt = line.trim();
+                if lt.is_empty() {
+                    continue;
+                }
+                // Unordered list item
+                if let Some(item_text) = lt.strip_prefix("- ") {
+                    builder.push_paragraph(item_text, vec![], None, None);
+                }
+                // Ordered list item
+                else if let Some(item_text) = lt.strip_prefix("1. ") {
+                    builder.push_paragraph(item_text, vec![], None, None);
+                }
+                // Image
+                else if lt.starts_with("![") {
+                    builder.push_paragraph(lt, vec![], None, None);
+                }
+                // Regular paragraph
+                else {
+                    builder.push_paragraph(lt, vec![], None, None);
+                }
+            }
+        }
+
+        // If no slides were found, create a default slide
+        if slide_num == 0 && slide_count > 0 {
+            builder.push_slide(1, None, Some(1));
+        }
+
+        builder.build()
+    }
+
+    /// Parse a markdown table block into a 2D cell grid.
+    fn parse_markdown_table(table_text: &str) -> Vec<Vec<String>> {
+        let mut cells = Vec::new();
+        for line in table_text.lines() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+            // Skip separator rows like |---|---|
+            if trimmed.contains("---") {
+                continue;
+            }
+            // Parse pipe-separated cells
+            let row: Vec<String> = trimmed
+                .trim_matches('|')
+                .split('|')
+                .map(|cell| cell.trim().to_string())
+                .collect();
+            if !row.is_empty() {
+                cells.push(row);
+            }
+        }
+        cells
     }
 }
 
@@ -52,13 +183,9 @@ impl DocumentExtractor for PptxExtractor {
         content: &[u8],
         mime_type: &str,
         config: &ExtractionConfig,
-    ) -> Result<ExtractionResult> {
+    ) -> Result<InternalDocument> {
         let extract_images = config.images.as_ref().is_some_and(|img| img.extract_images);
-        let plain = matches!(
-            config.output_format,
-            crate::core::config::OutputFormat::Plain | crate::core::config::OutputFormat::Structured
-        );
-        let include_structure = config.include_document_structure;
+        let plain = matches!(config.output_format, crate::core::config::OutputFormat::Plain);
 
         let pptx_result = {
             #[cfg(feature = "tokio-runtime")]
@@ -74,7 +201,7 @@ impl DocumentExtractor for PptxExtractor {
                             extract_images,
                             pages_config.as_ref(),
                             plain,
-                            include_structure,
+                            false, // include_structure not needed, we build InternalDocument
                         )
                     })
                     .await
@@ -87,7 +214,7 @@ impl DocumentExtractor for PptxExtractor {
                         extract_images,
                         config.pages.as_ref(),
                         plain,
-                        include_structure,
+                        false,
                     )?
                 }
             }
@@ -99,7 +226,7 @@ impl DocumentExtractor for PptxExtractor {
                     extract_images,
                     config.pages.as_ref(),
                     plain,
-                    include_structure,
+                    false,
                 )?
             }
         };
@@ -109,26 +236,8 @@ impl DocumentExtractor for PptxExtractor {
         additional.insert(Cow::Borrowed("image_count"), serde_json::json!(pptx_result.image_count));
         additional.insert(Cow::Borrowed("table_count"), serde_json::json!(pptx_result.table_count));
 
-        let images = if extract_images {
-            // Image extraction is enabled, return images or empty vector
-            if !pptx_result.images.is_empty() {
-                #[cfg(all(feature = "ocr", feature = "tokio-runtime"))]
-                {
-                    let processed_images =
-                        crate::extraction::image_ocr::process_images_with_ocr(pptx_result.images, config).await?;
-                    Some(processed_images)
-                }
-                #[cfg(not(all(feature = "ocr", feature = "tokio-runtime")))]
-                {
-                    Some(pptx_result.images)
-                }
-            } else {
-                Some(vec![])
-            }
-        } else {
-            // Image extraction is disabled
-            None
-        };
+        let mut doc = Self::build_internal_document(&pptx_result.content, pptx_result.slide_count as u32);
+        doc.mime_type = Cow::Owned(mime_type.to_string());
 
         let mut metadata = Metadata {
             format: Some(crate::types::FormatMetadata::Pptx(pptx_result.metadata)),
@@ -140,45 +249,48 @@ impl DocumentExtractor for PptxExtractor {
             metadata.pages = Some(page_structure);
         }
 
-        Ok(ExtractionResult {
-            content: pptx_result.content,
-            mime_type: mime_type.to_string().into(),
-            metadata,
-            pages: pptx_result.page_contents,
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document: pptx_result.document,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-        })
+        doc.metadata = metadata;
+
+        // Transfer images
+        if extract_images {
+            let images = if !pptx_result.images.is_empty() {
+                #[cfg(all(feature = "ocr", feature = "tokio-runtime"))]
+                {
+                    crate::extraction::image_ocr::process_images_with_ocr(pptx_result.images, config).await?
+                }
+                #[cfg(not(all(feature = "ocr", feature = "tokio-runtime")))]
+                {
+                    pptx_result.images
+                }
+            } else {
+                vec![]
+            };
+            doc.images = images;
+        }
+
+        Ok(doc)
     }
 
-    async fn extract_file(&self, path: &Path, mime_type: &str, config: &ExtractionConfig) -> Result<ExtractionResult> {
+    #[cfg_attr(feature = "otel", tracing::instrument(
+        skip(self, path, config),
+        fields(
+            extractor.name = self.name(),
+        )
+    ))]
+    async fn extract_file(&self, path: &Path, mime_type: &str, config: &ExtractionConfig) -> Result<InternalDocument> {
         let path_str = path
             .to_str()
             .ok_or_else(|| crate::KreuzbergError::validation("Invalid file path".to_string()))?;
 
         let extract_images = config.images.as_ref().is_some_and(|img| img.extract_images);
+        let plain = matches!(config.output_format, crate::core::config::OutputFormat::Plain);
 
-        let plain = matches!(
-            config.output_format,
-            crate::core::config::OutputFormat::Plain | crate::core::config::OutputFormat::Structured
-        );
         let pptx_result = crate::extraction::pptx::extract_pptx_from_path(
             path_str,
             extract_images,
             config.pages.as_ref(),
             plain,
-            config.include_document_structure,
+            false,
         )?;
 
         let mut additional: AHashMap<Cow<'static, str>, serde_json::Value> = AHashMap::new();
@@ -186,26 +298,8 @@ impl DocumentExtractor for PptxExtractor {
         additional.insert(Cow::Borrowed("image_count"), serde_json::json!(pptx_result.image_count));
         additional.insert(Cow::Borrowed("table_count"), serde_json::json!(pptx_result.table_count));
 
-        let images = if extract_images {
-            // Image extraction is enabled, return images or empty vector
-            if !pptx_result.images.is_empty() {
-                #[cfg(all(feature = "ocr", feature = "tokio-runtime"))]
-                {
-                    let processed_images =
-                        crate::extraction::image_ocr::process_images_with_ocr(pptx_result.images, config).await?;
-                    Some(processed_images)
-                }
-                #[cfg(not(all(feature = "ocr", feature = "tokio-runtime")))]
-                {
-                    Some(pptx_result.images)
-                }
-            } else {
-                Some(vec![])
-            }
-        } else {
-            // Image extraction is disabled
-            None
-        };
+        let mut doc = Self::build_internal_document(&pptx_result.content, pptx_result.slide_count as u32);
+        doc.mime_type = Cow::Owned(mime_type.to_string());
 
         let mut metadata = Metadata {
             format: Some(crate::types::FormatMetadata::Pptx(pptx_result.metadata)),
@@ -217,26 +311,26 @@ impl DocumentExtractor for PptxExtractor {
             metadata.pages = Some(page_structure);
         }
 
-        Ok(ExtractionResult {
-            content: pptx_result.content,
-            mime_type: mime_type.to_string().into(),
-            metadata,
-            pages: pptx_result.page_contents,
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document: pptx_result.document,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-        })
+        doc.metadata = metadata;
+
+        // Transfer images
+        if extract_images {
+            let images = if !pptx_result.images.is_empty() {
+                #[cfg(all(feature = "ocr", feature = "tokio-runtime"))]
+                {
+                    crate::extraction::image_ocr::process_images_with_ocr(pptx_result.images, config).await?
+                }
+                #[cfg(not(all(feature = "ocr", feature = "tokio-runtime")))]
+                {
+                    pptx_result.images
+                }
+            } else {
+                vec![]
+            };
+            doc.images = images;
+        }
+
+        Ok(doc)
     }
 
     fn supported_mime_types(&self) -> &[&str] {

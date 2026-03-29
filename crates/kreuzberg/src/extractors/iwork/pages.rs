@@ -4,10 +4,9 @@ use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::extractors::iwork::{dedup_text, extract_text_from_proto, read_iwa_file};
 use crate::plugins::{DocumentExtractor, Plugin};
-use crate::types::{ExtractionResult, Metadata};
-use ahash::AHashMap;
+use crate::types::internal::InternalDocument;
+use crate::types::internal_builder::InternalDocumentBuilder;
 use async_trait::async_trait;
-use std::borrow::Cow;
 
 /// Apple Pages document extractor.
 ///
@@ -93,8 +92,8 @@ impl DocumentExtractor for PagesExtractor {
         &self,
         content: &[u8],
         mime_type: &str,
-        config: &ExtractionConfig,
-    ) -> Result<ExtractionResult> {
+        _config: &ExtractionConfig,
+    ) -> Result<InternalDocument> {
         let text = {
             #[cfg(feature = "tokio-runtime")]
             if crate::core::batch_mode::is_batch_mode() {
@@ -114,37 +113,9 @@ impl DocumentExtractor for PagesExtractor {
             parse_pages(content)?
         };
 
-        let document = if config.include_document_structure {
-            Some(build_pages_document_structure(&text))
-        } else {
-            None
-        };
-
-        let additional: AHashMap<Cow<'static, str>, serde_json::Value> = AHashMap::new();
-
-        Ok(ExtractionResult {
-            content: text,
-            mime_type: mime_type.to_string().into(),
-            metadata: Metadata {
-                additional,
-                ..Default::default()
-            },
-            pages: None,
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-        })
+        let mut doc = build_pages_internal_document(&text);
+        doc.mime_type = std::borrow::Cow::Owned(mime_type.to_string());
+        Ok(doc)
     }
 
     fn supported_mime_types(&self) -> &[&str] {
@@ -156,18 +127,13 @@ impl DocumentExtractor for PagesExtractor {
     }
 }
 
-/// Build a `DocumentStructure` from extracted Pages text.
+/// Build an `InternalDocument` from extracted Pages text.
 ///
-/// Maps text content to paragraphs. If the text contains blank-line separators
-/// (`\n\n`), each block becomes a paragraph. Otherwise, each non-empty line
-/// becomes its own paragraph.
-fn build_pages_document_structure(text: &str) -> crate::types::document_structure::DocumentStructure {
-    use crate::types::builder::DocumentStructureBuilder;
-
-    let mut builder = DocumentStructureBuilder::new().source_format("pages");
+/// Maps text content to paragraphs, mirroring `build_pages_document_structure`.
+fn build_pages_internal_document(text: &str) -> InternalDocument {
+    let mut builder = InternalDocumentBuilder::new("pages");
 
     if text.contains("\n\n") {
-        // Multi-paragraph content separated by blank lines
         for paragraph in text.split("\n\n") {
             let trimmed = paragraph.trim();
             if !trimmed.is_empty() {
@@ -175,7 +141,6 @@ fn build_pages_document_structure(text: &str) -> crate::types::document_structur
             }
         }
     } else {
-        // Single-spaced content: each line becomes a paragraph
         for line in text.lines() {
             let trimmed = line.trim();
             if !trimmed.is_empty() {

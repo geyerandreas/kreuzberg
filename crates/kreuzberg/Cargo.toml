@@ -274,6 +274,7 @@ kamadak-exif = { version = "0.6.1", optional = true }
 
 kreuzberg-tesseract = { path = "../kreuzberg-tesseract", version = "4.6.3", optional = true }
 libc = { workspace = true }
+log = { workspace = true }
 lopdf = { version = "0.40.0", optional = true }
 mail-parser = { version = "0.11.2", optional = true }
 memchr = "2.8.0"

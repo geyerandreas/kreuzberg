@@ -100,6 +100,7 @@ pub fn to_c_extraction_result(result: ExtractionResult) -> std::result::Result<*
         quality_score,
         processing_warnings,
         annotations,
+        formatted_content: _,
         children: _,
     } = result;
 
@@ -486,6 +487,7 @@ mod tests {
             processing_warnings: vec![],
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let c_result = to_c_extraction_result(result);
@@ -532,6 +534,7 @@ mod tests {
             processing_warnings: vec![],
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let c_result = to_c_extraction_result(result);
@@ -588,6 +591,7 @@ mod tests {
             processing_warnings: vec![],
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let c_result = to_c_extraction_result(result);
@@ -679,6 +683,7 @@ mod tests {
             processing_warnings: vec![],
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let c_result = to_c_extraction_result(result);

@@ -4,6 +4,7 @@ mod helpers;
 
 use kreuzberg::core::config::ExtractionConfig;
 use kreuzberg::core::extractor::extract_file;
+use kreuzberg::extraction::derive::derive_extraction_result;
 use kreuzberg::rendering::render_to_markdown;
 use kreuzberg::types::document_structure::{AnnotationKind, NodeContent};
 
@@ -1857,10 +1858,11 @@ async fn test_rst_inline_bold_italic_annotations() {
 
     let rst = b"This has **bold** and *italic* and ``code`` text.";
     let config = config_with_structure();
-    let result = RstExtractor::new()
+    let internal_doc = RstExtractor::new()
         .extract_bytes(rst, "text/x-rst", &config)
         .await
         .expect("RST extraction should succeed");
+    let result = derive_extraction_result(internal_doc, true, kreuzberg::OutputFormat::Plain);
 
     let doc = result.document.as_ref().expect("document should be present");
     assert!(doc.validate().is_ok());
@@ -1898,10 +1900,11 @@ async fn test_rst_footnotes() {
 
     let rst = b"Some text with a footnote [1]_.\n\n.. [1] This is the footnote text.";
     let config = config_with_structure();
-    let result = RstExtractor::new()
+    let internal_doc = RstExtractor::new()
         .extract_bytes(rst, "text/x-rst", &config)
         .await
         .expect("RST extraction should succeed");
+    let result = derive_extraction_result(internal_doc, true, kreuzberg::OutputFormat::Plain);
 
     let doc = result.document.as_ref().expect("document should be present");
     assert!(doc.validate().is_ok());
@@ -1922,10 +1925,11 @@ async fn test_rst_definition_lists() {
 
     let rst = b"Term 1\n   Definition of term 1.\n\nTerm 2\n   Definition of term 2.";
     let config = config_with_structure();
-    let result = RstExtractor::new()
+    let internal_doc = RstExtractor::new()
         .extract_bytes(rst, "text/x-rst", &config)
         .await
         .expect("RST extraction should succeed");
+    let result = derive_extraction_result(internal_doc, true, kreuzberg::OutputFormat::Plain);
 
     let doc = result.document.as_ref().expect("document should be present");
     assert!(doc.validate().is_ok());
@@ -1955,10 +1959,11 @@ async fn test_rst_image_with_options() {
 
     let rst = b".. image:: /images/logo.png\n   :alt: Company Logo\n   :width: 200px\n   :height: 100px";
     let config = config_with_structure();
-    let result = RstExtractor::new()
+    let internal_doc = RstExtractor::new()
         .extract_bytes(rst, "text/x-rst", &config)
         .await
         .expect("RST extraction should succeed");
+    let result = derive_extraction_result(internal_doc, true, kreuzberg::OutputFormat::Plain);
 
     let doc = result.document.as_ref().expect("document should be present");
     assert!(doc.validate().is_ok());
@@ -1996,10 +2001,11 @@ async fn test_orgmode_inline_bold_italic_annotations() {
 
     let org = b"This has *bold* and /italic/ and =code= text.";
     let config = config_with_structure();
-    let result = OrgModeExtractor::new()
+    let internal_doc = OrgModeExtractor::new()
         .extract_bytes(org, "text/x-org", &config)
         .await
         .expect("OrgMode extraction should succeed");
+    let result = derive_extraction_result(internal_doc, true, kreuzberg::OutputFormat::Plain);
 
     let doc = result.document.as_ref().expect("document should be present");
     assert!(doc.validate().is_ok());
@@ -2035,10 +2041,11 @@ async fn test_orgmode_link_annotations() {
 
     let org = b"Visit [[https://example.com][Example Site]] for more.";
     let config = config_with_structure();
-    let result = OrgModeExtractor::new()
+    let internal_doc = OrgModeExtractor::new()
         .extract_bytes(org, "text/x-org", &config)
         .await
         .expect("OrgMode extraction should succeed");
+    let result = derive_extraction_result(internal_doc, true, kreuzberg::OutputFormat::Plain);
 
     let doc = result.document.as_ref().expect("document should be present");
     assert!(doc.validate().is_ok());
@@ -2074,10 +2081,11 @@ async fn test_orgmode_footnotes() {
 
     let org = b"Some text with a footnote [fn:1].";
     let config = config_with_structure();
-    let result = OrgModeExtractor::new()
+    let internal_doc = OrgModeExtractor::new()
         .extract_bytes(org, "text/x-org", &config)
         .await
         .expect("OrgMode extraction should succeed");
+    let result = derive_extraction_result(internal_doc, true, kreuzberg::OutputFormat::Plain);
 
     let doc = result.document.as_ref().expect("document should be present");
     assert!(doc.validate().is_ok());
@@ -2098,10 +2106,11 @@ async fn test_orgmode_properties_drawer() {
 
     let org = b"* My Heading\n:PROPERTIES:\n:CUSTOM_ID: my-id\n:CATEGORY: test\n:END:\n\nSome content.";
     let config = config_with_structure();
-    let result = OrgModeExtractor::new()
+    let internal_doc = OrgModeExtractor::new()
         .extract_bytes(org, "text/x-org", &config)
         .await
         .expect("OrgMode extraction should succeed");
+    let result = derive_extraction_result(internal_doc, true, kreuzberg::OutputFormat::Plain);
 
     let doc = result.document.as_ref().expect("document should be present");
     assert!(doc.validate().is_ok());
@@ -2122,10 +2131,11 @@ async fn test_orgmode_todo_keywords_and_tags() {
 
     let org = b"* TODO Buy groceries :shopping:errands:";
     let config = config_with_structure();
-    let result = OrgModeExtractor::new()
+    let internal_doc = OrgModeExtractor::new()
         .extract_bytes(org, "text/x-org", &config)
         .await
         .expect("OrgMode extraction should succeed");
+    let result = derive_extraction_result(internal_doc, true, kreuzberg::OutputFormat::Plain);
 
     let doc = result.document.as_ref().expect("document should be present");
     assert!(doc.validate().is_ok());
@@ -2156,10 +2166,11 @@ async fn test_orgmode_checkboxes() {
 
     let org = b"- [ ] Unchecked item\n- [x] Checked item\n- Regular item";
     let config = config_with_structure();
-    let result = OrgModeExtractor::new()
+    let internal_doc = OrgModeExtractor::new()
         .extract_bytes(org, "text/x-org", &config)
         .await
         .expect("OrgMode extraction should succeed");
+    let result = derive_extraction_result(internal_doc, true, kreuzberg::OutputFormat::Plain);
 
     let doc = result.document.as_ref().expect("document should be present");
     assert!(doc.validate().is_ok());
@@ -3166,9 +3177,10 @@ fn test_jupyter_cells_metadata() {
 
     let config = config_with_structure();
     let rt = tokio::runtime::Runtime::new().unwrap();
-    let result = rt
+    let internal_doc_result = rt
         .block_on(JupyterExtractor::new().extract_bytes(&content, "application/x-ipynb+json", &config))
         .expect("jupyter extraction should succeed");
+    let result = derive_extraction_result(internal_doc_result, true, kreuzberg::OutputFormat::Plain);
 
     // Verify cells array in metadata
     let cells = result.metadata.additional.get("cells");
@@ -3196,9 +3208,10 @@ fn test_bibtex_entry_fields() {
 
     let config = config_with_structure();
     let rt = tokio::runtime::Runtime::new().unwrap();
-    let result = rt
+    let internal_doc = rt
         .block_on(BibtexExtractor::new().extract_bytes(bibtex, "application/x-bibtex", &config))
         .expect("bibtex extraction should succeed");
+    let result = derive_extraction_result(internal_doc, true, kreuzberg::OutputFormat::Plain);
 
     let doc = result.document.as_ref().expect("document should be present");
     assert!(doc.validate().is_ok());
@@ -3237,9 +3250,10 @@ fn test_csv_header_detection() {
 
     let config = config_with_structure();
     let rt = tokio::runtime::Runtime::new().unwrap();
-    let result = rt
+    let internal_doc_result = rt
         .block_on(CsvExtractor::new().extract_bytes(csv_data, "text/csv", &config))
         .expect("csv extraction should succeed");
+    let result = derive_extraction_result(internal_doc_result, true, kreuzberg::OutputFormat::Plain);
 
     let has_header = result.metadata.additional.get("has_header");
     assert!(has_header.is_some(), "metadata should have has_header field");
@@ -3273,9 +3287,10 @@ fn test_opml_feed_urls() {
 
     let config = config_with_structure();
     let rt = tokio::runtime::Runtime::new().unwrap();
-    let result = rt
+    let internal_doc_result = rt
         .block_on(OpmlExtractor::new().extract_bytes(opml, "text/x-opml", &config))
         .expect("opml extraction should succeed");
+    let result = derive_extraction_result(internal_doc_result, true, kreuzberg::OutputFormat::Plain);
 
     let doc = result.document.as_ref().expect("document should be present");
     assert!(doc.validate().is_ok());
@@ -3338,9 +3353,10 @@ fn test_email_html_body_annotations() {
                  <html><body><p>This is <b>bold</b> text.</p></body></html>";
 
     let config = config_with_structure();
-    let result = EmailExtractor::new()
+    let internal_doc = EmailExtractor::new()
         .extract_sync(eml, "message/rfc822", &config)
         .expect("email extraction should succeed");
+    let result = derive_extraction_result(internal_doc, true, kreuzberg::OutputFormat::Plain);
 
     let doc = result.document.as_ref().expect("document should be present");
     assert!(doc.validate().is_ok());
@@ -3387,9 +3403,10 @@ fn test_jupyter_markdown_cell_formatting() {
 
     let config = config_with_structure();
     let rt = tokio::runtime::Runtime::new().unwrap();
-    let result = rt
+    let internal_doc_result = rt
         .block_on(JupyterExtractor::new().extract_bytes(&content, "application/x-ipynb+json", &config))
         .expect("jupyter extraction should succeed");
+    let result = derive_extraction_result(internal_doc_result, true, kreuzberg::OutputFormat::Plain);
 
     let doc = result.document.as_ref().expect("document should be present");
     assert!(doc.validate().is_ok());

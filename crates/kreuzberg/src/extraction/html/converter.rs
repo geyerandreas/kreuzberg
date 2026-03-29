@@ -6,10 +6,12 @@ use super::stack_management::{html_requires_large_stack, run_on_dedicated_stack}
 use crate::core::config::OutputFormat as KreuzbergOutputFormat;
 use crate::error::{KreuzbergError, Result};
 use crate::types::HtmlMetadata;
+use html_to_markdown_rs::types::TableData;
 use html_to_markdown_rs::{
-    ConversionOptions, MetadataConfig, OutputFormat as LibOutputFormat, TableData, convert as convert_html,
-    convert_with_tables,
+    ConversionOptions, GridCell, InlineImage, OutputFormat as LibOutputFormat, TableGrid, convert as convert_html,
 };
+use std::cell::RefCell;
+use std::rc::Rc;
 
 /// Map Kreuzberg OutputFormat to html-to-markdown-rs OutputFormat.
 pub(crate) fn map_output_format(format: KreuzbergOutputFormat) -> LibOutputFormat {
@@ -37,7 +39,6 @@ pub fn resolve_conversion_options(
 ) -> ConversionOptions {
     let mut opts = options.unwrap_or_else(|| ConversionOptions {
         extract_metadata: true,
-        hocr_spatial_tables: false,
         preprocessing: super::types::PreprocessingOptions {
             enabled: false,
             ..Default::default()
@@ -52,6 +53,7 @@ pub fn resolve_conversion_options(
 /// Internal conversion helper that applies options to the conversion.
 fn convert_html_with_options(html: &str, options: ConversionOptions) -> Result<String> {
     convert_html(html, Some(options))
+        .map(|r| r.content.unwrap_or_default())
         .map_err(|e| KreuzbergError::parsing(format!("Failed to convert HTML to Markdown: {}", e)))
 }
 
@@ -134,10 +136,96 @@ pub fn convert_html_to_markdown_with_metadata(
     Ok((content, metadata))
 }
 
+/// Visitor-based table collector that captures structured table data during conversion.
+///
+/// Implements `HtmlVisitor` to intercept table rows via `visit_table_row` and
+/// complete tables via `visit_table_end`, building `TableData` with both grid
+/// and markdown representations.
+#[derive(Debug)]
+struct TableCollector {
+    tables: Vec<TableData>,
+    current_rows: Vec<Vec<String>>,
+    current_is_header: Vec<bool>,
+}
+
+impl TableCollector {
+    fn new() -> Self {
+        Self {
+            tables: Vec::new(),
+            current_rows: Vec::new(),
+            current_is_header: Vec::new(),
+        }
+    }
+
+    /// Build a `TableGrid` from collected row data.
+    fn build_grid(rows: &[Vec<String>], is_header: &[bool]) -> TableGrid {
+        let num_rows = rows.len() as u32;
+        let num_cols = rows.iter().map(|r| r.len()).max().unwrap_or(0) as u32;
+        let mut cells = Vec::new();
+        for (row_idx, row) in rows.iter().enumerate() {
+            for (col_idx, content) in row.iter().enumerate() {
+                cells.push(GridCell {
+                    content: content.clone(),
+                    row: row_idx as u32,
+                    col: col_idx as u32,
+                    row_span: 1,
+                    col_span: 1,
+                    is_header: is_header.get(row_idx).copied().unwrap_or(false),
+                });
+            }
+        }
+        TableGrid {
+            rows: num_rows,
+            cols: num_cols,
+            cells,
+        }
+    }
+}
+
+impl html_to_markdown_rs::visitor::HtmlVisitor for TableCollector {
+    fn visit_table_start(
+        &mut self,
+        _ctx: &html_to_markdown_rs::visitor::NodeContext,
+    ) -> html_to_markdown_rs::visitor::VisitResult {
+        self.current_rows.clear();
+        self.current_is_header.clear();
+        html_to_markdown_rs::visitor::VisitResult::Continue
+    }
+
+    fn visit_table_row(
+        &mut self,
+        _ctx: &html_to_markdown_rs::visitor::NodeContext,
+        cells: &[String],
+        is_header: bool,
+    ) -> html_to_markdown_rs::visitor::VisitResult {
+        self.current_rows.push(cells.to_vec());
+        self.current_is_header.push(is_header);
+        html_to_markdown_rs::visitor::VisitResult::Continue
+    }
+
+    fn visit_table_end(
+        &mut self,
+        _ctx: &html_to_markdown_rs::visitor::NodeContext,
+        output: &str,
+    ) -> html_to_markdown_rs::visitor::VisitResult {
+        if !self.current_rows.is_empty() {
+            let grid = Self::build_grid(&self.current_rows, &self.current_is_header);
+            self.tables.push(TableData {
+                grid,
+                markdown: output.to_string(),
+            });
+            self.current_rows.clear();
+            self.current_is_header.clear();
+        }
+        html_to_markdown_rs::visitor::VisitResult::Continue
+    }
+}
+
 /// Convert HTML to markdown/djot/plain with metadata and structured table extraction.
 ///
-/// Performs conversion, metadata extraction, and table data collection in a single
-/// DOM walk using the visitor pattern from html-to-markdown-rs.
+/// Performs conversion with a visitor-based table collector to capture structured
+/// table data (grid cells + markdown) alongside metadata extraction via the
+/// unified `convert()` API.
 ///
 /// Returns `(content, optional_metadata, tables)`.
 pub fn convert_html_to_markdown_with_tables(
@@ -157,45 +245,101 @@ pub fn convert_html_to_markdown_with_tables(
 
     let mut options = resolve_conversion_options(options.clone(), metadata_format);
     options.extract_metadata = false;
-    let metadata_config = MetadataConfig::default();
 
     #[cfg(not(target_arch = "wasm32"))]
     if html_requires_large_stack(html.len()) {
         let html_owned = html.to_string();
         let plain_options = is_plain.then(|| resolve_conversion_options(None, format));
+        return run_on_dedicated_stack(move || convert_with_table_visitor(&html_owned, options, plain_options));
+    }
+
+    let plain_options = is_plain.then(|| resolve_conversion_options(None, format));
+    convert_with_table_visitor(html, options, plain_options)
+}
+
+/// Internal helper: run conversion with a `TableCollector` visitor and extract metadata.
+fn convert_with_table_visitor(
+    html: &str,
+    options: ConversionOptions,
+    plain_options: Option<ConversionOptions>,
+) -> Result<(String, Option<HtmlMetadata>, Vec<TableData>)> {
+    let collector = Rc::new(RefCell::new(TableCollector::new()));
+    let visitor_handle: html_to_markdown_rs::visitor::VisitorHandle =
+        Rc::clone(&collector) as html_to_markdown_rs::visitor::VisitorHandle;
+
+    // Run conversion with the table collector visitor
+    let markdown = html_to_markdown_rs::convert_with_visitor(html, Some(options), Some(visitor_handle))
+        .map_err(|e| KreuzbergError::parsing(format!("HTML table extraction failed: {}", e)))?;
+
+    // Extract metadata via a separate convert() call
+    let metadata_result = convert_html(
+        html,
+        Some(ConversionOptions {
+            extract_metadata: true,
+            ..Default::default()
+        }),
+    )
+    .map_err(|e| KreuzbergError::parsing(format!("HTML metadata extraction failed: {}", e)))?;
+
+    let metadata = {
+        let m = HtmlMetadata::from(metadata_result.metadata.clone());
+        if m.is_empty() { None } else { Some(m) }
+    };
+
+    // Get the final content (re-convert for plain text if needed)
+    let content = if let Some(opts) = plain_options {
+        convert_html(html, Some(opts))
+            .map(|r| r.content.unwrap_or_default())
+            .map_err(|e| KreuzbergError::parsing(format!("HTML plain text conversion failed: {}", e)))?
+    } else {
+        markdown
+    };
+
+    // Extract tables from the collector
+    let tables = Rc::try_unwrap(collector)
+        .map_err(|_| KreuzbergError::parsing("failed to recover table collector state".to_string()))?
+        .into_inner()
+        .tables;
+
+    Ok((content, metadata, tables))
+}
+
+/// Extract inline images (data URIs and SVGs) from HTML.
+///
+/// Uses the `convert()` function with `extract_images = true` to collect
+/// inline images embedded in the HTML document. Returns an empty vector
+/// when no images are found.
+///
+/// # Arguments
+///
+/// * `html` - The HTML string to extract images from
+/// * `options` - Optional conversion options; defaults will be used if None
+///
+/// # Returns
+///
+/// A vector of extracted inline images.
+pub fn extract_html_inline_images(html: &str, options: Option<ConversionOptions>) -> Result<Vec<InlineImage>> {
+    check_wasm_size_limit(html)?;
+
+    let mut opts = options.unwrap_or_default();
+    opts.extract_images = true;
+    // Use plain text mode for minimal conversion overhead; we only need the images.
+    opts.output_format = LibOutputFormat::Plain;
+    opts.extract_metadata = false;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    if html_requires_large_stack(html.len()) {
+        let html_owned = html.to_string();
         return run_on_dedicated_stack(move || {
-            let result = convert_with_tables(&html_owned, Some(options), Some(metadata_config))
-                .map_err(|e| KreuzbergError::parsing(format!("HTML table extraction failed: {}", e)))?;
-            let content = if let Some(opts) = plain_options {
-                convert_html(&html_owned, Some(opts))
-                    .map_err(|e| KreuzbergError::parsing(format!("HTML plain text conversion failed: {}", e)))?
-            } else {
-                result.content
-            };
-            let metadata: Option<HtmlMetadata> = result
-                .metadata
-                .map(HtmlMetadata::from)
-                .and_then(|m: HtmlMetadata| if m.is_empty() { None } else { Some(m) });
-            Ok((content, metadata, result.tables))
+            let result = convert_html(&html_owned, Some(opts))
+                .map_err(|e| KreuzbergError::parsing(format!("HTML image extraction failed: {}", e)))?;
+            Ok(result.images)
         });
     }
 
-    let result = convert_with_tables(html, Some(options), Some(metadata_config))
-        .map_err(|e| KreuzbergError::parsing(format!("HTML table extraction failed: {}", e)))?;
-
-    let content = if is_plain {
-        let plain_options = resolve_conversion_options(None, format);
-        convert_html(html, Some(plain_options))
-            .map_err(|e| KreuzbergError::parsing(format!("HTML plain text conversion failed: {}", e)))?
-    } else {
-        result.content
-    };
-
-    let metadata: Option<HtmlMetadata> = result
-        .metadata
-        .map(HtmlMetadata::from)
-        .and_then(|m: HtmlMetadata| if m.is_empty() { None } else { Some(m) });
-    Ok((content, metadata, result.tables))
+    let result = convert_html(html, Some(opts))
+        .map_err(|e| KreuzbergError::parsing(format!("HTML image extraction failed: {}", e)))?;
+    Ok(result.images)
 }
 
 #[cfg(test)]
@@ -243,10 +387,17 @@ mod tests {
         let (_markdown, _metadata, tables) = convert_html_to_markdown_with_tables(html, None, None).unwrap();
         assert_eq!(tables.len(), 1);
         let table = &tables[0];
-        // Checking if html_to_markdown_rs::TableData has col_span
-        assert_eq!(table.cells.len(), 2);
-        assert_eq!(table.cells[0].len(), 1);
-        assert_eq!(table.cells[0][0], "Header");
+        // Verify grid structure: 2 rows extracted via visitor
+        assert_eq!(table.grid.rows, 2);
+        // Header row has the header cell
+        let header_cells: Vec<_> = table.grid.cells.iter().filter(|c| c.is_header).collect();
+        assert!(!header_cells.is_empty());
+        assert_eq!(header_cells[0].content, "Header");
+        // Data row has 2 cells
+        let data_cells: Vec<_> = table.grid.cells.iter().filter(|c| c.row == 1).collect();
+        assert_eq!(data_cells.len(), 2);
+        assert_eq!(data_cells[0].content, "Data 1");
+        assert_eq!(data_cells[1].content, "Data 2");
     }
 
     #[test]

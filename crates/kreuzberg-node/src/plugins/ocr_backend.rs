@@ -148,6 +148,7 @@ impl RustOcrBackend for JsOcrBackend {
             processing_warnings: vec![],
             annotations: None,
             children: None,
+            formatted_content: None,
         })
     }
 

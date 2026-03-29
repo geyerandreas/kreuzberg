@@ -60,16 +60,11 @@
   </a>
 </div>
 
-
 Extract text, tables, images, and metadata from 91+ file formats including PDF, Office documents, and images. Elixir bindings with native BEAM concurrency, OTP integration, and idiomatic Elixir API.
-
 
 ## Installation
 
 ### Package Installation
-
-
-
 
 Add to your `mix.exs` dependencies:
 
@@ -87,16 +82,11 @@ Then run:
 mix deps.get
 ```
 
-
-
-
 ### System Requirements
 
 - **Elixir 1.12+** and **Erlang/OTP 24+** required
 - Optional: [ONNX Runtime](https://github.com/microsoft/onnxruntime/releases) version 1.22.x for embeddings support
 - Optional: [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) for OCR functionality
-
-
 
 ## Quick Start
 
@@ -118,13 +108,11 @@ IO.puts("Format: #{inspect(result.metadata.format_type)}")
 IO.puts("Tables found: #{length(result.tables)}")
 ```
 
-
 ### Common Use Cases
 
 #### Extract with Custom Configuration
 
 Most use cases benefit from configuration to control extraction behavior:
-
 
 **With OCR (for scanned documents):**
 
@@ -143,18 +131,11 @@ IO.puts(content)
 IO.puts("Metadata: #{inspect(result.metadata)}")
 ```
 
-
-
-
 #### Table Extraction
-
 
 See [Table Extraction Guide](https://kreuzberg.dev/features/table-extraction/) for detailed examples.
 
-
-
 #### Processing Multiple Files
-
 
 ```elixir title="Elixir"
 file_paths = ["document1.pdf", "document2.pdf", "document3.pdf"]
@@ -170,10 +151,6 @@ end)
 
 IO.puts("Total files processed: #{length(results)}")
 ```
-
-
-
-
 
 #### Async Processing
 
@@ -193,19 +170,12 @@ case Kreuzberg.extract_file("document.pdf") do
 end
 ```
 
-
-
-
-
-
 ### Next Steps
 
 - **[Installation Guide](https://kreuzberg.dev/getting-started/installation/)** - Platform-specific setup
 - **[API Documentation](https://kreuzberg.dev/api/)** - Complete API reference
 - **[Examples & Guides](https://kreuzberg.dev/guides/)** - Full code examples and usage guides
 - **[Configuration Guide](https://kreuzberg.dev/guides/configuration/)** - Advanced configuration options
-
-
 
 ## Features
 
@@ -268,9 +238,7 @@ end
 
 - **Async/Await** - Non-blocking document processing with concurrent operations
 
-
 - **Plugin System** - Extensible post-processing for custom text transformation
-
 
 - **Embeddings** - Generate vector embeddings using ONNX Runtime models
 
@@ -289,17 +257,13 @@ end
 | **Archives** | 5-50 MB/s | ~200MB per doc | ZIP, TAR, etc. |
 | **Web formats** | 50-200 MB/s | Streaming | HTML, XML, JSON |
 
-
-
 ## OCR Support
 
 Kreuzberg supports multiple OCR backends for extracting text from scanned documents and images:
 
-
 - **Tesseract**
 
 - **Paddleocr**
-
 
 ### OCR Configuration Example
 
@@ -317,9 +281,6 @@ IO.puts("OCR Extracted content:")
 IO.puts(content)
 IO.puts("Metadata: #{inspect(result.metadata)}")
 ```
-
-
-
 
 ## Async Support
 
@@ -339,15 +300,11 @@ case Kreuzberg.extract_file("document.pdf") do
 end
 ```
 
-
-
-
 ## Plugin System
 
 Kreuzberg supports extensible post-processing plugins for custom text transformation and filtering.
 
 For detailed plugin documentation, visit [Plugin System Guide](https://kreuzberg.dev/guides/plugins/).
-
 
 ### Plugin Example
 
@@ -429,17 +386,11 @@ end
 IO.inspect(processors, label: "Registered Post-Processors")
 ```
 
-
-
-
-
 ## Embeddings Support
 
 Generate vector embeddings for extracted text using the built-in ONNX Runtime support. Requires ONNX Runtime installation.
 
 **[Embeddings Guide](https://kreuzberg.dev/features/#embeddings)**
-
-
 
 ## Batch Processing
 
@@ -459,9 +410,6 @@ end)
 
 IO.puts("Total files processed: #{length(results)}")
 ```
-
-
-
 
 ## Configuration
 

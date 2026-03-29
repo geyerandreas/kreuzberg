@@ -4,10 +4,9 @@ use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::extractors::iwork::{dedup_text, extract_text_from_proto, read_iwa_file};
 use crate::plugins::{DocumentExtractor, Plugin};
-use crate::types::{ExtractionResult, Metadata};
-use ahash::AHashMap;
+use crate::types::internal::InternalDocument;
+use crate::types::internal_builder::InternalDocumentBuilder;
 use async_trait::async_trait;
-use std::borrow::Cow;
 
 /// Apple Keynote presentation extractor.
 ///
@@ -100,8 +99,8 @@ impl DocumentExtractor for KeynoteExtractor {
         &self,
         content: &[u8],
         mime_type: &str,
-        config: &ExtractionConfig,
-    ) -> Result<ExtractionResult> {
+        _config: &ExtractionConfig,
+    ) -> Result<InternalDocument> {
         let text = {
             #[cfg(feature = "tokio-runtime")]
             if crate::core::batch_mode::is_batch_mode() {
@@ -121,37 +120,9 @@ impl DocumentExtractor for KeynoteExtractor {
             parse_keynote(content)?
         };
 
-        let document = if config.include_document_structure {
-            Some(build_keynote_document_structure(&text))
-        } else {
-            None
-        };
-
-        let additional: AHashMap<Cow<'static, str>, serde_json::Value> = AHashMap::new();
-
-        Ok(ExtractionResult {
-            content: text,
-            mime_type: mime_type.to_string().into(),
-            metadata: Metadata {
-                additional,
-                ..Default::default()
-            },
-            pages: None,
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-        })
+        let mut doc = build_keynote_internal_document(&text);
+        doc.mime_type = std::borrow::Cow::Owned(mime_type.to_string());
+        Ok(doc)
     }
 
     fn supported_mime_types(&self) -> &[&str] {
@@ -163,22 +134,16 @@ impl DocumentExtractor for KeynoteExtractor {
     }
 }
 
-/// Build a `DocumentStructure` from extracted Keynote text.
+/// Build an `InternalDocument` from extracted Keynote text.
 ///
-/// Maps text lines to slides with paragraphs. Each non-empty line group
-/// separated by blank lines becomes a slide, with the first line as the
-/// slide title.
-fn build_keynote_document_structure(text: &str) -> crate::types::document_structure::DocumentStructure {
-    use crate::types::builder::DocumentStructureBuilder;
-
-    let mut builder = DocumentStructureBuilder::new().source_format("keynote");
+/// Maps text lines to slides with paragraphs, mirroring `build_keynote_document_structure`.
+fn build_keynote_internal_document(text: &str) -> InternalDocument {
+    let mut builder = InternalDocumentBuilder::new("keynote");
     let mut slide_number: u32 = 0;
 
-    // Split text into slide-like chunks (separated by blank lines)
     let lines: Vec<&str> = text.lines().collect();
     let mut i = 0;
     while i < lines.len() {
-        // Skip blank lines
         if lines[i].trim().is_empty() {
             i += 1;
             continue;
@@ -186,19 +151,15 @@ fn build_keynote_document_structure(text: &str) -> crate::types::document_struct
 
         slide_number += 1;
         let first_line = lines[i].trim();
-        builder.push_slide(slide_number, Some(first_line));
+        builder.push_slide(slide_number, Some(first_line), None);
         i += 1;
 
-        // Collect subsequent non-blank lines as paragraphs in this slide
         while i < lines.len() && !lines[i].trim().is_empty() {
             builder.push_paragraph(lines[i].trim(), vec![], None, None);
             i += 1;
         }
-
-        builder.exit_container();
     }
 
-    // If no slides were created but there is content, push paragraphs
     if slide_number == 0 && !text.trim().is_empty() {
         for line in text.lines() {
             let trimmed = line.trim();

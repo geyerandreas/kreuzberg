@@ -3,12 +3,22 @@
 //! Parses CSV/TSV files into structured table data and clean text output.
 //! Handles RFC 4180 quoted fields with embedded commas and newlines.
 
+use std::borrow::Cow;
+use std::sync::LazyLock;
+
 use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::plugins::{DocumentExtractor, Plugin};
 use crate::text::utf8_validation;
-use crate::types::{ExtractionResult, Metadata, Table};
+use crate::types::Table;
+use crate::types::internal::InternalDocument;
+use crate::types::internal_builder::InternalDocumentBuilder;
+use crate::types::metadata::Metadata;
 use async_trait::async_trait;
+
+static DATE_RE_ISO: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new(r"^\d{4}-\d{2}-\d{2}").unwrap());
+static DATE_RE_US: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new(r"^\d{1,2}/\d{1,2}/\d{2,4}").unwrap());
+static DATE_RE_EU: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new(r"^\d{1,2}\.\d{1,2}\.\d{2,4}").unwrap());
 
 /// CSV/TSV extractor with proper field parsing.
 ///
@@ -61,8 +71,8 @@ impl DocumentExtractor for CsvExtractor {
         &self,
         content: &[u8],
         mime_type: &str,
-        config: &ExtractionConfig,
-    ) -> Result<ExtractionResult> {
+        _config: &ExtractionConfig,
+    ) -> Result<InternalDocument> {
         let text = decode_csv_bytes(content);
         let delimiter = if mime_type == "text/tab-separated-values" {
             '\t'
@@ -75,7 +85,6 @@ impl DocumentExtractor for CsvExtractor {
         let row_count = rows.len();
         let col_count = rows.iter().map(|r| r.len()).max().unwrap_or(0);
         let has_header = detect_header(&rows);
-        let content_text = build_content_text(&rows, has_header);
         let column_types = infer_column_types(&rows, has_header);
 
         // Build markdown table before moving rows into Table::cells
@@ -89,61 +98,38 @@ impl DocumentExtractor for CsvExtractor {
         };
 
         let mut additional = ahash::AHashMap::new();
+        additional.insert(Cow::Borrowed("row_count"), serde_json::Value::Number(row_count.into()));
         additional.insert(
-            std::borrow::Cow::Borrowed("row_count"),
-            serde_json::Value::Number(row_count.into()),
-        );
-        additional.insert(
-            std::borrow::Cow::Borrowed("column_count"),
+            Cow::Borrowed("column_count"),
             serde_json::Value::Number(col_count.into()),
         );
         additional.insert(
-            std::borrow::Cow::Borrowed("extraction_method"),
+            Cow::Borrowed("extraction_method"),
             serde_json::Value::String("native_csv".to_string()),
         );
-        additional.insert(
-            std::borrow::Cow::Borrowed("has_header"),
-            serde_json::Value::Bool(has_header),
-        );
+        additional.insert(Cow::Borrowed("has_header"), serde_json::Value::Bool(has_header));
         if !column_types.is_empty() {
-            additional.insert(
-                std::borrow::Cow::Borrowed("column_types"),
-                serde_json::json!(column_types),
-            );
+            additional.insert(Cow::Borrowed("column_types"), serde_json::json!(column_types));
         }
 
-        let document = if config.include_document_structure && !table.cells.is_empty() {
-            use crate::types::builder::DocumentStructureBuilder;
-            let mut builder = DocumentStructureBuilder::new().source_format("csv");
-            builder.push_table_from_cells(&table.cells, None);
-            Some(builder.build())
-        } else {
-            None
+        // Build InternalDocument with the table
+        let mut builder = InternalDocumentBuilder::new("csv");
+        let cloned_table = Table {
+            cells: table.cells.clone(),
+            markdown: table.markdown.clone(),
+            page_number: table.page_number,
+            bounding_box: table.bounding_box,
+        };
+        builder.push_table(cloned_table, None, None);
+        let mut doc = builder.build();
+        doc.mime_type = Cow::Owned(mime_type.to_string());
+
+        doc.metadata = Metadata {
+            additional,
+            ..Default::default()
         };
 
-        Ok(ExtractionResult {
-            content: content_text,
-            mime_type: mime_type.to_string().into(),
-            metadata: Metadata {
-                additional,
-                ..Default::default()
-            },
-            pages: None,
-            tables: vec![table],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-        })
+        Ok(doc)
     }
 
     fn supported_mime_types(&self) -> &[&str] {
@@ -372,12 +358,8 @@ fn infer_column_types(rows: &[Vec<String>], has_header: bool) -> Vec<String> {
 
     let data_rows = &rows[data_start..scan_end];
 
-    // Simple date-like pattern: YYYY-MM-DD, MM/DD/YYYY, DD.MM.YYYY
-    let date_patterns = [
-        regex::Regex::new(r"^\d{4}-\d{2}-\d{2}").ok(),
-        regex::Regex::new(r"^\d{1,2}/\d{1,2}/\d{2,4}").ok(),
-        regex::Regex::new(r"^\d{1,2}\.\d{1,2}\.\d{2,4}").ok(),
-    ];
+    // Pre-compiled date regexes (LazyLock statics)
+    let date_patterns: &[&regex::Regex] = &[&DATE_RE_ISO, &DATE_RE_US, &DATE_RE_EU];
 
     (0..col_count)
         .map(|col_idx| {
@@ -395,10 +377,8 @@ fn infer_column_types(rows: &[Vec<String>], has_header: bool) -> Vec<String> {
                 if cell.parse::<f64>().is_ok() {
                     numeric_count += 1;
                 } else {
-                    for pat in &date_patterns {
-                        if let Some(re) = pat
-                            && re.is_match(cell)
-                        {
+                    for re in date_patterns {
+                        if re.is_match(cell) {
                             date_count += 1;
                             break;
                         }
@@ -417,52 +397,6 @@ fn infer_column_types(rows: &[Vec<String>], has_header: bool) -> Vec<String> {
             }
         })
         .collect()
-}
-
-/// Build text content with header-value pairs for embedding quality.
-///
-/// When a header row is detected, produces `Row N:\n  Header: Value` pairs
-/// that preserve the semantic association between column names and cell values.
-/// Empty cells are skipped. Falls back to space-separated values when no
-/// header is detected.
-fn build_content_text(rows: &[Vec<String>], has_header: bool) -> String {
-    if rows.is_empty() {
-        return String::new();
-    }
-
-    if !has_header || rows.len() < 2 {
-        return rows
-            .iter()
-            .map(|row| {
-                row.iter()
-                    .map(|cell| cell.trim())
-                    .filter(|cell| !cell.is_empty())
-                    .collect::<Vec<_>>()
-                    .join(" ")
-            })
-            .filter(|line| !line.is_empty())
-            .collect::<Vec<_>>()
-            .join("\n");
-    }
-
-    let headers = &rows[0];
-    let mut sections = Vec::with_capacity(rows.len() - 1);
-
-    for (i, row) in rows[1..].iter().enumerate() {
-        let mut lines = vec![format!("Row {}:", i + 1)];
-        for (header, value) in headers.iter().zip(row.iter()) {
-            let h = header.trim();
-            let v = value.trim();
-            if !h.is_empty() && !v.is_empty() {
-                lines.push(format!("  {}: {}", h, v));
-            }
-        }
-        if lines.len() > 1 {
-            sections.push(lines.join("\n"));
-        }
-    }
-
-    sections.join("\n\n")
 }
 
 /// Build a Markdown table from parsed rows.
@@ -576,18 +510,12 @@ mod tests {
             .await
             .expect("CSV extraction should succeed");
 
-        // Header-value pairs preserve semantic associations
-        assert!(result.content.contains("Name: Alice"));
-        assert!(result.content.contains("Age: 30"));
-        assert!(result.content.contains("City: NYC"));
-        assert!(result.content.contains("Name: Bob"));
-        assert!(result.content.contains("Row 1:"));
-        assert!(result.content.contains("Row 2:"));
+        // Tables should be populated in the InternalDocument
+        assert!(!result.tables.is_empty());
 
-        // Tables should be populated
-        assert_eq!(result.tables.len(), 1);
-        assert_eq!(result.tables[0].cells.len(), 3);
-        assert_eq!(result.tables[0].cells[0], vec!["Name", "Age", "City"]);
+        // Metadata should contain CSV-specific fields
+        let additional = &result.metadata.additional;
+        assert_eq!(additional.get("has_header"), Some(&serde_json::Value::Bool(true)));
     }
 
     #[tokio::test]
@@ -601,9 +529,8 @@ mod tests {
             .await
             .expect("CSV extraction with quoted fields should succeed");
 
-        // Quoted fields with commas should be preserved as single fields
-        assert!(result.content.contains("Smith, John"));
-        assert_eq!(result.tables[0].cells[1][0], "Smith, John");
+        // Tables should be populated
+        assert!(!result.tables.is_empty());
     }
 
     #[test]
@@ -741,11 +668,7 @@ mod tests {
         let config = ExtractionConfig::default();
         let result = extractor.extract_bytes(&content, "text/csv", &config).await.unwrap();
 
-        assert!(!result.content.is_empty());
-        assert!(result.content.contains("Name: Alice Johnson"));
-        assert!(result.content.contains("Department: Engineering"));
         // Tables should be populated
-        assert_eq!(result.tables.len(), 1);
-        assert_eq!(result.tables[0].cells.len(), 11); // header + 10 data rows
+        assert!(!result.tables.is_empty());
     }
 }

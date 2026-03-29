@@ -50,7 +50,7 @@ ctor = "0.6"
 dbase = "0.7"
 getrandom = { version = "0.4.2", features = ["wasm_js"] }
 hex = "0.4.3"
-html-to-markdown-rs = { version = "2.29.0", default-features = false }
+html-to-markdown-rs = { path = "/Users/naamanhirschfeld/workspace/kreuzberg-dev/html-to-markdown/crates/html-to-markdown", default-features = false }
 image = { version = "0.25.10", default-features = false }
 itertools = "0.14"
 js-sys = "0.3"

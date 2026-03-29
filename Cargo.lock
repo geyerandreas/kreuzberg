@@ -478,6 +478,7 @@ dependencies = [
  "kreuzberg",
  "num_cpus",
  "pprof",
+ "pulldown-cmark 0.13.3",
  "rayon",
  "serde",
  "serde_json",
@@ -2540,9 +2541,7 @@ dependencies = [
 
 [[package]]
 name = "html-to-markdown-rs"
-version = "2.29.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9013679b8c3600142e5a8f742748c3c38c49d9fc50675dad62f8f1721090a85a"
+version = "3.0.0"
 dependencies = [
  "ahash",
  "astral-tl",
@@ -2551,6 +2550,7 @@ dependencies = [
  "html5ever",
  "image 0.25.10",
  "lru",
+ "memchr",
  "once_cell",
  "regex",
  "serde",
@@ -3300,6 +3300,7 @@ dependencies = [
  "kreuzberg-pdfium-render",
  "kreuzberg-tesseract",
  "libc",
+ "log",
  "lopdf",
  "mail-parser",
  "memchr",

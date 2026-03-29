@@ -6,7 +6,9 @@
 use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::plugins::{DocumentExtractor, Plugin};
-use crate::types::{ExtractionResult, Metadata};
+use crate::types::internal::InternalDocument;
+use crate::types::internal_builder::InternalDocumentBuilder;
+use crate::types::metadata::Metadata;
 use ahash::AHashMap;
 use async_trait::async_trait;
 use std::borrow::Cow;
@@ -64,21 +66,29 @@ impl Plugin for BibtexExtractor {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 impl DocumentExtractor for BibtexExtractor {
+    #[cfg_attr(feature = "otel", tracing::instrument(
+        skip(self, content, _config),
+        fields(
+            extractor.name = self.name(),
+            content.size_bytes = content.len(),
+        )
+    ))]
     async fn extract_bytes(
         &self,
         content: &[u8],
         mime_type: &str,
-        config: &ExtractionConfig,
-    ) -> Result<ExtractionResult> {
+        _config: &ExtractionConfig,
+    ) -> Result<InternalDocument> {
         let bibtex_str = String::from_utf8_lossy(content);
-        let wants_structure = config.include_document_structure;
 
         let mut entries_vec = Vec::new();
         let mut authors_set = HashSet::new();
         let mut years_set = HashSet::new();
         let mut entry_types_map: AHashMap<String, i32> = AHashMap::new();
         let mut formatted_entries = String::new();
-        let mut citation_pairs: Vec<(String, String, AHashMap<String, String>)> = Vec::new();
+
+        // Build InternalDocument with citation elements
+        let mut builder = InternalDocumentBuilder::new("bibtex");
 
         match Bibliography::parse(&bibtex_str) {
             Ok(bib) => {
@@ -86,7 +96,7 @@ impl DocumentExtractor for BibtexExtractor {
                     let key = entry.key.clone();
                     let entry_type = entry.entry_type.clone();
 
-                    // Track start position for document structure citation text
+                    // Track start position for citation text
                     let entry_start = formatted_entries.len();
 
                     // Collect all entry fields as attributes
@@ -121,20 +131,18 @@ impl DocumentExtractor for BibtexExtractor {
 
                     formatted_entries.push_str("}\n\n");
 
-                    // Reuse the already-formatted entry text for the citation node
-                    if wants_structure {
-                        let citation_text = formatted_entries[entry_start..].trim().to_string();
-                        citation_pairs.push((key.clone(), citation_text, entry_fields.clone()));
-                    }
+                    // Build citation element with attributes
+                    let citation_text = formatted_entries[entry_start..].trim().to_string();
+                    let idx = builder.push_citation(&citation_text, &key, None);
 
                     // Store per-entry fields in additional metadata
                     let fields_json: serde_json::Map<String, serde_json::Value> = entry_fields
                         .iter()
                         .map(|(k, v)| (k.clone(), serde_json::json!(v)))
                         .collect();
-                    // Only add non-empty field maps
-                    if !fields_json.is_empty() {
-                        // We'll aggregate these into "entries" below
+
+                    if !entry_fields.is_empty() {
+                        builder.set_attributes(idx, std::mem::take(&mut entry_fields));
                     }
 
                     *entry_types_map
@@ -148,6 +156,8 @@ impl DocumentExtractor for BibtexExtractor {
                 #[cfg(feature = "otel")]
                 tracing::warn!("BibTeX parsing failed, returning raw content: {}", _err);
                 formatted_entries = bibtex_str.to_string();
+                // Push as a single code block when parsing fails
+                builder.push_code(&formatted_entries, None, None, None);
             }
         }
 
@@ -198,44 +208,14 @@ impl DocumentExtractor for BibtexExtractor {
             additional.insert(Cow::Borrowed("entry_types"), entry_types_json);
         }
 
-        let document = if wants_structure && !citation_pairs.is_empty() {
-            use crate::types::builder::DocumentStructureBuilder;
-            let mut builder = DocumentStructureBuilder::new().source_format("bibtex");
-            for (key, citation_text, fields) in citation_pairs {
-                let node_idx = builder.push_citation(&key, &citation_text, None);
-                // Set all entry fields as node attributes
-                if !fields.is_empty() {
-                    builder.set_attributes(node_idx, fields);
-                }
-            }
-            Some(builder.build())
-        } else {
-            None
+        let mut doc = builder.build();
+        doc.mime_type = Cow::Owned(mime_type.to_string());
+        doc.metadata = Metadata {
+            additional,
+            ..Default::default()
         };
 
-        Ok(ExtractionResult {
-            content: formatted_entries,
-            mime_type: mime_type.to_string().into(),
-            metadata: Metadata {
-                additional,
-                ..Default::default()
-            },
-            pages: None,
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-        })
+        Ok(doc)
     }
 
     fn supported_mime_types(&self) -> &[&str] {
@@ -278,10 +258,6 @@ mod tests {
 
         assert!(result.is_ok());
         let result = result.expect("Should extract valid BibTeX entry");
-
-        assert!(result.content.contains("@article"));
-        assert!(result.content.contains("key2023"));
-        assert!(result.content.contains("Sample Title"));
 
         let metadata = &result.metadata;
         assert_eq!(
@@ -361,11 +337,6 @@ mod tests {
         assert!(result.is_ok());
         let result = result.expect("Should extract valid article entry");
 
-        assert!(result.content.contains("@article"));
-        assert!(result.content.contains("einstein1905"));
-        assert!(result.content.contains("On the Electrodynamics of Moving Bodies"));
-        assert!(result.content.contains("Annalen der Physik"));
-
         let metadata = &result.metadata;
         if let Some(authors) = metadata.additional.get("authors")
             && let Some(authors_array) = authors.as_array()
@@ -392,10 +363,6 @@ mod tests {
 
         assert!(result.is_ok());
         let result = result.expect("Should extract valid book entry");
-
-        assert!(result.content.contains("@book"));
-        assert!(result.content.contains("knuth1984"));
-        assert!(result.content.contains("The TeXbook"));
 
         let metadata = &result.metadata;
         assert_eq!(
@@ -495,9 +462,6 @@ Some random text that's not valid BibTeX"#;
             .await;
 
         assert!(result.is_ok());
-        let result = result.expect("Should extract malformed entry as raw content");
-
-        assert!(!result.content.is_empty());
     }
 
     #[tokio::test]
@@ -622,9 +586,7 @@ Some random text that's not valid BibTeX"#;
             .await
             .expect("Should extract with document structure");
 
-        assert!(result.document.is_some(), "Should have document structure");
-        let doc = result.document.expect("document structure should be present");
-        // The document should have citation nodes with attributes
-        assert!(!doc.nodes.is_empty(), "Document should have nodes");
+        // The InternalDocument should have citation elements
+        assert!(!result.elements.is_empty(), "Document should have elements");
     }
 }

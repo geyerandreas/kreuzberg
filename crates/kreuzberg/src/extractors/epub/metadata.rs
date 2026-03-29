@@ -58,6 +58,7 @@ pub(super) struct ManifestItem {
     path_resolution_error: Option<String>,
     pub(super) media_type: Option<String>,
     pub(super) fallback: Option<String>,
+    pub(super) properties: Option<String>,
 }
 
 impl ManifestItem {
@@ -66,6 +67,13 @@ impl ManifestItem {
             self.media_type.as_deref(),
             Some("application/xhtml+xml") | Some("application/x-dtbook+xml")
         ) || self.media_type.is_none() && has_renderable_extension(&self.raw_href)
+    }
+
+    /// Returns true if this manifest item has the EPUB3 `nav` property.
+    pub(super) fn is_nav(&self) -> bool {
+        self.properties
+            .as_deref()
+            .is_some_and(|p| p.split_ascii_whitespace().any(|v| v.eq_ignore_ascii_case("nav")))
     }
 
     pub(super) fn resolved_path(&self) -> std::result::Result<&str, String> {
@@ -199,6 +207,7 @@ pub(super) fn parse_opf(xml: &str, opf_dir: &str) -> Result<(EpubPackageDocument
                                     path_resolution_error,
                                     media_type: node.attribute("media-type").map(ToString::to_string),
                                     fallback: node.attribute("fallback").map(ToString::to_string),
+                                    properties: node.attribute("properties").map(ToString::to_string),
                                 },
                             );
                         }

@@ -688,6 +688,8 @@ pub struct ExtractedImage {
     /// Bounding box as associative array {x0, y0, x1, y1} or null
     #[php(prop)]
     pub bounding_box: Option<HashMap<String, f64>>,
+    #[php(prop)]
+    pub source_path: Option<String>,
 }
 
 #[php_impl]
@@ -721,6 +723,7 @@ impl ExtractedImage {
             description: img.description,
             is_mask: img.is_mask,
             bounding_box,
+            source_path: img.source_path,
         })
     }
 }

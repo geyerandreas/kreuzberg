@@ -7,6 +7,8 @@ pub mod djot;
 pub mod document_structure;
 pub mod extraction;
 pub mod formats;
+pub mod internal;
+pub mod internal_builder;
 pub mod metadata;
 pub mod ocr_elements;
 pub mod page;
@@ -17,8 +19,8 @@ pub mod tables;
 pub use annotations::*;
 pub use djot::*;
 pub use document_structure::{
-    AnnotationKind, ContentLayer, DocumentNode, DocumentStructure, GridCell, NodeContent, NodeId, NodeIndex, TableGrid,
-    TextAnnotation,
+    AnnotationKind, ContentLayer, DocumentNode, DocumentRelationship, DocumentStructure, GridCell, NodeContent, NodeId,
+    NodeIndex, RelationshipKind, TableGrid, TextAnnotation,
 };
 pub use extraction::*;
 pub use formats::*;
@@ -194,6 +196,7 @@ mod tests {
             description: Some("Image 1".to_string()),
             ocr_result: None,
             bounding_box: None,
+            source_path: None,
         });
 
         let image2 = Arc::new(ExtractedImage {
@@ -209,6 +212,7 @@ mod tests {
             description: Some("Image 2".to_string()),
             ocr_result: None,
             bounding_box: None,
+            source_path: None,
         });
 
         let page = PageContent {
@@ -328,6 +332,7 @@ mod tests {
                 x1: 540.0,
                 y1: 600.0,
             }),
+            source_path: None,
         };
 
         let json = serde_json::to_string(&image).unwrap();
@@ -363,6 +368,7 @@ mod tests {
             description: None,
             ocr_result: None,
             bounding_box: None,
+            source_path: None,
         };
 
         let json = serde_json::to_string(&image).unwrap();
@@ -412,6 +418,7 @@ mod tests {
                 x1: 800.0,
                 y1: 950.0,
             }),
+            source_path: None,
         };
 
         let json_value = serde_json::to_value(&image).unwrap();
@@ -452,6 +459,7 @@ mod tests {
                 x1: 100.0,
                 y1: 200.0,
             }),
+            source_path: None,
         };
 
         let cloned = image.clone();
