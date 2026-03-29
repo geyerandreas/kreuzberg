@@ -465,13 +465,15 @@ Access format-specific metadata from extracted documents:
     ```json title="JSON"
     {
       "content": "Extracted text...",
+      "mime_type": "application/pdf",
       "metadata": {
         "title": "Document Title",
         "authors": ["John Doe"],
         "created_by": "LaTeX with hyperref package",
         "format_type": "pdf",
         "page_count": 10
-      }
+      },
+      "tables": []
     }
     ```
 
