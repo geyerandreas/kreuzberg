@@ -45,6 +45,9 @@ pub mod office_metadata;
 pub mod ooxml_constants;
 
 #[cfg(feature = "office")]
+pub mod ooxml_embedded;
+
+#[cfg(feature = "office")]
 pub mod image_format;
 
 #[cfg(all(feature = "ocr", feature = "tokio-runtime"))]

@@ -1344,6 +1344,19 @@ impl DocumentExtractor for DocxExtractor {
         internal_doc.images = extracted_images;
         internal_doc.mime_type = std::borrow::Cow::Owned(mime_type.to_string());
 
+        // Recursively extract embedded objects from word/embeddings/
+        if config.max_archive_depth > 0 {
+            let (children, embed_warnings) =
+                crate::extraction::ooxml_embedded::extract_ooxml_embedded_objects(
+                    content, "word/embeddings/", "docx", config,
+                )
+                .await;
+            if !children.is_empty() {
+                internal_doc.children = Some(children);
+            }
+            internal_doc.processing_warnings.extend(embed_warnings);
+        }
+
         Ok(internal_doc)
     }
 
