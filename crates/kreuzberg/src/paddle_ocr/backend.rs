@@ -19,8 +19,8 @@ use crate::Result;
 use crate::core::config::OcrConfig;
 use crate::ocr::conversion::{elements_to_hocr_words, text_block_to_element};
 use crate::plugins::{OcrBackend, OcrBackendType, Plugin};
+use crate::table_core::{reconstruct_table, table_to_markdown};
 use crate::types::{ExtractionResult, FormatMetadata, Metadata, OcrElement, OcrMetadata, Table};
-use html_to_markdown_rs::hocr::{reconstruct_table, table_to_markdown};
 
 use super::config::PaddleOcrConfig;
 use super::model_manager::{ModelManager, SharedModelPaths};
@@ -458,6 +458,7 @@ impl OcrBackend for PaddleOcrBackend {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         })
     }
 

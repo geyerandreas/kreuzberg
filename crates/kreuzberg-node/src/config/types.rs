@@ -552,9 +552,6 @@ impl TryFrom<JsHtmlOptions> for ConversionOptions {
         if let Some(value) = options.br_in_tables {
             opts.br_in_tables = value;
         }
-        if let Some(value) = options.hocr_spatial_tables {
-            opts.hocr_spatial_tables = value;
-        }
         if let Some(style) = options.highlight_style {
             opts.highlight_style = parse_highlight_style(&style)?;
         }
@@ -651,7 +648,7 @@ impl From<&ConversionOptions> for JsHtmlOptions {
             autolinks: Some(opts.autolinks),
             default_title: Some(opts.default_title),
             br_in_tables: Some(opts.br_in_tables),
-            hocr_spatial_tables: Some(opts.hocr_spatial_tables),
+            hocr_spatial_tables: None, // removed in html-to-markdown v3
             highlight_style: Some(highlight_style_to_string(opts.highlight_style).to_string()),
             extract_metadata: Some(opts.extract_metadata),
             whitespace_mode: Some(whitespace_mode_to_string(opts.whitespace_mode).to_string()),

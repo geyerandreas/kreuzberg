@@ -175,6 +175,7 @@ impl OcrBackend for FfiOcrBackend {
             quality_score: None,
             processing_warnings: vec![],
             annotations: None,
+            formatted_content: None,
             children: None,
         })
     }

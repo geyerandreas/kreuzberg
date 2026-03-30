@@ -46,11 +46,11 @@ chrono = "0.4"
 clap = { version = "4.6", features = ["derive", "color", "suggestions"] }
 console_error_panic_hook = "0.1"
 criterion = { version = "0.8", features = ["html_reports"] }
-ctor = "0.6"
+ctor = "0.8"
 dbase = "0.7"
 getrandom = { version = "0.4.2", features = ["wasm_js"] }
 hex = "0.4.3"
-html-to-markdown-rs = { version = "2.29.0", default-features = false }
+html-to-markdown-rs = { git = "https://github.com/kreuzberg-dev/html-to-markdown.git", branch = "v3", default-features = false }
 image = { version = "0.25.10", default-features = false }
 itertools = "0.14"
 js-sys = "0.3"

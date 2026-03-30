@@ -60,7 +60,6 @@
   </a>
 </div>
 
-
 High-performance document intelligence for Go backed by the Rust core that powers every Kreuzberg binding.
 
 > **Version 4.4.6**

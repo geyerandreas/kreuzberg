@@ -6,7 +6,9 @@
 use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::plugins::{DocumentExtractor, Plugin};
-use crate::types::{ExtractionResult, Metadata};
+use crate::types::internal::InternalDocument;
+use crate::types::internal_builder::InternalDocumentBuilder;
+use crate::types::metadata::Metadata;
 use ahash::AHashMap;
 use async_trait::async_trait;
 use std::borrow::Cow;
@@ -64,12 +66,19 @@ impl Plugin for CitationExtractor {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 impl DocumentExtractor for CitationExtractor {
+    #[cfg_attr(feature = "otel", tracing::instrument(
+        skip(self, content, _config),
+        fields(
+            extractor.name = self.name(),
+            content.size_bytes = content.len(),
+        )
+    ))]
     async fn extract_bytes(
         &self,
         content: &[u8],
         mime_type: &str,
-        config: &ExtractionConfig,
-    ) -> Result<ExtractionResult> {
+        _config: &ExtractionConfig,
+    ) -> Result<InternalDocument> {
         let citation_str = String::from_utf8_lossy(content);
 
         let mut citations_vec = Vec::new();
@@ -85,36 +94,22 @@ impl DocumentExtractor for CitationExtractor {
             "application/x-pubmed" => (PubMedParser::new().parse(&citation_str), "PubMed"),
             "application/x-endnote+xml" => (EndNoteXmlParser::new().parse(&citation_str), "EndNote XML"),
             _ => {
-                // Fallback: return raw content if MIME type is unexpected
+                // Fallback: return empty document if MIME type is unexpected
                 let mut additional: AHashMap<Cow<'static, str>, serde_json::Value> = AHashMap::new();
                 additional.insert(Cow::Borrowed("citation_count"), serde_json::json!(0));
                 additional.insert(Cow::Borrowed("format"), serde_json::json!("Unknown"));
 
-                return Ok(ExtractionResult {
-                    content: citation_str.to_string(),
-                    mime_type: mime_type.to_string().into(),
-                    metadata: Metadata {
-                        additional,
-                        ..Default::default()
-                    },
-                    pages: None,
-                    tables: vec![],
-                    detected_languages: None,
-                    chunks: None,
-                    images: None,
-                    djot_content: None,
-                    elements: None,
-                    ocr_elements: None,
-                    document: None,
-                    #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-                    extracted_keywords: None,
-                    quality_score: None,
-                    processing_warnings: Vec::new(),
-                    annotations: None,
-                    children: None,
-                });
+                let mut doc = InternalDocument::new("citation");
+                doc.metadata = Metadata {
+                    additional,
+                    ..Default::default()
+                };
+                return Ok(doc);
             }
         };
+
+        // Build InternalDocument with citation elements
+        let mut builder = InternalDocumentBuilder::new("citation");
 
         match parse_result {
             Ok(citations) => {
@@ -213,11 +208,23 @@ impl DocumentExtractor for CitationExtractor {
 
                     formatted_content.push_str("---\n");
                 }
+
+                // Push citation elements
+                for (i, title) in citations_vec.iter().enumerate() {
+                    let key = if title.is_empty() {
+                        format!("citation_{}", i + 1)
+                    } else {
+                        title.clone()
+                    };
+                    builder.push_citation(title, &key, None);
+                }
             }
             Err(_err) => {
                 #[cfg(feature = "otel")]
                 tracing::warn!("Citation parsing failed, returning raw content: {}", _err);
                 formatted_content = citation_str.to_string();
+                // Push as a single code block when parsing fails
+                builder.push_code(&formatted_content, None, None, None);
             }
         }
 
@@ -256,48 +263,14 @@ impl DocumentExtractor for CitationExtractor {
 
         additional.insert(Cow::Borrowed("format"), serde_json::json!(format_string));
 
-        let document = if config.include_document_structure && !citations_vec.is_empty() {
-            use crate::types::builder::DocumentStructureBuilder;
-
-            let mut builder = DocumentStructureBuilder::new().source_format("citation");
-            for (i, title) in citations_vec.iter().enumerate() {
-                let key = if title.is_empty() {
-                    format!("citation_{}", i + 1)
-                } else {
-                    title.clone()
-                };
-                // Build a formatted text for this citation from the formatted_content
-                // Use the title as the citation key and title as text
-                builder.push_citation(&key, title, None);
-            }
-            Some(builder.build())
-        } else {
-            None
+        let mut doc = builder.build();
+        doc.mime_type = Cow::Owned(mime_type.to_string());
+        doc.metadata = Metadata {
+            additional,
+            ..Default::default()
         };
 
-        Ok(ExtractionResult {
-            content: formatted_content,
-            mime_type: mime_type.to_string().into(),
-            metadata: Metadata {
-                additional,
-                ..Default::default()
-            },
-            pages: None,
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-        })
+        Ok(doc)
     }
 
     fn supported_mime_types(&self) -> &[&str] {
@@ -344,9 +317,6 @@ ER  -"#;
 
         assert!(result.is_ok());
         let result = result.expect("Should extract valid RIS entry");
-
-        assert!(result.content.contains("Sample Title"));
-        assert!(result.content.contains("Smith"));
 
         let metadata = &result.metadata;
         assert_eq!(

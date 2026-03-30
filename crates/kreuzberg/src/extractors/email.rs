@@ -4,7 +4,10 @@ use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::extractors::SyncExtractor;
 use crate::plugins::{DocumentExtractor, Plugin};
-use crate::types::{EmailMetadata, ExtractionResult, Metadata};
+use crate::types::EmailMetadata;
+use crate::types::internal::InternalDocument;
+use crate::types::internal_builder::InternalDocumentBuilder;
+use crate::types::metadata::Metadata;
 use ahash::AHashMap;
 use async_trait::async_trait;
 use std::borrow::Cow;
@@ -28,6 +31,89 @@ impl EmailExtractor {
     }
 }
 
+impl EmailExtractor {
+    /// Build an `InternalDocument` from extracted email content.
+    ///
+    /// Pushes email headers as a metadata block, then body content as paragraphs.
+    fn build_internal_document(email_result: &crate::types::EmailExtractionResult) -> InternalDocument {
+        let mut builder = InternalDocumentBuilder::new("email");
+
+        // Push email headers as a metadata block
+        let mut header_entries = Vec::new();
+        if let Some(ref subject) = email_result.subject {
+            header_entries.push(("Subject".to_string(), subject.clone()));
+        }
+        if let Some(ref from) = email_result.from_email {
+            header_entries.push(("From".to_string(), from.clone()));
+        }
+        if !email_result.to_emails.is_empty() {
+            header_entries.push(("To".to_string(), email_result.to_emails.join(", ")));
+        }
+        if !email_result.cc_emails.is_empty() {
+            header_entries.push(("CC".to_string(), email_result.cc_emails.join(", ")));
+        }
+        if let Some(ref date) = email_result.date {
+            header_entries.push(("Date".to_string(), date.clone()));
+        }
+        if !header_entries.is_empty() {
+            builder.push_metadata_block(&header_entries, None);
+        }
+
+        // Push body content: if HTML body is available, walk the HTML
+        // document structure for richer extraction; otherwise fall back to
+        // plain text paragraph splitting.
+        if let Some(ref html) = email_result.html_content {
+            let html_doc = crate::extraction::html::structure::build_document_structure(html);
+            for node in &html_doc.nodes {
+                if node.parent.is_none() {
+                    match &node.content {
+                        crate::types::NodeContent::Paragraph { text } => {
+                            let trimmed = text.trim();
+                            if !trimmed.is_empty() {
+                                builder.push_paragraph(trimmed, node.annotations.clone(), None, None);
+                            }
+                        }
+                        crate::types::NodeContent::Heading { level, text } => {
+                            builder.push_heading(*level, text.as_str(), None, None);
+                        }
+                        crate::types::NodeContent::List { ordered } => {
+                            builder.push_list(*ordered);
+                            for &child_idx in &node.children {
+                                if let Some(child) = html_doc.nodes.get(child_idx.0 as usize)
+                                    && let crate::types::NodeContent::ListItem { text } = &child.content
+                                {
+                                    builder.push_list_item(text.as_str(), *ordered, vec![], None, None);
+                                }
+                            }
+                            builder.end_list();
+                        }
+                        crate::types::NodeContent::Code { text, language } => {
+                            builder.push_code(text.as_str(), language.as_deref(), None, None);
+                        }
+                        _ => {
+                            if let Some(text) = node.content.text() {
+                                let trimmed = text.trim();
+                                if !trimmed.is_empty() {
+                                    builder.push_paragraph(trimmed, node.annotations.clone(), None, None);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } else {
+            for paragraph in email_result.cleaned_text.split("\n\n") {
+                let trimmed = paragraph.trim();
+                if !trimmed.is_empty() {
+                    builder.push_paragraph(trimmed, vec![], None, None);
+                }
+            }
+        }
+
+        builder.build()
+    }
+}
+
 impl Plugin for EmailExtractor {
     fn name(&self) -> &str {
         "email-extractor"
@@ -47,11 +133,9 @@ impl Plugin for EmailExtractor {
 }
 
 impl SyncExtractor for EmailExtractor {
-    fn extract_sync(&self, content: &[u8], mime_type: &str, config: &ExtractionConfig) -> Result<ExtractionResult> {
+    fn extract_sync(&self, content: &[u8], mime_type: &str, config: &ExtractionConfig) -> Result<InternalDocument> {
         let fallback_codepage = config.email.as_ref().and_then(|e| e.msg_fallback_codepage);
         let email_result = crate::extraction::email::extract_email_content(content, mime_type, fallback_codepage)?;
-
-        let text = crate::extraction::email::build_email_text_output(&email_result);
 
         let attachment_names: Vec<String> = email_result
             .attachments
@@ -83,91 +167,9 @@ impl SyncExtractor for EmailExtractor {
             }
         }
 
-        // Build document structure while email_result is still fully owned,
-        // borrowing fields that will be moved into EmailMetadata/Metadata afterward.
-        let document = if config.include_document_structure {
-            use crate::types::builder::DocumentStructureBuilder;
-            let mut builder = DocumentStructureBuilder::new().source_format("email");
-
-            // Push email headers as a metadata block
-            let mut header_entries = Vec::new();
-            if let Some(ref subject) = email_result.subject {
-                header_entries.push(("Subject".to_string(), subject.clone()));
-            }
-            if let Some(ref from) = email_result.from_email {
-                header_entries.push(("From".to_string(), from.clone()));
-            }
-            if !email_result.to_emails.is_empty() {
-                header_entries.push(("To".to_string(), email_result.to_emails.join(", ")));
-            }
-            if !email_result.cc_emails.is_empty() {
-                header_entries.push(("CC".to_string(), email_result.cc_emails.join(", ")));
-            }
-            if let Some(ref date) = email_result.date {
-                header_entries.push(("Date".to_string(), date.clone()));
-            }
-            if !header_entries.is_empty() {
-                builder.push_metadata_block(header_entries, None);
-            }
-
-            // Push body content: if HTML body is available, use the HTML
-            // structure walker for rich annotations (bold, italic, links, etc.);
-            // otherwise fall back to plain text paragraph splitting.
-            if let Some(ref html) = email_result.html_content {
-                let html_doc = crate::extraction::html::structure::build_document_structure(html);
-                // Merge HTML structure nodes into the email builder.
-                for node in &html_doc.nodes {
-                    // Only merge root-level body nodes (skip the HTML wrapper structure).
-                    if node.parent.is_none() {
-                        match &node.content {
-                            crate::types::NodeContent::Paragraph { text } => {
-                                let trimmed = text.trim();
-                                if !trimmed.is_empty() {
-                                    builder.push_paragraph(trimmed, node.annotations.clone(), None, None);
-                                }
-                            }
-                            crate::types::NodeContent::Heading { level, text } => {
-                                builder.push_heading(*level, text.as_str(), None, None);
-                            }
-                            crate::types::NodeContent::List { ordered } => {
-                                let list_idx = builder.push_list(*ordered, None);
-                                // Collect list item children from the HTML doc
-                                for &child_idx in &node.children {
-                                    if let Some(child) = html_doc.nodes.get(child_idx.0 as usize)
-                                        && let crate::types::NodeContent::ListItem { text } = &child.content
-                                    {
-                                        builder.push_list_item(list_idx, text.as_str(), None);
-                                    }
-                                }
-                            }
-                            crate::types::NodeContent::Code { text, language } => {
-                                builder.push_code(text.as_str(), language.as_deref(), None);
-                            }
-                            _ => {
-                                // For other node types, extract text if available
-                                // and push as paragraph
-                                if let Some(text) = node.content.text() {
-                                    let trimmed = text.trim();
-                                    if !trimmed.is_empty() {
-                                        builder.push_paragraph(trimmed, node.annotations.clone(), None, None);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                for paragraph in email_result.cleaned_text.split("\n\n") {
-                    let trimmed = paragraph.trim();
-                    if !trimmed.is_empty() {
-                        builder.push_paragraph(trimmed, vec![], None, None);
-                    }
-                }
-            }
-            Some(builder.build())
-        } else {
-            None
-        };
+        // Build internal document from email content
+        let mut doc = Self::build_internal_document(&email_result);
+        doc.mime_type = Cow::Owned(mime_type.to_string());
 
         // Move fields out of email_result now that all borrows above are complete.
         let subject = email_result.subject;
@@ -182,32 +184,15 @@ impl SyncExtractor for EmailExtractor {
             attachments: attachment_names,
         };
 
-        Ok(ExtractionResult {
-            content: text,
-            mime_type: mime_type.to_string().into(),
-            metadata: Metadata {
-                format: Some(crate::types::FormatMetadata::Email(email_metadata)),
-                subject,
-                created_at,
-                additional,
-                ..Default::default()
-            },
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-        })
+        doc.metadata = Metadata {
+            format: Some(crate::types::FormatMetadata::Email(email_metadata)),
+            subject,
+            created_at,
+            additional,
+            ..Default::default()
+        };
+
+        Ok(doc)
     }
 }
 
@@ -219,12 +204,18 @@ impl DocumentExtractor for EmailExtractor {
         content: &[u8],
         mime_type: &str,
         config: &ExtractionConfig,
-    ) -> Result<ExtractionResult> {
+    ) -> Result<InternalDocument> {
         self.extract_sync(content, mime_type, config)
     }
 
     #[cfg(feature = "tokio-runtime")]
-    async fn extract_file(&self, path: &Path, mime_type: &str, config: &ExtractionConfig) -> Result<ExtractionResult> {
+    #[cfg_attr(feature = "otel", tracing::instrument(
+        skip(self, path, config),
+        fields(
+            extractor.name = self.name(),
+        )
+    ))]
+    async fn extract_file(&self, path: &Path, mime_type: &str, config: &ExtractionConfig) -> Result<InternalDocument> {
         let bytes = tokio::fs::read(path).await?;
         self.extract_bytes(&bytes, mime_type, config).await
     }

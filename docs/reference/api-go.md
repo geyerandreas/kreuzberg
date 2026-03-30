@@ -196,7 +196,6 @@ for i, result := range results {
 }
 ```
 
-
 ```text
 
 ---
@@ -514,7 +513,6 @@ if err != nil {
 }
 
 ---
-
 
 ### LibraryVersion
 

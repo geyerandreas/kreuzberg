@@ -60,18 +60,13 @@
   </a>
 </div>
 
-
 Extract text, tables, images, and metadata from 91+ file formats including PDF, Office documents, and images. Ruby bindings with idiomatic Ruby API and native performance.
-
 
 ## Installation
 
 ### Package Installation
 
-
 Install via one of the supported package managers:
-
-
 
 **gem:**
 
@@ -79,18 +74,11 @@ Install via one of the supported package managers:
 gem install kreuzberg
 ```
 
-
-
-
 **Bundler:**
 
 ```ruby
 gem 'kreuzberg'
 ```
-
-
-
-
 
 ### System Requirements
 
@@ -100,8 +88,6 @@ gem 'kreuzberg'
 - Optional: [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) for OCR functionality
 
 **Ruby 4.0 Compatibility:** Kreuzberg is fully compatible with Ruby 4.0 (released December 25, 2025) and all Ruby 4.x versions. All tests pass with 100% compatibility. The gem compiles without any breaking changes. Key Ruby 4.0 features like Ruby Box, ZJIT compiler, and Ractor improvements work seamlessly with Kreuzberg.
-
-
 
 ## Quick Start
 
@@ -125,13 +111,11 @@ puts "\nTables found: #{result.tables.length}"
 puts "Images found: #{result.images.length}"
 ```
 
-
 ### Common Use Cases
 
 #### Extract with Custom Configuration
 
 Most use cases benefit from configuration to control extraction behavior:
-
 
 **With OCR (for scanned documents):**
 
@@ -151,18 +135,11 @@ puts result.content
 puts "Used OCR backend: tesseract"
 ```
 
-
-
-
 #### Table Extraction
-
 
 See [Table Extraction Guide](https://kreuzberg.dev/features/table-extraction/) for detailed examples.
 
-
-
 #### Processing Multiple Files
-
 
 ```ruby
 require 'kreuzberg'
@@ -173,10 +150,6 @@ puts "FFI bindings loaded successfully"
 result = Kreuzberg.extract_file_sync('sample.pdf')
 puts "Installation verified! Extracted #{result.content.length} characters"
 ```
-
-
-
-
 
 #### Async Processing
 
@@ -197,19 +170,12 @@ puts "Quality score: #{result.quality_score}"
 puts "Processing time: #{result.metadata&.dig('processing_time')}ms"
 ```
 
-
-
-
-
-
 ### Next Steps
 
 - **[Installation Guide](https://kreuzberg.dev/getting-started/installation/)** - Platform-specific setup
 - **[API Documentation](https://kreuzberg.dev/api/)** - Complete API reference
 - **[Examples & Guides](https://kreuzberg.dev/guides/)** - Full code examples and usage guides
 - **[Configuration Guide](https://kreuzberg.dev/guides/configuration/)** - Advanced configuration options
-
-
 
 ## Features
 
@@ -272,9 +238,7 @@ puts "Processing time: #{result.metadata&.dig('processing_time')}ms"
 
 - **Async/Await** - Non-blocking document processing with concurrent operations
 
-
 - **Plugin System** - Extensible post-processing for custom text transformation
-
 
 - **Embeddings** - Generate vector embeddings using ONNX Runtime models
 
@@ -293,17 +257,13 @@ puts "Processing time: #{result.metadata&.dig('processing_time')}ms"
 | **Archives** | 5-50 MB/s | ~200MB per doc | ZIP, TAR, etc. |
 | **Web formats** | 50-200 MB/s | Streaming | HTML, XML, JSON |
 
-
-
 ## OCR Support
 
 Kreuzberg supports multiple OCR backends for extracting text from scanned documents and images:
 
-
 - **Tesseract**
 
 - **Paddleocr**
-
 
 ### OCR Configuration Example
 
@@ -322,9 +282,6 @@ puts "Extracted text from scanned document:"
 puts result.content
 puts "Used OCR backend: tesseract"
 ```
-
-
-
 
 ## Async Support
 
@@ -345,25 +302,17 @@ puts "Quality score: #{result.quality_score}"
 puts "Processing time: #{result.metadata&.dig('processing_time')}ms"
 ```
 
-
-
-
 ## Plugin System
 
 Kreuzberg supports extensible post-processing plugins for custom text transformation and filtering.
 
 For detailed plugin documentation, visit [Plugin System Guide](https://kreuzberg.dev/guides/plugins/).
 
-
-
-
 ## Embeddings Support
 
 Generate vector embeddings for extracted text using the built-in ONNX Runtime support. Requires ONNX Runtime installation.
 
 **[Embeddings Guide](https://kreuzberg.dev/features/#embeddings)**
-
-
 
 ## Batch Processing
 
@@ -378,9 +327,6 @@ puts "FFI bindings loaded successfully"
 result = Kreuzberg.extract_file_sync('sample.pdf')
 puts "Installation verified! Extracted #{result.content.length} characters"
 ```
-
-
-
 
 ## Configuration
 

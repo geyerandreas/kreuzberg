@@ -277,6 +277,7 @@ mod tests {
                 processing_warnings: Vec::new(),
                 annotations: None,
                 children: None,
+                formatted_content: None,
             })
         }
 
@@ -412,6 +413,7 @@ mod tests {
                 processing_warnings: Vec::new(),
                 annotations: None,
                 children: None,
+                formatted_content: None,
             })
         }
 

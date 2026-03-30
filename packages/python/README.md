@@ -60,16 +60,11 @@
   </a>
 </div>
 
-
 Extract text, tables, images, and metadata from 91+ file formats including PDF, Office documents, and images. Native Python bindings with async/await support, multiple OCR backends (Tesseract, EasyOCR, PaddleOCR), and extensible plugin system.
-
 
 ## Installation
 
 ### Package Installation
-
-
-
 
 Install via pip:
 
@@ -83,16 +78,11 @@ For async support and additional features:
 pip install kreuzberg[async]
 ```
 
-
-
-
 ### System Requirements
 
 - **Python 3.10+** required
 - Optional: [ONNX Runtime](https://github.com/microsoft/onnxruntime/releases) version 1.22.x for embeddings support
 - Optional: [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) for OCR functionality
-
-
 
 ## Quick Start
 
@@ -115,13 +105,11 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-
 ### Common Use Cases
 
 #### Extract with Custom Configuration
 
 Most use cases benefit from configuration to control extraction behavior:
-
 
 **With OCR (for scanned documents):**
 
@@ -136,11 +124,7 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-
-
-
 #### Table Extraction
-
 
 ```python
 import asyncio
@@ -160,11 +144,7 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-
-
-
 #### Processing Multiple Files
-
 
 ```python
 import asyncio
@@ -185,10 +165,6 @@ async def main() -> None:
 
 asyncio.run(main())
 ```
-
-
-
-
 
 #### Async Processing
 
@@ -211,19 +187,12 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-
-
-
-
-
 ### Next Steps
 
 - **[Installation Guide](https://kreuzberg.dev/getting-started/installation/)** - Platform-specific setup
 - **[API Documentation](https://kreuzberg.dev/api/)** - Complete API reference
 - **[Examples & Guides](https://kreuzberg.dev/guides/)** - Full code examples and usage guides
 - **[Configuration Guide](https://kreuzberg.dev/guides/configuration/)** - Advanced configuration options
-
-
 
 ## Features
 
@@ -286,9 +255,7 @@ asyncio.run(main())
 
 - **Async/Await** - Non-blocking document processing with concurrent operations
 
-
 - **Plugin System** - Extensible post-processing for custom text transformation
-
 
 - **Embeddings** - Generate vector embeddings using ONNX Runtime models
 
@@ -307,19 +274,15 @@ asyncio.run(main())
 | **Archives** | 5-50 MB/s | ~200MB per doc | ZIP, TAR, etc. |
 | **Web formats** | 50-200 MB/s | Streaming | HTML, XML, JSON |
 
-
-
 ## OCR Support
 
 Kreuzberg supports multiple OCR backends for extracting text from scanned documents and images:
-
 
 - **Tesseract**
 
 - **Easyocr**
 
 - **Paddleocr**
-
 
 ### OCR Configuration Example
 
@@ -333,9 +296,6 @@ async def main() -> None:
 
 asyncio.run(main())
 ```
-
-
-
 
 ## Async Support
 
@@ -358,25 +318,17 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-
-
-
 ## Plugin System
 
 Kreuzberg supports extensible post-processing plugins for custom text transformation and filtering.
 
 For detailed plugin documentation, visit [Plugin System Guide](https://kreuzberg.dev/guides/plugins/).
 
-
-
-
 ## Embeddings Support
 
 Generate vector embeddings for extracted text using the built-in ONNX Runtime support. Requires ONNX Runtime installation.
 
 **[Embeddings Guide](https://kreuzberg.dev/features/#embeddings)**
-
-
 
 ## Batch Processing
 
@@ -401,9 +353,6 @@ async def main() -> None:
 
 asyncio.run(main())
 ```
-
-
-
 
 ## Configuration
 

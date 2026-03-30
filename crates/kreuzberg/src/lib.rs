@@ -48,6 +48,8 @@ pub mod text;
 pub mod types;
 pub mod utils;
 
+pub mod table_core;
+
 #[cfg(feature = "tower-service")]
 pub mod service;
 

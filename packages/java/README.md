@@ -60,18 +60,13 @@
   </a>
 </div>
 
-
 Extract text, tables, images, and metadata from 91+ file formats including PDF, Office documents, and images. Java bindings with type-safe API, Foreign Function & Memory API integration, and native performance.
-
 
 ## Installation
 
 ### Package Installation
 
-
 Install via one of the supported package managers:
-
-
 
 **Maven:**
 
@@ -83,26 +78,17 @@ Install via one of the supported package managers:
 </dependency>
 ```
 
-
-
-
 **Gradle:**
 
 ```gradle
 implementation 'dev.kreuzberg:kreuzberg:4.6.3'
 ```
 
-
-
-
-
 ### System Requirements
 
 - **Java 11+** required
 - Optional: [ONNX Runtime](https://github.com/microsoft/onnxruntime/releases) version 1.22.x for embeddings support
 - Optional: [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) for OCR functionality
-
-
 
 ## Quick Start
 
@@ -136,13 +122,11 @@ public class BasicUsage {
 }
 ```
 
-
 ### Common Use Cases
 
 #### Extract with Custom Configuration
 
 Most use cases benefit from configuration to control extraction behavior:
-
 
 **With OCR (for scanned documents):**
 
@@ -173,18 +157,11 @@ public class Main {
 }
 ```
 
-
-
-
 #### Table Extraction
-
 
 See [Table Extraction Guide](https://kreuzberg.dev/features/table-extraction/) for detailed examples.
 
-
-
 #### Processing Multiple Files
-
 
 ```java
 import dev.kreuzberg.Kreuzberg;
@@ -207,10 +184,6 @@ try {
     e.printStackTrace();
 }
 ```
-
-
-
-
 
 #### Async Processing
 
@@ -235,19 +208,12 @@ public class Example {
 }
 ```
 
-
-
-
-
-
 ### Next Steps
 
 - **[Installation Guide](https://kreuzberg.dev/getting-started/installation/)** - Platform-specific setup
 - **[API Documentation](https://kreuzberg.dev/api/)** - Complete API reference
 - **[Examples & Guides](https://kreuzberg.dev/guides/)** - Full code examples and usage guides
 - **[Configuration Guide](https://kreuzberg.dev/guides/configuration/)** - Advanced configuration options
-
-
 
 ## Features
 
@@ -310,9 +276,7 @@ public class Example {
 
 - **Async/Await** - Non-blocking document processing with concurrent operations
 
-
 - **Plugin System** - Extensible post-processing for custom text transformation
-
 
 - **Embeddings** - Generate vector embeddings using ONNX Runtime models
 
@@ -331,17 +295,13 @@ public class Example {
 | **Archives** | 5-50 MB/s | ~200MB per doc | ZIP, TAR, etc. |
 | **Web formats** | 50-200 MB/s | Streaming | HTML, XML, JSON |
 
-
-
 ## OCR Support
 
 Kreuzberg supports multiple OCR backends for extracting text from scanned documents and images:
 
-
 - **Tesseract**
 
 - **Paddleocr**
-
 
 ### OCR Configuration Example
 
@@ -372,9 +332,6 @@ public class Main {
 }
 ```
 
-
-
-
 ## Async Support
 
 This binding provides full async/await support for non-blocking document processing:
@@ -398,25 +355,17 @@ public class Example {
 }
 ```
 
-
-
-
 ## Plugin System
 
 Kreuzberg supports extensible post-processing plugins for custom text transformation and filtering.
 
 For detailed plugin documentation, visit [Plugin System Guide](https://kreuzberg.dev/guides/plugins/).
 
-
-
-
 ## Embeddings Support
 
 Generate vector embeddings for extracted text using the built-in ONNX Runtime support. Requires ONNX Runtime installation.
 
 **[Embeddings Guide](https://kreuzberg.dev/features/#embeddings)**
-
-
 
 ## Batch Processing
 
@@ -443,9 +392,6 @@ try {
     e.printStackTrace();
 }
 ```
-
-
-
 
 ## Configuration
 

@@ -6,7 +6,8 @@
 use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::plugins::registry::get_document_extractor_registry;
-use crate::types::ExtractionResult;
+
+use crate::types::internal::InternalDocument;
 use once_cell::sync::Lazy;
 use std::sync::Arc;
 
@@ -57,8 +58,8 @@ pub trait SyncExtractor {
     ///
     /// # Returns
     ///
-    /// An `ExtractionResult` containing the extracted content and metadata.
-    fn extract_sync(&self, content: &[u8], mime_type: &str, config: &ExtractionConfig) -> Result<ExtractionResult>;
+    /// An `InternalDocument` containing the extracted elements, metadata, and tables.
+    fn extract_sync(&self, content: &[u8], mime_type: &str, config: &ExtractionConfig) -> Result<InternalDocument>;
 }
 
 pub mod csv;
@@ -68,6 +69,7 @@ pub mod text;
 pub mod djot_format;
 pub mod frontmatter_utils;
 
+pub(crate) mod annotation_utils;
 pub(crate) mod markdown_utils;
 
 #[cfg(feature = "archives")]

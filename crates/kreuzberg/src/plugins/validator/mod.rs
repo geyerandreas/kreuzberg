@@ -79,6 +79,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let config = ExtractionConfig::default();
@@ -108,6 +109,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let config = ExtractionConfig::default();
@@ -139,6 +141,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let config = ExtractionConfig::default();
@@ -185,6 +188,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let config = ExtractionConfig::default();
@@ -243,6 +247,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let txt_result = ExtractionResult {
@@ -264,6 +269,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         assert!(validator.should_validate(&pdf_result, &config));
@@ -358,6 +364,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let config = ExtractionConfig::default();
@@ -400,6 +407,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let config = ExtractionConfig::default();
@@ -438,6 +446,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let config = ExtractionConfig::default();
@@ -477,6 +486,7 @@ mod tests {
                 processing_warnings: Vec::new(),
                 annotations: None,
                 children: None,
+                formatted_content: None,
             };
 
             assert!(validator.validate(&result, &config).await.is_ok());
@@ -506,6 +516,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            formatted_content: None,
         };
 
         let config = ExtractionConfig::default();
