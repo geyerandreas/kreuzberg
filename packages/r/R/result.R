@@ -151,30 +151,3 @@ metadata_field.kreuzberg_result <- function(x, name, ...) {
   x$metadata[[name]]
 }
 
-#' Serialize an extraction result to TOON wire format
-#'
-#' Converts a \code{kreuzberg_result} object to TOON format via the native FFI.
-#' The result is first serialized to JSON, then converted to TOON by the Rust core.
-#'
-#' @param result A \code{kreuzberg_result} object.
-#' @return Character string in TOON format.
-#' @export
-serialize_to_toon <- function(result) {
-  stopifnot(inherits(result, "kreuzberg_result"))
-  result_json <- jsonlite::toJSON(result, auto_unbox = TRUE)
-  serialize_to_toon_native(as.character(result_json))
-}
-
-#' Serialize an extraction result to pretty-printed JSON
-#'
-#' Converts a \code{kreuzberg_result} object to pretty-printed JSON via the native FFI.
-#' The result is first serialized to JSON, then re-serialized with pretty-printing by the Rust core.
-#'
-#' @param result A \code{kreuzberg_result} object.
-#' @return Character string of pretty-printed JSON.
-#' @export
-serialize_to_json <- function(result) {
-  stopifnot(inherits(result, "kreuzberg_result"))
-  result_json <- jsonlite::toJSON(result, auto_unbox = TRUE)
-  serialize_to_json_native(as.character(result_json))
-}

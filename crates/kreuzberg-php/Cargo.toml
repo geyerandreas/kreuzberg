@@ -33,5 +33,4 @@ once_cell = { workspace = true }
 parking_lot = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_toon_format = { workspace = true }
 tokio = { workspace = true }

@@ -419,42 +419,6 @@ pub fn result_metadata_field(ruby: &Ruby, result: Value, field_name: String) -> 
     Ok(current)
 }
 
-/// Serialize an ExtractionResult hash to a TOON format string.
-///
-/// Accepts the extraction result as a Ruby Hash, converts it to a
-/// serde_json::Value, then serializes to TOON wire format.
-///
-/// # Arguments
-///
-/// * `result` - ExtractionResult Ruby Hash
-///
-/// # Returns
-///
-/// TOON string representation of the result
-pub fn serialize_to_toon(_ruby: &Ruby, result: Value) -> Result<String, Error> {
-    let json_value = helpers::ruby_value_to_json(result)?;
-    serde_toon::to_string(&json_value)
-        .map_err(|e| runtime_error(format!("Failed to serialize result to TOON: {}", e)))
-}
-
-/// Serialize an ExtractionResult hash to a JSON string.
-///
-/// Accepts the extraction result as a Ruby Hash, converts it to a
-/// serde_json::Value, then serializes to pretty-printed JSON.
-///
-/// # Arguments
-///
-/// * `result` - ExtractionResult Ruby Hash
-///
-/// # Returns
-///
-/// JSON string representation of the result
-pub fn serialize_to_json(_ruby: &Ruby, result: Value) -> Result<String, Error> {
-    let json_value = helpers::ruby_value_to_json(result)?;
-    serde_json::to_string_pretty(&json_value)
-        .map_err(|e| runtime_error(format!("Failed to serialize result to JSON: {}", e)))
-}
-
 // Error detail functions
 pub fn get_error_details_native(ruby: &Ruby) -> Result<Value, Error> {
     let hash = ruby.hash_new();
@@ -558,10 +522,6 @@ fn init(ruby: &Ruby) -> Result<(), Error> {
     module.define_module_function("_result_chunk_count_native", function!(result_chunk_count, 1))?;
     module.define_module_function("_result_detected_language_native", function!(result_detected_language, 1))?;
     module.define_module_function("_result_metadata_field_native", function!(result_metadata_field, 2))?;
-
-    // Serialization functions
-    module.define_module_function("serialize_to_toon", function!(serialize_to_toon, 1))?;
-    module.define_module_function("serialize_to_json", function!(serialize_to_json, 1))?;
 
     // Error detail functions
     module.define_module_function("_get_error_details_native", function!(get_error_details_native, 0))?;

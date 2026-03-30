@@ -235,9 +235,6 @@ pub struct Assertions {
     /// PDF rendering assertions
     #[serde(default)]
     pub render: Option<RenderAssertions>,
-    /// Whether the result should be serializable to TOON format
-    #[serde(default)]
-    pub toon_serializable: Option<bool>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

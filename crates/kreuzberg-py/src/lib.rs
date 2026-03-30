@@ -158,8 +158,6 @@ fn _internal_bindings(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(validation::get_valid_ocr_backends, m)?)?;
     m.add_function(wrap_pyfunction!(validation::get_valid_token_reduction_levels, m)?)?;
 
-    m.add_function(wrap_pyfunction!(helpers::serialize_to_toon, m)?)?;
-    m.add_function(wrap_pyfunction!(helpers::serialize_to_json, m)?)?;
     m.add_function(wrap_pyfunction!(helpers::config_to_json, m)?)?;
     m.add_function(wrap_pyfunction!(helpers::config_get_field, m)?)?;
     m.add_function(wrap_pyfunction!(helpers::config_merge, m)?)?;

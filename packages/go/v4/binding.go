@@ -27,10 +27,6 @@ char *kreuzberg_load_extraction_config_from_file(const char *path);
 char *kreuzberg_list_embedding_presets(void);
 char *kreuzberg_get_embedding_preset(const char *name);
 
-// Serialization function declarations
-char *kreuzberg_serialize_to_toon(const char *result_json);
-char *kreuzberg_serialize_to_json(const char *result_json);
-
 // PDF rendering and iterator function declarations
 CPageImage *kreuzberg_render_pdf_page(const char *file_path, uintptr_t page_index, int32_t dpi);
 void kreuzberg_free_render_page_result(CPageImage *page);

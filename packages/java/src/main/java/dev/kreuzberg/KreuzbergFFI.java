@@ -117,9 +117,6 @@ public final class KreuzbergFFI {
 	public static final MethodHandle KREUZBERG_PDF_PAGE_ITERATOR_PAGE_COUNT;
 	public static final MethodHandle KREUZBERG_PDF_PAGE_ITERATOR_FREE;
 	public static final MethodHandle KREUZBERG_PDF_PAGE_ITERATOR_FREE_RESULT;
-	public static final MethodHandle KREUZBERG_SERIALIZE_TO_TOON;
-	public static final MethodHandle KREUZBERG_SERIALIZE_TO_JSON;
-
 	public static final StructLayout C_EXTRACTION_RESULT_LAYOUT = MemoryLayout.structLayout(
 			ValueLayout.ADDRESS.withName("annotations_json"), ValueLayout.ADDRESS.withName("chunks_json"),
 			ValueLayout.ADDRESS.withName("content"), ValueLayout.ADDRESS.withName("date"),
@@ -437,13 +434,6 @@ public final class KreuzbergFFI {
 					"kreuzberg_pdf_page_iterator_free_result",
 					FunctionDescriptor.ofVoid(ValueLayout.ADDRESS));
 
-			// Serialization: serialize_to_toon(result_json) -> *mut c_char
-			KREUZBERG_SERIALIZE_TO_TOON = linkFunction("kreuzberg_serialize_to_toon",
-					FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
-
-			// Serialization: serialize_to_json(result_json) -> *mut c_char
-			KREUZBERG_SERIALIZE_TO_JSON = linkFunction("kreuzberg_serialize_to_json",
-					FunctionDescriptor.of(ValueLayout.ADDRESS, ValueLayout.ADDRESS));
 		} catch (Exception e) {
 			throw new ExceptionInInitializerError(e);
 		}

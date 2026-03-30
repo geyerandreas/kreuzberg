@@ -18,16 +18,3 @@ pub fn extraction_result_to_list(result: ExtractionResult) -> extendr_api::Resul
     List::try_from(result_robj).map_err(to_r_error)
 }
 
-/// Serialize a result JSON string to TOON wire format.
-pub fn serialize_to_toon_impl(result_json: &str) -> extendr_api::Result<String> {
-    let result: ExtractionResult =
-        serde_json::from_str(result_json).map_err(to_r_error)?;
-    serde_toon::to_string(&result).map_err(to_r_error)
-}
-
-/// Serialize a result JSON string to pretty-printed JSON.
-pub fn serialize_to_json_impl(result_json: &str) -> extendr_api::Result<String> {
-    let result: ExtractionResult =
-        serde_json::from_str(result_json).map_err(to_r_error)?;
-    serde_json::to_string_pretty(&result).map_err(to_r_error)
-}

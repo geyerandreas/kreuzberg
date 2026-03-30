@@ -37,7 +37,6 @@ log = { workspace = true }
 rayon = { workspace = true, optional = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_toon_format = { workspace = true }
 tokio = { workspace = true }
 
 [target.'cfg(all(windows, target_env = "gnu"))'.dependencies]

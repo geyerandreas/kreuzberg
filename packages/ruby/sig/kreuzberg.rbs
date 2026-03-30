@@ -1318,10 +1318,6 @@ module Kreuzberg
   def self._result_detected_language_native: (untyped result) -> String?
   def self._result_metadata_field_native: (untyped result, String field_name) -> untyped
 
-  # Serialization functions
-  def self.serialize_to_toon: (untyped result) -> String
-  def self.serialize_to_json: (untyped result) -> String
-
   # Plugin registration
   def self.register_post_processor: (String name, _PostProcessor processor, ?stage: Symbol?) -> void
   def self.unregister_post_processor: (String name) -> void

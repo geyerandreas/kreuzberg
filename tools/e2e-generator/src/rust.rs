@@ -65,7 +65,6 @@ ignored = ["kreuzberg", "serde_json", "tokio"]
 [dependencies]
 kreuzberg = { path = "../../crates/kreuzberg", features = ["bundled-pdfium", "full"] }
 serde_json = "1"
-serde_toon_format = "0.1"
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 
 [dev-dependencies]
@@ -549,10 +548,6 @@ fn render_assertions(assertions: &Assertions) -> String {
         buffer.push_str(&format!(
             "    assertions::assert_annotations(&result, {has_annotations}, {min_count});\n"
         ));
-    }
-
-    if assertions.toon_serializable == Some(true) {
-        buffer.push_str("    assertions::assert_toon_serializable(&result);\n");
     }
 
     buffer

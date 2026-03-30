@@ -76,10 +76,6 @@ config_from_file_native <- function(path) .Call(wrap__config_from_file_native, p
 
 config_discover_native <- function() .Call(wrap__config_discover_native)
 
-serialize_to_toon_native <- function(result_json) .Call(wrap__serialize_to_toon_native, result_json)
-
-serialize_to_json_native <- function(result_json) .Call(wrap__serialize_to_json_native, result_json)
-
 validate_ocr_backend_name_native <- function(backend) .Call(wrap__validate_ocr_backend_name_native, backend)
 
 validate_language_code_native <- function(code) .Call(wrap__validate_language_code_native, code)

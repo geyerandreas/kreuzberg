@@ -412,22 +412,6 @@ internal static partial class NativeMethods
     internal static extern bool UnregisterDocumentExtractor(IntPtr name);
 
     /// <summary>
-    /// Serializes an extraction result JSON to TOON wire format.
-    /// </summary>
-    /// <param name="resultJson">Pointer to UTF-8 result JSON string.</param>
-    /// <returns>Pointer to TOON string (must be freed with FreeString). NULL on error.</returns>
-    [DllImport(LibraryName, EntryPoint = "kreuzberg_serialize_to_toon", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr SerializeToToon(IntPtr resultJson);
-
-    /// <summary>
-    /// Serializes an extraction result JSON to pretty-printed JSON format.
-    /// </summary>
-    /// <param name="resultJson">Pointer to UTF-8 result JSON string.</param>
-    /// <returns>Pointer to pretty-printed JSON string (must be freed with FreeString). NULL on error.</returns>
-    [DllImport(LibraryName, EntryPoint = "kreuzberg_serialize_to_json", CallingConvention = CallingConvention.Cdecl)]
-    internal static extern IntPtr SerializeToJson(IntPtr resultJson);
-
-    /// <summary>
     /// Gets a list of all available embedding presets as a JSON array string.
     /// </summary>
     /// <returns>Pointer to JSON array string of preset definitions.</returns>

@@ -8,63 +8,6 @@ use pyo3::types::PyAny;
 
 use crate::config::ExtractionConfig;
 
-/// Serialize an extraction result JSON string to TOON format.
-///
-/// TOON (Token-Oriented Object Notation) is a token-efficient alternative
-/// to JSON for LLM prompts. Takes a JSON string representation of an
-/// ExtractionResult, deserializes it, and re-serializes to TOON format.
-///
-/// Args:
-///     result_json (str): JSON string representation of an ExtractionResult
-///
-/// Returns:
-///     str: TOON string representation of the extraction result
-///
-/// Raises:
-///     RuntimeError: If the JSON is invalid or serialization fails
-///
-/// Example:
-///     >>> from kreuzberg import extract_file_sync, serialize_to_toon
-///     >>> result = extract_file_sync("document.pdf", None, ExtractionConfig())  # doctest: +SKIP
-///     >>> import json
-///     >>> result_json = json.dumps({"content": "hello", "mime_type": "text/plain", "metadata": {}, "tables": [], "processing_warnings": []})
-///     >>> toon = serialize_to_toon(result_json)
-#[pyfunction]
-#[pyo3(signature = (result_json))]
-pub fn serialize_to_toon(result_json: &str) -> PyResult<String> {
-    let result: kreuzberg::ExtractionResult = serde_json::from_str(result_json)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to parse result JSON: {}", e)))?;
-    kreuzberg::serialize_to_toon(&result).map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
-}
-
-/// Serialize an extraction result JSON string to pretty-printed JSON.
-///
-/// Takes a JSON string representation of an ExtractionResult, deserializes it,
-/// and re-serializes to pretty-printed JSON. Useful for normalizing or
-/// formatting JSON output.
-///
-/// Args:
-///     result_json (str): JSON string representation of an ExtractionResult
-///
-/// Returns:
-///     str: Pretty-printed JSON string representation
-///
-/// Raises:
-///     RuntimeError: If the JSON is invalid or serialization fails
-///
-/// Example:
-///     >>> from kreuzberg import serialize_to_json
-///     >>> import json
-///     >>> result_json = json.dumps({"content": "hello", "mime_type": "text/plain", "metadata": {}, "tables": [], "processing_warnings": []})
-///     >>> pretty = serialize_to_json(result_json)
-#[pyfunction]
-#[pyo3(signature = (result_json))]
-pub fn serialize_to_json(result_json: &str) -> PyResult<String> {
-    let result: kreuzberg::ExtractionResult = serde_json::from_str(result_json)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to parse result JSON: {}", e)))?;
-    kreuzberg::serialize_to_json(&result).map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
-}
-
 /// Serialize an ExtractionConfig to JSON string.
 ///
 /// Converts the configuration to its JSON representation.

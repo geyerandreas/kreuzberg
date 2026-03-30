@@ -628,64 +628,6 @@ pub fn kreuzberg_pdf_page_iterator_page_count(handle: i64) -> PhpResult<i64> {
     Ok(iter.page_count() as i64)
 }
 
-/// Serialize an ExtractionResult to TOON format string.
-///
-/// # Parameters
-///
-/// - `result` (ExtractionResult): The extraction result to serialize
-///
-/// # Returns
-///
-/// TOON string representation of the result
-///
-/// # Throws
-///
-/// - Exception: If serialization fails
-///
-/// # Example
-///
-/// ```php
-/// $result = kreuzberg_extract_file("document.pdf");
-/// $toon = kreuzberg_serialize_to_toon($result);
-/// echo $toon;
-/// ```
-#[php_function]
-pub fn kreuzberg_serialize_to_toon(result: &ExtractionResult) -> PhpResult<String> {
-    let json_value: serde_json::Value = serde_json::from_str(&result.result_json)
-        .map_err(|e| PhpException::default(format!("Failed to parse result JSON: {}", e)))?;
-    serde_toon::to_string(&json_value)
-        .map_err(|e| PhpException::default(format!("Failed to serialize result to TOON: {}", e)))
-}
-
-/// Serialize an ExtractionResult to JSON format string.
-///
-/// # Parameters
-///
-/// - `result` (ExtractionResult): The extraction result to serialize
-///
-/// # Returns
-///
-/// Pretty-printed JSON string representation of the result
-///
-/// # Throws
-///
-/// - Exception: If serialization fails
-///
-/// # Example
-///
-/// ```php
-/// $result = kreuzberg_extract_file("document.pdf");
-/// $json = kreuzberg_serialize_to_json($result);
-/// echo $json;
-/// ```
-#[php_function]
-pub fn kreuzberg_serialize_to_json(result: &ExtractionResult) -> PhpResult<String> {
-    let json_value: serde_json::Value = serde_json::from_str(&result.result_json)
-        .map_err(|e| PhpException::default(format!("Failed to parse result JSON: {}", e)))?;
-    serde_json::to_string_pretty(&json_value)
-        .map_err(|e| PhpException::default(format!("Failed to serialize result to JSON: {}", e)))
-}
-
 /// Returns all function builders for the extraction module.
 pub fn get_function_builders() -> Vec<ext_php_rs::builders::FunctionBuilder<'static>> {
     vec![
@@ -703,7 +645,5 @@ pub fn get_function_builders() -> Vec<ext_php_rs::builders::FunctionBuilder<'sta
         wrap_function!(kreuzberg_pdf_page_iterator_next),
         wrap_function!(kreuzberg_pdf_page_iterator_free),
         wrap_function!(kreuzberg_pdf_page_iterator_page_count),
-        wrap_function!(kreuzberg_serialize_to_toon),
-        wrap_function!(kreuzberg_serialize_to_json),
     ]
 }

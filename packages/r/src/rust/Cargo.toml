@@ -52,7 +52,6 @@ kreuzberg = { path = "../../vendor/kreuzberg", default-features = false, feature
 ] }
 extendr-api = { version = "0.8", features = ["result_condition"] }
 serde_json = { workspace = true }
-serde_toon_format = "0.1"
 
 # Non-wasm: full features including tokio runtime, OCR, embeddings, API server
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

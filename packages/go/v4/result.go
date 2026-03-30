@@ -3,14 +3,7 @@ package kreuzberg
 import (
 	"encoding/json"
 	"fmt"
-	"unsafe"
 )
-
-/*
-#include "internal/ffi/kreuzberg.h"
-#include <stdlib.h>
-*/
-import "C"
 
 // GetPageCount returns the total number of pages/slides/sheets in the document.
 // Returns -1 if there is an error (check the error return value).
@@ -126,60 +119,6 @@ func ResultFromJSON(jsonStr string) (*ExtractionResult, error) {
 	}
 
 	return &result, nil
-}
-
-// SerializeToToon serializes an ExtractionResult to TOON wire format.
-// The result is first marshaled to JSON, then converted to TOON via the FFI.
-func SerializeToToon(result *ExtractionResult) (string, error) {
-	if result == nil {
-		return "", newValidationErrorWithContext("result cannot be nil", nil, ErrorCodeValidation, nil)
-	}
-
-	jsonStr, err := ResultToJSON(result)
-	if err != nil {
-		return "", err
-	}
-
-	cJSON := C.CString(jsonStr)
-	defer C.free(unsafe.Pointer(cJSON))
-
-	ffiMutex.Lock()
-	defer ffiMutex.Unlock()
-
-	cToon := C.kreuzberg_serialize_to_toon(cJSON)
-	if cToon == nil {
-		return "", lastError()
-	}
-	defer C.kreuzberg_free_string(cToon)
-
-	return C.GoString(cToon), nil
-}
-
-// SerializeToJson serializes an ExtractionResult to pretty-printed JSON format.
-// The result is first marshaled to JSON, then re-serialized with pretty-printing via the FFI.
-func SerializeToJson(result *ExtractionResult) (string, error) {
-	if result == nil {
-		return "", newValidationErrorWithContext("result cannot be nil", nil, ErrorCodeValidation, nil)
-	}
-
-	jsonStr, err := ResultToJSON(result)
-	if err != nil {
-		return "", err
-	}
-
-	cJSON := C.CString(jsonStr)
-	defer C.free(unsafe.Pointer(cJSON))
-
-	ffiMutex.Lock()
-	defer ffiMutex.Unlock()
-
-	cPretty := C.kreuzberg_serialize_to_json(cJSON)
-	if cPretty == nil {
-		return "", lastError()
-	}
-	defer C.kreuzberg_free_string(cPretty)
-
-	return C.GoString(cPretty), nil
 }
 
 // String implements fmt.Stringer for ExtractionResult, showing a summary.

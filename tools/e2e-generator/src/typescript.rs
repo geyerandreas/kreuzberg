@@ -670,14 +670,6 @@ export const assertions = {
         }
     },
 
-    assertToonSerializable(result: ExtractionResult): void {
-        const { serializeToToon } = require("@kreuzberg/node");
-        const toon = serializeToToon(result);
-        expect(toon).toBeDefined();
-        expect(typeof toon).toBe("string");
-        expect(toon.length).toBeGreaterThan(0);
-    },
-
     assertIsPng(data: Buffer): void {
         expect(data.length).toBeGreaterThanOrEqual(4);
         const magic = data.subarray(0, 4);
@@ -1511,10 +1503,6 @@ fn render_assertions(assertions: &Assertions) -> String {
         buffer.push_str(&format!(
             "    assertions.assertAnnotations(result, {has_annotations}, {min_count});\n"
         ));
-    }
-
-    if assertions.toon_serializable == Some(true) {
-        buffer.push_str("    assertions.assertToonSerializable(result);\n");
     }
 
     buffer

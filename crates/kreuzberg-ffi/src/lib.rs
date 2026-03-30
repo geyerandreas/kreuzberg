@@ -18,7 +18,7 @@ mod rendering;
 mod result;
 mod result_pool;
 mod result_view;
-mod serialize;
+
 mod string_intern;
 mod types;
 mod util;
@@ -87,7 +87,7 @@ pub use result_pool::{
 pub use result_view::{
     CExtractionResultView, kreuzberg_get_result_view, kreuzberg_view_get_content, kreuzberg_view_get_mime_type,
 };
-pub use serialize::{kreuzberg_serialize_to_json, kreuzberg_serialize_to_toon};
+
 pub use string_intern::{
     CStringInternStats, kreuzberg_free_interned_string, kreuzberg_intern_string, kreuzberg_string_intern_reset,
     kreuzberg_string_intern_stats,

@@ -188,17 +188,6 @@ fn config_discover_native() -> extendr_api::Result<Nullable<String>> {
     config::discover_impl()
 }
 
-// Serialization functions
-#[extendr]
-fn serialize_to_toon_native(result_json: &str) -> extendr_api::Result<String> {
-    result::serialize_to_toon_impl(result_json)
-}
-
-#[extendr]
-fn serialize_to_json_native(result_json: &str) -> extendr_api::Result<String> {
-    result::serialize_to_json_impl(result_json)
-}
-
 // Validation functions
 #[extendr]
 fn validate_ocr_backend_name_native(backend: &str) -> extendr_api::Result<bool> {
@@ -256,9 +245,6 @@ extendr_module! {
 
     fn config_from_file_native;
     fn config_discover_native;
-
-    fn serialize_to_toon_native;
-    fn serialize_to_json_native;
 
     fn validate_ocr_backend_name_native;
     fn validate_language_code_native;

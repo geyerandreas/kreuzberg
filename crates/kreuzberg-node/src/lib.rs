@@ -46,10 +46,9 @@ pub use batch::{batch_extract_bytes, batch_extract_bytes_sync, batch_extract_fil
 pub use validation::{
     config_get_field_internal, config_merge_internal, config_validate_and_normalize, get_extensions_for_mime,
     get_last_error_code, get_last_panic_context, get_valid_binarization_methods, get_valid_language_codes,
-    get_valid_ocr_backends, get_valid_token_reduction_levels, serialize_to_json, serialize_to_toon,
-    validate_binarization_method, validate_chunking_params, validate_confidence, validate_dpi, validate_language_code,
-    validate_mime_type, validate_ocr_backend, validate_output_format, validate_tesseract_oem, validate_tesseract_psm,
-    validate_token_reduction_level,
+    get_valid_ocr_backends, get_valid_token_reduction_levels, validate_binarization_method, validate_chunking_params,
+    validate_confidence, validate_dpi, validate_language_code, validate_mime_type, validate_ocr_backend,
+    validate_output_format, validate_tesseract_oem, validate_tesseract_psm, validate_token_reduction_level,
 };
 
 pub use metadata::{
