@@ -74,15 +74,12 @@ if (file) {
 		}
 	}
 
-	// For PDF files
-	if (metadata.pdf) {
-		const pdfMeta = metadata.pdf;
-		if (pdfMeta.page_count) {
-			console.log(`Pages: ${pdfMeta.page_count}`);
-		}
-		if (pdfMeta.author) {
-			console.log(`Author: ${pdfMeta.author}`);
-		}
+	// PDF-specific fields are at the top level of metadata
+	if (metadata.pageCount) {
+		console.log(`Pages: ${metadata.pageCount}`);
+	}
+	if (metadata.authors && metadata.authors.length > 0) {
+		console.log(`Authors: ${metadata.authors.join(', ')}`);
 	}
 }
 ```

@@ -446,7 +446,7 @@ Access format-specific metadata from extracted documents:
     # Save to file and parse metadata
     kreuzberg extract document.pdf --format json > result.json
 
-    # Extract PDF metadata (flat structure with format_type discriminator)
+    # Print all metadata fields
     cat result.json | jq '.metadata'
 
     # Extract HTML metadata
@@ -479,7 +479,7 @@ Access format-specific metadata from extracted documents:
 
 Kreuzberg extracts format-specific metadata for:
 
-- **PDF**: page count, title, author, subject, keywords, dates
+- **PDF**: page count, title, authors (list), creation date, modification date
 - **HTML**: Rich metadata including SEO tags, Open Graph, Twitter Card, structured data, headers, links, images
 - **Excel**: sheet count, sheet names
 - **Email**: from, to, CC, BCC, message ID, attachments
@@ -491,14 +491,12 @@ Kreuzberg extracts format-specific metadata for:
 
 !!! info "HTML Metadata Structure (v4.0+)"
 
-    HTML metadata has been restructured for better organization:
-    - **keywords**: Now a `Vec<String>` array (was `Option<String>`)
-    - **canonical** → **canonical_url**: Renamed for clarity
-    - **Open Graph fields**: Consolidated into `open_graph: Map<String, String>` (replacing individual `og_*` fields)
-    - **Twitter Card fields**: Consolidated into `twitter_card: Map<String, String>` (replacing individual `twitter_*` fields)
+    HTML metadata changed in v4.0. If upgrading from v3.x:
+    - **`keywords`**: now a string array (was a single optional string)
+    - **`canonical`** → **`canonical_url`**: renamed
+    - **`og_*` fields** → **`open_graph`**: Open Graph data is now a single map
+    - **`twitter_*` fields** → **`twitter_card`**: Twitter Card data is now a single map
     - **New fields**: `headers`, `links`, `images`, `structured_data`, `language`, `text_direction`, `meta_tags`
-
-    See [Types Reference](../reference/types.md) for complete HTML metadata reference and examples.
 
 See [Types Reference](../reference/types.md) for complete metadata reference.
 

@@ -1,26 +1,28 @@
 ```elixir title="Elixir"
 {:ok, result} = Kreuzberg.extract_file("document.pdf")
 
-# Access format-specific metadata
+# Metadata is flat — format-specific fields are at the top level
 metadata = result.metadata
 IO.puts("MIME type: #{result.mime_type}")
 IO.puts("All metadata keys: #{inspect(Map.keys(metadata))}")
 
-# Check PDF-specific metadata
-case metadata["pdf"] do
-  pdf_meta when is_map(pdf_meta) ->
-    IO.puts("Page count: #{pdf_meta["page_count"]}")
-    IO.puts("Author: #{pdf_meta["author"]}")
-    IO.puts("Title: #{pdf_meta["title"]}")
-  _ ->
-    IO.puts("No PDF metadata available")
-end
+# Access PDF metadata directly from the flat map
+page_count = metadata["page_count"]
+if page_count, do: IO.puts("Page count: #{page_count}")
 
-# Check HTML-specific metadata
-case metadata["html"] do
-  html_meta when is_map(html_meta) ->
-    IO.puts("HTML keywords: #{inspect(html_meta["keywords"])}")
-  _ ->
-    IO.puts("No HTML metadata available")
-end
+authors = metadata["authors"] || []
+if authors != [], do: IO.puts("Authors: #{Enum.join(authors, ", ")}")
+
+title = metadata["title"]
+if title, do: IO.puts("Title: #{title}")
+
+# Access HTML metadata directly from the flat map
+{:ok, html_result} = Kreuzberg.extract_file("page.html")
+html_meta = html_result.metadata
+
+keywords = html_meta["keywords"] || []
+if keywords != [], do: IO.puts("Keywords: #{Enum.join(keywords, ", ")}")
+
+description = html_meta["description"]
+if description, do: IO.puts("Description: #{description}")
 ```
