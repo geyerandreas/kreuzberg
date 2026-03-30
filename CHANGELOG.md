@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Tesseract C++ exception crash** (#606): Fixed fatal runtime error where C++ exceptions from Tesseract unwound through Rust FFI frames, triggering `std::terminate()`. Now compiles Tesseract with `-fno-exceptions` on macOS, Linux, and MinGW. The Tesseract CLI executable target (which uses `try`/`catch`) is patched out of CMakeLists.txt at build time since only the library is needed.
+
 - **ExtractionConfig rejects unknown fields**: `#[serde(deny_unknown_fields)]` added to `ExtractionConfig`. Previously, typos or invalid fields (e.g., `layout_analysis` instead of `layout`) were silently ignored.
 - **RTF delimiter space consumption**: Fixed space-in-word bug where font encoding directives (`\loch`, `\hich`, `\dbch`) caused spaces mid-word ("H eading" → "Heading"). Root cause: RTF spec requires consuming trailing delimiter space after control words.
 - **PPTX markdown mode**: Derive plain/markdown mode from `output_format` config instead of hardcoding `plain=true`. Tables now render as markdown tables, lists get bullet markers, text elements get newline separation.

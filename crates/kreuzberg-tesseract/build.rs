@@ -516,7 +516,22 @@ mod build_tesseract {
                 let cmakelists_path = tesseract_dir.join("CMakeLists.txt");
                 let cmakelists = std::fs::read_to_string(&cmakelists_path)
                     .expect("Failed to read CMakeLists.txt")
-                    .replace("set(HAVE_TIFFIO_H ON)", "");
+                    .replace("set(HAVE_TIFFIO_H ON)", "")
+                    // Remove the tesseract CLI executable target — it uses try/catch which is
+                    // incompatible with -fno-exceptions. We only need the library (libtesseract).
+                    .replace(
+                        "add_executable(tesseract src/tesseract.cpp)\n\
+                         target_link_libraries(tesseract libtesseract)\n\
+                         if(HAVE_TIFFIO_H AND WIN32)\n\
+                         \x20 target_link_libraries(tesseract ${TIFF_LIBRARIES})\n\
+                         endif()\n\
+                         \n\
+                         if(OPENMP_BUILD AND UNIX)\n\
+                         \x20 target_link_libraries(tesseract pthread)\n\
+                         endif()",
+                        "",
+                    )
+                    .replace("install(TARGETS tesseract DESTINATION bin)", "");
                 std::fs::write(&cmakelists_path, cmakelists).expect("Failed to write CMakeLists.txt");
 
                 let mut tesseract_config = Config::new(&tesseract_dir);
@@ -660,8 +675,10 @@ mod build_tesseract {
         if target_macos {
             cmake_cxx_flags.push_str("-stdlib=libc++ ");
             cmake_cxx_flags.push_str("-std=c++17 ");
+            cmake_cxx_flags.push_str("-fno-exceptions ");
         } else if target_linux {
             cmake_cxx_flags.push_str("-std=c++17 ");
+            cmake_cxx_flags.push_str("-fno-exceptions ");
             if target_musl {
                 // For musl: use g++ with musl-gcc specs (avoids libc++/musl locale
                 // incompatibilities). The wrapper redirects C headers to musl while
@@ -692,7 +709,7 @@ mod build_tesseract {
                 ));
                 additional_defines.push(("CMAKE_MSVC_RUNTIME_LIBRARY".to_string(), "MultiThreadedDLL".to_string()));
             } else if target_mingw {
-                cmake_cxx_flags.push_str("-std=c++17 -DTESSERACT_STATIC ");
+                cmake_cxx_flags.push_str("-std=c++17 -DTESSERACT_STATIC -fno-exceptions ");
                 additional_defines.push(("CMAKE_C_FLAGS_RELEASE".to_string(), "-O2 -DNDEBUG".to_string()));
                 additional_defines.push(("CMAKE_C_FLAGS_DEBUG".to_string(), "-O0 -g".to_string()));
                 // Use absolute paths for MinGW compilers to prevent cmake from
