@@ -7,6 +7,7 @@ use kreuzberg::{
     ExtractionConfig, ExtractionResult,
     utils::{camel_to_snake, snake_to_camel},
 };
+use serde_json;
 use wasm_bindgen::prelude::*;
 
 /// Parse extraction configuration from JsValue using serde-wasm-bindgen.
@@ -69,4 +70,79 @@ pub fn results_to_js_value(results: &[ExtractionResult]) -> Result<JsValue, JsVa
     let json_string = serde_json::to_string(&camel_value)
         .map_err(|e| JsValue::from_str(&format!("Failed to serialize results: {e}")))?;
     js_sys::JSON::parse(&json_string).map_err(|e| JsValue::from_str(&format!("Failed to parse results JSON: {e:?}")))
+}
+
+/// Serialize an extraction result to TOON format.
+///
+/// TOON (Token-Oriented Object Notation) is a token-efficient alternative
+/// to JSON for LLM prompts. Takes a JavaScript ExtractionResult object,
+/// converts it to the Rust representation, and serializes to TOON format.
+///
+/// # JavaScript Parameters
+///
+/// * `result: object` - ExtractionResult object (as returned by extraction functions)
+///
+/// # Returns
+///
+/// `string` - TOON string representation of the extraction result
+///
+/// # Throws
+///
+/// Throws an error if the result cannot be parsed or serialization fails.
+///
+/// # Example
+///
+/// ```javascript
+/// import { extractBytesSync, serializeToToon } from '@kreuzberg/wasm';
+///
+/// const result = extractBytesSync(data, 'application/pdf', null);
+/// const toon = serializeToToon(result);
+/// console.log(toon);
+/// ```
+#[wasm_bindgen(js_name = serializeToToon)]
+pub fn serialize_to_toon(result: JsValue) -> Result<String, JsValue> {
+    let json_value: serde_json::Value =
+        serde_wasm_bindgen::from_value(result).map_err(|e| JsValue::from_str(&format!("Failed to parse result: {e}")))?;
+    let snake_value = camel_to_snake(json_value);
+    let rust_result: ExtractionResult = serde_json::from_value(snake_value)
+        .map_err(|e| JsValue::from_str(&format!("Failed to convert result: {e}")))?;
+    kreuzberg::serialize_to_toon(&rust_result)
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize to TOON: {e}")))
+}
+
+/// Serialize an extraction result to pretty-printed JSON.
+///
+/// Takes a JavaScript ExtractionResult object, converts it to the Rust
+/// representation, and serializes to formatted JSON.
+///
+/// # JavaScript Parameters
+///
+/// * `result: object` - ExtractionResult object (as returned by extraction functions)
+///
+/// # Returns
+///
+/// `string` - Pretty-printed JSON string representation
+///
+/// # Throws
+///
+/// Throws an error if the result cannot be parsed or serialization fails.
+///
+/// # Example
+///
+/// ```javascript
+/// import { extractBytesSync, serializeToJson } from '@kreuzberg/wasm';
+///
+/// const result = extractBytesSync(data, 'application/pdf', null);
+/// const json = serializeToJson(result);
+/// console.log(json);
+/// ```
+#[wasm_bindgen(js_name = serializeToJson)]
+pub fn serialize_to_json(result: JsValue) -> Result<String, JsValue> {
+    let json_value: serde_json::Value =
+        serde_wasm_bindgen::from_value(result).map_err(|e| JsValue::from_str(&format!("Failed to parse result: {e}")))?;
+    let snake_value = camel_to_snake(json_value);
+    let rust_result: ExtractionResult = serde_json::from_value(snake_value)
+        .map_err(|e| JsValue::from_str(&format!("Failed to convert result: {e}")))?;
+    kreuzberg::serialize_to_json(&rust_result)
+        .map_err(|e| JsValue::from_str(&format!("Failed to serialize to JSON: {e}")))
 }

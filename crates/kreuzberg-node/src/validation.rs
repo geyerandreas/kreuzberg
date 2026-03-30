@@ -941,5 +941,108 @@ pub fn config_merge_internal(base_json: String, override_json: String) -> Result
     Ok(result)
 }
 
+/// Serialize an extraction result to TOON format.
+///
+/// TOON (Token-Oriented Object Notation) is a token-efficient alternative
+/// to JSON for LLM prompts. Takes an ExtractionResult object, serializes it
+/// to JSON internally, then converts to TOON format.
+///
+/// # Arguments
+///
+/// * `result` - ExtractionResult object to serialize
+///
+/// # Returns
+///
+/// TOON string representation of the extraction result.
+///
+/// # Errors
+///
+/// Throws an error if serialization fails.
+///
+/// # Example
+///
+/// ```typescript
+/// import { extractFile, serializeToToon } from '@kreuzberg/node';
+///
+/// const result = await extractFile('document.pdf');
+/// const toon = serializeToToon(result);
+/// console.log(toon);
+/// ```
+#[napi(js_name = "serializeToToon")]
+pub fn serialize_to_toon(result: crate::result::JsExtractionResult) -> Result<String> {
+    let rust_result: kreuzberg::ExtractionResult = serde_json::from_value(
+        serde_json::to_value(&result).map_err(|e| {
+            napi::Error::new(
+                napi::Status::GenericFailure,
+                format!("Failed to serialize result: {}", e),
+            )
+        })?,
+    )
+    .map_err(|e| {
+        napi::Error::new(
+            napi::Status::GenericFailure,
+            format!("Failed to convert result: {}", e),
+        )
+    })?;
+
+    kreuzberg::serialize_to_toon(&rust_result).map_err(|e| {
+        napi::Error::new(
+            napi::Status::GenericFailure,
+            format!("Failed to serialize to TOON: {}", e),
+        )
+    })
+}
+
+/// Serialize an extraction result to pretty-printed JSON.
+///
+/// Takes an ExtractionResult object and serializes it to a formatted,
+/// human-readable JSON string.
+///
+/// # Arguments
+///
+/// * `result` - ExtractionResult object to serialize
+///
+/// # Returns
+///
+/// Pretty-printed JSON string representation of the extraction result.
+///
+/// # Errors
+///
+/// Throws an error if serialization fails.
+///
+/// # Example
+///
+/// ```typescript
+/// import { extractFile, serializeToJson } from '@kreuzberg/node';
+///
+/// const result = await extractFile('document.pdf');
+/// const json = serializeToJson(result);
+/// console.log(json);
+/// ```
+#[napi(js_name = "serializeToJson")]
+pub fn serialize_to_json(result: crate::result::JsExtractionResult) -> Result<String> {
+    let rust_result: kreuzberg::ExtractionResult = serde_json::from_value(
+        serde_json::to_value(&result).map_err(|e| {
+            napi::Error::new(
+                napi::Status::GenericFailure,
+                format!("Failed to serialize result: {}", e),
+            )
+        })?,
+    )
+    .map_err(|e| {
+        napi::Error::new(
+            napi::Status::GenericFailure,
+            format!("Failed to convert result: {}", e),
+        )
+    })?;
+
+    kreuzberg::serialize_to_json(&rust_result).map_err(|e| {
+        napi::Error::new(
+            napi::Status::GenericFailure,
+            format!("Failed to serialize to JSON: {}", e),
+        )
+    })
+}
+
 // #[cfg(all(
 // #[global_allocator]
