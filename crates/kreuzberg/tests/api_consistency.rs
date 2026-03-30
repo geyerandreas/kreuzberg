@@ -260,6 +260,7 @@ fn test_extraction_config_no_unknown_fields_in_default() {
         "email",
         "layout",
         "max_archive_depth",
+        "extraction_timeout_secs",
     ];
 
     for key in obj.keys() {
@@ -348,6 +349,7 @@ fn test_output_format_all_variants() {
         OutputFormat::Markdown,
         OutputFormat::Html,
         OutputFormat::Djot,
+        OutputFormat::Structured,
     ];
 
     for fmt in &formats {
@@ -355,6 +357,20 @@ fn test_output_format_all_variants() {
         let deserialized: OutputFormat = serde_json::from_value(serialized).expect("Failed to deserialize");
         assert_eq!(*fmt, deserialized, "Format should survive roundtrip");
     }
+}
+
+#[test]
+fn test_serialize_to_toon_and_json() {
+    // Test that serialize_to_toon and serialize_to_json produce non-empty output
+    let result = kreuzberg::ExtractionResult::default();
+
+    let json = kreuzberg::serialize_to_json(&result).expect("JSON serialization should succeed");
+    assert!(!json.is_empty(), "JSON output should not be empty");
+    // JSON should be parseable
+    let _: serde_json::Value = serde_json::from_str(&json).expect("JSON should be valid");
+
+    let toon = kreuzberg::serialize_to_toon(&result).expect("TOON serialization should succeed");
+    assert!(!toon.is_empty(), "TOON output should not be empty");
 }
 
 #[test]
