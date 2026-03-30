@@ -635,6 +635,7 @@ impl DocumentExtractor for OdtExtractor {
         mime_type: &str,
         config: &ExtractionConfig,
     ) -> Result<InternalDocument> {
+        let _ = config; // conditionally used by ocr feature
         let content_owned = content.to_vec();
 
         let cursor = Cursor::new(content_owned.clone());

@@ -118,6 +118,7 @@ pub fn convert_html_to_markdown_with_metadata(
 /// structured table data, and the full semantic document tree in one pass.
 ///
 /// Returns `(content, optional_metadata, tables, optional_document_structure)`.
+#[allow(clippy::type_complexity)]
 pub fn convert_html_to_markdown_with_tables(
     html: &str,
     options: Option<ConversionOptions>,
@@ -146,6 +147,7 @@ pub fn convert_html_to_markdown_with_tables(
 }
 
 /// Internal helper: single-pass conversion that extracts everything at once.
+#[allow(clippy::type_complexity)]
 fn convert_single_pass(
     html: &str,
     options: ConversionOptions,

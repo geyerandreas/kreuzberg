@@ -54,6 +54,7 @@ impl Default for EpubExtractor {
 }
 
 #[cfg(feature = "office")]
+#[allow(dead_code)]
 struct RenderedSpineDocument {
     content_fragment: String,
     content_fully_converted: bool,
@@ -62,11 +63,13 @@ struct RenderedSpineDocument {
 }
 
 #[cfg(feature = "office")]
+#[allow(dead_code)]
 fn trim_trailing_newlines(s: &str) -> &str {
     s.trim_end_matches(['\n', '\r'])
 }
 
 #[cfg(feature = "office")]
+#[allow(dead_code)]
 impl EpubExtractor {
     fn build_fallback_document_structure(
         document: &content::EpubSpineDocument,
@@ -437,6 +440,7 @@ impl DocumentExtractor for EpubExtractor {
         mime_type: &str,
         config: &ExtractionConfig,
     ) -> Result<InternalDocument> {
+        let _ = config; // conditionally used by ocr feature
         let cursor = Cursor::new(content.to_vec());
 
         let mut archive = ZipArchive::new(cursor).map_err(|e| crate::KreuzbergError::Parsing {

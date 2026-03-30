@@ -38,6 +38,7 @@ pub(super) struct EpubPackageDocument {
     guide_toc_paths: BTreeSet<String>,
 }
 
+#[allow(dead_code)]
 impl EpubPackageDocument {
     pub(super) fn is_guide_toc_candidate_path(&self, path: &str) -> bool {
         self.guide_toc_paths.contains(path)
@@ -56,11 +57,14 @@ pub(super) struct ManifestItem {
     pub(super) raw_href: String,
     pub(super) path: Option<String>,
     path_resolution_error: Option<String>,
+    #[allow(dead_code)]
     pub(super) media_type: Option<String>,
+    #[allow(dead_code)]
     pub(super) fallback: Option<String>,
     pub(super) properties: Option<String>,
 }
 
+#[allow(dead_code)]
 impl ManifestItem {
     pub(super) fn is_renderable_body_document(&self) -> bool {
         matches!(
@@ -85,6 +89,7 @@ impl ManifestItem {
     }
 }
 
+#[allow(dead_code)]
 fn has_renderable_extension(href: &str) -> bool {
     let href = href
         .split_once('#')

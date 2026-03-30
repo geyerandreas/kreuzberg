@@ -351,8 +351,8 @@ fn looks_like_list_item(text: &str) -> bool {
 
     // Hyphen-dash list: only if followed by space + alphabetic word.
     // Rejects "- 1145/3620665..." (bibliography) and "- 1 PDF backends" (subsection).
-    if t.starts_with("- ") {
-        return t.len() > 2 && t[2..].chars().next().is_some_and(|c| c.is_alphabetic());
+    if let Some(rest) = t.strip_prefix("- ") {
+        return rest.chars().next().is_some_and(|c| c.is_alphabetic());
     }
 
     // Numbered / lettered patterns: "1.", "2)", "a.", "a)", "i.", "(1)", "(a)"

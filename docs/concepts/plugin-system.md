@@ -222,8 +222,7 @@ The registration pattern is the same in every language. Get the registry, call r
     ```rust
     let registry = get_document_extractor_registry();
     let mut registry = registry.write().unwrap();
-    registry.register("my-pdf", Arc::new(MyPDFExtractor::new()))?;
-    ```
+    registry.register("my-pdf", Arc::new(MyPDFExtractor::new()))?;```
 
 === "Python"
     ```python

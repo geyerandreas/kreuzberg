@@ -7,7 +7,9 @@ use crate::pdf::hierarchy::SegmentData;
 pub(crate) struct PdfLine {
     pub segments: Vec<SegmentData>,
     pub baseline_y: f32,
+    #[allow(dead_code)]
     pub dominant_font_size: f32,
+    #[allow(dead_code)]
     pub is_bold: bool,
     pub is_monospace: bool,
 }

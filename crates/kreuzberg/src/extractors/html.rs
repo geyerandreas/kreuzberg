@@ -162,7 +162,7 @@ impl HtmlExtractor {
 fn map_annotations(annotations: &[html_to_markdown_rs::types::TextAnnotation]) -> Vec<TextAnnotation> {
     annotations
         .iter()
-        .filter_map(|a| {
+        .map(|a| {
             use html_to_markdown_rs::types::AnnotationKind as AK;
             let kind = match &a.kind {
                 AK::Bold => crate::types::document_structure::AnnotationKind::Bold,
@@ -178,11 +178,11 @@ fn map_annotations(annotations: &[html_to_markdown_rs::types::TextAnnotation]) -
                     title: title.clone(),
                 },
             };
-            Some(TextAnnotation {
+            TextAnnotation {
                 start: a.start,
                 end: a.end,
                 kind,
-            })
+            }
         })
         .collect()
 }

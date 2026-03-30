@@ -37,6 +37,7 @@ impl PptxExtractor {
     /// Note: For richer structure, the builder should be integrated into
     /// `crate::extraction::pptx` alongside the existing `DocumentStructure` building.
     /// Strip leading markdown heading markers (`# `, `## `, etc.) from a line.
+    #[allow(dead_code)]
     fn strip_heading_prefix(line: &str) -> &str {
         let trimmed = line.trim_start();
         if trimmed.starts_with('#') {
@@ -112,11 +113,7 @@ impl PptxExtractor {
                 else if let Some(item_text) = lt.strip_prefix("1. ") {
                     builder.push_paragraph(item_text, vec![], None, None);
                 }
-                // Image
-                else if lt.starts_with("![") {
-                    builder.push_paragraph(lt, vec![], None, None);
-                }
-                // Regular paragraph
+                // Image or regular paragraph
                 else {
                     builder.push_paragraph(lt, vec![], None, None);
                 }

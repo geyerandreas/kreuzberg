@@ -336,6 +336,7 @@ struct PageInput {
     table_bboxes: Vec<crate::types::BoundingBox>,
     /// Per-hint validation results from CC analysis (parallel to page_hints).
     /// Empty when layout-detection is not active.
+    #[allow(dead_code)]
     hint_validations: Vec<super::regions::layout_validation::RegionValidation>,
     /// Whether this page's structure-tree paragraphs need font-size classification.
     needs_classify: bool,
