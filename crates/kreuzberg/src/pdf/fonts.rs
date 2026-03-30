@@ -35,8 +35,8 @@
 //! ```
 
 use super::error::PdfError;
-use once_cell::sync::Lazy;
 use ahash::AHashMap;
+use once_cell::sync::Lazy;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::RwLock;

@@ -10,8 +10,8 @@
 use super::{ArchiveEntry, ArchiveMetadata};
 use crate::error::{KreuzbergError, Result};
 use crate::extractors::security::SecurityLimits;
-use flate2::read::GzDecoder;
 use ahash::AHashMap;
+use flate2::read::GzDecoder;
 use std::io::Read;
 
 /// Check if data looks like a TAR archive (has "ustar" magic at offset 257).

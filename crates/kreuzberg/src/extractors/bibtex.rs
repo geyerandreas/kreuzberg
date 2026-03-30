@@ -11,9 +11,9 @@ use crate::types::internal_builder::InternalDocumentBuilder;
 use crate::types::metadata::Metadata;
 use crate::types::uri::Uri;
 use ahash::AHashMap;
+use ahash::AHashSet;
 use async_trait::async_trait;
 use std::borrow::Cow;
-use ahash::AHashSet;
 
 #[cfg(feature = "office")]
 use crate::types::document_structure::{AnnotationKind, TextAnnotation};

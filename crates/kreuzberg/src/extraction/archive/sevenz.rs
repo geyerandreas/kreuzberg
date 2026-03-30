@@ -5,8 +5,8 @@
 use super::{ArchiveEntry, ArchiveMetadata, TEXT_EXTENSIONS};
 use crate::error::{KreuzbergError, Result};
 use crate::extractors::security::SecurityLimits;
-use sevenz_rust2::{ArchiveReader, Password};
 use ahash::AHashMap;
+use sevenz_rust2::{ArchiveReader, Password};
 use std::io::Cursor;
 
 /// Extract metadata from a 7z archive.

@@ -28,10 +28,10 @@
 //! ```
 use crate::error::{KreuzbergError, Result};
 use crate::types::XmlExtractionResult;
+use ahash::AHashSet;
 use quick_xml::Reader;
 use quick_xml::events::Event;
 use std::borrow::Cow;
-use ahash::AHashSet;
 
 /// SVG text-bearing elements whose text content should be extracted.
 const SVG_TEXT_ELEMENTS: &[&str] = &["text", "tspan", "title", "desc", "textPath", "altGlyph"];
