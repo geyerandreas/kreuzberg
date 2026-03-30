@@ -386,13 +386,18 @@ defmodule Kreuzberg.ExtractionConfig do
   def to_map(nil), do: nil
 
   def to_map(map) when is_map(map) and not is_struct(map) do
-    normalize_map_keys(map)
+    normalized = normalize_map_keys(map)
+
+    case normalized do
+      %{"ocr" => ocr} when is_map(ocr) -> Map.put(normalized, "ocr", Map.delete(ocr, "enabled"))
+      _ -> normalized
+    end
   end
 
   def to_map(%__MODULE__{} = config) do
     %{
       "chunking" => normalize_nested_config(config.chunking),
-      "ocr" => normalize_nested_config(config.ocr),
+      "ocr" => normalize_ocr_config(config.ocr),
       "language_detection" => normalize_nested_config(config.language_detection),
       "postprocessor" => normalize_nested_config(config.postprocessor),
       "images" => normalize_nested_config(config.images),
@@ -454,6 +459,16 @@ defmodule Kreuzberg.ExtractionConfig do
 
   @doc false
   defp normalize_map_keys_recursive(value), do: value
+
+  @doc false
+  defp normalize_ocr_config(nil), do: nil
+
+  @doc false
+  defp normalize_ocr_config(config) when is_map(config) do
+    config
+    |> normalize_map_keys()
+    |> Map.delete("enabled")
+  end
 
   @doc false
   defp normalize_nested_config(nil), do: nil

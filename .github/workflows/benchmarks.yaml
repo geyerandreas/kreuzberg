@@ -502,6 +502,9 @@ jobs:
       - name: Install WASI SDK
         uses: kreuzberg-dev/actions/install-wasi-sdk@v1
 
+      - name: Build benchmark harness (x86_64)
+        run: cargo build --release -p benchmark-harness
+
       - name: Build WASM bindings
         env:
           RUSTUP_TOOLCHAIN: stable
