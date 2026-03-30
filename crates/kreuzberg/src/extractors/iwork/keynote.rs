@@ -2,7 +2,7 @@
 
 use crate::Result;
 use crate::core::config::ExtractionConfig;
-use crate::extractors::iwork::{dedup_text, extract_text_from_proto, read_iwa_file};
+use crate::extractors::iwork::{dedup_text, extract_metadata_from_zip, extract_text_from_proto, read_iwa_file};
 use crate::plugins::{DocumentExtractor, Plugin};
 use crate::types::internal::InternalDocument;
 use crate::types::internal_builder::InternalDocumentBuilder;
@@ -54,33 +54,66 @@ impl Plugin for KeynoteExtractor {
     }
 }
 
+/// Parsed Keynote data: per-slide text and metadata.
+struct KeynoteData {
+    /// Text extracted from individual slide IWA files, in path-sorted order.
+    slide_texts: Vec<Vec<String>>,
+    /// Additional text from non-slide IWA files (notes, master slides, etc.).
+    other_texts: Vec<String>,
+    /// Metadata extracted from the ZIP archive.
+    metadata: crate::types::metadata::Metadata,
+}
+
 /// Parse a Keynote ZIP and extract all text from IWA files.
 ///
 /// Keynote stores its content across many IWA files:
 /// - `Index/Presentation.iwa` — master slide structure and layout
 /// - `Index/Slide_*.iwa` — individual slide content and speaker notes
 /// - `Index/MasterSlide_*.iwa` — master slide text
-fn parse_keynote(content: &[u8]) -> Result<String> {
+///
+/// We separate slide-specific IWA files from other files to produce
+/// per-slide structured output.
+fn parse_keynote(content: &[u8]) -> Result<KeynoteData> {
     let iwa_paths = super::collect_iwa_paths(content)?;
+    let metadata = extract_metadata_from_zip(content);
 
-    let mut all_texts: Vec<String> = Vec::new();
-
-    // Prioritize slide IWA files for more structured output
-    let slide_paths: Vec<&String> = iwa_paths
+    // Separate individual slide paths from master slides and other files.
+    // Slide paths typically look like `Index/Slide-NNNNN.iwa`.
+    let mut slide_paths: Vec<&String> = iwa_paths
         .iter()
-        .filter(|p| p.contains("Slide") || p.contains("Presentation"))
+        .filter(|p| {
+            // Match `Slide-` or `Slide_` but not `MasterSlide`
+            let filename = p.rsplit('/').next().unwrap_or(p);
+            filename.starts_with("Slide") && !filename.starts_with("MasterSlide")
+        })
         .collect();
+
+    // Sort slide paths so slides are in order
+    slide_paths.sort();
 
     let other_paths: Vec<&String> = iwa_paths
         .iter()
-        .filter(|p| !p.contains("Slide") && !p.contains("Presentation"))
+        .filter(|p| {
+            let filename = p.rsplit('/').next().unwrap_or(p);
+            !(filename.starts_with("Slide") && !filename.starts_with("MasterSlide"))
+        })
         .collect();
 
-    for path in slide_paths.iter().chain(other_paths.iter()) {
+    // Extract text per slide (each slide IWA becomes a separate group)
+    let mut slide_texts: Vec<Vec<String>> = Vec::new();
+    let mut seen_global = std::collections::HashSet::new();
+
+    for path in &slide_paths {
         match read_iwa_file(content, path) {
             Ok(decompressed) => {
                 let texts = extract_text_from_proto(&decompressed);
-                all_texts.extend(texts);
+                let unique: Vec<String> = texts
+                    .into_iter()
+                    .filter(|t| seen_global.insert(t.clone()))
+                    .collect();
+                if !unique.is_empty() {
+                    slide_texts.push(unique);
+                }
             }
             Err(_) => {
                 tracing::debug!("Skipping IWA file (decompression failed): {path}");
@@ -88,8 +121,30 @@ fn parse_keynote(content: &[u8]) -> Result<String> {
         }
     }
 
-    let deduplicated = dedup_text(all_texts);
-    Ok(deduplicated.join("\n"))
+    // Extract remaining text from non-slide files
+    let mut other_raw: Vec<String> = Vec::new();
+    for path in &other_paths {
+        match read_iwa_file(content, path) {
+            Ok(decompressed) => {
+                let texts = extract_text_from_proto(&decompressed);
+                other_raw.extend(texts);
+            }
+            Err(_) => {
+                tracing::debug!("Skipping IWA file (decompression failed): {path}");
+            }
+        }
+    }
+
+    let other_texts: Vec<String> = dedup_text(other_raw)
+        .into_iter()
+        .filter(|t| seen_global.insert(t.clone()))
+        .collect();
+
+    Ok(KeynoteData {
+        slide_texts,
+        other_texts,
+        metadata,
+    })
 }
 
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
@@ -101,7 +156,7 @@ impl DocumentExtractor for KeynoteExtractor {
         mime_type: &str,
         _config: &ExtractionConfig,
     ) -> Result<InternalDocument> {
-        let text = {
+        let data = {
             #[cfg(feature = "tokio-runtime")]
             if crate::core::batch_mode::is_batch_mode() {
                 let content_owned = content.to_vec();
@@ -120,7 +175,7 @@ impl DocumentExtractor for KeynoteExtractor {
             parse_keynote(content)?
         };
 
-        let mut doc = build_keynote_internal_document(&text);
+        let mut doc = build_keynote_internal_document(&data);
         doc.mime_type = std::borrow::Cow::Owned(mime_type.to_string());
         Ok(doc)
     }
@@ -134,35 +189,49 @@ impl DocumentExtractor for KeynoteExtractor {
     }
 }
 
-/// Build an `InternalDocument` from extracted Keynote text.
+/// Build an `InternalDocument` from parsed Keynote data.
 ///
-/// Maps text lines to slides with paragraphs, mirroring `build_keynote_document_structure`.
-fn build_keynote_internal_document(text: &str) -> InternalDocument {
+/// Creates a slide element for each detected slide group, using the first text
+/// line as the slide title. Additional lines become paragraphs within the slide.
+/// Metadata from the ZIP archive is applied to the document.
+fn build_keynote_internal_document(data: &KeynoteData) -> InternalDocument {
     let mut builder = InternalDocumentBuilder::new("keynote");
-    let mut slide_number: u32 = 0;
 
-    let lines: Vec<&str> = text.lines().collect();
-    let mut i = 0;
-    while i < lines.len() {
-        if lines[i].trim().is_empty() {
-            i += 1;
+    // Apply metadata
+    if data.metadata.title.is_some() || data.metadata.authors.is_some() {
+        builder.set_metadata(data.metadata.clone());
+    }
+
+    // Emit per-slide elements
+    for (idx, slide_lines) in data.slide_texts.iter().enumerate() {
+        let slide_number = (idx + 1) as u32;
+
+        if slide_lines.is_empty() {
             continue;
         }
 
-        slide_number += 1;
-        let first_line = lines[i].trim();
-        builder.push_slide(slide_number, Some(first_line), None);
-        i += 1;
+        // Use the first line as the slide title
+        let title = slide_lines[0].trim();
+        builder.push_slide(slide_number, Some(title), None);
 
-        while i < lines.len() && !lines[i].trim().is_empty() {
-            builder.push_paragraph(lines[i].trim(), vec![], None, None);
-            i += 1;
+        // Remaining lines become body paragraphs
+        for line in &slide_lines[1..] {
+            let trimmed = line.trim();
+            if !trimmed.is_empty() {
+                builder.push_paragraph(trimmed, vec![], None, None);
+            }
         }
     }
 
-    if slide_number == 0 && !text.trim().is_empty() {
-        for line in text.lines() {
-            let trimmed = line.trim();
+    // Emit any additional text that didn't belong to a specific slide
+    // (master slide text, presentation-level notes, etc.)
+    if !data.other_texts.is_empty() {
+        let has_slides = !data.slide_texts.is_empty();
+        if has_slides {
+            builder.push_heading(2, "Additional Content", None, None);
+        }
+        for text in &data.other_texts {
+            let trimmed = text.trim();
             if !trimmed.is_empty() {
                 builder.push_paragraph(trimmed, vec![], None, None);
             }
