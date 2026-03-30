@@ -294,6 +294,28 @@ function kreuzberg_batch_extract_bytes_async(array $dataList, array $mimeTypes, 
 }
 
 /**
+ * Serialize an ExtractionResult to TOON format string (native extension function).
+ *
+ * @param \Kreuzberg\Types\ExtractionResult $result The extraction result to serialize
+ * @return string TOON string representation of the result
+ * @throws \Exception If serialization fails
+ */
+function kreuzberg_serialize_to_toon(\Kreuzberg\Types\ExtractionResult $result): string
+{
+}
+
+/**
+ * Serialize an ExtractionResult to JSON format string (native extension function).
+ *
+ * @param \Kreuzberg\Types\ExtractionResult $result The extraction result to serialize
+ * @return string Pretty-printed JSON string representation of the result
+ * @throws \Exception If serialization fails
+ */
+function kreuzberg_serialize_to_json(\Kreuzberg\Types\ExtractionResult $result): string
+{
+}
+
+/**
  * Render a single PDF page to PNG bytes.
  *
  * @param string $filePath Path to the PDF file
@@ -338,3 +360,4 @@ function kreuzberg_pdf_page_iterator_next(mixed $handle): ?string
 function kreuzberg_pdf_page_iterator_free(mixed $handle): void
 {
 }
+

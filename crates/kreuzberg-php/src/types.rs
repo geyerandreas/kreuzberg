@@ -128,6 +128,9 @@ pub struct ExtractionResult {
 
     /// PDF annotations
     pub annotations: Option<Vec<PdfAnnotation>>,
+
+    /// Full serialized JSON of the original ExtractionResult (for serialize_to_toon/json)
+    pub(crate) result_json: String,
 }
 
 #[php_impl]
@@ -366,6 +369,10 @@ impl ExtractionResult {
     pub fn from_rust_with_config(result: kreuzberg::ExtractionResult, extract_tables: bool) -> PhpResult<Self> {
         use serde_json::json;
 
+        // Serialize the full result to JSON before destructuring for serialize_to_toon/json
+        let result_json = serde_json::to_string(&result)
+            .map_err(|e| format!("Failed to serialize result: {}", e))?;
+
         let mut metadata_obj = serde_json::Map::new();
 
         // Add common metadata fields
@@ -580,6 +587,7 @@ impl ExtractionResult {
             document_json,
             ocr_elements_json,
             annotations,
+            result_json,
         })
     }
 }

@@ -382,3 +382,45 @@ pub fn config_from_file<'a>(env: Env<'a>, file_path: String) -> NifResult<Term<'
         Err(e) => Ok((atoms::error(), format!("Failed to load config from file: {}", e)).encode(env)),
     }
 }
+
+// =============================================================================
+// SERIALIZATION FUNCTIONS
+// =============================================================================
+
+/// Serialize an ExtractionResult map to a TOON format string.
+///
+/// # Arguments
+/// * `result` - An ExtractionResult map (as returned by extraction NIFs)
+///
+/// # Returns
+/// * `{:ok, toon_string}` - TOON representation of the result
+/// * `{:error, reason}` - If serialization fails
+#[rustler::nif]
+pub fn serialize_to_toon<'a>(env: Env<'a>, result: Term<'a>) -> NifResult<Term<'a>> {
+    let json_value = crate::conversion::term_to_json(result)
+        .map_err(|e| rustler::Error::Term(Box::new(format!("Failed to convert result to JSON: {}", e))))?;
+
+    match serde_toon::to_string(&json_value) {
+        Ok(toon) => Ok((atoms::ok(), toon).encode(env)),
+        Err(e) => Ok((atoms::error(), format!("Failed to serialize to TOON: {}", e)).encode(env)),
+    }
+}
+
+/// Serialize an ExtractionResult map to a JSON format string.
+///
+/// # Arguments
+/// * `result` - An ExtractionResult map (as returned by extraction NIFs)
+///
+/// # Returns
+/// * `{:ok, json_string}` - Pretty-printed JSON representation of the result
+/// * `{:error, reason}` - If serialization fails
+#[rustler::nif]
+pub fn serialize_to_json<'a>(env: Env<'a>, result: Term<'a>) -> NifResult<Term<'a>> {
+    let json_value = crate::conversion::term_to_json(result)
+        .map_err(|e| rustler::Error::Term(Box::new(format!("Failed to convert result to JSON: {}", e))))?;
+
+    match serde_json::to_string_pretty(&json_value) {
+        Ok(json) => Ok((atoms::ok(), json).encode(env)),
+        Err(e) => Ok((atoms::error(), format!("Failed to serialize to JSON: {}", e)).encode(env)),
+    }
+}

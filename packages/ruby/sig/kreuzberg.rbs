@@ -1318,6 +1318,10 @@ module Kreuzberg
   def self._result_detected_language_native: (untyped result) -> String?
   def self._result_metadata_field_native: (untyped result, String field_name) -> untyped
 
+  # Serialization functions
+  def self.serialize_to_toon: (untyped result) -> String
+  def self.serialize_to_json: (untyped result) -> String
+
   # Plugin registration
   def self.register_post_processor: (String name, _PostProcessor processor, ?stage: Symbol?) -> void
   def self.unregister_post_processor: (String name) -> void
@@ -1334,6 +1338,10 @@ module Kreuzberg
   def self.clear_document_extractors: () -> void
   def self.list_post_processors: () -> Array[String]
   def self.list_validators: () -> Array[String]
+
+  # Serialization
+  def self.serialize_to_toon: (Result result) -> String
+  def self.serialize_to_json: (Result result) -> String
 
   interface _PostProcessor
     def call: (extraction_result_hash result) -> extraction_result_hash

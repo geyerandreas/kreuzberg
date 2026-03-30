@@ -356,6 +356,33 @@ module Kreuzberg
       native_render_pdf_pages_iter(path_str, dpi, &block)
     end
 
+    # Serialize an ExtractionResult to TOON wire format.
+    #
+    # TOON (Token-Oriented Object Notation) is a compact text-based
+    # serialization format that uses fewer tokens than JSON.
+    #
+    # @param result [Result] The extraction result to serialize
+    # @return [String] TOON-formatted string
+    # @raise [ArgumentError] If result is not a Kreuzberg::Result
+    # @raise [RuntimeError] If serialization fails
+    def serialize_to_toon(result)
+      raise ArgumentError, 'result must be a Kreuzberg::Result' unless result.is_a?(Result)
+
+      Kreuzberg.serialize_to_toon(result.to_h)
+    end
+
+    # Serialize an ExtractionResult to pretty-printed JSON format.
+    #
+    # @param result [Result] The extraction result to serialize
+    # @return [String] Pretty-printed JSON string
+    # @raise [ArgumentError] If result is not a Kreuzberg::Result
+    # @raise [RuntimeError] If serialization fails
+    def serialize_to_json(result)
+      raise ArgumentError, 'result must be a Kreuzberg::Result' unless result.is_a?(Result)
+
+      Kreuzberg.serialize_to_json(result.to_h)
+    end
+
     def normalize_config(config)
       return {} if config.nil?
       return config if config.is_a?(Hash)
