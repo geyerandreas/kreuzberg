@@ -15,7 +15,7 @@ fn decode_pdf_string(bytes: &[u8]) -> String {
             .chunks_exact(2)
             .map(|chunk| u16::from_be_bytes([chunk[0], chunk[1]]))
             .collect();
-        String::from_utf16(&u16s).unwrap_or_else(|_| String::from_utf8_lossy(bytes).into_owned())
+        String::from_utf16(&u16s).unwrap_or_else(|_| String::from_utf8_lossy(&bytes[2..]).into_owned())
     } else {
         String::from_utf8(bytes.to_vec()).unwrap_or_else(|_| String::from_utf8_lossy(bytes).into_owned())
     }
@@ -70,7 +70,7 @@ fn walk_outline_items(document: &Document, item_id: ObjectId, uris: &mut Vec<Uri
 
 fn walk_outline_items_inner(
     document: &Document,
-    item_id: ObjectId,
+    first_item_id: ObjectId,
     uris: &mut Vec<Uri>,
     depth: usize,
     max_items: usize,
@@ -79,40 +79,47 @@ fn walk_outline_items_inner(
         return;
     }
 
-    let dict = match document.get_object(item_id) {
-        Ok(Object::Dictionary(dict)) => dict,
-        _ => return,
-    };
+    // Iterate siblings iteratively to avoid stack overflow on wide outlines.
+    let mut current_id = Some(first_item_id);
+    while let Some(item_id) = current_id {
+        if uris.len() >= max_items {
+            break;
+        }
 
-    // Extract title.
-    let title = dict
-        .get(b"Title")
-        .ok()
-        .and_then(|obj| match obj {
-            Object::String(bytes, _) => Some(decode_pdf_string(bytes)),
-            _ => None,
-        });
+        let dict = match document.get_object(item_id) {
+            Ok(Object::Dictionary(dict)) => dict,
+            _ => break,
+        };
 
-    // Extract destination: try /Dest first, then /A (action).
-    let uri = extract_destination(document, dict, title.as_deref())
-        .or_else(|| extract_action(document, dict, title.as_deref()));
+        // Extract title.
+        let title = dict
+            .get(b"Title")
+            .ok()
+            .and_then(|obj| match obj {
+                Object::String(bytes, _) => Some(decode_pdf_string(bytes)),
+                _ => None,
+            });
 
-    if let Some(u) = uri {
-        uris.push(u);
-    }
+        // Extract destination: try /Dest first, then /A (action).
+        let uri = extract_destination(document, dict, title.as_deref())
+            .or_else(|| extract_action(document, dict, title.as_deref()));
 
-    // Recurse into children (/First).
-    if let Ok(first_obj) = dict.get(b"First")
-        && let Ok(first_id) = first_obj.as_reference()
-    {
-        walk_outline_items_inner(document, first_id, uris, depth + 1, max_items);
-    }
+        if let Some(u) = uri {
+            uris.push(u);
+        }
 
-    // Continue to next sibling (/Next).
-    if let Ok(next_obj) = dict.get(b"Next")
-        && let Ok(next_id) = next_obj.as_reference()
-    {
-        walk_outline_items_inner(document, next_id, uris, depth, max_items);
+        // Recurse into children (/First) — only children use recursion (bounded by depth).
+        if let Ok(first_obj) = dict.get(b"First")
+            && let Ok(first_id) = first_obj.as_reference()
+        {
+            walk_outline_items_inner(document, first_id, uris, depth + 1, max_items);
+        }
+
+        // Move to next sibling iteratively.
+        current_id = dict
+            .get(b"Next")
+            .ok()
+            .and_then(|obj| obj.as_reference().ok());
     }
 }
 

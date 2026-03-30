@@ -58,8 +58,21 @@ pub fn extract_embedded_files(document: &Document) -> Vec<EmbeddedFile> {
     files
 }
 
+/// Maximum decompressed size for an embedded file (50 MB).
+const MAX_EMBEDDED_FILE_SIZE: usize = 50 * 1024 * 1024;
+
+/// Maximum recursion depth for name tree traversal.
+const MAX_NAME_TREE_DEPTH: usize = 50;
+
 /// Recursively collect embedded files from a PDF name tree node.
 fn collect_from_name_tree(document: &Document, dict: &lopdf::Dictionary, files: &mut Vec<EmbeddedFile>) {
+    collect_from_name_tree_inner(document, dict, files, 0);
+}
+
+fn collect_from_name_tree_inner(document: &Document, dict: &lopdf::Dictionary, files: &mut Vec<EmbeddedFile>, depth: usize) {
+    if depth > MAX_NAME_TREE_DEPTH {
+        return;
+    }
     // Leaf node: /Names array with alternating [name filespec name filespec ...].
     if let Ok(Object::Array(names_arr)) = dict.get(b"Names") {
         let mut i = 0;
@@ -88,7 +101,7 @@ fn collect_from_name_tree(document: &Document, dict: &lopdf::Dictionary, files: 
         for kid in kids {
             let kid_obj = resolve_object(document, kid);
             if let Some(Object::Dictionary(kid_dict)) = kid_obj {
-                collect_from_name_tree(document, &kid_dict, files);
+                collect_from_name_tree_inner(document, &kid_dict, files, depth + 1);
             }
         }
     }
@@ -137,6 +150,11 @@ fn extract_file_from_filespec(
         .decompressed_content()
         .unwrap_or_else(|_| stream.content.clone());
 
+    // Size guard: reject decompressed files exceeding the limit.
+    if data.len() > MAX_EMBEDDED_FILE_SIZE {
+        return None;
+    }
+
     // Try to get MIME type from the stream dictionary's /Subtype.
     let mime_type = stream
         .dict
@@ -153,8 +171,15 @@ fn extract_file_from_filespec(
                 .map(|m| m.to_string())
         });
 
+    // Sanitize filename: strip directory components to prevent path traversal.
+    let safe_name = std::path::Path::new(&display_name)
+        .file_name()
+        .and_then(|f| f.to_str())
+        .unwrap_or(&display_name)
+        .to_string();
+
     Some(EmbeddedFile {
-        name: display_name,
+        name: safe_name,
         data,
         mime_type,
     })

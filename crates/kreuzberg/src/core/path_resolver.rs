@@ -115,6 +115,25 @@ pub(crate) fn read_image_file(path: &Path, image_index: usize) -> Option<Extract
     })
 }
 
+/// Shared `extract_file` implementation for markup extractors that support image resolution.
+///
+/// Reads the file, calls `extract_bytes` on the extractor, then resolves image URIs
+/// from the filesystem. Use this in `DocumentExtractor::extract_file` overrides to avoid
+/// duplicating the pattern across every markup extractor.
+pub(crate) async fn extract_file_with_image_resolution(
+    extractor: &(dyn crate::plugins::DocumentExtractor + Send + Sync),
+    path: &Path,
+    mime_type: &str,
+    config: &ExtractionConfig,
+) -> crate::Result<InternalDocument> {
+    let bytes = crate::core::io::open_file_bytes(path)?;
+    let mut doc = extractor.extract_bytes(&bytes, mime_type, config).await?;
+    if let Some(base_dir) = path.parent() {
+        resolve_image_uris(&mut doc, base_dir, config);
+    }
+    Ok(doc)
+}
+
 /// Resolve image URIs in an `InternalDocument` to actual image data.
 ///
 /// Iterates over all `UriKind::Image` entries, resolves them relative to
