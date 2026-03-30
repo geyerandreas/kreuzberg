@@ -7,8 +7,8 @@
 //! All string-returning functions return pointers to C strings that MUST be freed
 //! with `kreuzberg_free_string()`.
 
-use crate::helpers::{clear_last_error, set_last_error};
 use crate::ffi_panic_guard;
+use crate::helpers::{clear_last_error, set_last_error};
 use kreuzberg::types::ExtractionResult;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
@@ -225,10 +225,7 @@ mod tests {
             "JSON output should contain the content"
         );
         // Pretty-printed JSON should have newlines
-        assert!(
-            json_str.contains('\n'),
-            "Pretty-printed JSON should contain newlines"
-        );
+        assert!(json_str.contains('\n'), "Pretty-printed JSON should contain newlines");
 
         unsafe {
             crate::kreuzberg_free_string(result);

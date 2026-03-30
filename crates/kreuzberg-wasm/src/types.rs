@@ -101,8 +101,8 @@ pub fn results_to_js_value(results: &[ExtractionResult]) -> Result<JsValue, JsVa
 /// ```
 #[wasm_bindgen(js_name = serializeToToon)]
 pub fn serialize_to_toon(result: JsValue) -> Result<String, JsValue> {
-    let json_value: serde_json::Value =
-        serde_wasm_bindgen::from_value(result).map_err(|e| JsValue::from_str(&format!("Failed to parse result: {e}")))?;
+    let json_value: serde_json::Value = serde_wasm_bindgen::from_value(result)
+        .map_err(|e| JsValue::from_str(&format!("Failed to parse result: {e}")))?;
     let snake_value = camel_to_snake(json_value);
     let rust_result: ExtractionResult = serde_json::from_value(snake_value)
         .map_err(|e| JsValue::from_str(&format!("Failed to convert result: {e}")))?;
@@ -138,8 +138,8 @@ pub fn serialize_to_toon(result: JsValue) -> Result<String, JsValue> {
 /// ```
 #[wasm_bindgen(js_name = serializeToJson)]
 pub fn serialize_to_json(result: JsValue) -> Result<String, JsValue> {
-    let json_value: serde_json::Value =
-        serde_wasm_bindgen::from_value(result).map_err(|e| JsValue::from_str(&format!("Failed to parse result: {e}")))?;
+    let json_value: serde_json::Value = serde_wasm_bindgen::from_value(result)
+        .map_err(|e| JsValue::from_str(&format!("Failed to parse result: {e}")))?;
     let snake_value = camel_to_snake(json_value);
     let rust_result: ExtractionResult = serde_json::from_value(snake_value)
         .map_err(|e| JsValue::from_str(&format!("Failed to convert result: {e}")))?;

@@ -112,8 +112,6 @@ impl RenderState {
 /// `start < current_pos`) are skipped, matching the existing renderer behavior.
 ///
 /// Plain (unannotated) text segments are passed through without transformation.
-/// Use [`render_annotated_text_escaped`] when plain segments also need processing
-/// (e.g. HTML escaping).
 pub(crate) fn render_annotated_text(
     text: &str,
     annotations: &[TextAnnotation],
@@ -298,7 +296,7 @@ pub(crate) fn render_table_markdown(cells: &[Vec<String>]) -> String {
         for col in 0..num_cols {
             out.push(' ');
             let content = header.get(col).map(|s| s.as_str()).unwrap_or("");
-            out.push_str(&content.replace('|', "\\|"));
+            push_escaped_pipe(&mut out, content);
             out.push_str(" |");
         }
         out.push('\n');
@@ -317,13 +315,29 @@ pub(crate) fn render_table_markdown(cells: &[Vec<String>]) -> String {
         for col in 0..num_cols {
             out.push(' ');
             let content = row.get(col).map(|s| s.as_str()).unwrap_or("");
-            out.push_str(&content.replace('|', "\\|"));
+            push_escaped_pipe(&mut out, content);
             out.push_str(" |");
         }
         out.push('\n');
     }
 
     out
+}
+
+/// Push `content` into `out`, escaping pipe characters. Avoids allocation when
+/// there are no pipes (the common case for table cell content).
+fn push_escaped_pipe(out: &mut String, content: &str) {
+    if memchr::memchr(b'|', content.as_bytes()).is_none() {
+        out.push_str(content);
+    } else {
+        for ch in content.chars() {
+            if ch == '|' {
+                out.push_str("\\|");
+            } else {
+                out.push(ch);
+            }
+        }
+    }
 }
 
 /// Render a table as plain space-separated text.
@@ -357,14 +371,14 @@ pub(crate) fn ensure_trailing_newline(out: &mut String) {
 }
 
 /// Trim trailing whitespace, then ensure exactly one trailing newline.
-pub(crate) fn finalize_output(out: String) -> String {
-    let trimmed = out.trim_end();
-    if trimmed.is_empty() {
+pub(crate) fn finalize_output(mut out: String) -> String {
+    let trimmed_len = out.trim_end().len();
+    if trimmed_len == 0 {
         return String::new();
     }
-    let mut result = trimmed.to_string();
-    result.push('\n');
-    result
+    out.truncate(trimmed_len);
+    out.push('\n');
+    out
 }
 
 /// Prefix every line of `text` with the blockquote prefix (`> ` repeated N times).

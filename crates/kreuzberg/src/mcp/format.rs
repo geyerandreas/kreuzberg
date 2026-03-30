@@ -28,7 +28,10 @@ pub(super) fn format_extraction_result(result: &KreuzbergResult) -> String {
 ///
 /// Serializes the full `ExtractionResult` to TOON wire format.
 pub(super) fn format_extraction_result_toon(result: &KreuzbergResult) -> String {
-    serde_toon::to_string(result).unwrap_or_default()
+    serde_toon::to_string(result).unwrap_or_else(|e| {
+        tracing::error!(error = %e, "Failed to serialize extraction result to TOON, falling back to JSON");
+        format_extraction_result(result)
+    })
 }
 
 /// Format extraction result using the specified wire format.

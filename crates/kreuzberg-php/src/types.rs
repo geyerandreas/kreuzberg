@@ -370,8 +370,7 @@ impl ExtractionResult {
         use serde_json::json;
 
         // Serialize the full result to JSON before destructuring for serialize_to_toon/json
-        let result_json = serde_json::to_string(&result)
-            .map_err(|e| format!("Failed to serialize result: {}", e))?;
+        let result_json = serde_json::to_string(&result).map_err(|e| format!("Failed to serialize result: {}", e))?;
 
         let mut metadata_obj = serde_json::Map::new();
 

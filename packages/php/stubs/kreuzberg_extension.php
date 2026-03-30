@@ -360,4 +360,3 @@ function kreuzberg_pdf_page_iterator_next(mixed $handle): ?string
 function kreuzberg_pdf_page_iterator_free(mixed $handle): void
 {
 }
-

@@ -449,7 +449,7 @@ pub fn build_comrak_ast<'a>(doc: &InternalDocument, arena: &'a comrak::Arena<'a>
     let mut state = RenderState::default();
     let consolidated = consolidate_paragraphs(&doc.elements);
 
-    tracing::info!(
+    tracing::debug!(
         total_elements = doc.elements.len(),
         consolidated_elements = consolidated.len(),
         tables = doc.tables.len(),

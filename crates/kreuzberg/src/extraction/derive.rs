@@ -657,7 +657,17 @@ pub fn derive_extraction_result(
         crate::core::config::OutputFormat::Djot => Some(crate::rendering::render_djot(&doc)),
         crate::core::config::OutputFormat::Html => Some(crate::rendering::render_html(&doc)),
         crate::core::config::OutputFormat::Structured => None,
-        crate::core::config::OutputFormat::Custom(_) => None, // TODO: registry lookup
+        crate::core::config::OutputFormat::Custom(ref name) => {
+            let registry = crate::plugins::registry::get_renderer_registry();
+            let registry = registry.read();
+            match registry.render(name, &doc) {
+                Ok(rendered) => Some(rendered),
+                Err(e) => {
+                    tracing::warn!(renderer = %name, error = %e, "Custom renderer failed, falling back to plain");
+                    None
+                }
+            }
+        }
     };
 
     // 4. Build pages and OCR elements BEFORE document structure derivation,

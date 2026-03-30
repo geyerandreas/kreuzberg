@@ -34,8 +34,7 @@ use crate::config::ExtractionConfig;
 pub fn serialize_to_toon(result_json: &str) -> PyResult<String> {
     let result: kreuzberg::ExtractionResult = serde_json::from_str(result_json)
         .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to parse result JSON: {}", e)))?;
-    kreuzberg::serialize_to_toon(&result)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
+    kreuzberg::serialize_to_toon(&result).map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
 }
 
 /// Serialize an extraction result JSON string to pretty-printed JSON.
@@ -63,8 +62,7 @@ pub fn serialize_to_toon(result_json: &str) -> PyResult<String> {
 pub fn serialize_to_json(result_json: &str) -> PyResult<String> {
     let result: kreuzberg::ExtractionResult = serde_json::from_str(result_json)
         .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(format!("Failed to parse result JSON: {}", e)))?;
-    kreuzberg::serialize_to_json(&result)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
+    kreuzberg::serialize_to_json(&result).map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
 }
 
 /// Serialize an ExtractionConfig to JSON string.

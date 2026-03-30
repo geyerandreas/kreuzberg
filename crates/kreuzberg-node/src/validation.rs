@@ -970,20 +970,14 @@ pub fn config_merge_internal(base_json: String, override_json: String) -> Result
 /// ```
 #[napi(js_name = "serializeToToon")]
 pub fn serialize_to_toon(result: crate::result::JsExtractionResult) -> Result<String> {
-    let rust_result: kreuzberg::ExtractionResult = serde_json::from_value(
-        serde_json::to_value(&result).map_err(|e| {
+    let rust_result: kreuzberg::ExtractionResult =
+        serde_json::from_value(serde_json::to_value(&result).map_err(|e| {
             napi::Error::new(
                 napi::Status::GenericFailure,
                 format!("Failed to serialize result: {}", e),
             )
-        })?,
-    )
-    .map_err(|e| {
-        napi::Error::new(
-            napi::Status::GenericFailure,
-            format!("Failed to convert result: {}", e),
-        )
-    })?;
+        })?)
+        .map_err(|e| napi::Error::new(napi::Status::GenericFailure, format!("Failed to convert result: {}", e)))?;
 
     kreuzberg::serialize_to_toon(&rust_result).map_err(|e| {
         napi::Error::new(
@@ -1021,20 +1015,14 @@ pub fn serialize_to_toon(result: crate::result::JsExtractionResult) -> Result<St
 /// ```
 #[napi(js_name = "serializeToJson")]
 pub fn serialize_to_json(result: crate::result::JsExtractionResult) -> Result<String> {
-    let rust_result: kreuzberg::ExtractionResult = serde_json::from_value(
-        serde_json::to_value(&result).map_err(|e| {
+    let rust_result: kreuzberg::ExtractionResult =
+        serde_json::from_value(serde_json::to_value(&result).map_err(|e| {
             napi::Error::new(
                 napi::Status::GenericFailure,
                 format!("Failed to serialize result: {}", e),
             )
-        })?,
-    )
-    .map_err(|e| {
-        napi::Error::new(
-            napi::Status::GenericFailure,
-            format!("Failed to convert result: {}", e),
-        )
-    })?;
+        })?)
+        .map_err(|e| napi::Error::new(napi::Status::GenericFailure, format!("Failed to convert result: {}", e)))?;
 
     kreuzberg::serialize_to_json(&rust_result).map_err(|e| {
         napi::Error::new(

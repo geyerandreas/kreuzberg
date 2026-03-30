@@ -18,11 +18,13 @@ pub fn render_markdown(doc: &InternalDocument) -> String {
     format_commonmark(root, &options, &mut output).expect("comrak formatting should not fail");
 
     // Trim trailing whitespace but keep single trailing newline
-    let trimmed = output.trim_end();
-    if trimmed.is_empty() {
+    let trimmed_len = output.trim_end().len();
+    if trimmed_len == 0 {
         return String::new();
     }
-    format!("{}\n", trimmed)
+    output.truncate(trimmed_len);
+    output.push('\n');
+    output
 }
 
 /// Shared comrak options with all GFM extensions enabled.

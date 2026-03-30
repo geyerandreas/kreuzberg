@@ -162,8 +162,7 @@ pub use embeddings::{EMBEDDING_PRESETS, EmbeddingPreset, download_model, get_pre
 /// TOON is a token-efficient alternative to JSON for LLM prompts.
 /// Losslessly convertible to/from JSON but uses fewer tokens.
 pub fn serialize_to_toon(result: &ExtractionResult) -> Result<String> {
-    serde_toon::to_string(result)
-        .map_err(|e| KreuzbergError::serialization(format!("TOON serialization failed: {e}")))
+    serde_toon::to_string(result).map_err(|e| KreuzbergError::serialization(format!("TOON serialization failed: {e}")))
 }
 
 /// Serialize an [`ExtractionResult`] to pretty-printed JSON.
