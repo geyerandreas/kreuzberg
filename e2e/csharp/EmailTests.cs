@@ -7,8 +7,7 @@ using Kreuzberg;
 using Xunit;
 using Kreuzberg.E2E;
 
-namespace Kreuzberg.E2E.Email
-{
+namespace Kreuzberg.E2E.Email {
     public class EmailTests
     {
         [SkippableFact]
@@ -62,6 +61,18 @@ namespace Kreuzberg.E2E.Email
             var result = KreuzbergClient.ExtractFileSync(documentPath, config);
             TestHelpers.AssertExpectedMime(result, new[] { "application/vnd.ms-outlook" });
             TestHelpers.AssertMinContentLength(result, 10);
+        }
+
+        [SkippableFact]
+        public void EmailPstEmpty()
+        {
+            TestHelpers.SkipIfLegacyOfficeDisabled("email/empty.pst");
+            TestHelpers.SkipIfOfficeTestOnWindows("email/empty.pst");
+            var documentPath = TestHelpers.EnsureDocument("email/empty.pst", true);
+            var config = TestHelpers.BuildConfig(null);
+
+            var result = KreuzbergClient.ExtractFileSync(documentPath, config);
+            TestHelpers.AssertExpectedMime(result, new[] { "application/vnd.ms-outlook-pst" });
         }
 
         [SkippableFact]
