@@ -823,6 +823,7 @@ impl TryFrom<JsExtractionResult> for RustExtractionResult {
                     .collect()
             }),
             children: None,
+            uris: None,
             formatted_content: None,
         })
     }

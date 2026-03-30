@@ -747,6 +747,7 @@ mod tests {
                 }],
                 annotations: None,
                 children: None,
+                uris: None,
                 formatted_content: None,
             };
 

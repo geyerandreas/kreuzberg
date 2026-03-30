@@ -94,6 +94,7 @@ pub async fn process_images_with_ocr(
                     processing_warnings: Vec::new(),
                     annotations: None,
                     children: None,
+                    uris: None,
                     formatted_content: None,
                 };
                 images[idx].ocr_result = Some(Box::new(extraction_result));

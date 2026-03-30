@@ -461,6 +461,7 @@ mod tests {
             processing_warnings: vec![],
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         }
     }
@@ -735,6 +736,7 @@ mod tests {
             processing_warnings: vec![],
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 

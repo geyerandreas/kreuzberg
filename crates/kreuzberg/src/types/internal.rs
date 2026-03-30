@@ -122,6 +122,9 @@ pub struct InternalDocument {
     /// Extracted tables (structured data). Referenced by index from `ElementKind::Table`.
     pub tables: Vec<Table>,
 
+    /// URIs/links discovered during extraction (hyperlinks, image refs, citations, etc.).
+    pub uris: Vec<super::uri::Uri>,
+
     /// Archive children: fully-extracted results for files within an archive.
     ///
     /// Only populated by archive extractors (ZIP, TAR, 7z, GZIP) when recursive
@@ -155,6 +158,7 @@ impl InternalDocument {
             metadata: Metadata::default(),
             images: Vec::new(),
             tables: Vec::new(),
+            uris: Vec::new(),
             children: None,
             mime_type: Cow::Borrowed("application/octet-stream"),
             processing_warnings: Vec::new(),
@@ -193,6 +197,11 @@ impl InternalDocument {
         let idx = self.images.len() as u32;
         self.images.push(image);
         idx
+    }
+
+    /// Push a URI discovered during extraction.
+    pub fn push_uri(&mut self, uri: super::uri::Uri) {
+        self.uris.push(uri);
     }
 
     /// Concatenate all element text into a single string, separated by newlines.

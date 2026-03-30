@@ -153,6 +153,15 @@ pub struct ExtractionResult {
     #[serde(default)]
     pub children: Option<Vec<ArchiveEntry>>,
 
+    /// URIs/links discovered during document extraction.
+    ///
+    /// Contains hyperlinks, image references, citations, email addresses, and
+    /// other URI-like references found in the document. Always extracted when
+    /// present in the source document.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub uris: Option<Vec<super::uri::Uri>>,
+
     /// Pre-rendered content in the requested output format.
     ///
     /// Populated during `derive_extraction_result` before tree derivation consumes

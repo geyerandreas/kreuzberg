@@ -127,6 +127,7 @@ machine learning that uses neural networks with multiple layers.
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 
@@ -167,6 +168,7 @@ machine learning that uses neural networks with multiple layers.
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 
@@ -203,6 +205,7 @@ machine learning that uses neural networks with multiple layers.
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 
@@ -239,6 +242,7 @@ machine learning that uses neural networks with multiple layers.
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 
@@ -286,6 +290,7 @@ machine learning that uses neural networks with multiple layers.
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 
@@ -322,6 +327,7 @@ machine learning that uses neural networks with multiple layers.
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 
@@ -344,6 +350,7 @@ machine learning that uses neural networks with multiple layers.
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 

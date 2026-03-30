@@ -80,6 +80,11 @@ impl InternalDocumentBuilder {
         self.doc.annotations = Some(annotations);
     }
 
+    /// Push a URI discovered during extraction.
+    pub fn push_uri(&mut self, uri: super::uri::Uri) {
+        self.doc.push_uri(uri);
+    }
+
     /// Consume the builder and return the constructed `InternalDocument`.
     pub fn build(self) -> InternalDocument {
         if self.depth != 0 {

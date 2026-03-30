@@ -136,7 +136,8 @@ mod tests {
 	            processing_warnings: Vec::new(),
 	            annotations: None,
 	            children: None,
-	            formatted_content: None,
+	            uris: None,
+            formatted_content: None,
 	        };
 
         processor.process(&mut result, &config).await.unwrap();
@@ -173,6 +174,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 
@@ -217,6 +219,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 
@@ -256,6 +259,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 
@@ -278,6 +282,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 

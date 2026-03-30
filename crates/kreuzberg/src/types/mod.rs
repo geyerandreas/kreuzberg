@@ -14,6 +14,7 @@ pub mod ocr_elements;
 pub mod page;
 pub mod serde_helpers;
 pub mod tables;
+pub mod uri;
 
 // Re-export all types for backward compatibility
 pub use annotations::*;
@@ -28,6 +29,7 @@ pub use metadata::*;
 pub use ocr_elements::*;
 pub use page::*;
 pub use tables::*;
+pub use uri::*;
 
 #[cfg(test)]
 mod tests {

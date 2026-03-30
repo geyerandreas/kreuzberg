@@ -458,6 +458,7 @@ impl OcrBackend for PaddleOcrBackend {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         })
     }

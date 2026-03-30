@@ -191,6 +191,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 
@@ -219,6 +220,7 @@ mod tests {
             processing_warnings: Vec::new(),
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 

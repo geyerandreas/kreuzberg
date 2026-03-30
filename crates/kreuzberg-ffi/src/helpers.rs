@@ -102,6 +102,7 @@ pub fn to_c_extraction_result(result: ExtractionResult) -> std::result::Result<*
         annotations,
         formatted_content: _,
         children: _,
+        uris: _,
     } = result;
 
     let sanitized_content = if content.contains('\0') {
@@ -487,6 +488,7 @@ mod tests {
             processing_warnings: vec![],
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 
@@ -534,6 +536,7 @@ mod tests {
             processing_warnings: vec![],
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 
@@ -591,6 +594,7 @@ mod tests {
             processing_warnings: vec![],
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 
@@ -683,6 +687,7 @@ mod tests {
             processing_warnings: vec![],
             annotations: None,
             children: None,
+            uris: None,
             formatted_content: None,
         };
 

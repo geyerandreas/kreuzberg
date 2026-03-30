@@ -677,6 +677,9 @@ pub fn derive_extraction_result(
     // Convert images
     let images = if doc.images.is_empty() { None } else { Some(doc.images) };
 
+    // Transfer URIs
+    let uris = if doc.uris.is_empty() { None } else { Some(doc.uris) };
+
     ExtractionResult {
         content,
         mime_type,
@@ -696,6 +699,7 @@ pub fn derive_extraction_result(
         processing_warnings: std::mem::take(&mut doc.processing_warnings),
         annotations: std::mem::take(&mut doc.annotations),
         children: std::mem::take(&mut doc.children),
+        uris,
         formatted_content,
     }
 }
