@@ -13,7 +13,7 @@ use crate::core::config::ExtractionConfig;
 use crate::plugins::{DocumentExtractor, Plugin};
 use crate::types::internal::InternalDocument;
 use crate::types::internal_builder::InternalDocumentBuilder;
-use crate::types::uri::{Uri, UriKind, classify_uri};
+use crate::types::uri::{Uri, UriKind};
 use crate::types::{Metadata, Table};
 use async_trait::async_trait;
 use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};

@@ -5,7 +5,7 @@ use comrak::{Arena, format_html};
 use crate::types::internal::InternalDocument;
 
 use super::comrak_bridge::build_comrak_ast;
-use super::new_markdown::comrak_options;
+use super::markdown::comrak_options;
 
 /// Render an `InternalDocument` to HTML5.
 pub fn render_html(doc: &InternalDocument) -> String {

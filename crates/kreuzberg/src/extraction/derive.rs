@@ -678,8 +678,14 @@ pub fn derive_extraction_result(
     // Convert images
     let images = if doc.images.is_empty() { None } else { Some(doc.images) };
 
-    // Transfer URIs
-    let uris = if doc.uris.is_empty() { None } else { Some(doc.uris) };
+    // Transfer URIs, deduplicating by (url, kind) pair
+    let uris = if doc.uris.is_empty() {
+        None
+    } else {
+        let mut seen = ahash::AHashSet::with_capacity(doc.uris.len());
+        doc.uris.retain(|uri| seen.insert((uri.url.clone(), uri.kind)));
+        Some(doc.uris)
+    };
 
     ExtractionResult {
         content,

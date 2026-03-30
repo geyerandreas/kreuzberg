@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 /// Represents any link, reference, or resource pointer found during extraction.
 /// The `kind` field classifies the URI semantically, while `label` carries
 /// optional human-readable display text.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
 pub struct Uri {
     /// The URL or path string.

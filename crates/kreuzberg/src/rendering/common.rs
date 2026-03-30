@@ -100,16 +100,6 @@ impl RenderState {
     pub(crate) fn in_blockquote(&self) -> bool {
         self.blockquote_depth() > 0
     }
-
-    /// Peek at the innermost list to check if it is ordered.
-    pub(crate) fn innermost_list_ordered(&self) -> bool {
-        for (_, kind) in self.stack.iter().rev() {
-            if let NestingKind::List { ordered, .. } = kind {
-                return *ordered;
-            }
-        }
-        false
-    }
 }
 
 // ============================================================================
@@ -130,17 +120,6 @@ pub(crate) fn render_annotated_text(
     emit: impl Fn(&str, &AnnotationKind) -> String,
 ) -> String {
     render_annotated_text_with_plain(text, annotations, emit, |s| s.to_string())
-}
-
-/// Like [`render_annotated_text`] but also transforms unannotated text spans
-/// through the `plain` callback. Used by the HTML renderer to escape plain text.
-pub(crate) fn render_annotated_text_escaped(
-    text: &str,
-    annotations: &[TextAnnotation],
-    emit: impl Fn(&str, &AnnotationKind) -> String,
-    plain: impl Fn(&str) -> String,
-) -> String {
-    render_annotated_text_with_plain(text, annotations, emit, plain)
 }
 
 fn render_annotated_text_with_plain(
@@ -361,79 +340,9 @@ pub(crate) fn render_table_plain(cells: &[Vec<String>]) -> String {
     out
 }
 
-/// Render a table as HTML.
-pub(crate) fn render_table_html(cells: &[Vec<String>]) -> String {
-    if cells.is_empty() {
-        return String::new();
-    }
-    let num_cols = cells.iter().map(|r| r.len()).max().unwrap_or(0);
-    if num_cols == 0 {
-        return String::new();
-    }
-
-    let mut out = String::new();
-    out.push_str("<table>\n");
-
-    // Header
-    if let Some(header) = cells.first() {
-        out.push_str("<thead>\n<tr>\n");
-        for col in 0..num_cols {
-            let content = header.get(col).map(|s| s.as_str()).unwrap_or("");
-            out.push_str("<th>");
-            out.push_str(&html_escape(content));
-            out.push_str("</th>\n");
-        }
-        out.push_str("</tr>\n</thead>\n");
-    }
-
-    // Body
-    if cells.len() > 1 {
-        out.push_str("<tbody>\n");
-        for row in cells.iter().skip(1) {
-            out.push_str("<tr>\n");
-            for col in 0..num_cols {
-                let content = row.get(col).map(|s| s.as_str()).unwrap_or("");
-                out.push_str("<td>");
-                out.push_str(&html_escape(content));
-                out.push_str("</td>\n");
-            }
-            out.push_str("</tr>\n");
-        }
-        out.push_str("</tbody>\n");
-    }
-
-    out.push_str("</table>");
-    out
-}
-
 /// Render a table as djot pipe table (same syntax as GFM).
 pub(crate) fn render_table_djot(cells: &[Vec<String>]) -> String {
-    // Djot tables use the same pipe syntax as GFM.
     render_table_markdown(cells)
-}
-
-// ============================================================================
-// HTML Escape
-// ============================================================================
-
-/// Escape HTML special characters (`&`, `<`, `>`, `"`, `'`).
-pub(crate) fn html_escape(text: &str) -> Cow<'_, str> {
-    if !text.bytes().any(|b| matches!(b, b'&' | b'<' | b'>' | b'"' | b'\'')) {
-        return Cow::Borrowed(text);
-    }
-
-    let mut result = String::with_capacity(text.len() + 16);
-    for ch in text.chars() {
-        match ch {
-            '&' => result.push_str("&amp;"),
-            '<' => result.push_str("&lt;"),
-            '>' => result.push_str("&gt;"),
-            '"' => result.push_str("&quot;"),
-            '\'' => result.push_str("&#x27;"),
-            _ => result.push(ch),
-        }
-    }
-    Cow::Owned(result)
 }
 
 // ============================================================================
@@ -552,14 +461,6 @@ pub(crate) fn get_admonition_title(elem: &InternalElement) -> Option<&str> {
         .and_then(|attrs| attrs.get("title").map(|s| s.as_str()))
 }
 
-/// Get the raw block format from attributes.
-pub(crate) fn get_raw_format(elem: &InternalElement) -> &str {
-    elem.attributes
-        .as_ref()
-        .and_then(|attrs| attrs.get("format").map(|s| s.as_str()))
-        .unwrap_or("")
-}
-
 /// Get metadata entries from the text (stored as `key: value` lines).
 pub(crate) fn parse_metadata_entries(text: &str) -> Vec<(&str, &str)> {
     text.lines()
@@ -580,35 +481,6 @@ mod tests {
     // ========================================================================
     // html_escape tests
     // ========================================================================
-
-    #[test]
-    fn test_html_escape_no_special_chars() {
-        let result = html_escape("Hello world");
-        assert_eq!(result.as_ref(), "Hello world");
-        // Should return borrowed when no escaping needed
-        assert!(matches!(result, Cow::Borrowed(_)));
-    }
-
-    #[test]
-    fn test_html_escape_ampersand() {
-        assert_eq!(html_escape("a & b").as_ref(), "a &amp; b");
-    }
-
-    #[test]
-    fn test_html_escape_angle_brackets() {
-        assert_eq!(html_escape("<script>").as_ref(), "&lt;script&gt;");
-    }
-
-    #[test]
-    fn test_html_escape_quotes() {
-        assert_eq!(html_escape("\"hello\"").as_ref(), "&quot;hello&quot;");
-        assert_eq!(html_escape("it's").as_ref(), "it&#x27;s");
-    }
-
-    #[test]
-    fn test_html_escape_all_special() {
-        assert_eq!(html_escape("<>&\"'").as_ref(), "&lt;&gt;&amp;&quot;&#x27;");
-    }
 
     // ========================================================================
     // finalize_output tests
@@ -897,25 +769,6 @@ mod tests {
         let cells = vec![vec!["A|B".to_string()], vec!["C|D".to_string()]];
         let out = render_table_markdown(&cells);
         assert!(out.contains("A\\|B"), "pipe should be escaped, got: {}", out);
-    }
-
-    #[test]
-    fn test_render_table_html_basic() {
-        let cells = vec![
-            vec!["H1".to_string(), "H2".to_string()],
-            vec!["D1".to_string(), "D2".to_string()],
-        ];
-        let out = render_table_html(&cells);
-        assert!(out.contains("<table>"), "got: {}", out);
-        assert!(out.contains("<th>H1</th>"), "got: {}", out);
-        assert!(out.contains("<td>D1</td>"), "got: {}", out);
-        assert!(out.contains("</table>"), "got: {}", out);
-    }
-
-    #[test]
-    fn test_render_table_html_empty() {
-        let out = render_table_html(&[]);
-        assert_eq!(out, "");
     }
 
     #[test]

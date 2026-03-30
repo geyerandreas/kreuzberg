@@ -10,7 +10,7 @@ use crate::plugins::{DocumentExtractor, Plugin};
 use crate::types::Metadata;
 use crate::types::internal::InternalDocument;
 use crate::types::internal_builder::InternalDocumentBuilder;
-use crate::types::uri::{Uri, UriKind, classify_uri};
+use crate::types::uri::{Uri, classify_uri};
 use async_trait::async_trait;
 use jotdown::{Container, Event, Parser};
 use std::borrow::Cow;
@@ -282,13 +282,14 @@ impl DjotExtractor {
                             } else {
                                 None
                             };
-                            // Collect URI
+                            // Collect URI (compute kind before moving url)
                             if !url.is_empty() {
+                                let kind = classify_uri(&url);
                                 b.push_uri(Uri {
-                                    url: url.clone(),
+                                    url,
                                     label: label_text.filter(|s| !s.is_empty()),
                                     page: None,
-                                    kind: classify_uri(&url),
+                                    kind,
                                 });
                             }
                         }
@@ -410,7 +411,11 @@ impl DjotExtractor {
                     let src_str = src.as_ref();
                     if !src_str.is_empty() {
                         let trimmed = image_alt.trim();
-                        let label = if trimmed.is_empty() { None } else { Some(trimmed.to_string()) };
+                        let label = if trimmed.is_empty() {
+                            None
+                        } else {
+                            Some(trimmed.to_string())
+                        };
                         b.push_uri(Uri::image(src_str, label));
                     }
                     image_alt.clear();

@@ -199,9 +199,15 @@ impl InternalDocument {
         idx
     }
 
+    /// Maximum number of URIs to collect per document (DoS prevention).
+    const MAX_URIS: usize = 100_000;
+
     /// Push a URI discovered during extraction.
+    /// Silently drops URIs beyond `MAX_URIS` to prevent unbounded memory growth.
     pub fn push_uri(&mut self, uri: super::uri::Uri) {
-        self.uris.push(uri);
+        if self.uris.len() < Self::MAX_URIS {
+            self.uris.push(uri);
+        }
     }
 
     /// Concatenate all element text into a single string, separated by newlines.

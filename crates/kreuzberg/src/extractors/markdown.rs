@@ -300,13 +300,14 @@ impl MarkdownExtractor {
                             } else {
                                 None
                             };
-                            // Push URI
+                            // Push URI (compute kind before moving url)
                             if !url.is_empty() {
+                                let kind = classify_uri(&url);
                                 b.push_uri(Uri {
-                                    url: url.clone(),
+                                    url,
                                     label: label_text.filter(|s| !s.is_empty()),
                                     page: None,
-                                    kind: classify_uri(&url),
+                                    kind,
                                 });
                             }
                         }
