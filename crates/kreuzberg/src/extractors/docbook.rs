@@ -145,8 +145,7 @@ fn build_docbook_internal_document(content: &str) -> Result<InternalDocument> {
                                 if let crate::types::document_structure::AnnotationKind::Link { url, .. } = &ann.kind
                                     && !url.is_empty()
                                 {
-                                    let label =
-                                        text.get(ann.start as usize..ann.end as usize).map(|s| s.to_string());
+                                    let label = text.get(ann.start as usize..ann.end as usize).map(|s| s.to_string());
                                     builder.push_uri(Uri::hyperlink(url, label));
                                 }
                             }

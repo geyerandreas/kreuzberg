@@ -290,15 +290,15 @@ impl EpubExtractor {
                         }
                         NodeContent::Image { description, src, .. } => {
                             // Collect image URI
-                            if let Some(img_src) = src {
-                                if !img_src.is_empty() {
-                                    builder.push_uri(Uri {
-                                        url: img_src.clone(),
-                                        label: description.clone(),
-                                        page: Some((index + 1) as u32),
-                                        kind: UriKind::Image,
-                                    });
-                                }
+                            if let Some(img_src) = src
+                                && !img_src.is_empty()
+                            {
+                                builder.push_uri(Uri {
+                                    url: img_src.clone(),
+                                    label: description.clone(),
+                                    page: Some((index + 1) as u32),
+                                    kind: UriKind::Image,
+                                });
                             }
                             // Try to extract image binary from the EPUB ZIP.
                             // Image src is relative to the XHTML file, not the manifest dir.
@@ -392,21 +392,25 @@ fn collect_annotation_uris(
     use crate::types::document_structure::AnnotationKind;
 
     for ann in annotations {
-        if let AnnotationKind::Link { url, .. } = &ann.kind {
-            if !url.is_empty() {
-                let label = if ann.start < ann.end && (ann.end as usize) <= text.len() {
-                    let slice = &text[ann.start as usize..ann.end as usize];
-                    if slice.is_empty() { None } else { Some(slice.to_string()) }
-                } else {
+        if let AnnotationKind::Link { url, .. } = &ann.kind
+            && !url.is_empty()
+        {
+            let label = if ann.start < ann.end && (ann.end as usize) <= text.len() {
+                let slice = &text[ann.start as usize..ann.end as usize];
+                if slice.is_empty() {
                     None
-                };
-                builder.push_uri(Uri {
-                    url: url.clone(),
-                    label,
-                    page: None,
-                    kind: classify_uri(url),
-                });
-            }
+                } else {
+                    Some(slice.to_string())
+                }
+            } else {
+                None
+            };
+            builder.push_uri(Uri {
+                url: url.clone(),
+                label,
+                page: None,
+                kind: classify_uri(url),
+            });
         }
     }
 }

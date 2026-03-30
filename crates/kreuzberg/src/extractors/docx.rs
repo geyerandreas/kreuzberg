@@ -296,7 +296,7 @@ fn build_internal_document(doc: &crate::extraction::docx::parser::Document) -> I
     use crate::types::document_structure::ContentLayer;
     use crate::types::extraction::BoundingBox;
     use crate::types::internal::{ElementKind, InternalElement, RelationshipKind, RelationshipTarget};
-    use crate::types::uri::{Uri, UriKind};
+    use crate::types::uri::Uri;
 
     let mut builder = InternalDocumentBuilder::new("docx");
 
@@ -384,7 +384,8 @@ fn build_internal_document(doc: &crate::extraction::docx::parser::Document) -> I
                             current_list_numbering_id = Some(nid);
                             current_list_ordered = is_ordered;
                         }
-                        let li_idx = builder.push_list_item(&text, current_list_ordered, annotations.clone(), None, None);
+                        let li_idx =
+                            builder.push_list_item(&text, current_list_ordered, annotations.clone(), None, None);
                         Some(li_idx)
                     } else {
                         None
@@ -546,12 +547,12 @@ fn build_internal_document(doc: &crate::extraction::docx::parser::Document) -> I
                 let img_elem_idx = builder.push_element(elem);
 
                 // Store the resolved image path as an attribute on the image element
-                if let Some(ref rid) = drawing.image_ref {
-                    if let Some(path) = doc.image_relationships.get(rid) {
-                        let mut attrs = AHashMap::new();
-                        attrs.insert("image_uri".to_string(), path.clone());
-                        builder.set_attributes(img_elem_idx, attrs);
-                    }
+                if let Some(ref rid) = drawing.image_ref
+                    && let Some(path) = doc.image_relationships.get(rid)
+                {
+                    let mut attrs = AHashMap::new();
+                    attrs.insert("image_uri".to_string(), path.clone());
+                    builder.set_attributes(img_elem_idx, attrs);
                 }
             }
         }

@@ -452,12 +452,50 @@ impl RstExtractor {
                 i = end + 2;
                 continue;
             }
-            // `interpreted text`
+            // `interpreted text` or `link text <url>`_  (RST inline hyperlink)
             if bytes[i] == b'`'
                 && (i + 1 >= len || bytes[i + 1] != b'`')
                 && let Some(end) = Self::find_closing_single_backtick(raw, i + 1)
             {
                 let inner = &raw[i + 1..end];
+                // Check for trailing `_ (hyperlink marker)
+                let after_close = end + 1; // position after closing backtick
+                if after_close < len && bytes[after_close] == b'_' {
+                    // RST inline hyperlink: `link text <url>`_
+                    if let Some(angle_start) = inner.rfind('<')
+                        && let Some(angle_end) = inner.rfind('>')
+                        && angle_end > angle_start
+                    {
+                        let url = inner[angle_start + 1..angle_end].trim().to_string();
+                        let link_text = inner[..angle_start].trim();
+                        let start = out.len() as u32;
+                        out.push_str(link_text);
+                        let end_off = out.len() as u32;
+                        if start < end_off {
+                            annotations.push(TextAnnotation {
+                                start,
+                                end: end_off,
+                                kind: AnnotationKind::Link { url, title: None },
+                            });
+                        }
+                        i = after_close + 1; // skip past the trailing _
+                        continue;
+                    }
+                    // Plain reference like `Python`_ — treat as code/interpreted text
+                    let start = out.len() as u32;
+                    out.push_str(inner);
+                    let end_off = out.len() as u32;
+                    if start < end_off {
+                        annotations.push(TextAnnotation {
+                            start,
+                            end: end_off,
+                            kind: AnnotationKind::Code,
+                        });
+                    }
+                    i = after_close + 1;
+                    continue;
+                }
+                // Regular interpreted text (no trailing _)
                 let start = out.len() as u32;
                 out.push_str(inner);
                 let end_off = out.len() as u32;
@@ -727,6 +765,32 @@ impl RstExtractor {
                 } else {
                     b.push_footnote_definition(&full_text, label, None);
                 }
+                continue;
+            }
+
+            // Reference target directives: .. _label: url
+            if trimmed.starts_with(".. _")
+                && let Some(colon_pos) = trimmed[4..].find(": ")
+            {
+                let label = &trimmed[4..4 + colon_pos];
+                let url = trimmed[4 + colon_pos + 2..].trim();
+                if !url.is_empty() && !label.is_empty() {
+                    let idx = b.push_paragraph(
+                        label,
+                        vec![TextAnnotation {
+                            start: 0,
+                            end: label.len() as u32,
+                            kind: AnnotationKind::Link {
+                                url: url.to_string(),
+                                title: None,
+                            },
+                        }],
+                        None,
+                        None,
+                    );
+                    let _ = idx;
+                }
+                i += 1;
                 continue;
             }
 

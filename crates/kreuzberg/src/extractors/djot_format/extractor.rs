@@ -8,9 +8,9 @@ use crate::Result;
 use crate::core::config::ExtractionConfig;
 use crate::plugins::{DocumentExtractor, Plugin};
 use crate::types::Metadata;
-use crate::types::uri::{Uri, UriKind, classify_uri};
 use crate::types::internal::InternalDocument;
 use crate::types::internal_builder::InternalDocumentBuilder;
+use crate::types::uri::{Uri, UriKind, classify_uri};
 use async_trait::async_trait;
 use jotdown::{Container, Event, Parser};
 use std::borrow::Cow;
@@ -61,6 +61,8 @@ impl DjotExtractor {
         let mut raw_text = String::new();
         let mut in_verbatim = false;
         let mut verbatim_start: u32 = 0;
+        let mut in_image = false;
+        let mut image_alt = String::new();
         let mut in_footnote = false;
         let mut footnote_label = String::new();
         let mut footnote_text = String::new();
@@ -379,18 +381,20 @@ impl DjotExtractor {
                     }
                 }
                 Event::Start(Container::Image(..), _) => {
-                    // Images in djot — will push element on End
+                    in_image = true;
+                    image_alt.clear();
                 }
                 Event::End(Container::Image(src, ..)) => {
-                    // Push a proper image element (no ExtractedImage data, use sentinel index)
+                    in_image = false;
                     use crate::types::document_structure::ContentLayer;
                     use crate::types::internal::{ElementKind, InternalElement, InternalElementId};
+                    let alt = image_alt.trim().to_string();
                     let kind = ElementKind::Image { image_index: u32::MAX };
-                    let id = InternalElementId::generate(kind.discriminant(), "", None, 0);
+                    let id = InternalElementId::generate(kind.discriminant(), &alt, None, 0);
                     b.push_element(InternalElement {
                         id,
                         kind,
-                        text: String::new(),
+                        text: alt,
                         depth: 0,
                         page: None,
                         bbox: None,
@@ -402,16 +406,14 @@ impl DjotExtractor {
                         ocr_confidence: None,
                         ocr_rotation: None,
                     });
-                    // Collect image URI
+                    // Collect image URI with alt text as label
                     let src_str = src.as_ref();
                     if !src_str.is_empty() {
-                        b.push_uri(Uri {
-                            url: src_str.to_string(),
-                            label: None,
-                            page: None,
-                            kind: UriKind::Image,
-                        });
+                        let trimmed = image_alt.trim();
+                        let label = if trimmed.is_empty() { None } else { Some(trimmed.to_string()) };
+                        b.push_uri(Uri::image(src_str, label));
                     }
+                    image_alt.clear();
                 }
                 Event::Start(Container::Footnote { label }, _) => {
                     in_footnote = true;
@@ -433,7 +435,9 @@ impl DjotExtractor {
                     b.push_footnote_ref(name, name, None);
                 }
                 Event::Str(s) => {
-                    if in_footnote {
+                    if in_image {
+                        image_alt.push_str(s);
+                    } else if in_footnote {
                         footnote_text.push_str(s);
                     } else if in_code_block {
                         code_text.push_str(s);

@@ -164,35 +164,35 @@ impl DocumentExtractor for BibtexExtractor {
                     let mut link_annotations = Vec::new();
                     let text_len = citation_text.len() as u32;
 
-                    if let Some(url) = entry_fields.get("url") {
-                        if !url.is_empty() {
-                            link_annotations.push(TextAnnotation {
-                                start: 0,
-                                end: text_len,
-                                kind: AnnotationKind::Link {
-                                    url: url.clone(),
-                                    title: Some(link_label.clone()),
-                                },
-                            });
-                        }
+                    if let Some(url) = entry_fields.get("url")
+                        && !url.is_empty()
+                    {
+                        link_annotations.push(TextAnnotation {
+                            start: 0,
+                            end: text_len,
+                            kind: AnnotationKind::Link {
+                                url: url.clone(),
+                                title: Some(link_label.clone()),
+                            },
+                        });
                     }
 
-                    if let Some(doi) = entry_fields.get("doi") {
-                        if !doi.is_empty() {
-                            let doi_url = if doi.starts_with("http") {
-                                doi.clone()
-                            } else {
-                                format!("https://doi.org/{doi}")
-                            };
-                            link_annotations.push(TextAnnotation {
-                                start: 0,
-                                end: text_len,
-                                kind: AnnotationKind::Link {
-                                    url: doi_url,
-                                    title: Some(link_label.clone()),
-                                },
-                            });
-                        }
+                    if let Some(doi) = entry_fields.get("doi")
+                        && !doi.is_empty()
+                    {
+                        let doi_url = if doi.starts_with("http") {
+                            doi.clone()
+                        } else {
+                            format!("https://doi.org/{doi}")
+                        };
+                        link_annotations.push(TextAnnotation {
+                            start: 0,
+                            end: text_len,
+                            kind: AnnotationKind::Link {
+                                url: doi_url,
+                                title: Some(link_label.clone()),
+                            },
+                        });
                     }
 
                     if !link_annotations.is_empty() {

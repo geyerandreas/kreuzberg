@@ -13,6 +13,7 @@
 //! - [`render_to_plain`] — Old tree-based plain text renderer
 
 pub(crate) mod common;
+mod comrak_bridge;
 mod djot;
 mod html;
 #[allow(clippy::module_inception)]
@@ -22,6 +23,7 @@ mod new_plain;
 mod plain;
 
 // New InternalDocument-based renderers
+pub use comrak_bridge::build_comrak_ast;
 pub use djot::render_djot;
 pub use html::render_html;
 pub use new_markdown::render_markdown;

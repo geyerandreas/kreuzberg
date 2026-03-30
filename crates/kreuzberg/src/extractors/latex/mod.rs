@@ -160,6 +160,21 @@ impl LatexExtractor {
             }
         }
 
+        // Handle \url{url} — URL is both content and link target
+        if let Some(after_url_cmd) = text.strip_prefix("\\url{")
+            && let Some((url, consumed)) = Self::read_braced_content(after_url_cmd)
+        {
+            let total = "\\url{".len() + consumed;
+            return Some((
+                AnnotationKind::Link {
+                    url: url.clone(),
+                    title: None,
+                },
+                url,
+                total,
+            ));
+        }
+
         None
     }
 
@@ -444,6 +459,7 @@ impl LatexExtractor {
                     || trimmed.starts_with("\\underline")
                     || trimmed.starts_with("\\texttt")
                     || trimmed.starts_with("\\href")
+                    || trimmed.starts_with("\\url")
                 {
                     // Extract footnotes
                     let mut line_text = trimmed.to_string();

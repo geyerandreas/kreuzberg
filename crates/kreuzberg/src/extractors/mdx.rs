@@ -195,6 +195,7 @@ impl MdxExtractor {
         let mut paragraph_annotations: Vec<TextAnnotation> = Vec::new();
         let mut in_paragraph = false;
         let mut heading_text = String::new();
+        let mut heading_annotations: Vec<TextAnnotation> = Vec::new();
         let mut heading_level: u8 = 0;
         let mut in_heading = false;
         let mut code_text = String::new();
@@ -206,6 +207,7 @@ impl MdxExtractor {
         let mut in_table_cell = false;
         let mut list_stack: Vec<bool> = Vec::new();
         let mut list_item_text = String::new();
+        let mut list_item_annotations: Vec<TextAnnotation> = Vec::new();
         let mut in_list_item = false;
         let mut in_image = false;
         let mut image_alt = String::new();
@@ -215,14 +217,17 @@ impl MdxExtractor {
 
         let mut annotation_starts: Vec<AnnotationEntry> = Vec::new();
 
-        fn text_offset(paragraph_text: &str, in_paragraph: bool) -> u32 {
-            if in_paragraph { paragraph_text.len() as u32 } else { 0 }
+        /// Get the current length of the active text buffer as u32.
+        fn active_text_offset(buf: &str) -> u32 {
+            buf.len() as u32
         }
 
         for event in events {
             match event {
                 Event::Start(Tag::Heading { level, .. }) => {
                     heading_text.clear();
+                    heading_annotations.clear();
+                    annotation_starts.clear();
                     heading_level = match *level {
                         pulldown_cmark::HeadingLevel::H1 => 1,
                         pulldown_cmark::HeadingLevel::H2 => 2,
@@ -237,9 +242,18 @@ impl MdxExtractor {
                     in_heading = false;
                     let trimmed = heading_text.trim();
                     if !trimmed.is_empty() {
-                        b.push_heading(heading_level, trimmed, None, None);
+                        let annotations = adjust_annotations_for_trim(
+                            std::mem::take(&mut heading_annotations),
+                            &heading_text,
+                            trimmed,
+                        );
+                        let idx = b.push_heading(heading_level, trimmed, None, None);
+                        if !annotations.is_empty() {
+                            b.set_annotations(idx, annotations);
+                        }
                     }
                     heading_text.clear();
+                    heading_annotations.clear();
                 }
                 Event::Start(Tag::Paragraph) => {
                     if !in_heading && !in_list_item && footnote_def_label.is_none() {
@@ -266,94 +280,133 @@ impl MdxExtractor {
                 }
                 Event::Start(Tag::Strong) => {
                     if in_paragraph {
-                        annotation_starts.push((0, text_offset(&paragraph_text, in_paragraph), None));
+                        annotation_starts.push((0, active_text_offset(&paragraph_text), None));
+                    } else if in_heading {
+                        annotation_starts.push((0, active_text_offset(&heading_text), None));
+                    } else if in_list_item {
+                        annotation_starts.push((0, active_text_offset(&list_item_text), None));
                     }
                 }
                 Event::End(TagEnd::Strong) => {
-                    if in_paragraph
-                        && let Some((0, start, _)) = annotation_starts
-                            .iter()
-                            .rposition(|(k, _, _)| *k == 0)
-                            .map(|i| annotation_starts.remove(i))
-                    {
-                        let end = text_offset(&paragraph_text, in_paragraph);
-                        if start < end {
-                            paragraph_annotations.push(builder::bold(start, end));
+                    if let Some(i) = annotation_starts.iter().rposition(|(k, _, _)| *k == 0) {
+                        let (_, start, _) = annotation_starts.remove(i);
+                        if in_paragraph {
+                            let end = active_text_offset(&paragraph_text);
+                            if start < end {
+                                paragraph_annotations.push(builder::bold(start, end));
+                            }
+                        } else if in_heading {
+                            let end = active_text_offset(&heading_text);
+                            if start < end {
+                                heading_annotations.push(builder::bold(start, end));
+                            }
+                        } else if in_list_item {
+                            let end = active_text_offset(&list_item_text);
+                            if start < end {
+                                list_item_annotations.push(builder::bold(start, end));
+                            }
                         }
                     }
                 }
                 Event::Start(Tag::Emphasis) => {
                     if in_paragraph {
-                        annotation_starts.push((1, text_offset(&paragraph_text, in_paragraph), None));
+                        annotation_starts.push((1, active_text_offset(&paragraph_text), None));
+                    } else if in_heading {
+                        annotation_starts.push((1, active_text_offset(&heading_text), None));
+                    } else if in_list_item {
+                        annotation_starts.push((1, active_text_offset(&list_item_text), None));
                     }
                 }
                 Event::End(TagEnd::Emphasis) => {
-                    if in_paragraph
-                        && let Some((1, start, _)) = annotation_starts
-                            .iter()
-                            .rposition(|(k, _, _)| *k == 1)
-                            .map(|i| annotation_starts.remove(i))
-                    {
-                        let end = text_offset(&paragraph_text, in_paragraph);
-                        if start < end {
-                            paragraph_annotations.push(builder::italic(start, end));
+                    if let Some(i) = annotation_starts.iter().rposition(|(k, _, _)| *k == 1) {
+                        let (_, start, _) = annotation_starts.remove(i);
+                        if in_paragraph {
+                            let end = active_text_offset(&paragraph_text);
+                            if start < end {
+                                paragraph_annotations.push(builder::italic(start, end));
+                            }
+                        } else if in_heading {
+                            let end = active_text_offset(&heading_text);
+                            if start < end {
+                                heading_annotations.push(builder::italic(start, end));
+                            }
+                        } else if in_list_item {
+                            let end = active_text_offset(&list_item_text);
+                            if start < end {
+                                list_item_annotations.push(builder::italic(start, end));
+                            }
                         }
                     }
                 }
                 Event::Start(Tag::Strikethrough) => {
                     if in_paragraph {
-                        annotation_starts.push((2, text_offset(&paragraph_text, in_paragraph), None));
+                        annotation_starts.push((2, active_text_offset(&paragraph_text), None));
+                    } else if in_heading {
+                        annotation_starts.push((2, active_text_offset(&heading_text), None));
+                    } else if in_list_item {
+                        annotation_starts.push((2, active_text_offset(&list_item_text), None));
                     }
                 }
                 Event::End(TagEnd::Strikethrough) => {
-                    if in_paragraph
-                        && let Some((2, start, _)) = annotation_starts
-                            .iter()
-                            .rposition(|(k, _, _)| *k == 2)
-                            .map(|i| annotation_starts.remove(i))
-                    {
-                        let end = text_offset(&paragraph_text, in_paragraph);
-                        if start < end {
-                            paragraph_annotations.push(builder::strikethrough(start, end));
+                    if let Some(i) = annotation_starts.iter().rposition(|(k, _, _)| *k == 2) {
+                        let (_, start, _) = annotation_starts.remove(i);
+                        if in_paragraph {
+                            let end = active_text_offset(&paragraph_text);
+                            if start < end {
+                                paragraph_annotations.push(builder::strikethrough(start, end));
+                            }
+                        } else if in_heading {
+                            let end = active_text_offset(&heading_text);
+                            if start < end {
+                                heading_annotations.push(builder::strikethrough(start, end));
+                            }
+                        } else if in_list_item {
+                            let end = active_text_offset(&list_item_text);
+                            if start < end {
+                                list_item_annotations.push(builder::strikethrough(start, end));
+                            }
                         }
                     }
                 }
                 Event::Start(Tag::Link { dest_url, title, .. }) => {
+                    let url = dest_url.to_string();
+                    let title_opt = if title.is_empty() {
+                        None
+                    } else {
+                        Some(title.to_string())
+                    };
                     if in_paragraph {
-                        let url = dest_url.to_string();
-                        let title_opt = if title.is_empty() {
-                            None
-                        } else {
-                            Some(title.to_string())
-                        };
-                        annotation_starts.push((4, text_offset(&paragraph_text, in_paragraph), Some((url, title_opt))));
+                        annotation_starts.push((4, active_text_offset(&paragraph_text), Some((url, title_opt))));
+                    } else if in_heading {
+                        annotation_starts.push((4, active_text_offset(&heading_text), Some((url, title_opt))));
+                    } else if in_list_item {
+                        annotation_starts.push((4, active_text_offset(&list_item_text), Some((url, title_opt))));
                     }
                 }
                 Event::End(TagEnd::Link) => {
-                    if in_paragraph
-                        && let Some((4, start, Some((url, title)))) = annotation_starts
-                            .iter()
-                            .rposition(|(k, _, _)| *k == 4)
-                            .map(|i| annotation_starts.remove(i))
-                    {
-                        let end = text_offset(&paragraph_text, in_paragraph);
-                        if start < end {
-                            paragraph_annotations.push(builder::link(start, end, &url, title.as_deref()));
-                        }
-                        // Collect URI
-                        if !url.is_empty() {
-                            let label = if start < end {
-                                let s = &paragraph_text[start as usize..end as usize];
-                                if s.is_empty() { None } else { Some(s.to_string()) }
-                            } else {
-                                None
-                            };
-                            b.push_uri(Uri {
-                                url: url.clone(),
-                                label,
-                                page: None,
-                                kind: classify_uri(&url),
-                            });
+                    if let Some(i) = annotation_starts.iter().rposition(|(k, _, _)| *k == 4) {
+                        let (_, start, link_data) = annotation_starts.remove(i);
+                        if let Some((url, title)) = link_data {
+                            if in_paragraph {
+                                let end = active_text_offset(&paragraph_text);
+                                if start < end {
+                                    paragraph_annotations.push(builder::link(start, end, &url, title.as_deref()));
+                                }
+                            } else if in_heading {
+                                let end = active_text_offset(&heading_text);
+                                if start < end {
+                                    heading_annotations.push(builder::link(start, end, &url, title.as_deref()));
+                                }
+                            } else if in_list_item {
+                                let end = active_text_offset(&list_item_text);
+                                if start < end {
+                                    list_item_annotations.push(builder::link(start, end, &url, title.as_deref()));
+                                }
+                            }
+                            // Collect URI
+                            if !url.is_empty() {
+                                b.push_uri(Uri::hyperlink(&url, title));
+                            }
                         }
                     }
                 }
@@ -394,6 +447,8 @@ impl MdxExtractor {
                 }
                 Event::Start(Tag::Item) => {
                     list_item_text.clear();
+                    list_item_annotations.clear();
+                    annotation_starts.clear();
                     in_list_item = true;
                 }
                 Event::End(TagEnd::Item) => {
@@ -402,9 +457,15 @@ impl MdxExtractor {
                     if let Some(ordered) = list_stack.last().copied()
                         && !trimmed.is_empty()
                     {
-                        b.push_list_item(trimmed, ordered, vec![], None, None);
+                        let annotations = adjust_annotations_for_trim(
+                            std::mem::take(&mut list_item_annotations),
+                            &list_item_text,
+                            trimmed,
+                        );
+                        b.push_list_item(trimmed, ordered, annotations, None, None);
                     }
                     list_item_text.clear();
+                    list_item_annotations.clear();
                 }
                 Event::Start(Tag::Table(_)) => {
                     table_rows.clear();

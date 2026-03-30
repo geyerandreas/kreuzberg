@@ -607,6 +607,35 @@ impl OrgModeExtractor {
 
             // Regular paragraph with inline markup and internal links
             if !trimmed.is_empty() {
+                // Check if the line is a standalone image link
+                if let Some((url, display, consumed_to)) = Self::parse_org_link(trimmed, 0)
+                    && consumed_to == trimmed.len()
+                    && Self::is_image_url(&url)
+                {
+                    use crate::types::document_structure::ContentLayer;
+                    use crate::types::internal::{ElementKind, InternalElement, InternalElementId};
+                    let alt = if display == url { String::new() } else { display };
+                    let kind = ElementKind::Image { image_index: u32::MAX };
+                    let id = InternalElementId::generate(kind.discriminant(), &alt, None, 0);
+                    b.push_element(InternalElement {
+                        id,
+                        kind,
+                        text: alt,
+                        depth: 0,
+                        page: None,
+                        bbox: None,
+                        layer: ContentLayer::Body,
+                        annotations: Vec::new(),
+                        attributes: None,
+                        anchor: None,
+                        ocr_geometry: None,
+                        ocr_confidence: None,
+                        ocr_rotation: None,
+                    });
+                    i += 1;
+                    continue;
+                }
+
                 // Check for footnote references [fn:name]
                 let footnote_refs = Self::find_footnote_references(trimmed);
                 let (stripped, annotations) = Self::parse_inline_markup(trimmed);
@@ -616,16 +645,18 @@ impl OrgModeExtractor {
                     if let AnnotationKind::Link { url, .. } = &ann.kind
                         && !url.is_empty()
                     {
-                        let label = stripped.get(ann.start as usize..ann.end as usize).map(|s| s.to_string());
+                        let label = stripped
+                            .get(ann.start as usize..ann.end as usize)
+                            .map(|s| s.to_string());
                         let is_image = url.ends_with(".png")
                             || url.ends_with(".jpg")
                             || url.ends_with(".jpeg")
                             || url.ends_with(".gif")
                             || url.ends_with(".svg")
                             || (url.starts_with("file:")
-                                && label
-                                    .as_deref()
-                                    .is_some_and(|l| l.ends_with(".png") || l.ends_with(".jpg") || l.ends_with(".jpeg")));
+                                && label.as_deref().is_some_and(|l| {
+                                    l.ends_with(".png") || l.ends_with(".jpg") || l.ends_with(".jpeg")
+                                }));
                         if is_image {
                             b.push_uri(Uri::image(url, label));
                         } else {
@@ -743,6 +774,28 @@ impl OrgModeExtractor {
             return &t[space_pos + 1..];
         }
         t
+    }
+
+    /// Check if a URL points to an image based on its file extension.
+    fn is_image_url(url: &str) -> bool {
+        // Strip optional "file:" prefix and query/fragment
+        let path = url
+            .strip_prefix("file:")
+            .unwrap_or(url)
+            .split(['?', '#'])
+            .next()
+            .unwrap_or(url);
+        let lower = path.to_ascii_lowercase();
+        lower.ends_with(".png")
+            || lower.ends_with(".jpg")
+            || lower.ends_with(".jpeg")
+            || lower.ends_with(".gif")
+            || lower.ends_with(".svg")
+            || lower.ends_with(".webp")
+            || lower.ends_with(".bmp")
+            || lower.ends_with(".tiff")
+            || lower.ends_with(".tif")
+            || lower.ends_with(".avif")
     }
 
     /// Convert table cells to markdown format.

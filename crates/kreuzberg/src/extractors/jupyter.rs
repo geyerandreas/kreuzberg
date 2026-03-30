@@ -474,7 +474,11 @@ impl JupyterExtractor {
                 let label = &text[i + 1..close_bracket];
                 let url = &text[close_bracket + 2..close_paren];
                 if !url.is_empty() {
-                    let label_opt = if label.is_empty() { None } else { Some(label.to_string()) };
+                    let label_opt = if label.is_empty() {
+                        None
+                    } else {
+                        Some(label.to_string())
+                    };
                     uris.push(Uri::hyperlink(url, label_opt));
                 }
                 i = close_paren + 1;

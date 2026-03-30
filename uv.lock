@@ -2865,7 +2865,7 @@ wheels = [
 
 [[package]]
 name = "mineru"
-version = "3.0.2"
+version = "3.0.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -2906,7 +2906,7 @@ dependencies = [
     { name = "uvicorn" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ac/66/6ee98aae7ff065dcce782ed53c86fec6b7a004fb5ec78d72d9e41cce9bda/mineru-3.0.2-py3-none-any.whl", hash = "sha256:7ea358bd456b4609dac5669fcca49b8e38122ec95e957fb019753f6aeb28beda", size = 1441381, upload-time = "2026-03-30T09:32:09.205Z" },
+    { url = "https://files.pythonhosted.org/packages/d6/2d/bf667e5311651517b9eace3c0a23914dbd043f88f10e855d8fbf1dd92fce/mineru-3.0.3-py3-none-any.whl", hash = "sha256:24ea512e06803d57e3aacb25d2e8f9ebf06fd6496fcd1954a1ef6a3649a8b979", size = 1441850, upload-time = "2026-03-30T12:26:11.49Z" },
 ]
 
 [package.optional-dependencies]
