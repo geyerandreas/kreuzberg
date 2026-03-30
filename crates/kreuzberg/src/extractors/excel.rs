@@ -85,13 +85,45 @@ impl ExcelExtractor {
         };
 
         let mut additional = AHashMap::new();
+        let wb_meta = &workbook.metadata;
+
+        // Map office metadata to standard Metadata fields
+        let title = wb_meta.get("title").cloned();
+        let subject = wb_meta.get("subject").cloned();
+        let created_by = wb_meta.get("created_by").or_else(|| wb_meta.get("creator")).cloned();
+        let modified_by = wb_meta.get("modified_by").cloned();
+        let created_at = wb_meta.get("created_at").cloned();
+        let modified_at = wb_meta.get("modified_at").cloned();
+        let authors = created_by.as_ref().map(|a| vec![a.clone()]);
+        let keywords = wb_meta.get("keywords").map(|k| {
+            k.split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        });
+        let language = wb_meta.get("language").cloned();
+
+        // Put remaining metadata into additional map (excluding standard fields)
         for (key, value) in &workbook.metadata {
-            if key != "sheet_count" && key != "sheet_names" {
-                additional.insert(Cow::Owned(key.clone()), serde_json::json!(value));
+            match key.as_str() {
+                "sheet_count" | "sheet_names" | "title" | "subject" | "created_by" | "creator" | "modified_by"
+                | "created_at" | "modified_at" | "keywords" | "language" => {}
+                _ => {
+                    additional.insert(Cow::Owned(key.clone()), serde_json::json!(value));
+                }
             }
         }
 
         doc.metadata = Metadata {
+            title,
+            subject,
+            authors,
+            keywords,
+            language,
+            created_at,
+            modified_at,
+            created_by,
+            modified_by,
             format: Some(crate::types::FormatMetadata::Excel(excel_metadata)),
             additional,
             ..Default::default()

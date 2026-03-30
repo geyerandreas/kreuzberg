@@ -392,6 +392,7 @@ impl DocumentExtractor for JatsExtractor {
         let mut subject_parts = Vec::new();
 
         if !jats_metadata.title.is_empty() {
+            metadata.title = Some(jats_metadata.title.clone());
             metadata.subject = Some(jats_metadata.title.clone());
             subject_parts.push(format!("Title: {}", jats_metadata.title));
         }
@@ -401,6 +402,7 @@ impl DocumentExtractor for JatsExtractor {
         }
 
         if !jats_metadata.authors.is_empty() {
+            metadata.authors = Some(jats_metadata.authors.clone());
             subject_parts.push(format!("Authors: {}", jats_metadata.authors.join("; ")));
         }
 
@@ -417,6 +419,7 @@ impl DocumentExtractor for JatsExtractor {
         }
 
         if !jats_metadata.keywords.is_empty() {
+            metadata.keywords = Some(jats_metadata.keywords.clone());
             subject_parts.push(format!("Keywords: {}", jats_metadata.keywords.join("; ")));
         }
 

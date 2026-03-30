@@ -101,6 +101,22 @@ impl OrgModeExtractor {
             }
         }
 
+        // Map standard fields from additional to typed Metadata fields
+        metadata.title = additional
+            .remove(&Cow::Borrowed("title"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        metadata.authors = additional.remove(&Cow::Borrowed("authors")).and_then(|v| {
+            v.as_array()
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+        });
+        // Remove the duplicate "author" key since we used "authors"
+        additional.remove(&Cow::Borrowed("author"));
+        metadata.keywords = additional.remove(&Cow::Borrowed("keywords")).and_then(|v| {
+            v.as_array()
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+        });
+        // Note: created_at is already set above from #+DATE
+
         metadata.additional = additional;
 
         let content = Self::extract_content(org);

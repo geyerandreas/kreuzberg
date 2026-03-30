@@ -309,11 +309,42 @@ impl DocumentExtractor for RtfExtractor {
 
         // extract_rtf_metadata needs the extracted text; get it from the same pass
         let (extracted_text, _tables, _images, _metas) = extract_text_from_rtf(&rtf_content, plain);
-        let metadata_map = extract_rtf_metadata(&rtf_content, &extracted_text);
+        let mut metadata_map = extract_rtf_metadata(&rtf_content, &extracted_text);
+
+        // Map standard fields from metadata_map to typed Metadata fields
+        let title = metadata_map
+            .remove(&Cow::Borrowed("title"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let subject = metadata_map
+            .remove(&Cow::Borrowed("subject"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let authors = metadata_map.remove(&Cow::Borrowed("authors")).and_then(|v| {
+            v.as_array()
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+        });
+        let created_by = metadata_map
+            .remove(&Cow::Borrowed("created_by"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let modified_by = metadata_map
+            .remove(&Cow::Borrowed("modified_by"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let created_at = metadata_map
+            .remove(&Cow::Borrowed("created_at"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let modified_at = metadata_map
+            .remove(&Cow::Borrowed("modified_at"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
 
         let mut doc = Self::build_internal_document(&rtf_content, plain);
         doc.mime_type = Cow::Owned(mime_type.to_string());
         doc.metadata = Metadata {
+            title,
+            subject,
+            authors,
+            created_by,
+            modified_by,
+            created_at,
+            modified_at,
             additional: metadata_map,
             ..Default::default()
         };

@@ -155,6 +155,83 @@ impl PptxExtractor {
     }
 }
 
+impl PptxExtractor {
+    /// Build an InternalDocument from a PptxExtractionResult, mapping office
+    /// metadata to standard `Metadata` struct fields.
+    fn build_document_from_result(
+        pptx_result: crate::types::PptxExtractionResult,
+        mime_type: &str,
+        extract_images: bool,
+    ) -> InternalDocument {
+        let mut additional: AHashMap<Cow<'static, str>, serde_json::Value> = AHashMap::new();
+        additional.insert(Cow::Borrowed("slide_count"), serde_json::json!(pptx_result.slide_count));
+        additional.insert(Cow::Borrowed("image_count"), serde_json::json!(pptx_result.image_count));
+        additional.insert(Cow::Borrowed("table_count"), serde_json::json!(pptx_result.table_count));
+
+        // Map office metadata to standard Metadata fields
+        let office_meta = &pptx_result.office_metadata;
+        let title = office_meta.get("title").cloned();
+        let subject = office_meta.get("subject").cloned();
+        let created_by = office_meta.get("created_by").cloned();
+        let modified_by = office_meta.get("modified_by").cloned();
+        let created_at = office_meta.get("created_at").cloned();
+        let modified_at = office_meta.get("modified_at").cloned();
+        let authors = office_meta.get("author").map(|a| vec![a.clone()]);
+        let keywords = office_meta.get("keywords").map(|k| {
+            k.split(',')
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
+        });
+
+        // Put remaining office metadata into additional map
+        for (key, value) in &pptx_result.office_metadata {
+            match key.as_str() {
+                "title" | "subject" | "created_by" | "modified_by" | "created_at" | "modified_at" | "author"
+                | "keywords" => {}
+                _ => {
+                    additional.insert(Cow::Owned(key.clone()), serde_json::json!(value));
+                }
+            }
+        }
+
+        let mut doc = Self::build_internal_document(&pptx_result.content, pptx_result.slide_count as u32);
+        doc.mime_type = Cow::Owned(mime_type.to_string());
+
+        let mut metadata = Metadata {
+            title,
+            subject,
+            authors,
+            keywords,
+            created_at,
+            modified_at,
+            created_by,
+            modified_by,
+            format: Some(crate::types::FormatMetadata::Pptx(pptx_result.metadata)),
+            additional,
+            ..Default::default()
+        };
+
+        if let Some(page_structure) = pptx_result.page_structure {
+            metadata.pages = Some(page_structure);
+        }
+
+        doc.metadata = metadata;
+
+        // Push hyperlink URIs discovered in slides
+        for (url, label) in pptx_result.hyperlinks {
+            doc.push_uri(Uri::hyperlink(&url, label));
+        }
+
+        // Transfer images
+        if extract_images {
+            doc.images = pptx_result.images;
+        }
+
+        doc
+    }
+}
+
 impl Plugin for PptxExtractor {
     fn name(&self) -> &str {
         "pptx-extractor"
@@ -229,36 +306,7 @@ impl DocumentExtractor for PptxExtractor {
             }
         };
 
-        let mut additional: AHashMap<Cow<'static, str>, serde_json::Value> = AHashMap::new();
-        additional.insert(Cow::Borrowed("slide_count"), serde_json::json!(pptx_result.slide_count));
-        additional.insert(Cow::Borrowed("image_count"), serde_json::json!(pptx_result.image_count));
-        additional.insert(Cow::Borrowed("table_count"), serde_json::json!(pptx_result.table_count));
-
-        let mut doc = Self::build_internal_document(&pptx_result.content, pptx_result.slide_count as u32);
-        doc.mime_type = Cow::Owned(mime_type.to_string());
-
-        let mut metadata = Metadata {
-            format: Some(crate::types::FormatMetadata::Pptx(pptx_result.metadata)),
-            additional,
-            ..Default::default()
-        };
-
-        if let Some(page_structure) = pptx_result.page_structure {
-            metadata.pages = Some(page_structure);
-        }
-
-        doc.metadata = metadata;
-
-        // Push hyperlink URIs discovered in slides
-        for (url, label) in pptx_result.hyperlinks {
-            doc.push_uri(Uri::hyperlink(&url, label));
-        }
-
-        // Transfer images
-        if extract_images {
-            doc.images = pptx_result.images;
-        }
-
+        let doc = Self::build_document_from_result(pptx_result, mime_type, extract_images);
         Ok(doc)
     }
 
@@ -284,36 +332,7 @@ impl DocumentExtractor for PptxExtractor {
             false,
         )?;
 
-        let mut additional: AHashMap<Cow<'static, str>, serde_json::Value> = AHashMap::new();
-        additional.insert(Cow::Borrowed("slide_count"), serde_json::json!(pptx_result.slide_count));
-        additional.insert(Cow::Borrowed("image_count"), serde_json::json!(pptx_result.image_count));
-        additional.insert(Cow::Borrowed("table_count"), serde_json::json!(pptx_result.table_count));
-
-        let mut doc = Self::build_internal_document(&pptx_result.content, pptx_result.slide_count as u32);
-        doc.mime_type = Cow::Owned(mime_type.to_string());
-
-        let mut metadata = Metadata {
-            format: Some(crate::types::FormatMetadata::Pptx(pptx_result.metadata)),
-            additional,
-            ..Default::default()
-        };
-
-        if let Some(page_structure) = pptx_result.page_structure {
-            metadata.pages = Some(page_structure);
-        }
-
-        doc.metadata = metadata;
-
-        // Push hyperlink URIs discovered in slides
-        for (url, label) in pptx_result.hyperlinks {
-            doc.push_uri(Uri::hyperlink(&url, label));
-        }
-
-        // Transfer images
-        if extract_images {
-            doc.images = pptx_result.images;
-        }
-
+        let doc = Self::build_document_from_result(pptx_result, mime_type, extract_images);
         Ok(doc)
     }
 

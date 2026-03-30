@@ -112,6 +112,12 @@ pub struct PptxExtractionResult {
     /// Hyperlinks discovered in slides as (url, optional_label) pairs.
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub hyperlinks: Vec<(String, Option<String>)>,
+    /// Office metadata extracted from docProps/core.xml and docProps/app.xml.
+    ///
+    /// Contains keys like "title", "author", "created_by", "subject", "keywords",
+    /// "modified_by", "created_at", "modified_at", etc.
+    #[serde(skip_serializing_if = "HashMap::is_empty", default)]
+    pub office_metadata: HashMap<String, String>,
 }
 
 /// Email extraction result.

@@ -772,7 +772,47 @@ impl DocumentExtractor for OdtExtractor {
             }
         }
 
+        // Map standard fields from metadata_map to typed Metadata fields
+        let title = metadata_map
+            .remove(&Cow::Borrowed("title"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let subject = metadata_map
+            .remove(&Cow::Borrowed("subject"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let authors = metadata_map.remove(&Cow::Borrowed("authors")).and_then(|v| {
+            v.as_array()
+                .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+        });
+        let created_by = metadata_map
+            .remove(&Cow::Borrowed("created_by"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let created_at = metadata_map
+            .remove(&Cow::Borrowed("created_at"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let modified_at = metadata_map
+            .remove(&Cow::Borrowed("modified_at"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let language = metadata_map
+            .remove(&Cow::Borrowed("language"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let keywords = metadata_map.remove(&Cow::Borrowed("keywords")).and_then(|v| {
+            v.as_str().map(|s| {
+                s.split(',')
+                    .map(|k| k.trim().to_string())
+                    .filter(|k| !k.is_empty())
+                    .collect()
+            })
+        });
+
         doc.metadata = Metadata {
+            title,
+            subject,
+            authors,
+            keywords,
+            language,
+            created_at,
+            modified_at,
+            created_by,
             additional: metadata_map,
             ..Default::default()
         };

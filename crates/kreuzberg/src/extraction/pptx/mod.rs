@@ -140,7 +140,7 @@ fn extract_pptx_from_container<R: std::io::Read + std::io::Seek>(
         ..Default::default()
     };
 
-    let metadata = extract_metadata(&mut container.archive);
+    let (metadata, office_metadata) = extract_metadata(&mut container.archive);
 
     let notes = extract_all_notes(&mut container)?;
 
@@ -288,6 +288,7 @@ fn extract_pptx_from_container<R: std::io::Read + std::io::Seek>(
         page_contents,
         document,
         hyperlinks: collected_hyperlinks,
+        office_metadata,
     })
 }
 
