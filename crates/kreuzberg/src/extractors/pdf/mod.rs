@@ -681,23 +681,6 @@ impl PdfExtractor {
             None
         };
 
-        // Run OCR on extracted images if configured (same pattern as docx/pptx)
-        #[cfg(all(feature = "ocr", feature = "tokio-runtime"))]
-        let images = if let Some(imgs) = images {
-            match crate::extraction::image_ocr::process_images_with_ocr(imgs, config).await {
-                Ok(processed) => Some(processed),
-                Err(e) => {
-                    tracing::warn!(
-                        "Image OCR on embedded PDF images failed: {:?}, continuing without image OCR",
-                        e
-                    );
-                    None
-                }
-            }
-        } else {
-            None
-        };
-
         // Finalize: apply pre-rendered structured document if available.
         // Quality gate: if pre-rendered doc has >2x the words of native text,
         // the layout pipeline added garbage. Fall back to native text in that case.

@@ -250,19 +250,7 @@ impl DocumentExtractor for PptxExtractor {
 
         // Transfer images
         if extract_images {
-            let images = if !pptx_result.images.is_empty() {
-                #[cfg(all(feature = "ocr", feature = "tokio-runtime"))]
-                {
-                    crate::extraction::image_ocr::process_images_with_ocr(pptx_result.images, config).await?
-                }
-                #[cfg(not(all(feature = "ocr", feature = "tokio-runtime")))]
-                {
-                    pptx_result.images
-                }
-            } else {
-                vec![]
-            };
-            doc.images = images;
+            doc.images = pptx_result.images;
         }
 
         Ok(doc)
@@ -312,19 +300,7 @@ impl DocumentExtractor for PptxExtractor {
 
         // Transfer images
         if extract_images {
-            let images = if !pptx_result.images.is_empty() {
-                #[cfg(all(feature = "ocr", feature = "tokio-runtime"))]
-                {
-                    crate::extraction::image_ocr::process_images_with_ocr(pptx_result.images, config).await?
-                }
-                #[cfg(not(all(feature = "ocr", feature = "tokio-runtime")))]
-                {
-                    pptx_result.images
-                }
-            } else {
-                vec![]
-            };
-            doc.images = images;
+            doc.images = pptx_result.images;
         }
 
         Ok(doc)

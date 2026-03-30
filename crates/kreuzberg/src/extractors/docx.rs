@@ -1225,10 +1225,6 @@ impl DocumentExtractor for DocxExtractor {
             });
         }
 
-        // Run OCR on extracted images if configured
-        #[cfg(all(feature = "ocr", feature = "tokio-runtime"))]
-        let extracted_images = crate::extraction::image_ocr::process_images_with_ocr(extracted_images, config).await?;
-
         // Build PageContent from page boundaries
         let _page_contents = {
             let arc_tables: Vec<Arc<Table>> = tables.iter().map(|t| Arc::new(t.clone())).collect();

@@ -657,20 +657,7 @@ impl DocumentExtractor for JupyterExtractor {
             metadata_additional.insert(key, json!(value));
         }
 
-        // Process images with OCR if configured and available
-        let images = if !extracted_images.is_empty() {
-            #[cfg(all(feature = "ocr", feature = "tokio-runtime"))]
-            {
-                crate::extraction::image_ocr::process_images_with_ocr(extracted_images, config).await?
-            }
-            #[cfg(not(all(feature = "ocr", feature = "tokio-runtime")))]
-            {
-                let _ = config; // suppress unused warning when OCR is disabled
-                extracted_images
-            }
-        } else {
-            vec![]
-        };
+        let images = extracted_images;
 
         // Build InternalDocument from already-parsed notebook (no re-parse)
         let mut doc = Self::build_internal_document(&notebook_json)

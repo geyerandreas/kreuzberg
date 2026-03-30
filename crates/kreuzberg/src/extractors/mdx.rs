@@ -684,6 +684,7 @@ impl DocumentExtractor for MdxExtractor {
         mime_type: &str,
         config: &ExtractionConfig,
     ) -> Result<InternalDocument> {
+        let _ = config; // config is used by the pipeline for image OCR
         let text = String::from_utf8_lossy(content).into_owned();
 
         // Extract frontmatter first (before stripping MDX syntax)
@@ -729,19 +730,8 @@ impl DocumentExtractor for MdxExtractor {
 
         // Add extracted images to InternalDocument
         if !extracted_images.is_empty() {
-            #[cfg(all(feature = "ocr", feature = "tokio-runtime"))]
-            {
-                let processed = crate::extraction::image_ocr::process_images_with_ocr(extracted_images, config).await?;
-                for image in processed {
-                    doc.push_image(image);
-                }
-            }
-            #[cfg(not(all(feature = "ocr", feature = "tokio-runtime")))]
-            {
-                let _ = config;
-                for image in extracted_images {
-                    doc.push_image(image);
-                }
+            for image in extracted_images {
+                doc.push_image(image);
             }
         }
 

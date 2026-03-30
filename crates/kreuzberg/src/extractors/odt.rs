@@ -777,13 +777,6 @@ impl DocumentExtractor for OdtExtractor {
             ..Default::default()
         };
 
-        // Process images with OCR if configured
-        #[cfg(all(feature = "ocr", feature = "tokio-runtime"))]
-        if !doc.images.is_empty() {
-            doc.images =
-                crate::extraction::image_ocr::process_images_with_ocr(std::mem::take(&mut doc.images), config).await?;
-        }
-
         Ok(doc)
     }
 
