@@ -238,6 +238,21 @@ impl SyncExtractor for HtmlExtractor {
             })
             .collect();
 
+        // Extract standard metadata fields from HtmlMetadata before consuming into FormatMetadata
+        let meta_title = html_metadata.as_ref().and_then(|m| m.title.clone());
+        let meta_authors = html_metadata
+            .as_ref()
+            .and_then(|m| m.author.as_ref().map(|a| vec![a.clone()]));
+        let meta_language = html_metadata.as_ref().and_then(|m| m.language.clone());
+        let meta_subject = html_metadata.as_ref().and_then(|m| m.description.clone());
+        let meta_keywords = html_metadata.as_ref().and_then(|m| {
+            if m.keywords.is_empty() {
+                None
+            } else {
+                Some(m.keywords.clone())
+            }
+        });
+
         let format_metadata = html_metadata.map(|m: HtmlMetadata| crate::types::FormatMetadata::Html(Box::new(m)));
 
         // Signal that the extractor already formatted the output so the pipeline
@@ -271,6 +286,11 @@ impl SyncExtractor for HtmlExtractor {
         };
 
         doc.metadata = Metadata {
+            title: meta_title,
+            authors: meta_authors,
+            language: meta_language,
+            subject: meta_subject,
+            keywords: meta_keywords,
             output_format: pre_formatted,
             format: format_metadata,
             ..Default::default()

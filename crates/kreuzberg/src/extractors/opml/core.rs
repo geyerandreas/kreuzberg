@@ -77,11 +77,29 @@ impl DocumentExtractor for OpmlExtractor {
         mime_type: &str,
         _config: &ExtractionConfig,
     ) -> Result<InternalDocument> {
-        let (_extracted_content, metadata_map) = parser::extract_content_and_metadata(content)?;
+        let (_extracted_content, mut metadata_map) = parser::extract_content_and_metadata(content)?;
+
+        // Map standard OPML metadata to typed Metadata fields
+        let meta_title = metadata_map
+            .remove("title")
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let meta_created_by = metadata_map
+            .remove("ownerName")
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let meta_created_at = metadata_map
+            .remove("dateCreated")
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
+        let meta_modified_at = metadata_map
+            .remove("dateModified")
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
 
         let mut doc = parser::build_internal_document(content)?;
         doc.mime_type = std::borrow::Cow::Owned(mime_type.to_string());
         doc.metadata = Metadata {
+            title: meta_title,
+            created_by: meta_created_by,
+            created_at: meta_created_at,
+            modified_at: meta_modified_at,
             additional: metadata_map,
             ..Default::default()
         };
@@ -155,9 +173,6 @@ mod tests {
 
         assert_eq!(result.mime_type, "text/x-opml");
         assert!(result.content.contains("Item"));
-        assert_eq!(
-            result.metadata.additional.get("title").and_then(|v| v.as_str()),
-            Some("Async Test")
-        );
+        assert_eq!(result.metadata.title.as_deref(), Some("Async Test"));
     }
 }

@@ -649,6 +649,10 @@ impl DocumentExtractor for JupyterExtractor {
             Self::extract_notebook(content, plain)?;
 
         let mut metadata_additional = AHashMap::new();
+        // Extract language name for the standard Metadata.language field
+        let meta_language = additional_metadata
+            .get(&Cow::Borrowed("language_name"))
+            .and_then(|v| v.as_str().map(|s| s.to_string()));
         for (key, value) in additional_metadata {
             metadata_additional.insert(key, json!(value));
         }
@@ -674,6 +678,7 @@ impl DocumentExtractor for JupyterExtractor {
         doc.mime_type = Cow::Owned(mime_type.to_string());
 
         doc.metadata = Metadata {
+            language: meta_language,
             additional: metadata_additional,
             ..Default::default()
         };

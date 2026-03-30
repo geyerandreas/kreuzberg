@@ -174,9 +174,13 @@ impl SyncExtractor for EmailExtractor {
         // Move fields out of email_result now that all borrows above are complete.
         let subject = email_result.subject;
         let created_at = email_result.date;
+        let from_name = email_result
+            .metadata
+            .get("from_name")
+            .cloned();
         let email_metadata = EmailMetadata {
             from_email: email_result.from_email,
-            from_name: None,
+            from_name: from_name.clone(),
             to_emails: email_result.to_emails,
             cc_emails: email_result.cc_emails,
             bcc_emails: email_result.bcc_emails,
@@ -184,9 +188,13 @@ impl SyncExtractor for EmailExtractor {
             attachments: attachment_names,
         };
 
+        // Map from_name to standard authors field
+        let authors = from_name.filter(|n| !n.is_empty()).map(|n| vec![n]);
+
         doc.metadata = Metadata {
             format: Some(crate::types::FormatMetadata::Email(email_metadata)),
             subject,
+            authors,
             created_at,
             additional,
             ..Default::default()

@@ -90,22 +90,17 @@ impl DocumentExtractor for DocExtractor {
 
         let mut metadata_map = AHashMap::new();
 
-        if let Some(title) = result.metadata.title {
-            metadata_map.insert(Cow::Borrowed("title"), serde_json::Value::String(title));
-        }
-        if let Some(author) = result.metadata.author {
-            metadata_map.insert(
-                Cow::Borrowed("authors"),
-                serde_json::Value::Array(vec![serde_json::Value::String(author.clone())]),
-            );
-            metadata_map.insert(Cow::Borrowed("created_by"), serde_json::Value::String(author));
-        }
-        if let Some(subject) = result.metadata.subject {
-            metadata_map.insert(Cow::Borrowed("subject"), serde_json::Value::String(subject));
-        }
-        if let Some(last_author) = result.metadata.last_author {
-            metadata_map.insert(Cow::Borrowed("modified_by"), serde_json::Value::String(last_author));
-        }
+        let meta_title = result.metadata.title;
+        let meta_subject = result.metadata.subject;
+
+        let (meta_authors, meta_created_by) = if let Some(author) = result.metadata.author {
+            (Some(vec![author.clone()]), Some(author))
+        } else {
+            (None, None)
+        };
+
+        let meta_modified_by = result.metadata.last_author;
+
         if let Some(revision) = result.metadata.revision_number {
             metadata_map.insert(Cow::Borrowed("revision"), serde_json::Value::String(revision));
         }
@@ -116,6 +111,11 @@ impl DocumentExtractor for DocExtractor {
         );
 
         doc.metadata = Metadata {
+            title: meta_title,
+            subject: meta_subject,
+            authors: meta_authors,
+            created_by: meta_created_by,
+            modified_by: meta_modified_by,
             additional: metadata_map,
             ..Default::default()
         };

@@ -239,7 +239,11 @@ impl DocumentExtractor for CitationExtractor {
 
         let mut authors_list: Vec<String> = authors_set.into_iter().collect();
         authors_list.sort();
-        additional.insert(Cow::Borrowed("authors"), serde_json::json!(authors_list));
+        let meta_authors = if authors_list.is_empty() {
+            None
+        } else {
+            Some(authors_list)
+        };
 
         if !years_set.is_empty() {
             let min_year = years_set.iter().min().copied().unwrap_or(0);
@@ -262,15 +266,19 @@ impl DocumentExtractor for CitationExtractor {
 
         let mut keywords_list: Vec<String> = keywords_set.into_iter().collect();
         keywords_list.sort();
-        if !keywords_list.is_empty() {
-            additional.insert(Cow::Borrowed("keywords"), serde_json::json!(keywords_list));
-        }
+        let meta_keywords = if keywords_list.is_empty() {
+            None
+        } else {
+            Some(keywords_list)
+        };
 
         additional.insert(Cow::Borrowed("format"), serde_json::json!(format_string));
 
         let mut doc = builder.build();
         doc.mime_type = Cow::Owned(mime_type.to_string());
         doc.metadata = Metadata {
+            authors: meta_authors,
+            keywords: meta_keywords,
             additional,
             ..Default::default()
         };
@@ -480,8 +488,8 @@ ER  -"#;
         let result = result.expect("Should extract RIS with keywords");
 
         let metadata = &result.metadata;
-        if let Some(keywords) = metadata.additional.get("keywords") {
-            assert!(!keywords.as_array().unwrap().is_empty());
+        if let Some(keywords) = &metadata.keywords {
+            assert!(!keywords.is_empty());
         }
     }
 
@@ -505,8 +513,8 @@ ER  -"#;
         let result = result.expect("Should extract multiple authors");
 
         let metadata = &result.metadata;
-        if let Some(authors) = metadata.additional.get("authors") {
-            assert!(!authors.as_array().unwrap().is_empty());
+        if let Some(authors) = &metadata.authors {
+            assert!(!authors.is_empty());
         }
     }
 

@@ -198,17 +198,13 @@ async fn test_author_parsing() {
             kreuzberg::OutputFormat::Plain,
         );
 
-        if let Some(authors) = result.metadata.additional.get("authors") {
-            let authors_array = authors.as_array().expect("Authors should be an array");
-
+        if let Some(authors) = &result.metadata.authors {
             for expected_author in &expected_authors {
-                let found = authors_array
-                    .iter()
-                    .any(|a| a.as_str().map(|s| s.contains(expected_author)).unwrap_or(false));
+                let found = authors.iter().any(|a| a.contains(expected_author));
                 assert!(
                     found,
                     "Expected author '{}' not found in {:?}",
-                    expected_author, authors_array
+                    expected_author, authors
                 );
             }
         }
@@ -245,9 +241,8 @@ async fn test_special_characters() {
         Some(&serde_json::json!(1))
     );
 
-    if let Some(authors) = result.metadata.additional.get("authors") {
-        let authors_array = authors.as_array().expect("Authors should be an array");
-        assert!(authors_array.len() >= 3, "Should have 3 authors");
+    if let Some(authors) = &result.metadata.authors {
+        assert!(authors.len() >= 3, "Should have 3 authors");
     }
 }
 
@@ -450,9 +445,8 @@ async fn test_comprehensive_file() {
         assert!(types_obj.len() >= 10, "Should have at least 10 different entry types");
     }
 
-    if let Some(authors) = result.metadata.additional.get("authors") {
-        let authors_array = authors.as_array().expect("Authors should be an array");
-        assert!(authors_array.len() > 10, "Should have many unique authors");
+    if let Some(authors) = &result.metadata.authors {
+        assert!(authors.len() > 10, "Should have many unique authors");
     }
 
     if let Some(year_range) = result.metadata.additional.get("year_range") {

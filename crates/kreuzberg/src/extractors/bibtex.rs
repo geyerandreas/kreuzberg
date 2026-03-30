@@ -249,7 +249,6 @@ impl DocumentExtractor for BibtexExtractor {
 
         let mut authors_list: Vec<String> = authors_set.into_iter().collect();
         authors_list.sort();
-        additional.insert(Cow::Borrowed("authors"), serde_json::json!(authors_list));
 
         if !years_set.is_empty() {
             let min_year = years_set.iter().min().copied().unwrap_or(0);
@@ -272,9 +271,16 @@ impl DocumentExtractor for BibtexExtractor {
             additional.insert(Cow::Borrowed("entry_types"), entry_types_json);
         }
 
+        let meta_authors = if authors_list.is_empty() {
+            None
+        } else {
+            Some(authors_list)
+        };
+
         let mut doc = builder.build();
         doc.mime_type = Cow::Owned(mime_type.to_string());
         doc.metadata = Metadata {
+            authors: meta_authors,
             additional,
             ..Default::default()
         };
@@ -402,11 +408,9 @@ mod tests {
         let result = result.expect("Should extract valid article entry");
 
         let metadata = &result.metadata;
-        if let Some(authors) = metadata.additional.get("authors")
-            && let Some(authors_array) = authors.as_array()
-        {
-            assert!(!authors_array.is_empty());
-            assert!(authors_array[0].as_str().unwrap_or("").contains("Einstein"));
+        if let Some(authors) = &metadata.authors {
+            assert!(!authors.is_empty());
+            assert!(authors[0].contains("Einstein"));
         }
     }
 
@@ -475,10 +479,8 @@ mod tests {
             Some(&serde_json::json!(3))
         );
 
-        if let Some(authors) = metadata.additional.get("authors")
-            && let Some(authors_array) = authors.as_array()
-        {
-            assert!(authors_array.len() >= 4);
+        if let Some(authors) = &metadata.authors {
+            assert!(authors.len() >= 4);
         }
 
         if let Some(year_range) = metadata.additional.get("year_range") {
@@ -546,10 +548,8 @@ Some random text that's not valid BibTeX"#;
         let result = result.expect("Should extract multiple authors");
         let metadata = &result.metadata;
 
-        if let Some(authors) = metadata.additional.get("authors")
-            && let Some(authors_array) = authors.as_array()
-        {
-            assert!(authors_array.len() >= 3);
+        if let Some(authors) = &metadata.authors {
+            assert!(authors.len() >= 3);
         }
     }
 
