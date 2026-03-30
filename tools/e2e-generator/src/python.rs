@@ -682,6 +682,15 @@ def assert_annotations(result: Any, has_annotations: bool = False, min_count: in
         pytest.fail(f"Expected at least {min_count} annotations, found {len(annotations)}")
 
 
+def assert_toon_serializable(result: Any) -> None:
+    """Assert that the result can be serialized to TOON format."""
+    from kreuzberg import serialize_to_toon
+
+    toon = serialize_to_toon(result)
+    assert toon is not None, "TOON serialization returned None"
+    assert len(toon) > 0, "TOON output should not be empty"
+
+
 def assert_is_png(data: bytes) -> None:
     """Assert data starts with PNG magic bytes."""
     assert len(data) >= 4, f"Data too short for PNG: {len(data)} bytes"
@@ -1238,6 +1247,10 @@ fn render_assertions(assertions: &Assertions) -> String {
             args.push(format!("min_count={min_count}"));
         }
         writeln!(buffer, "    helpers.assert_annotations(result, {})", args.join(", ")).unwrap();
+    }
+
+    if assertions.toon_serializable == Some(true) {
+        writeln!(buffer, "    helpers.assert_toon_serializable(result)").unwrap();
     }
 
     if !buffer.ends_with('\n') {

@@ -624,6 +624,12 @@ pub mod assertions {
         }
     }
 
+    /// Assert that the result is serializable to TOON format.
+    pub fn assert_toon_serializable(result: &ExtractionResult) {
+        let toon = kreuzberg::serialize_to_toon(result).expect("TOON serialization should succeed");
+        assert!(!toon.is_empty(), "TOON output should not be empty");
+    }
+
     /// Assert annotations presence and count.
     pub fn assert_annotations(result: &ExtractionResult, has_annotations: bool, min_count: Option<usize>) {
         if has_annotations {
