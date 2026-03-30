@@ -15,6 +15,13 @@ use std::path::Path;
 /// Excel spreadsheet extractor using calamine.
 ///
 /// Supports: .xlsx, .xlsm, .xlam, .xltm, .xls, .xla, .xlsb, .ods
+///
+/// # Limitations
+///
+/// - **Hyperlinks**: calamine (v0.34) does not expose cell hyperlink data in its
+///   public API. Excel files may contain hyperlinks via the `HYPERLINK()` formula
+///   or via the relationships XML, but neither is accessible through the crate.
+///   This would require either a calamine upstream change or manual OOXML parsing.
 pub struct ExcelExtractor;
 
 impl Default for ExcelExtractor {

@@ -9,6 +9,8 @@
 //! - Paragraphs and text content with inline formatting
 //! - Inline markup: emphasis, strong, strikethrough, subscript, superscript, code
 //! - Blockquotes and notes
+//! - Embedded images from `<binary>` elements (base64-encoded)
+//! - Hyperlinks from `<a>` elements
 
 use crate::Result;
 use crate::core::config::ExtractionConfig;
@@ -16,8 +18,11 @@ use crate::extraction::cells_to_markdown;
 use crate::plugins::{DocumentExtractor, Plugin};
 use crate::types::internal::InternalDocument;
 use crate::types::internal_builder::InternalDocumentBuilder;
-use crate::types::{Metadata, Table};
+use crate::types::uri::Uri;
+use crate::types::{ExtractedImage, Metadata, Table};
 use async_trait::async_trait;
+use base64::Engine;
+use bytes::Bytes;
 use quick_xml::Reader;
 use quick_xml::events::Event;
 
@@ -498,6 +503,184 @@ impl FictionBookExtractor {
         Ok(tables)
     }
 
+    /// Extract embedded images from `<binary>` elements in FictionBook XML.
+    ///
+    /// FB2 embeds images as base64-encoded data inside `<binary>` elements with
+    /// `content-type` and `id` attributes:
+    /// ```xml
+    /// <binary id="cover.jpg" content-type="image/jpeg">base64data...</binary>
+    /// ```
+    fn extract_binary_images(data: &[u8]) -> Vec<ExtractedImage> {
+        let mut reader = Reader::from_reader(data);
+        let mut images = Vec::new();
+        let mut image_index = 0;
+
+        loop {
+            match reader.read_event() {
+                Ok(Event::Start(e)) => {
+                    let name = e.name();
+                    let tag = crate::utils::xml_tag_name(name.as_ref());
+                    if tag == "binary" {
+                        let mut content_type = String::new();
+                        let mut id = String::new();
+                        for attr in e.attributes().flatten() {
+                            let attr_name = String::from_utf8_lossy(attr.key.as_ref());
+                            let attr_value = String::from_utf8_lossy(attr.value.as_ref());
+                            if attr_name == "content-type" {
+                                content_type = attr_value.to_string();
+                            } else if attr_name == "id" {
+                                id = attr_value.to_string();
+                            }
+                        }
+
+                        // Read the base64 text content
+                        let mut b64_text = String::new();
+                        loop {
+                            match reader.read_event() {
+                                Ok(Event::Text(t)) => {
+                                    b64_text.push_str(&String::from_utf8_lossy(t.as_ref()));
+                                }
+                                Ok(Event::End(_)) => break,
+                                Ok(Event::Eof) => break,
+                                Err(_) => break,
+                                _ => {}
+                            }
+                        }
+
+                        // Strip whitespace from base64 data and decode
+                        let cleaned: String = b64_text.chars().filter(|c| !c.is_whitespace()).collect();
+                        if cleaned.is_empty() {
+                            continue;
+                        }
+
+                        if let Ok(decoded) = base64::engine::general_purpose::STANDARD.decode(&cleaned) {
+                            // Determine format from content-type or detect from bytes
+                            let format = if let Some(subtype) = content_type.strip_prefix("image/") {
+                                std::borrow::Cow::Owned(subtype.to_string())
+                            } else {
+                                crate::extraction::image_format::detect_image_format(&decoded)
+                            };
+
+                            let description = if id.is_empty() { None } else { Some(id) };
+
+                            images.push(ExtractedImage {
+                                data: Bytes::from(decoded),
+                                format,
+                                image_index,
+                                page_number: None,
+                                width: None,
+                                height: None,
+                                colorspace: None,
+                                bits_per_component: None,
+                                is_mask: false,
+                                description,
+                                ocr_result: None,
+                                bounding_box: None,
+                                source_path: None,
+                            });
+                            image_index += 1;
+                        }
+                    }
+                }
+                Ok(Event::Eof) => break,
+                Err(_) => break,
+                _ => {}
+            }
+        }
+
+        images
+    }
+
+    /// Extract hyperlinks from `<a>` elements in FictionBook XML body.
+    ///
+    /// FB2 uses `<a>` elements with `l:href` or `xlink:href` attributes for links:
+    /// ```xml
+    /// <a l:href="http://example.com">link text</a>
+    /// <a xlink:href="#note1">footnote ref</a>
+    /// ```
+    fn extract_links(data: &[u8]) -> Vec<Uri> {
+        let mut reader = Reader::from_reader(data);
+        let mut uris = Vec::new();
+        let mut in_body = false;
+
+        loop {
+            match reader.read_event() {
+                Ok(Event::Start(e)) => {
+                    let name = e.name();
+                    let tag = crate::utils::xml_tag_name(name.as_ref());
+                    if tag == "body" {
+                        in_body = true;
+                    } else if tag == "a" && in_body {
+                        let mut href = String::new();
+                        for attr in e.attributes().flatten() {
+                            let attr_name = String::from_utf8_lossy(attr.key.as_ref());
+                            // FB2 uses l:href or xlink:href; also check plain href
+                            if attr_name == "l:href"
+                                || attr_name == "xlink:href"
+                                || attr_name == "href"
+                            {
+                                href = String::from_utf8_lossy(attr.value.as_ref()).to_string();
+                                break;
+                            }
+                        }
+
+                        if href.is_empty() {
+                            continue;
+                        }
+
+                        // Collect label text from the <a> element
+                        let mut label_text = String::new();
+                        let mut depth = 1;
+                        loop {
+                            match reader.read_event() {
+                                Ok(Event::Start(_)) => depth += 1,
+                                Ok(Event::End(_)) => {
+                                    depth -= 1;
+                                    if depth == 0 {
+                                        break;
+                                    }
+                                }
+                                Ok(Event::Text(t)) => {
+                                    let decoded = String::from_utf8_lossy(t.as_ref());
+                                    let trimmed = decoded.trim();
+                                    if !trimmed.is_empty() {
+                                        if !label_text.is_empty() {
+                                            label_text.push(' ');
+                                        }
+                                        label_text.push_str(trimmed);
+                                    }
+                                }
+                                Ok(Event::Eof) => break,
+                                Err(_) => break,
+                                _ => {}
+                            }
+                        }
+
+                        let label = if label_text.is_empty() {
+                            None
+                        } else {
+                            Some(label_text)
+                        };
+
+                        uris.push(Uri::hyperlink(&href, label));
+                    }
+                }
+                Ok(Event::End(e)) => {
+                    let name = e.name();
+                    let tag = crate::utils::xml_tag_name(name.as_ref());
+                    if tag == "body" {
+                        in_body = false;
+                    }
+                }
+                Ok(Event::Eof) => break,
+                Err(_) => break,
+                _ => {}
+            }
+        }
+
+        uris
+    }
+
     /// Build an `InternalDocument` from FictionBook XML content.
     fn build_internal_document(data: &[u8]) -> Result<InternalDocument> {
         let mut reader = Reader::from_reader(data);
@@ -763,6 +946,8 @@ impl DocumentExtractor for FictionBookExtractor {
         let metadata = Self::extract_metadata(content)?;
 
         let tables = Self::extract_tables_from_body(content)?;
+        let images = Self::extract_binary_images(content);
+        let links = Self::extract_links(content);
 
         let mut doc = Self::build_internal_document(content)?;
         doc.mime_type = std::borrow::Cow::Owned(mime_type.to_string());
@@ -771,6 +956,16 @@ impl DocumentExtractor for FictionBookExtractor {
         // Add extracted tables
         for table in tables {
             doc.push_table(table);
+        }
+
+        // Add extracted images
+        for image in images {
+            doc.push_image(image);
+        }
+
+        // Add extracted links
+        for uri in links {
+            doc.push_uri(uri);
         }
 
         Ok(doc)
@@ -953,6 +1148,134 @@ mod tests {
                 .expect("sequence entry should be a string")
                 .contains("#3")
         );
+    }
+
+    #[test]
+    fn test_fictionbook_binary_images() {
+        // A minimal 1x1 red PNG as base64
+        let png_b64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwADhQGAWjR9awAAAABJRU5ErkJggg==";
+        let fb2 = format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<FictionBook>
+  <description>
+    <title-info><lang>en</lang></title-info>
+  </description>
+  <body><section><p>Content with image.</p></section></body>
+  <binary id="cover.png" content-type="image/png">{}</binary>
+</FictionBook>"#,
+            png_b64
+        );
+
+        let images = FictionBookExtractor::extract_binary_images(fb2.as_bytes());
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].format, "png");
+        assert_eq!(images[0].image_index, 0);
+        assert_eq!(images[0].description, Some("cover.png".to_string()));
+        assert!(!images[0].data.is_empty(), "image data should not be empty");
+        // Verify it starts with PNG magic bytes
+        assert!(images[0].data.starts_with(&[0x89, 0x50, 0x4E, 0x47]));
+    }
+
+    #[test]
+    fn test_fictionbook_binary_images_multiple() {
+        let fb2 = br#"<?xml version="1.0" encoding="UTF-8"?>
+<FictionBook>
+  <description>
+    <title-info><lang>en</lang></title-info>
+  </description>
+  <body><section><p>Content.</p></section></body>
+  <binary id="img1.jpg" content-type="image/jpeg">AAAA</binary>
+  <binary id="img2.gif" content-type="image/gif">BBBB</binary>
+</FictionBook>"#;
+
+        let images = FictionBookExtractor::extract_binary_images(fb2);
+        // Both entries are present (even if base64 decodes to short data)
+        assert_eq!(images.len(), 2);
+        assert_eq!(images[0].image_index, 0);
+        assert_eq!(images[1].image_index, 1);
+        assert_eq!(images[0].format, "jpeg");
+        assert_eq!(images[1].format, "gif");
+    }
+
+    #[test]
+    fn test_fictionbook_binary_images_empty() {
+        let fb2 = br#"<?xml version="1.0" encoding="UTF-8"?>
+<FictionBook>
+  <description>
+    <title-info><lang>en</lang></title-info>
+  </description>
+  <body><section><p>No images here.</p></section></body>
+</FictionBook>"#;
+
+        let images = FictionBookExtractor::extract_binary_images(fb2);
+        assert!(images.is_empty());
+    }
+
+    #[test]
+    fn test_fictionbook_links() {
+        let fb2 = br##"<?xml version="1.0" encoding="UTF-8"?>
+<FictionBook>
+  <description>
+    <title-info><lang>en</lang></title-info>
+  </description>
+  <body>
+    <section>
+      <p>Visit <a l:href="http://example.com">Example Site</a> for more.</p>
+      <p>See <a xlink:href="#note1">footnote 1</a> below.</p>
+      <p>Also <a href="https://rust-lang.org">Rust</a> is great.</p>
+    </section>
+  </body>
+</FictionBook>"##;
+
+        let links = FictionBookExtractor::extract_links(fb2);
+        assert_eq!(links.len(), 3);
+
+        assert_eq!(links[0].url, "http://example.com");
+        assert_eq!(links[0].label, Some("Example Site".to_string()));
+        assert_eq!(links[0].kind, crate::types::uri::UriKind::Hyperlink);
+
+        assert_eq!(links[1].url, "#note1");
+        assert_eq!(links[1].label, Some("footnote 1".to_string()));
+        assert_eq!(links[1].kind, crate::types::uri::UriKind::Anchor);
+
+        assert_eq!(links[2].url, "https://rust-lang.org");
+        assert_eq!(links[2].label, Some("Rust".to_string()));
+        assert_eq!(links[2].kind, crate::types::uri::UriKind::Hyperlink);
+    }
+
+    #[test]
+    fn test_fictionbook_links_no_body() {
+        let fb2 = br#"<?xml version="1.0" encoding="UTF-8"?>
+<FictionBook>
+  <description>
+    <title-info>
+      <annotation><a l:href="http://meta-link.com">meta</a></annotation>
+      <lang>en</lang>
+    </title-info>
+  </description>
+</FictionBook>"#;
+
+        // Links outside <body> should not be extracted
+        let links = FictionBookExtractor::extract_links(fb2);
+        assert!(links.is_empty());
+    }
+
+    #[test]
+    fn test_fictionbook_links_empty_href() {
+        let fb2 = br#"<?xml version="1.0" encoding="UTF-8"?>
+<FictionBook>
+  <description>
+    <title-info><lang>en</lang></title-info>
+  </description>
+  <body>
+    <section>
+      <p>A link with <a l:href="">no href</a>.</p>
+    </section>
+  </body>
+</FictionBook>"#;
+
+        let links = FictionBookExtractor::extract_links(fb2);
+        assert!(links.is_empty());
     }
 
     #[test]
