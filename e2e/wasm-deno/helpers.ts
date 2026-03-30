@@ -1,6 +1,6 @@
 import { assertEquals, assertExists } from "@std/assert";
 // @deno-types="../../crates/kreuzberg-wasm/dist/index.d.ts"
-import { enableOcr, extractBytes, initWasm } from "npm:@kreuzberg/wasm@^4.0.0";
+import { embedTexts, enableOcr, extractBytes, initWasm } from "npm:@kreuzberg/wasm@^4.0.0";
 // @deno-types="../../crates/kreuzberg-wasm/dist/index.d.ts"
 import type {
     ChunkingConfig,
@@ -34,7 +34,7 @@ export type {
     TokenReductionConfig,
 };
 
-export { enableOcr, extractBytes, initWasm };
+export { embedTexts, enableOcr, extractBytes, initWasm };
 
 const WORKSPACE_ROOT = new URL("../..", import.meta.url).pathname.replace(/\/$/, "");
 const TEST_DOCUMENTS = `${WORKSPACE_ROOT}/test_documents`;
@@ -716,6 +716,33 @@ export const assertions = {
         if (annotations !== undefined && annotations !== null && Array.isArray(annotations)) {
             if (typeof minCount === "number") {
                 assertEquals(annotations.length >= minCount, true, `Expected at least ${minCount} annotations, got ${annotations.length}`);
+            }
+        }
+    },
+
+    assertEmbedResult(results: number[][], count: number, dimensions: number, noNan: boolean, noInf: boolean, nonZero: boolean): void {
+        assertExists(results, "Expected results to be defined");
+        if (count >= 0) {
+            assertEquals(results.length, count, `Expected ${count} vectors, got ${results.length}`);
+        }
+
+        if (results.length > 0) {
+            for (let i = 0; i < results.length; i++) {
+                const vector = results[i];
+                assertExists(vector, `Vector ${i} is missing`);
+                if (dimensions > 0) {
+                    assertEquals(vector.length, dimensions, `Vector ${i} expected length ${dimensions}, got ${vector.length}`);
+                }
+
+                if (noNan) {
+                    assertEquals(vector.every((v) => !Number.isNaN(v)), true, `Vector ${i} contains NaN`);
+                }
+                if (noInf) {
+                    assertEquals(vector.every((v) => Number.isFinite(v)), true, `Vector ${i} contains infinite value`);
+                }
+                if (nonZero) {
+                    assertEquals(vector.some((v) => v !== 0), true, `Vector ${i} is all zeros`);
+                }
             }
         }
     },
