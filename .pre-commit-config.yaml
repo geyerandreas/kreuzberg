@@ -158,6 +158,7 @@ repos:
     rev: v0.11.0
     hooks:
       - id: shellcheck
+        exclude: ^tests/test_apps/docker/tests/
 
   # Markdown: linting
   - repo: https://github.com/rvben/rumdl-pre-commit

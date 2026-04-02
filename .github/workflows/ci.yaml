@@ -1698,7 +1698,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ffi-${{ matrix.os }}
-          path: target/release/
+          path: .
 
       - name: Set library paths for JNI
         shell: bash
@@ -1759,7 +1759,7 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, ubuntu-24.04-arm, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -1839,7 +1839,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ffi-${{ matrix.os }}
-          path: target/release/
+          path: .
 
       - name: Set library paths for .NET
         shell: bash
@@ -2595,13 +2595,13 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: java-jar-${{ matrix.os }}
-          path: packages/java/target/
+          path: .
 
       - name: Download FFI library
         uses: actions/download-artifact@v8
         with:
           name: ffi-${{ matrix.os }}
-          path: target/release/
+          path: .
 
       - name: Prepare JVM crash logs
         shell: bash
@@ -2756,7 +2756,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: csharp-ffi-lib-${{ matrix.os }}
-          path: target/release/
+          path: .
 
       - name: Prepare crash dumps
         shell: bash
@@ -2902,7 +2902,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ffi-${{ matrix.os }}
-          path: target/release/
+          path: .
 
       - name: Stage ONNX Runtime DLL next to FFI output (Windows)
         if: runner.os == 'Windows'
@@ -3026,7 +3026,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ffi-${{ matrix.os }}
-          path: target/release/
+          path: .
 
       - name: Vendor kreuzberg core crate
         shell: bash
@@ -3162,7 +3162,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ffi-windows-latest
-          path: target/release/
+          path: .
 
       - name: Verify header generated
         shell: bash
@@ -3347,7 +3347,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           name: ffi-${{ matrix.os }}
-          path: target/release/
+          path: .
 
       - name: Download PDFium
         uses: ./.github/actions/download-pdfium
