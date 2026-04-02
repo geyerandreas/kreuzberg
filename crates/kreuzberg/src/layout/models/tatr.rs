@@ -46,16 +46,32 @@ const CONF_THRESHOLD_ROW_COL: f32 = 0.3;
 /// Confidence threshold for spanning cell detections.
 const CONF_THRESHOLD_SPANNING: f32 = 0.5;
 
-/// IoB threshold for NMS during cell grid construction.
+/// IoB threshold for NMS on **row** detections during cell grid construction.
 ///
 /// A candidate detection is suppressed if more than this fraction of its area
 /// overlaps with any already-kept detection.  The previous value of 0.1 was
-/// too aggressive: TATR row/column predictions frequently overlap by a few
-/// pixels, causing valid rows to be suppressed and merging their content.
+/// too aggressive: TATR row predictions frequently overlap by a few pixels,
+/// causing valid rows to be suppressed and merging their content.
 /// 0.5 means "suppress only when the majority of the candidate is already
 /// covered" — enough to remove true duplicates while preserving close but
 /// distinct rows.
-const NMS_IOB_THRESHOLD: f32 = 0.5;
+const NMS_IOB_THRESHOLD_ROWS: f32 = 0.5;
+
+/// IoB threshold for NMS on **column** detections during cell grid construction.
+///
+/// Columns need a lower threshold than rows because narrow adjacent columns
+/// (e.g. Q1, Q2 quarter headers) can have significant mutual IoB overlap
+/// relative to their small width, causing valid columns to be suppressed and
+/// merged. 0.3 preserves narrow adjacent columns while still removing true
+/// duplicates.
+const NMS_IOB_THRESHOLD_COLS: f32 = 0.3;
+
+/// Minimum column width as a fraction of table width.
+///
+/// After NMS, columns narrower than this fraction of the total table width
+/// are removed as noise. Prevents spurious thin column detections from
+/// splitting the grid incorrectly.
+const MIN_COL_WIDTH_FRAC: f32 = 0.01;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -508,12 +524,21 @@ pub fn build_cell_grid(result: &TatrResult, table_bbox: Option<[f32; 4]>) -> Vec
     // NMS on rows (by confidence, IoB threshold), then sort top-to-bottom.
     // nms_by_iob returns rows in confidence order; we must restore spatial
     // order so the cell grid rows correspond to top-to-bottom reading order.
-    let mut nms_rows = nms_by_iob(&result.rows, &widened_rows);
+    let mut nms_rows = nms_by_iob(&result.rows, &widened_rows, NMS_IOB_THRESHOLD_ROWS);
     nms_rows.sort_by(|a, b| a[1].total_cmp(&b[1]));
 
-    // NMS on columns (using original bboxes), then sort left-to-right.
+    // NMS on columns (using original bboxes) with a lower threshold to
+    // preserve narrow adjacent columns, then sort left-to-right.
     let col_bboxes: Vec<[f32; 4]> = result.columns.iter().map(|c| c.bbox).collect();
-    let mut nms_cols = nms_by_iob(&result.columns, &col_bboxes);
+    let mut nms_cols = nms_by_iob(&result.columns, &col_bboxes, NMS_IOB_THRESHOLD_COLS);
+
+    // Remove noise columns narrower than MIN_COL_WIDTH_FRAC of table width.
+    let table_width = table_x2 - table_x1;
+    if table_width > 0.0 {
+        let min_col_width = table_width * MIN_COL_WIDTH_FRAC;
+        nms_cols.retain(|col| (col[2] - col[0]) >= min_col_width);
+    }
+
     nms_cols.sort_by(|a, b| a[0].total_cmp(&b[0]));
 
     // Build grid: intersection of each (row, col) pair
@@ -536,8 +561,8 @@ pub fn build_cell_grid(result: &TatrResult, table_bbox: Option<[f32; 4]>) -> Vec
 /// whose IoB with all previously kept detections is below the threshold.
 ///
 /// `bboxes` are the (possibly widened) bounding boxes corresponding 1:1
-/// with `detections`.
-fn nms_by_iob(detections: &[TatrDetection], bboxes: &[[f32; 4]]) -> Vec<[f32; 4]> {
+/// with `detections`. `threshold` is the IoB suppression threshold.
+fn nms_by_iob(detections: &[TatrDetection], bboxes: &[[f32; 4]], threshold: f32) -> Vec<[f32; 4]> {
     // Build index-confidence pairs, sort by confidence descending
     let mut indices: Vec<usize> = (0..detections.len()).collect();
     indices.sort_by(|&a, &b| detections[b].confidence.total_cmp(&detections[a].confidence));
@@ -546,9 +571,7 @@ fn nms_by_iob(detections: &[TatrDetection], bboxes: &[[f32; 4]]) -> Vec<[f32; 4]
 
     for &idx in &indices {
         let candidate = bboxes[idx];
-        let suppressed = kept
-            .iter()
-            .any(|&kept_box| iob(candidate, kept_box) > NMS_IOB_THRESHOLD);
+        let suppressed = kept.iter().any(|&kept_box| iob(candidate, kept_box) > threshold);
         if !suppressed {
             kept.push(candidate);
         }
@@ -737,7 +760,7 @@ mod tests {
             },
         ];
         let bboxes: Vec<[f32; 4]> = detections.iter().map(|d| d.bbox).collect();
-        let kept = nms_by_iob(&detections, &bboxes);
+        let kept = nms_by_iob(&detections, &bboxes, NMS_IOB_THRESHOLD_ROWS);
         // The second detection heavily overlaps the first → should be suppressed
         assert_eq!(kept.len(), 1, "overlapping detection should be suppressed");
         assert_eq!(kept[0], [0.0, 0.0, 100.0, 20.0]);
@@ -758,7 +781,7 @@ mod tests {
             },
         ];
         let bboxes: Vec<[f32; 4]> = detections.iter().map(|d| d.bbox).collect();
-        let kept = nms_by_iob(&detections, &bboxes);
+        let kept = nms_by_iob(&detections, &bboxes, NMS_IOB_THRESHOLD_ROWS);
         assert_eq!(kept.len(), 2, "non-overlapping detections should both be kept");
     }
 
@@ -779,7 +802,7 @@ mod tests {
             },
         ];
         let bboxes: Vec<[f32; 4]> = detections.iter().map(|d| d.bbox).collect();
-        let kept = nms_by_iob(&detections, &bboxes);
+        let kept = nms_by_iob(&detections, &bboxes, NMS_IOB_THRESHOLD_ROWS);
         // IoB = intersection(100*2) / area(100*20) = 0.1 < 0.5 → both kept
         assert_eq!(kept.len(), 2, "adjacent rows with minor overlap should both be kept");
     }
@@ -977,5 +1000,138 @@ mod tests {
         // Shortest edge (480) should scale to 800: 480→800, 640→1067
         assert_eq!(rh, 800);
         assert_eq!(rw, 1067);
+    }
+
+    // -- Per-class NMS thresholds --
+
+    #[test]
+    fn test_nms_col_threshold_preserves_narrow_adjacent_columns() {
+        // Two narrow adjacent columns that overlap by ~35% of their width.
+        // With row threshold (0.5) they would be kept, but this tests that
+        // the column threshold (0.3) is lower, allowing suppression of true
+        // duplicates while the moderate overlap here (0.35) is still preserved.
+        let col_width = 20.0;
+        let overlap = 7.0; // 7/20 = 0.35 IoB
+        let detections = vec![
+            TatrDetection {
+                bbox: [0.0, 0.0, col_width, 100.0],
+                confidence: 0.9,
+                class: TatrClass::Column,
+            },
+            TatrDetection {
+                bbox: [col_width - overlap, 0.0, 2.0 * col_width - overlap, 100.0],
+                confidence: 0.85,
+                class: TatrClass::Column,
+            },
+        ];
+        let bboxes: Vec<[f32; 4]> = detections.iter().map(|d| d.bbox).collect();
+
+        // With row threshold (0.5): 0.35 < 0.5 → both kept
+        let kept_row = nms_by_iob(&detections, &bboxes, NMS_IOB_THRESHOLD_ROWS);
+        assert_eq!(kept_row.len(), 2, "row threshold should keep both");
+
+        // With column threshold (0.3): 0.35 > 0.3 → second suppressed
+        let kept_col = nms_by_iob(&detections, &bboxes, NMS_IOB_THRESHOLD_COLS);
+        assert_eq!(
+            kept_col.len(),
+            1,
+            "column threshold should suppress heavily overlapping column"
+        );
+    }
+
+    #[test]
+    fn test_nms_col_threshold_keeps_well_separated_columns() {
+        // Two columns with only ~15% IoB overlap — both thresholds should keep them.
+        let detections = vec![
+            TatrDetection {
+                bbox: [0.0, 0.0, 20.0, 100.0],
+                confidence: 0.9,
+                class: TatrClass::Column,
+            },
+            TatrDetection {
+                bbox: [17.0, 0.0, 37.0, 100.0], // 3/20 = 0.15 overlap
+                confidence: 0.85,
+                class: TatrClass::Column,
+            },
+        ];
+        let bboxes: Vec<[f32; 4]> = detections.iter().map(|d| d.bbox).collect();
+
+        let kept = nms_by_iob(&detections, &bboxes, NMS_IOB_THRESHOLD_COLS);
+        assert_eq!(kept.len(), 2, "well-separated columns should both be kept");
+    }
+
+    #[test]
+    fn test_min_col_width_filter_removes_noise_columns() {
+        // A 100px-wide table with one real column and one noise column (0.5px wide).
+        let result = TatrResult {
+            rows: vec![TatrDetection {
+                bbox: [0.0, 0.0, 100.0, 20.0],
+                confidence: 0.9,
+                class: TatrClass::Row,
+            }],
+            columns: vec![
+                TatrDetection {
+                    bbox: [0.0, 0.0, 50.0, 20.0], // real column: 50px wide
+                    confidence: 0.9,
+                    class: TatrClass::Column,
+                },
+                TatrDetection {
+                    bbox: [60.0, 0.0, 60.5, 20.0], // noise column: 0.5px wide (< 1% of 100)
+                    confidence: 0.5,
+                    class: TatrClass::Column,
+                },
+                TatrDetection {
+                    bbox: [70.0, 0.0, 100.0, 20.0], // real column: 30px wide
+                    confidence: 0.85,
+                    class: TatrClass::Column,
+                },
+            ],
+            headers: Vec::new(),
+            spanning: Vec::new(),
+        };
+
+        let grid = build_cell_grid(&result, Some([0.0, 0.0, 100.0, 20.0]));
+        assert_eq!(
+            grid[0].len(),
+            2,
+            "noise column should be filtered, leaving 2 real columns"
+        );
+    }
+
+    #[test]
+    fn test_build_cell_grid_uses_per_class_nms() {
+        // Verify that build_cell_grid uses different NMS thresholds for rows vs columns.
+        // Two overlapping columns (IoB ~0.4) should both survive with NMS_IOB_THRESHOLD_COLS=0.3
+        // only if they are not heavily overlapping. With 0.4 > 0.3, the second is suppressed.
+        // But two overlapping rows (IoB ~0.4) should both survive with NMS_IOB_THRESHOLD_ROWS=0.5.
+        let result = TatrResult {
+            rows: vec![
+                TatrDetection {
+                    bbox: [0.0, 0.0, 100.0, 25.0],
+                    confidence: 0.9,
+                    class: TatrClass::Row,
+                },
+                TatrDetection {
+                    bbox: [0.0, 15.0, 100.0, 40.0], // 10/25 = 0.4 IoB with first
+                    confidence: 0.85,
+                    class: TatrClass::Row,
+                },
+            ],
+            columns: vec![TatrDetection {
+                bbox: [0.0, 0.0, 50.0, 40.0],
+                confidence: 0.9,
+                class: TatrClass::Column,
+            }],
+            headers: Vec::new(),
+            spanning: Vec::new(),
+        };
+
+        let grid = build_cell_grid(&result, None);
+        // Rows: 0.4 < 0.5 threshold → both kept
+        assert_eq!(
+            grid.len(),
+            2,
+            "rows with 0.4 IoB should both survive row NMS (threshold 0.5)"
+        );
     }
 }

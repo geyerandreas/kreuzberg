@@ -5,8 +5,21 @@
 
 use crate::Result;
 use crate::corpus::{self, CorpusFilter};
+use kreuzberg::core::config::layout::TableModel;
 use std::path::PathBuf;
 use std::time::Instant;
+
+fn parse_table_model(s: &str) -> TableModel {
+    match s {
+        "tatr" => TableModel::Tatr,
+        "slanet_wired" => TableModel::SlanetWired,
+        "slanet_wireless" => TableModel::SlanetWireless,
+        "slanet_plus" => TableModel::SlanetPlus,
+        "slanet_auto" => TableModel::SlanetAuto,
+        "disabled" => TableModel::Disabled,
+        _ => TableModel::default(),
+    }
+}
 
 /// Configuration for model benchmark.
 pub struct ModelBenchmarkConfig {
@@ -65,7 +78,7 @@ pub async fn run_model_benchmark(config: &ModelBenchmarkConfig) -> Result<Vec<Mo
         let config_a = kreuzberg::ExtractionConfig {
             output_format: kreuzberg::core::config::OutputFormat::Markdown,
             layout: Some(kreuzberg::core::config::layout::LayoutDetectionConfig {
-                table_model: Some(config.model_a.clone()),
+                table_model: parse_table_model(&config.model_a),
                 ..Default::default()
             }),
             ..Default::default()
@@ -90,7 +103,7 @@ pub async fn run_model_benchmark(config: &ModelBenchmarkConfig) -> Result<Vec<Mo
         let config_b = kreuzberg::ExtractionConfig {
             output_format: kreuzberg::core::config::OutputFormat::Markdown,
             layout: Some(kreuzberg::core::config::layout::LayoutDetectionConfig {
-                table_model: Some(config.model_b.clone()),
+                table_model: parse_table_model(&config.model_b),
                 ..Default::default()
             }),
             ..Default::default()

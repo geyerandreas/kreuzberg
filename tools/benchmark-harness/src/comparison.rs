@@ -298,7 +298,7 @@ pub fn build_extraction_config(pipeline: Pipeline) -> kreuzberg::ExtractionConfi
         },
         Pipeline::LayoutSlanetAuto => kreuzberg::ExtractionConfig {
             layout: Some(LayoutDetectionConfig {
-                table_model: Some("slanet_auto".to_string()),
+                table_model: kreuzberg::core::config::layout::TableModel::SlanetAuto,
                 ..Default::default()
             }),
             ocr: Some(kreuzberg::core::config::OcrConfig {
@@ -311,7 +311,7 @@ pub fn build_extraction_config(pipeline: Pipeline) -> kreuzberg::ExtractionConfi
         Pipeline::Docling | Pipeline::PaddleOcrPython | Pipeline::RapidOcr => base, // Not used for extraction — read from file
         Pipeline::LayoutSlanetWired => kreuzberg::ExtractionConfig {
             layout: Some(LayoutDetectionConfig {
-                table_model: Some("slanet_wired".to_string()),
+                table_model: kreuzberg::core::config::layout::TableModel::SlanetWired,
                 ..Default::default()
             }),
             ocr: Some(kreuzberg::core::config::OcrConfig {
@@ -323,7 +323,7 @@ pub fn build_extraction_config(pipeline: Pipeline) -> kreuzberg::ExtractionConfi
         },
         Pipeline::LayoutSlanetWireless => kreuzberg::ExtractionConfig {
             layout: Some(LayoutDetectionConfig {
-                table_model: Some("slanet_wireless".to_string()),
+                table_model: kreuzberg::core::config::layout::TableModel::SlanetWireless,
                 ..Default::default()
             }),
             ocr: Some(kreuzberg::core::config::OcrConfig {
@@ -335,7 +335,7 @@ pub fn build_extraction_config(pipeline: Pipeline) -> kreuzberg::ExtractionConfi
         },
         Pipeline::LayoutSlanetPlus => kreuzberg::ExtractionConfig {
             layout: Some(LayoutDetectionConfig {
-                table_model: Some("slanet_plus".to_string()),
+                table_model: kreuzberg::core::config::layout::TableModel::SlanetPlus,
                 ..Default::default()
             }),
             ocr: Some(kreuzberg::core::config::OcrConfig {

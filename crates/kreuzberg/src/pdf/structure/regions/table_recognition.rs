@@ -132,8 +132,11 @@ pub(in crate::pdf::structure) fn recognize_tables_for_native_page(
             continue;
         }
 
-        // Build cell grid from row × column intersections
-        let cell_grid = crate::layout::models::tatr::build_cell_grid(&tatr_result, None);
+        // Build cell grid from row × column intersections.
+        // Pass the table hint bbox converted to crop-relative pixel coords
+        // so that rows are widened to the full table extent.
+        let table_bbox_crop = [0.0_f32, 0.0, crop_w as f32, crop_h as f32];
+        let cell_grid = crate::layout::models::tatr::build_cell_grid(&tatr_result, Some(table_bbox_crop));
         let num_rows = cell_grid.len();
         let num_cols = if num_rows > 0 { cell_grid[0].len() } else { 0 };
 
@@ -153,8 +156,20 @@ pub(in crate::pdf::structure) fn recognize_tables_for_native_page(
 
         // Filter words that overlap the table hint bbox (≥20% of word area).
         // HocrWord uses image coordinates (y=0 at top).
-        let hint_img_top = (page_height - hint.top).max(0.0);
-        let hint_img_bottom = (page_height - hint.bottom).max(0.0);
+        // Pad the hint bbox slightly (3% width, 2% height) so edge words
+        // (e.g. row numbers at the left margin) are not excluded by a
+        // tight-fitting RT-DETR bbox.
+        let hint_width = hint.right - hint.left;
+        let hint_height = hint.top - hint.bottom;
+        let pad_x = hint_width * 0.03;
+        let pad_y = hint_height * 0.02;
+        let padded_left = (hint.left - pad_x).max(0.0);
+        let padded_right = hint.right + pad_x;
+        let padded_top_pdf = hint.top + pad_y;
+        let padded_bottom_pdf = (hint.bottom - pad_y).max(0.0);
+
+        let hint_img_top = (page_height - padded_top_pdf).max(0.0);
+        let hint_img_bottom = (page_height - padded_bottom_pdf).max(0.0);
 
         let table_words: Vec<&crate::pdf::table_reconstruct::HocrWord> = words
             .iter()
@@ -162,7 +177,7 @@ pub(in crate::pdf::structure) fn recognize_tables_for_native_page(
                 if w.text.trim().is_empty() {
                     return false;
                 }
-                word_hint_iow(w, hint.left, hint_img_top, hint.right, hint_img_bottom) >= 0.2
+                word_hint_iow(w, padded_left, hint_img_top, padded_right, hint_img_bottom) >= 0.2
             })
             .collect();
 

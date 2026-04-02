@@ -32,14 +32,25 @@ fn main() {
         .unwrap_or("tesseract");
 
     // Parse --layout-preset <preset> (e.g., "fast" or "accurate")
-    let layout_preset = args
+    let layout_model = args
         .windows(2)
-        .find(|w| w[0] == "--layout-preset")
+        .find(|w| w[0] == "--layout-preset" || w[0] == "--table-model")
         .map(|w| w[1].clone());
 
-    let layout_config = layout_preset.map(|preset| kreuzberg::core::config::layout::LayoutDetectionConfig {
-        preset,
-        ..Default::default()
+    let layout_config = layout_model.map(|model| {
+        let table_model = match model.as_str() {
+            "tatr" => kreuzberg::core::config::layout::TableModel::Tatr,
+            "slanet_wired" => kreuzberg::core::config::layout::TableModel::SlanetWired,
+            "slanet_wireless" => kreuzberg::core::config::layout::TableModel::SlanetWireless,
+            "slanet_plus" => kreuzberg::core::config::layout::TableModel::SlanetPlus,
+            "slanet_auto" => kreuzberg::core::config::layout::TableModel::SlanetAuto,
+            "disabled" => kreuzberg::core::config::layout::TableModel::Disabled,
+            _ => kreuzberg::core::config::layout::TableModel::default(),
+        };
+        kreuzberg::core::config::layout::LayoutDetectionConfig {
+            table_model,
+            ..Default::default()
+        }
     });
 
     let config = ExtractionConfig {

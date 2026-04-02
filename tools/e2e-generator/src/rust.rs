@@ -396,7 +396,7 @@ fn render_assertions(assertions: &Assertions) -> String {
             .map(|v| format!("Some({v})"))
             .unwrap_or_else(|| "None".into());
         buffer.push_str(&format!(
-            "    assertions::assert_chunks(&result, {min_count}, {max_count}, {each_has_content}, {each_has_embedding}, {each_has_heading_context}, {each_has_chunk_type}, {content_starts_with_heading});\n"
+            "    assertions::assert_chunks(&result, &assertions::ChunkAssertions {{\n        min_count: {min_count},\n        max_count: {max_count},\n        each_has_content: {each_has_content},\n        each_has_embedding: {each_has_embedding},\n        each_has_heading_context: {each_has_heading_context},\n        each_has_chunk_type: {each_has_chunk_type},\n        content_starts_with_heading: {content_starts_with_heading},\n    }});\n"
         ));
     }
 

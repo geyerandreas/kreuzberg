@@ -1232,7 +1232,7 @@ Normal text here.
 
 Some text after.
 ";
-        let report = detect_noise(&md);
+        let report = detect_noise(md);
         let page_issues: Vec<_> = report
             .issues
             .iter()

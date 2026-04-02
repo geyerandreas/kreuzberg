@@ -134,6 +134,17 @@ fn test_token_reduction_with_chunking() {
     assertions::assert_expected_mime(&result, &["application/pdf"]);
     assertions::assert_min_content_length(&result, 5);
     assertions::assert_max_content_length(&result, 200);
-    assertions::assert_chunks(&result, Some(1), None, Some(true), None, None, None, None);
+    assertions::assert_chunks(
+        &result,
+        &assertions::ChunkAssertions {
+            min_count: Some(1),
+            max_count: None,
+            each_has_content: Some(true),
+            each_has_embedding: None,
+            each_has_heading_context: None,
+            each_has_chunk_type: None,
+            content_starts_with_heading: None,
+        },
+    );
     assertions::assert_content_not_empty(&result);
 }

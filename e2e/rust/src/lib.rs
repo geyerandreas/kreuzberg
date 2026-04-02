@@ -225,35 +225,47 @@ pub mod assertions {
         }
     }
 
+    /// Options for chunk assertions.
+    #[derive(Default)]
+    pub struct ChunkAssertions {
+        pub min_count: Option<usize>,
+        pub max_count: Option<usize>,
+        pub each_has_content: Option<bool>,
+        pub each_has_embedding: Option<bool>,
+        pub each_has_heading_context: Option<bool>,
+        pub each_has_chunk_type: Option<bool>,
+        pub content_starts_with_heading: Option<bool>,
+    }
+
     /// Assert chunk count and properties.
-    pub fn assert_chunks(
-        result: &ExtractionResult,
-        min_count: Option<usize>,
-        max_count: Option<usize>,
-        each_has_content: Option<bool>,
-        each_has_embedding: Option<bool>,
-        each_has_heading_context: Option<bool>,
-        each_has_chunk_type: Option<bool>,
-        content_starts_with_heading: Option<bool>,
-    ) {
+    pub fn assert_chunks(result: &ExtractionResult, opts: &ChunkAssertions) {
+        let ChunkAssertions {
+            min_count,
+            max_count,
+            each_has_content,
+            each_has_embedding,
+            each_has_heading_context,
+            each_has_chunk_type,
+            content_starts_with_heading,
+        } = opts;
         let chunks = result.chunks.as_ref().expect("Expected chunks in result");
         let count = chunks.len();
 
-        if let Some(min) = min_count {
+        if let Some(min) = *min_count {
             assert!(count >= min, "Expected at least {min} chunks, found {count}");
         }
 
-        if let Some(max) = max_count {
+        if let Some(max) = *max_count {
             assert!(count <= max, "Expected at most {max} chunks, found {count}");
         }
 
-        if each_has_content == Some(true) {
+        if *each_has_content == Some(true) {
             for (i, chunk) in chunks.iter().enumerate() {
                 assert!(!chunk.content.is_empty(), "Expected chunk {i} to have content");
             }
         }
 
-        if each_has_embedding == Some(true) {
+        if *each_has_embedding == Some(true) {
             for (i, chunk) in chunks.iter().enumerate() {
                 assert!(
                     chunk.embedding.is_some() && !chunk.embedding.as_ref().unwrap().is_empty(),
@@ -262,7 +274,7 @@ pub mod assertions {
             }
         }
 
-        if each_has_heading_context == Some(true) {
+        if *each_has_heading_context == Some(true) {
             for (i, chunk) in chunks.iter().enumerate() {
                 assert!(
                     chunk.metadata.heading_context.is_some(),
@@ -271,7 +283,7 @@ pub mod assertions {
             }
         }
 
-        if each_has_heading_context == Some(false) {
+        if *each_has_heading_context == Some(false) {
             for (i, chunk) in chunks.iter().enumerate() {
                 assert!(
                     chunk.metadata.heading_context.is_none(),
@@ -280,7 +292,7 @@ pub mod assertions {
             }
         }
 
-        if each_has_chunk_type == Some(true) {
+        if *each_has_chunk_type == Some(true) {
             for (i, chunk) in chunks.iter().enumerate() {
                 assert!(
                     chunk.chunk_type != kreuzberg::types::ChunkType::Unknown,
@@ -289,7 +301,7 @@ pub mod assertions {
             }
         }
 
-        if content_starts_with_heading == Some(true) {
+        if *content_starts_with_heading == Some(true) {
             for (i, chunk) in chunks.iter().enumerate() {
                 if chunk.metadata.heading_context.is_none() {
                     continue;
