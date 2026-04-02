@@ -158,11 +158,11 @@ jobs:
         run: scripts/ci/validate/cleanup-after-lint.sh
         shell: bash
 
-  validate-python:
-    name: Validate (Python)
+  validate-lightweight:
+    name: Validate (Python/TypeScript/Ruby/Java/C#/PHP/Elixir/R)
     if: github.repository == 'kreuzberg-dev/kreuzberg' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-24.04-arm
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
 
@@ -170,58 +170,10 @@ jobs:
         uses: kreuzberg-dev/actions/setup-python-env@v1
         with:
           python-version: "3.13"
-          cache-prefix: validate-py
-
-      - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
-
-      - name: Run Python lint checks
-        run: task python:lint:check
-
-  validate-typescript:
-    name: Validate (TypeScript)
-    if: github.repository == 'kreuzberg-dev/kreuzberg' && github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
+          cache-prefix: validate-lightweight-py
 
       - name: Setup Node
         uses: kreuzberg-dev/actions/setup-node-workspace@v1
-
-      - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
-
-      - name: Run TypeScript lint checks
-        run: task node:lint:check
-
-  validate-go:
-    name: Validate (Go)
-    if: github.repository == 'kreuzberg-dev/kreuzberg' && github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-24.04-arm
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
-        with:
-          go-version: "1.26"
-          cache-dependency-path: packages/go/v4/go.sum
-
-      - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
-
-      - name: Run Go lint checks
-        run: task go:lint:check
-
-  validate-polyglot:
-    name: Validate (Ruby/Java/C#/PHP/Elixir/R)
-    if: github.repository == 'kreuzberg-dev/kreuzberg' && github.actor != 'dependabot[bot]'
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v6
 
       - name: Setup Ruby
         uses: ruby/setup-ruby@v1
@@ -282,11 +234,10 @@ jobs:
           Rscript -e "install.packages(c('styler', 'lintr', 'testthat', 'jsonlite', 'withr'), repos = 'https://cloud.r-project.org')"
         shell: bash
 
-      - name: Install Task
-        uses: kreuzberg-dev/actions/install-task@v1
-
-      - name: Run polyglot lint checks
-        run: task ruby:lint:check && task java:lint:check && task csharp:lint:check && task php:lint:check && task elixir:lint:check && task r:lint:check
+      - name: Run all lightweight lint checks
+        uses: j178/prek-action@v2
+        with:
+          extra-args: ruff ruff-format mypy biome-format biome-lint oxlint ruby-format ruby-lint cpd checkstyle java-verify csharp-format csharp-lint php-format php-lint mix-credo mix-format r-format r-lint --all-files
 
   typescript-typecheck:
     name: TypeScript Type Check
@@ -333,7 +284,7 @@ jobs:
 # --- Stage 2: Build FFI + Rust Tests + Docker ---
 
   build-ffi:
-    needs: [validate-universal, validate-rust, validate-python, validate-typescript, validate-go, validate-polyglot, typescript-typecheck]
+    needs: [validate-universal, validate-rust, validate-lightweight, typescript-typecheck]
     name: Build FFI (${{ matrix.os }})
     if: github.repository == 'kreuzberg-dev/kreuzberg' && github.actor != 'dependabot[bot]'
     runs-on: ${{ matrix.os }}
@@ -432,7 +383,7 @@ jobs:
         uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
 
   rust-unit:
-    needs: [validate-universal, validate-rust, validate-python, validate-typescript, validate-go, validate-polyglot, typescript-typecheck]
+    needs: [validate-universal, validate-rust, validate-lightweight, typescript-typecheck]
     name: Rust Unit Tests (${{ matrix.os }})
     if: github.repository == 'kreuzberg-dev/kreuzberg' && github.actor != 'dependabot[bot]'
     runs-on: ${{ matrix.os }}
@@ -531,7 +482,7 @@ jobs:
         uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
 
   rust-e2e:
-    needs: [validate-universal, validate-rust, validate-python, validate-typescript, validate-go, validate-polyglot, typescript-typecheck]
+    needs: [validate-universal, validate-rust, validate-lightweight, typescript-typecheck]
     name: Rust E2E Tests
     if: github.repository == 'kreuzberg-dev/kreuzberg' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
@@ -606,7 +557,7 @@ jobs:
         uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
 
   docker:
-    needs: [validate-universal, validate-rust, validate-python, validate-typescript, validate-go, validate-polyglot, typescript-typecheck]
+    needs: [validate-universal, validate-rust, validate-lightweight, typescript-typecheck]
     name: Docker (${{ matrix.variant }})
     if: github.repository == 'kreuzberg-dev/kreuzberg' && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
@@ -928,7 +879,7 @@ jobs:
         uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
 
   build-python-sdist:
-    needs: [validate-universal, validate-rust, validate-python, validate-typescript, validate-go, validate-polyglot, typescript-typecheck]
+    needs: [validate-universal, validate-rust, validate-lightweight, typescript-typecheck]
     name: Python Sdist
     if: github.repository == 'kreuzberg-dev/kreuzberg' && github.actor != 'dependabot[bot]'
     timeout-minutes: 180
@@ -1147,7 +1098,7 @@ jobs:
         uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
 
   build-ruby:
-    needs: [validate-universal, validate-rust, validate-python, validate-typescript, validate-go, validate-polyglot, typescript-typecheck]
+    needs: [validate-universal, validate-rust, validate-lightweight, typescript-typecheck]
     name: Ruby Gem (${{ matrix.os }})
     if: github.repository == 'kreuzberg-dev/kreuzberg' && github.actor != 'dependabot[bot]'
     timeout-minutes: 180
@@ -1567,7 +1518,7 @@ jobs:
         uses: kreuzberg-dev/actions/cleanup-rust-cache@v1
 
   build-wasm:
-    needs: [validate-universal, validate-rust, validate-python, validate-typescript, validate-go, validate-polyglot, typescript-typecheck]
+    needs: [validate-universal, validate-rust, validate-lightweight, typescript-typecheck]
     name: Build WASM (${{ matrix.os }})
     if: github.repository == 'kreuzberg-dev/kreuzberg' && github.actor != 'dependabot[bot]'
     runs-on: ${{ matrix.os }}
@@ -2519,6 +2470,17 @@ jobs:
         run: |
           curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b "$(go env GOPATH)/bin"
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Run Go lint checks
+        shell: bash
+        run: task go:lint:check
+        env:
+          LD_LIBRARY_PATH: ${{ env.LD_LIBRARY_PATH }}
+          DYLD_LIBRARY_PATH: ${{ env.DYLD_LIBRARY_PATH }}
+          CGO_ENABLED: ${{ env.CGO_ENABLED }}
+          CGO_CFLAGS: ${{ env.CGO_CFLAGS }}
+          CGO_LDFLAGS: ${{ env.CGO_LDFLAGS }}
+          PKG_CONFIG_PATH: ${{ env.PKG_CONFIG_PATH }}
 
       - name: Generate Go E2E tests
         shell: bash

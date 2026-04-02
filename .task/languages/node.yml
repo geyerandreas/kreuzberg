@@ -83,11 +83,11 @@ tasks:
       - pnpm exec oxlint --fix typescript
 
   lint:check:
-    desc: Check Node/TypeScript code linting without modifications (biome + typecheck)
+    desc: Check Node/TypeScript code linting without modifications (biome + oxlint)
     dir: crates/kreuzberg-node
     cmds:
       - pnpm lint
-      - pnpm typecheck
+      - pnpm exec oxlint typescript
 
   format:
     desc: Format Node/TypeScript code with modifications (biome)
