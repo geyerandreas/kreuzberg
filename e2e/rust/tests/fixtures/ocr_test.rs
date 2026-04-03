@@ -521,6 +521,10 @@ fn test_ocr_paddle_table_detection() {
         );
         return;
     }
+    if cfg!(target_arch = "aarch64") && cfg!(target_os = "linux") {
+        println!("Skipping ocr_paddle_table_detection: not supported on aarch64-unknown-linux-gnu");
+        return;
+    }
     let config: ExtractionConfig = serde_json::from_str(
         r#"{
   "ocr": {

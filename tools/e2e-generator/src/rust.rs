@@ -195,6 +195,23 @@ fn render_test(fixture: &Fixture) -> Result<String> {
         )?;
     }
 
+    // Emit platform skip conditions
+    for platform in &fixture.skip().skip_on_platform {
+        let (arch, os) = match platform.as_str() {
+            "aarch64-unknown-linux-gnu" | "aarch64-unknown-linux-musl" => ("aarch64", "linux"),
+            "x86_64-unknown-linux-gnu" | "x86_64-unknown-linux-musl" => ("x86_64", "linux"),
+            "aarch64-apple-darwin" => ("aarch64", "macos"),
+            "x86_64-apple-darwin" => ("x86_64", "macos"),
+            "x86_64-pc-windows-msvc" => ("x86_64", "windows"),
+            _ => continue,
+        };
+        writeln!(
+            test_body,
+            "    if cfg!(target_arch = \"{arch}\") && cfg!(target_os = \"{os}\") {{\n        println!(\"Skipping {id}: not supported on {platform}\");\n        return;\n    }}",
+            id = fixture.id
+        )?;
+    }
+
     let config_literal = render_config_literal(&extraction.config)?;
     if config_literal.trim().is_empty() || config_literal.trim() == "{}" {
         writeln!(test_body, "    let config = ExtractionConfig::default();\n")?;

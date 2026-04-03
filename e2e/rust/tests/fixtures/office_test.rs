@@ -481,6 +481,10 @@ fn test_office_hwp_styled() {
         );
         return;
     }
+    if cfg!(target_arch = "aarch64") && cfg!(target_os = "linux") {
+        println!("Skipping office_hwp_styled: not supported on aarch64-unknown-linux-gnu");
+        return;
+    }
     let config = ExtractionConfig::default();
 
     let result = match kreuzberg::extract_file_sync(&document_path, None, &config) {

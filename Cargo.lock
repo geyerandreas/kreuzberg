@@ -1799,7 +1799,7 @@ checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
 
 [[package]]
 name = "e2e-rust"
-version = "4.7.0"
+version = "0.0.0"
 dependencies = [
  "kreuzberg",
  "serde_json",
@@ -3527,7 +3527,6 @@ dependencies = [
  "whatlang",
  "yake-rust",
  "zip 7.2.0",
- "zip 8.5.0",
 ]
 
 [[package]]

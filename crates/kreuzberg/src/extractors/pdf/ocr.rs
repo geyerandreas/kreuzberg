@@ -1046,6 +1046,7 @@ pub(crate) async fn run_ocr_pipeline(
         });
     }
 
+    #[allow(clippy::type_complexity)]
     let mut best_result: Option<(
         String,
         f64,

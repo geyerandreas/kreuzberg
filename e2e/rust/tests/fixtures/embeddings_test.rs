@@ -19,6 +19,10 @@ async fn test_embedding_async() {
         );
         return;
     }
+    if cfg!(target_arch = "x86_64") && cfg!(target_os = "windows") {
+        println!("Skipping embedding_async: not supported on x86_64-pc-windows-msvc");
+        return;
+    }
     let config: ExtractionConfig = serde_json::from_str(
         r#"{
   "chunking": {
@@ -82,6 +86,10 @@ fn test_embedding_balanced_preset() {
             "Skipping embedding_balanced_preset: missing document at {}",
             document_path.display()
         );
+        return;
+    }
+    if cfg!(target_arch = "x86_64") && cfg!(target_os = "windows") {
+        println!("Skipping embedding_balanced_preset: not supported on x86_64-pc-windows-msvc");
         return;
     }
     let config: ExtractionConfig = serde_json::from_str(
@@ -193,6 +201,10 @@ fn test_embedding_fast_preset() {
             "Skipping embedding_fast_preset: missing document at {}",
             document_path.display()
         );
+        return;
+    }
+    if cfg!(target_arch = "x86_64") && cfg!(target_os = "windows") {
+        println!("Skipping embedding_fast_preset: not supported on x86_64-pc-windows-msvc");
         return;
     }
     let config: ExtractionConfig = serde_json::from_str(

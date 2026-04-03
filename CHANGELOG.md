@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Ruby `disable_ocr` config** — `disable_ocr` keyword was not parsed in Ruby config handler, causing OCR to run even when explicitly disabled.
 - **Node.js `ExtractionResult` parity** — `document`, `djotContent`, and `ocrElements` fields were `Option<Value>` which NAPI-RS omitted from JS objects when `None`. Changed to `Value` defaulting to `null`.
 - **Node.js `convertChunk` missing `chunkType`** — TypeScript type converter did not forward the `chunk_type` field from NAPI bindings.
+- **ODT caption text extraction** — text inside `draw:frame > draw:text-box > text:p` (e.g., image captions) was not extracted. The ODT extractor now recurses into text-box content.
 - **OCR InternalDocument propagation** — `run_ocr_pipeline` discarded the structured InternalDocument built by `extract_with_ocr`, causing OCR results to fall back to naive `\n\n` paragraph splitting. Now propagated through the full pipeline.
 - **OCR table cells** — OCR-detected tables (via TATR) had empty `cells` vectors, causing comrak to render them as paragraphs instead of proper tables. Now populated from the cell grid, matching the native text path fix.
 - **OCR non-layout InternalDocument** — When layout detection is not active, the OCR path now builds an InternalDocument from results instead of returning None. Ensures structured output regardless of layout detection availability.

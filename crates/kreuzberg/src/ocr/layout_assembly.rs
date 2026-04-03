@@ -204,12 +204,7 @@ fn recognize_single_table(
         .collect();
 
     // Build markdown table by matching OCR elements to cells
-    let (cells, markdown) = build_markdown_table(
-        &cell_grid,
-        &table_elements,
-        crop_x as f32,
-        crop_y as f32,
-    );
+    let (cells, markdown) = build_markdown_table(&cell_grid, &table_elements, crop_x as f32, crop_y as f32);
     Some((cells, markdown))
 }
 

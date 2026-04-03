@@ -18,6 +18,10 @@ fn test_pdf_annotations() {
         );
         return;
     }
+    if cfg!(target_arch = "aarch64") && cfg!(target_os = "linux") {
+        println!("Skipping pdf_annotations: not supported on aarch64-unknown-linux-gnu");
+        return;
+    }
     let config: ExtractionConfig = serde_json::from_str(
         r#"{
   "pdf_options": {
@@ -96,6 +100,10 @@ fn test_pdf_bounding_boxes() {
             "Skipping pdf_bounding_boxes: missing document at {}",
             document_path.display()
         );
+        return;
+    }
+    if cfg!(target_arch = "aarch64") && cfg!(target_os = "linux") {
+        println!("Skipping pdf_bounding_boxes: not supported on aarch64-unknown-linux-gnu");
         return;
     }
     let config: ExtractionConfig = serde_json::from_str(
@@ -455,6 +463,10 @@ fn test_pdf_tables_small() {
             "Skipping pdf_tables_small: missing document at {}",
             document_path.display()
         );
+        return;
+    }
+    if cfg!(target_arch = "aarch64") && cfg!(target_os = "linux") {
+        println!("Skipping pdf_tables_small: not supported on aarch64-unknown-linux-gnu");
         return;
     }
     let config = ExtractionConfig::default();

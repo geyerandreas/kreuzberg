@@ -576,6 +576,27 @@ fn build_internal_elements(
                     builder.push_uri(uri);
                 }
 
+                // Also extract text from caption paragraphs nested inside
+                // draw:frame > draw:text-box, which collect_odt_annotations misses
+                // because it only walks direct children.
+                for frame in node.children().filter(|n| n.tag_name().name() == "frame") {
+                    for text_box in frame.children().filter(|n| n.tag_name().name() == "text-box") {
+                        for nested_p in text_box.children().filter(|n| n.tag_name().name() == "p") {
+                            let (caption, _, caption_uris) = collect_odt_annotations(nested_p, style_map);
+                            for uri in caption_uris {
+                                builder.push_uri(uri);
+                            }
+                            let caption_trimmed = caption.trim();
+                            if !caption_trimmed.is_empty() {
+                                if !text.is_empty() {
+                                    text.push('\n');
+                                }
+                                text.push_str(caption_trimmed);
+                            }
+                        }
+                    }
+                }
+
                 // Inject inline footnote markers [^N] into the paragraph text
                 for (citation, _key) in &footnote_markers {
                     let marker = format!("[^{}]", citation);

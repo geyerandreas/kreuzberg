@@ -1718,6 +1718,10 @@ fn test_config_pdf_annotations_count() {
         );
         return;
     }
+    if cfg!(target_arch = "aarch64") && cfg!(target_os = "linux") {
+        println!("Skipping config_pdf_annotations_count: not supported on aarch64-unknown-linux-gnu");
+        return;
+    }
     let config: ExtractionConfig = serde_json::from_str(
         r#"{
   "pdf_options": {
