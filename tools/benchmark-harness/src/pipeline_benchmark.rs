@@ -118,7 +118,8 @@ async fn extract_and_score(
     gt_markdown: Option<&str>,
     fixtures_dir: &Path,
 ) -> PipelineResult {
-    let (content, time_ms) = crate::comparison::extract_pipeline(pipeline, doc, fixtures_dir).await;
+    let (content_opt, time_ms) = crate::comparison::extract_pipeline(pipeline, doc, fixtures_dir).await;
+    let content = content_opt.unwrap_or_default();
     let (tf1, _basic_sf1, _basic_order, _basic_per_type) =
         crate::comparison::score_document(&content, gt_text, gt_markdown);
 

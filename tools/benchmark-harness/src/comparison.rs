@@ -394,7 +394,7 @@ pub async fn extract_pipeline(
     pipeline: Pipeline,
     doc: &crate::corpus::CorpusDocument,
     fixtures_dir: &std::path::Path,
-) -> (String, f64) {
+) -> (Option<String>, f64) {
     match pipeline {
         Pipeline::Docling | Pipeline::PaddleOcrPython | Pipeline::RapidOcr => {
             let vendored_name = match pipeline {
@@ -402,7 +402,8 @@ pub async fn extract_pipeline(
                 Pipeline::RapidOcr => "rapidocr",
                 _ => "docling",
             };
-            read_vendored_cached(&doc.name, fixtures_dir, vendored_name)
+            let (content, time_ms) = read_vendored_cached(&doc.name, fixtures_dir, vendored_name);
+            (Some(content), time_ms)
         }
         _ => {
             let t = Instant::now();
@@ -422,14 +423,14 @@ pub async fn extract_pipeline(
             };
 
             let result = match std::panic::AssertUnwindSafe(extraction_future).catch_unwind().await {
-                Ok(Ok(Ok(result))) => result.content,
+                Ok(Ok(Ok(result))) => Some(result.content),
                 Ok(Ok(Err(e))) => {
                     eprintln!("  ERROR {}/{}: {}", doc_name, pipeline_name, e);
-                    String::new()
+                    None
                 }
                 Ok(Err(_)) => {
                     eprintln!("  TIMEOUT {}/{}: exceeded 180s", doc_name, pipeline_name);
-                    String::new()
+                    None
                 }
                 Err(panic_info) => {
                     let panic_msg = if let Some(s) = panic_info.downcast_ref::<String>() {
@@ -448,7 +449,7 @@ pub async fn extract_pipeline(
                         pipeline_name,
                         doc.file_type,
                     );
-                    String::new()
+                    None
                 }
             };
             (result, t.elapsed().as_secs_f64() * 1000.0)
@@ -457,6 +458,9 @@ pub async fn extract_pipeline(
 }
 
 /// Run a single pipeline on a single document and score it.
+///
+/// Timeouts, errors, and panics produce NaN scores so they are tracked
+/// in the results but excluded from aggregate averages.
 async fn run_pipeline(
     pipeline: Pipeline,
     doc: &CorpusDocument,
@@ -464,8 +468,15 @@ async fn run_pipeline(
     gt_markdown: Option<&str>,
     fixtures_dir: &std::path::Path,
 ) -> PipelineResult {
-    let (content, time_ms) = extract_pipeline(pipeline, doc, fixtures_dir).await;
-    let (tf1, sf1, order_score, per_type_sf1) = score_document(&content, gt_text, gt_markdown);
+    let (content_opt, time_ms) = extract_pipeline(pipeline, doc, fixtures_dir).await;
+
+    let content = content_opt.unwrap_or_default();
+    let (tf1, sf1, order_score, per_type_sf1) = if content.is_empty() && time_ms > 170_000.0 {
+        // Likely a timeout — mark as NaN to exclude from averages
+        (f64::NAN, f64::NAN, f64::NAN, std::collections::HashMap::new())
+    } else {
+        score_document(&content, gt_text, gt_markdown)
+    };
 
     let ext_tokens = tokenize(&content);
     let gt_tokens = tokenize(gt_text);
@@ -587,10 +598,27 @@ pub fn print_comparison_table(results: &[DocResult]) {
     // Averages
     eprintln!("{}", "-".repeat(25 + pipeline_names.len() * 30));
     eprint!("{:<25}", "AVERAGE");
-    let n = results.len() as f64;
     for (i, _) in pipeline_names.iter().enumerate() {
-        let avg_sf1: f64 = results.iter().map(|r| r.results[i].sf1).sum::<f64>() / n;
-        let avg_tf1: f64 = results.iter().map(|r| r.results[i].tf1).sum::<f64>() / n;
+        let sf1_vals: Vec<f64> = results
+            .iter()
+            .map(|r| r.results[i].sf1)
+            .filter(|v| !v.is_nan())
+            .collect();
+        let tf1_vals: Vec<f64> = results
+            .iter()
+            .map(|r| r.results[i].tf1)
+            .filter(|v| !v.is_nan())
+            .collect();
+        let avg_sf1 = if sf1_vals.is_empty() {
+            f64::NAN
+        } else {
+            sf1_vals.iter().sum::<f64>() / sf1_vals.len() as f64
+        };
+        let avg_tf1 = if tf1_vals.is_empty() {
+            f64::NAN
+        } else {
+            tf1_vals.iter().sum::<f64>() / tf1_vals.len() as f64
+        };
         let times: Vec<f64> = results
             .iter()
             .map(|r| r.results[i].time_ms)
@@ -609,6 +637,14 @@ pub fn print_comparison_table(results: &[DocResult]) {
         eprint!(" {:>9.1}% {:>9.1}% {:>8}", avg_sf1 * 100.0, avg_tf1 * 100.0, time_str);
     }
     eprintln!();
+
+    // Report timeouts/errors per pipeline
+    for (i, name) in pipeline_names.iter().enumerate() {
+        let failed = results.iter().filter(|r| r.results[i].sf1.is_nan()).count();
+        if failed > 0 {
+            eprintln!("  {}: {} timeouts/errors (excluded from averages)", name, failed);
+        }
+    }
 }
 
 /// Print a per-format summary table to stderr, grouping documents by file_type.
@@ -642,11 +678,20 @@ pub fn print_per_format_summary(results: &[DocResult]) {
 
     // Rows
     for (format, docs) in &by_format {
-        let n = docs.len() as f64;
         eprint!("{:<12} {:>5}", format, docs.len());
         for (i, _) in pipeline_names.iter().enumerate() {
-            let avg_sf1: f64 = docs.iter().map(|d| d.results[i].sf1).sum::<f64>() / n;
-            let avg_tf1: f64 = docs.iter().map(|d| d.results[i].tf1).sum::<f64>() / n;
+            let sf1_vals: Vec<f64> = docs.iter().map(|d| d.results[i].sf1).filter(|v| !v.is_nan()).collect();
+            let tf1_vals: Vec<f64> = docs.iter().map(|d| d.results[i].tf1).filter(|v| !v.is_nan()).collect();
+            let avg_sf1 = if sf1_vals.is_empty() {
+                f64::NAN
+            } else {
+                sf1_vals.iter().sum::<f64>() / sf1_vals.len() as f64
+            };
+            let avg_tf1 = if tf1_vals.is_empty() {
+                f64::NAN
+            } else {
+                tf1_vals.iter().sum::<f64>() / tf1_vals.len() as f64
+            };
             eprint!("  {:>9.1}% {:>9.1}%", avg_sf1 * 100.0, avg_tf1 * 100.0);
         }
         eprintln!();
@@ -699,13 +744,23 @@ pub fn write_comparison_json(results: &[DocResult], path: &std::path::Path) -> R
     let by_format: std::collections::BTreeMap<String, FormatSummary> = by_format_map
         .iter()
         .map(|(format, docs)| {
-            let n = docs.len() as f64;
+            let _n = docs.len() as f64;
             let pipelines = pipeline_names
                 .iter()
                 .enumerate()
                 .map(|(i, name)| {
-                    let avg_sf1 = docs.iter().map(|d| d.results[i].sf1).sum::<f64>() / n;
-                    let avg_tf1 = docs.iter().map(|d| d.results[i].tf1).sum::<f64>() / n;
+                    let sf1_vals: Vec<f64> = docs.iter().map(|d| d.results[i].sf1).filter(|v| !v.is_nan()).collect();
+                    let tf1_vals: Vec<f64> = docs.iter().map(|d| d.results[i].tf1).filter(|v| !v.is_nan()).collect();
+                    let avg_sf1 = if sf1_vals.is_empty() {
+                        0.0
+                    } else {
+                        sf1_vals.iter().sum::<f64>() / sf1_vals.len() as f64
+                    };
+                    let avg_tf1 = if tf1_vals.is_empty() {
+                        0.0
+                    } else {
+                        tf1_vals.iter().sum::<f64>() / tf1_vals.len() as f64
+                    };
                     FormatPipelineSummary {
                         pipeline: name.clone(),
                         avg_sf1,
@@ -724,20 +779,30 @@ pub fn write_comparison_json(results: &[DocResult], path: &std::path::Path) -> R
         .collect();
 
     // Overall
-    let n = results.len() as f64;
+    let _n = results.len() as f64;
     let overall_pipelines = pipeline_names
         .iter()
         .enumerate()
         .map(|(i, name)| {
-            let avg_sf1 = if n > 0.0 {
-                results.iter().map(|r| r.results[i].sf1).sum::<f64>() / n
-            } else {
+            let sf1_vals: Vec<f64> = results
+                .iter()
+                .map(|r| r.results[i].sf1)
+                .filter(|v| !v.is_nan())
+                .collect();
+            let tf1_vals: Vec<f64> = results
+                .iter()
+                .map(|r| r.results[i].tf1)
+                .filter(|v| !v.is_nan())
+                .collect();
+            let avg_sf1 = if sf1_vals.is_empty() {
                 0.0
+            } else {
+                sf1_vals.iter().sum::<f64>() / sf1_vals.len() as f64
             };
-            let avg_tf1 = if n > 0.0 {
-                results.iter().map(|r| r.results[i].tf1).sum::<f64>() / n
-            } else {
+            let avg_tf1 = if tf1_vals.is_empty() {
                 0.0
+            } else {
+                tf1_vals.iter().sum::<f64>() / tf1_vals.len() as f64
             };
             FormatPipelineSummary {
                 pipeline: name.clone(),
