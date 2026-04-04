@@ -48,6 +48,37 @@ fn fix_pdf_control_chars(text: &str) -> Cow<'_, str> {
     Cow::Owned(result)
 }
 
+/// Check if text likely contains embedded HTML markup.
+///
+/// Some PDFs embed raw HTML in their text layer (e.g. from web-to-PDF converters).
+/// This function detects common HTML tags to determine if the text should be
+/// converted from HTML to markdown rather than used as-is.
+fn contains_html_markup(text: &str) -> bool {
+    if !text.contains('<') {
+        return false;
+    }
+    text.contains("</p>")
+        || text.contains("<br")
+        || text.contains("<p>")
+        || text.contains("<div")
+        || text.contains("<span")
+        || text.contains("<table")
+        || text.contains("<a ")
+        || text.contains("/>")
+}
+
+/// Convert HTML markup in page text to markdown using the HTML converter.
+///
+/// Falls back to the original text if the `html` feature is not enabled
+/// or if conversion fails.
+#[cfg(feature = "html")]
+fn convert_html_page_text(text: &str) -> String {
+    match crate::extraction::html::convert_html_to_markdown(text, None, None) {
+        Ok(converted) => converted,
+        Err(_) => text.to_owned(),
+    }
+}
+
 /// Result type for PDF text extraction with optional page tracking.
 type PdfTextExtractionResult = (String, Option<Vec<PageBoundary>>, Option<Vec<PageContent>>);
 
@@ -335,6 +366,15 @@ fn extract_text_lazy_fast_path(document: &PdfDocument<'_>) -> Result<PdfTextExtr
         }
 
         let cleaned_text = fix_pdf_control_chars(&page_text);
+
+        // Convert embedded HTML markup to markdown if detected.
+        #[cfg(feature = "html")]
+        let cleaned_text: std::borrow::Cow<'_, str> = if contains_html_markup(&cleaned_text) {
+            std::borrow::Cow::Owned(convert_html_page_text(&cleaned_text))
+        } else {
+            cleaned_text
+        };
+
         content.push_str(&cleaned_text);
 
         if page_idx < 5 {
@@ -436,6 +476,15 @@ fn extract_text_lazy_with_tracking(
         }
 
         let cleaned_text = fix_pdf_control_chars(&page_text_ref);
+
+        // Convert embedded HTML markup to markdown if detected.
+        #[cfg(feature = "html")]
+        let cleaned_text: std::borrow::Cow<'_, str> = if contains_html_markup(&cleaned_text) {
+            std::borrow::Cow::Owned(convert_html_page_text(&cleaned_text))
+        } else {
+            cleaned_text
+        };
+
         let byte_start = content.len();
         content.push_str(&cleaned_text);
         let byte_end = content.len();
@@ -654,6 +703,57 @@ mod tests {
         let result = strip_page_rotation(pdf);
         assert!(matches!(result, Cow::Owned(_)));
         assert!(!has_rotate_marker(&result));
+    }
+}
+
+#[cfg(test)]
+mod html_detection_tests {
+    use super::*;
+
+    #[test]
+    fn test_detects_html_p_tags() {
+        assert!(contains_html_markup("<p>Hello world</p>"));
+    }
+
+    #[test]
+    fn test_detects_html_br_tags() {
+        assert!(contains_html_markup("text<br />more text"));
+        assert!(contains_html_markup("text<br>more text"));
+    }
+
+    #[test]
+    fn test_detects_html_div_span() {
+        assert!(contains_html_markup("<div class='content'>text</div>"));
+        assert!(contains_html_markup("<span>text</span>"));
+    }
+
+    #[test]
+    fn test_detects_html_links() {
+        assert!(contains_html_markup("<a href=\"http://example.com\">link</a>"));
+    }
+
+    #[test]
+    fn test_detects_self_closing() {
+        assert!(contains_html_markup("text<img src='x'/>more"));
+    }
+
+    #[test]
+    fn test_rejects_plain_text() {
+        assert!(!contains_html_markup("Hello world, no HTML here."));
+        assert!(!contains_html_markup("The price is $100 < $200"));
+        assert!(!contains_html_markup(""));
+    }
+
+    #[test]
+    fn test_rejects_math_angle_brackets() {
+        // Mathematical < and > should not trigger
+        assert!(!contains_html_markup("if x < y then z > 0"));
+    }
+
+    #[test]
+    fn test_rejects_code_generics() {
+        // Rust/Java generics like Vec<T> should not trigger unless they look like HTML
+        assert!(!contains_html_markup("Vec<String>"));
     }
 }
 
