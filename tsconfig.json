@@ -41,9 +41,6 @@
 		{ "path": "./crates/kreuzberg-node" },
 		{ "path": "./crates/kreuzberg-wasm" },
 		{ "path": "./packages/typescript/core" },
-		{ "path": "./tests/test_apps/node" },
-		{ "path": "./tests/test_apps/wasm" },
-		{ "path": "./tests/test_apps/browser-vite-svelte" },
 		{ "path": "./e2e/wasm-workers" }
 	]
 }

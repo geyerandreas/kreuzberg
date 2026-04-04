@@ -7,7 +7,6 @@ root="$(git rev-parse --show-toplevel)"
 
 # Ruby directories to lint, with their configuration
 #   packages/ruby       - main binding (has .rubocop.yml, Steepfile, own Gemfile)
-#   tests/test_apps/ruby - test app (no rubocop config, no rubocop in Gemfile)
 #   e2e/ruby            - generated e2e tests (has own .rubocop.yaml, own Gemfile)
 
 failed=0

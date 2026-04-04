@@ -26,7 +26,7 @@ beforeAll(async () => {
 	await initWasm();
 
 	// Load test PDF file
-	const pdfPath = new URL("../../../tests/fixtures/documents/pdf/simple.pdf", import.meta.url).pathname;
+	const pdfPath = new URL("../../../test_documents/test_fixtures/documents/pdf/simple.pdf", import.meta.url).pathname;
 	try {
 		samplePdfBytes = new Uint8Array(readFileSync(pdfPath));
 	} catch {
@@ -34,7 +34,7 @@ beforeAll(async () => {
 	}
 
 	// Load test text file
-	const txtPath = new URL("../../../tests/fixtures/documents/text/sample.txt", import.meta.url).pathname;
+	const txtPath = new URL("../../../test_documents/test_fixtures/documents/text/sample.txt", import.meta.url).pathname;
 	try {
 		sampleTxtBytes = new Uint8Array(readFileSync(txtPath));
 	} catch {

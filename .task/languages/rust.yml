@@ -279,9 +279,6 @@ tasks:
       - echo "Updating Rust dependencies (Ruby native crate)..."
       - cargo upgrade --incompatible --manifest-path packages/ruby/ext/kreuzberg_rb/native/Cargo.toml
       - cargo update --manifest-path packages/ruby/ext/kreuzberg_rb/native/Cargo.toml
-      - echo "Updating Rust dependencies (test app)..."
-      - cargo upgrade --incompatible --manifest-path tests/test_apps/rust/Cargo.toml
-      - cargo update --manifest-path tests/test_apps/rust/Cargo.toml
 
   e2e:generate:
     desc: Generate and format Rust E2E tests from fixtures

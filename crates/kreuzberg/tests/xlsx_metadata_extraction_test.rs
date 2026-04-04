@@ -105,11 +105,11 @@ fn test_xlsx_excel_solver_extreme_dimensions_no_oom() {
         .expect("Operation failed")
         .parent()
         .expect("Operation failed");
-    let test_file = workspace_root.join("tests/fixtures/xlsx-oom-repro/kreuzberg-oom-repro.xlsx");
+    let test_file = workspace_root.join("test_documents/test_fixtures/xlsx-oom-repro/kreuzberg-oom-repro.xlsx");
 
     if !test_file.exists() {
         println!("Skipping test: Test file not found at {:?}", test_file);
-        println!("Run: node tests/fixtures/xlsx-oom-repro/generate-oom-xlsx.mjs");
+        println!("Run: node test_documents/test_fixtures/xlsx-oom-repro/generate-oom-xlsx.mjs");
         return;
     }
 

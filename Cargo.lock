@@ -469,7 +469,7 @@ checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
 name = "benchmark-harness"
-version = "4.7.1"
+version = "4.7.2"
 dependencies = [
  "ahash",
  "async-trait",
@@ -1128,9 +1128,9 @@ checksum = "75984efb6ed102a0d42db99afb6c1948f0380d1d91808d5529916e6c08b49d8d"
 
 [[package]]
 name = "comrak"
-version = "0.51.0"
+version = "0.52.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f07383e7799d964bf7ffa6fc4457d177c54a44614661c7458bb0bd91b108e32"
+checksum = "aac0b255932a9cd52fbfd664b67957f9f2e095ae4711cb0e41b4e291edef94c2"
 dependencies = [
  "caseless",
  "entities",
@@ -3428,7 +3428,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg"
-version = "4.7.1"
+version = "4.7.2"
 dependencies = [
  "ahash",
  "anyhow",
@@ -3532,7 +3532,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-cli"
-version = "4.7.1"
+version = "4.7.2"
 dependencies = [
  "anstyle",
  "anyhow",
@@ -3551,7 +3551,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-e2e-generator"
-version = "4.7.1"
+version = "4.7.2"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -3568,7 +3568,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-ffi"
-version = "4.7.1"
+version = "4.7.2"
 dependencies = [
  "ahash",
  "async-trait",
@@ -3587,7 +3587,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-node"
-version = "4.7.1"
+version = "4.7.2"
 dependencies = [
  "ahash",
  "async-trait",
@@ -3610,7 +3610,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-paddle-ocr"
-version = "4.7.1"
+version = "4.7.2"
 dependencies = [
  "geo-clipper",
  "geo-types",
@@ -3624,7 +3624,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-pdfium-render"
-version = "4.7.1"
+version = "4.7.2"
 dependencies = [
  "bindgen",
  "bitflags 2.11.0",
@@ -3648,7 +3648,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-php"
-version = "4.7.1"
+version = "4.7.2"
 dependencies = [
  "ahash",
  "ctor",
@@ -3664,7 +3664,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-py"
-version = "4.7.1"
+version = "4.7.2"
 dependencies = [
  "ahash",
  "async-trait",
@@ -3681,7 +3681,7 @@ dependencies = [
 
 [[package]]
 name = "kreuzberg-tesseract"
-version = "4.7.1"
+version = "4.7.2"
 dependencies = [
  "cc",
  "cmake",
@@ -6335,7 +6335,7 @@ checksum = "1b6b67fb9a61334225b5b790716f609cd58395f895b3fe8b328786812a40bc3b"
 
 [[package]]
 name = "snippet-runner"
-version = "4.7.1"
+version = "4.7.2"
 dependencies = [
  "clap",
  "rayon",

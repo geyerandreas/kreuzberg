@@ -10,8 +10,6 @@
 			"**/*",
 			"!crates/kreuzberg-tesseract/third_party",
 			"!test_documents",
-			"!tests/test_apps/docker/fixtures",
-			"!tests/test_apps/java/test_documents",
 			"!**/artifacts",
 			"!**/dist",
 			"!**/pkg",
