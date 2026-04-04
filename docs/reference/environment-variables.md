@@ -352,13 +352,19 @@ Control cache location, debug output, and runtime behavior.
 ### KREUZBERG_CACHE_DIR
 
 **Type**: `String` (file system path)
-**Default**: `.kreuzberg/` (current directory)
+**Default**: Platform-specific global cache directory
 
-Custom directory for storing extraction cache and intermediate files. Useful for managing disk usage across multiple Kreuzberg instances.
+Override the default cache directory for storing extraction cache, models, and intermediate files. When unset, Kreuzberg uses a platform-appropriate global cache:
+
+- **Linux**: `~/.cache/kreuzberg/` (or `$XDG_CACHE_HOME/kreuzberg/`)
+- **macOS**: `~/Library/Caches/kreuzberg/`
+- **Windows**: `%LOCALAPPDATA%/kreuzberg/`
+
+If the platform cache directory cannot be determined, Kreuzberg falls back to `~/.cache/kreuzberg/`, then `.kreuzberg/` in the current working directory as a last resort.
 
 ```bash title="Cache Directory Configuration"
-# Default: cache in current directory
-# unset KREUZBERG_CACHE_DIR  # Uses .kreuzberg/
+# Default: uses platform-specific global cache (recommended)
+# unset KREUZBERG_CACHE_DIR
 
 # Store cache in specific location
 export KREUZBERG_CACHE_DIR=/var/cache/kreuzberg

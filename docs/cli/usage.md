@@ -945,6 +945,14 @@ kreuzberg cache clear --format json
 Pre-download all ML models (PaddleOCR and layout detection) so they are ready
 for offline use. This is especially useful for containerized deployments.
 
+By default, models are stored in the platform-specific global cache directory:
+
+- **Linux**: `~/.cache/kreuzberg/{module}` (or `$XDG_CACHE_HOME/kreuzberg/{module}`)
+- **macOS**: `~/Library/Caches/kreuzberg/{module}`
+- **Windows**: `%LOCALAPPDATA%/kreuzberg/{module}`
+
+Override with `KREUZBERG_CACHE_DIR` or `--cache-dir`.
+
 ```bash title="Terminal"
 # Download all OCR and layout models eagerly
 kreuzberg cache warm

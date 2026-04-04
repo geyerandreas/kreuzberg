@@ -106,7 +106,7 @@ See [API Server Guide - MCP Section](api-server.md#mcp-server) for integration d
 | `KREUZBERG_MAX_UPLOAD_SIZE_MB` | `100` | Max upload size in MB |
 | `KREUZBERG_CORS_ORIGINS` | `*` | Comma-separated allowed origins |
 | `RUST_LOG` | `info` | Log level: `error`, `warn`, `info`, `debug`, `trace` |
-| `KREUZBERG_CACHE_DIR` | `/app/.kreuzberg` | Cache directory |
+| `KREUZBERG_CACHE_DIR` | `/app/.kreuzberg` | Cache directory (set explicitly in Docker; outside containers defaults to platform global cache) |
 | `HF_HOME` | `/app/.kreuzberg/huggingface` | HuggingFace model cache |
 
 Host and port are set via CLI args: `serve --host 0.0.0.0 --port 8000`.
@@ -132,7 +132,7 @@ docker run -v $(pwd)/documents:/data:ro \
 ```
 
 !!! note "Model Downloads"
-    Embedding models download on first use (~90 MB – 1.2 GB depending on preset). Use a persistent volume for `/app/.kreuzberg` in production to avoid re-downloading on container restart.
+    Embedding models download on first use (~90 MB – 1.2 GB depending on preset). Use a persistent volume for `/app/.kreuzberg` in production to avoid re-downloading on container restart. Outside Docker, models are cached in the platform-specific global cache directory (e.g., `~/.cache/kreuzberg/` on Linux, `~/Library/Caches/kreuzberg/` on macOS).
 
 ## Docker Compose
 

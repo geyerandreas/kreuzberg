@@ -3921,7 +3921,7 @@ For complete working examples, see the [examples directory](https://github.com/k
 
 - Keep `use_cache=true` for repeated processing of the same files
 - Cache is automatically invalidated when files change
-- Cache location: `.kreuzberg/` (relative to current working directory, configurable via `cache_dir` option)
+- Cache location: platform-specific global cache (e.g., `~/.cache/kreuzberg/` on Linux, `~/Library/Caches/kreuzberg/` on macOS), configurable via `KREUZBERG_CACHE_DIR` env var or `cache_dir` option
 
 **OCR Settings:**
 

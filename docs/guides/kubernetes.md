@@ -352,7 +352,7 @@ kubectl apply -f production-deployment.yaml
 ```
 
 !!! note "Model Persistence"
-    Embedding models download on first use (~90 MB – 1.2 GB). Use a PVC for `/app/.kreuzberg` to avoid re-downloading on pod restart.
+    Embedding models download on first use (~90 MB – 1.2 GB). Use a PVC for `/app/.kreuzberg` to avoid re-downloading on pod restart. Outside containers, models are cached in the platform-specific global cache directory (e.g., `~/.cache/kreuzberg/` on Linux, `~/Library/Caches/kreuzberg/` on macOS).
 
 ## High Availability
 
