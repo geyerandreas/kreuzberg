@@ -162,10 +162,15 @@ jobs:
       - name: Install Task
         uses: kreuzberg-dev/actions/install-task@v1
 
-      - name: Run all prek hooks
+      - name: Run universal prek hooks
         uses: j178/prek-action@v2
         with:
-          extra-args: --all-files
+          extra-args: trailing-whitespace end-of-file-fixer check-merge-conflict check-added-large-files detect-private-key check-json check-yaml check-toml check-case-conflict pyproject-fmt shfmt shellcheck actionlint ai-rulez-generate --all-files
+
+      - name: Run language-specific lint hooks
+        uses: j178/prek-action@v2
+        with:
+          extra-args: ruff ruff-format mypy biome-format biome-lint oxlint ruby-format ruby-lint cpd checkstyle java-verify csharp-format csharp-lint php-format php-lint mix-credo mix-format r-format r-lint --all-files
 
       - name: Validate vendored C headers match canonical
         shell: bash
