@@ -2,9 +2,9 @@ Licensed To: Raumati Swimming Club
 
 HY-TEK's TEAM MANAGER 7.0 19/12/2019 Pag
 
-# Individual Meet Results
+## Individual Meet Results
 
-SWN 12&amp;U Junior Champs 2019 14-Dec-19 to 15-Dec-19 SC Meters
+SWN 12&U Junior Champs 2019 14-Dec-19 to 15-Dec-19 SC Meters
 Location: WRAC
 
 |  Time | F/P/S | Event | Place | Points | Improv  |
@@ -57,9 +57,9 @@ Licensed To: Raumati Swimming Club
 
 HY-TEK's TEAM MANAGER 7.0 19/12/2019 Pag
 
-# Individual Meet Results
+## Individual Meet Results
 
-SWN 12&amp;U Junior Champs 2019 14-Dec-19 to 15-Dec-19 SC Meters
+SWN 12&U Junior Champs 2019 14-Dec-19 to 15-Dec-19 SC Meters
 Location: WRAC
 
 |  Time | F/P/S | Event | Place | Points | Improv  |
@@ -114,9 +114,9 @@ Licensed To: Raumati Swimming Club
 
 HY-TEK's TEAM MANAGER 7.0 19/12/2019 Pag
 
-# Individual Meet Results
+## Individual Meet Results
 
-SWN 12&amp;U Junior Champs 2019 14-Dec-19 to 15-Dec-19 SC Meters
+SWN 12&U Junior Champs 2019 14-Dec-19 to 15-Dec-19 SC Meters
 Location: WRAC
 
 |  Time | F/P/S | Event | Place | Points | Improv  |
@@ -172,9 +172,9 @@ Location: WRAC
 Licensed To: Raumati Swimming Club
 HY-TEK's TEAM MANAGER 7.0 19/12/2019 Pag
 
-# Individual Meet Results
+## Individual Meet Results
 
-SWN 12&amp;U Junior Champs 2019 14-Dec-19 to 15-Dec-19 SC Meters
+SWN 12&U Junior Champs 2019 14-Dec-19 to 15-Dec-19 SC Meters
 Location: WRAC
 
 |  Time | F/P/S | Event | Place | Points | Improv  |
