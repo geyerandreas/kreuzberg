@@ -264,16 +264,7 @@ impl PaddleOcrConfig {
             return path.clone();
         }
 
-        // Check centralized cache environment variable
-        if let Ok(env_path) = std::env::var("KREUZBERG_CACHE_DIR") {
-            return PathBuf::from(env_path).join("paddle-ocr");
-        }
-
-        // Default: .kreuzberg/paddle-ocr/ (consistent with other cache types)
-        std::env::current_dir()
-            .unwrap_or_else(|_| PathBuf::from("."))
-            .join(".kreuzberg")
-            .join("paddle-ocr")
+        crate::cache_dir::resolve_cache_dir("paddle-ocr")
     }
 }
 
@@ -493,8 +484,8 @@ mod tests {
 
         let config = PaddleOcrConfig::new("en");
         let cache_dir = config.resolve_cache_dir();
-        // Should contain ".kreuzberg" and "paddle-ocr" in the path
-        assert!(cache_dir.to_string_lossy().contains(".kreuzberg"));
+        // Should contain "kreuzberg" and "paddle-ocr" in the path
+        assert!(cache_dir.to_string_lossy().contains("kreuzberg"));
         assert!(cache_dir.to_string_lossy().contains("paddle-ocr"));
 
         // Restore env var if it was set

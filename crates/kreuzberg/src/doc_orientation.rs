@@ -203,13 +203,7 @@ impl DocOrientationDetector {
 
 /// Resolve the cache directory for the auto-rotate model.
 pub fn resolve_cache_dir() -> PathBuf {
-    if let Ok(env_path) = std::env::var("KREUZBERG_CACHE_DIR") {
-        return PathBuf::from(env_path).join("auto-rotate");
-    }
-    std::env::current_dir()
-        .unwrap_or_else(|_| PathBuf::from("."))
-        .join(".kreuzberg")
-        .join("auto-rotate")
+    crate::cache_dir::resolve_cache_dir("auto-rotate")
 }
 
 /// Detect orientation and return a corrected image if rotation is needed.

@@ -183,15 +183,7 @@ fn embedding_error(message: String) -> crate::KreuzbergError {
 
 /// Resolve the cache directory for embedding models.
 fn resolve_cache_dir(cache_dir: Option<std::path::PathBuf>) -> std::path::PathBuf {
-    cache_dir.unwrap_or_else(|| {
-        if let Ok(env_path) = std::env::var("KREUZBERG_CACHE_DIR") {
-            return std::path::PathBuf::from(env_path).join("embeddings");
-        }
-        let mut path = std::env::current_dir().unwrap_or_else(|_| std::path::PathBuf::from("."));
-        path.push(".kreuzberg");
-        path.push("embeddings");
-        path
-    })
+    cache_dir.unwrap_or_else(|| crate::cache_dir::resolve_cache_dir("embeddings"))
 }
 
 /// Resolve model info (repo, model file, pooling) from an EmbeddingModelType config.

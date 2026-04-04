@@ -10,16 +10,7 @@ pub struct OcrCache {
 
 impl OcrCache {
     pub fn new(cache_dir: Option<PathBuf>) -> Result<Self, OcrError> {
-        let cache_dir = cache_dir.unwrap_or_else(|| {
-            // Use KREUZBERG_CACHE_DIR if set, matching layout/paddle-ocr cache resolution
-            if let Ok(env_path) = std::env::var("KREUZBERG_CACHE_DIR") {
-                return PathBuf::from(env_path).join("ocr");
-            }
-            let mut path = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-            path.push(".kreuzberg");
-            path.push("ocr");
-            path
-        });
+        let cache_dir = cache_dir.unwrap_or_else(|| crate::cache_dir::resolve_cache_dir("ocr"));
 
         fs::create_dir_all(&cache_dir)
             .map_err(|e| OcrError::CacheError(format!("Failed to create cache directory: {}", e)))?;

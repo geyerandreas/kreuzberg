@@ -66,10 +66,8 @@ impl GenericCache {
     ) -> Result<Self> {
         let cache_dir_path = if let Some(dir) = cache_dir {
             PathBuf::from(dir).join(&cache_type)
-        } else if let Ok(env_path) = std::env::var("KREUZBERG_CACHE_DIR") {
-            PathBuf::from(env_path).join(&cache_type)
         } else {
-            std::env::current_dir()?.join(".kreuzberg").join(&cache_type)
+            crate::cache_dir::resolve_cache_dir(&cache_type)
         };
 
         fs::create_dir_all(&cache_dir_path)

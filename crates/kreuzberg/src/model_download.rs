@@ -64,16 +64,9 @@ pub fn verify_sha256(path: &Path, expected: &str, label: &str) -> Result<(), Str
 
 /// Resolve the kreuzberg cache directory for a given module.
 ///
-/// Resolution order:
-/// 1. `KREUZBERG_CACHE_DIR` env var + `/{module}`
-/// 2. `.kreuzberg/{module}/` in current directory
+/// Delegates to [`crate::cache_dir::resolve_cache_dir`] for centralized,
+/// platform-aware cache directory resolution.
 #[cfg(feature = "layout-detection")]
 pub fn resolve_cache_dir(module: &str) -> PathBuf {
-    if let Ok(env_path) = std::env::var("KREUZBERG_CACHE_DIR") {
-        return PathBuf::from(env_path).join(module);
-    }
-    std::env::current_dir()
-        .unwrap_or_else(|_| PathBuf::from("."))
-        .join(".kreuzberg")
-        .join(module)
+    crate::cache_dir::resolve_cache_dir(module)
 }

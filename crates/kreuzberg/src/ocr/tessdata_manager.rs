@@ -40,16 +40,7 @@ impl TessdataManager {
     /// 1. `KREUZBERG_CACHE_DIR` env var + `/tessdata`
     /// 2. `.kreuzberg/tessdata/` in current directory
     pub fn new(cache_dir: Option<PathBuf>) -> Self {
-        let cache_dir = cache_dir.unwrap_or_else(|| {
-            if let Ok(env_path) = std::env::var("KREUZBERG_CACHE_DIR") {
-                PathBuf::from(env_path).join("tessdata")
-            } else {
-                std::env::current_dir()
-                    .unwrap_or_else(|_| PathBuf::from("."))
-                    .join(".kreuzberg")
-                    .join("tessdata")
-            }
-        });
+        let cache_dir = cache_dir.unwrap_or_else(|| crate::cache_dir::resolve_cache_dir("tessdata"));
         Self { cache_dir }
     }
 

@@ -9,8 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [4.7.2] - Unreleased
 
+### Added
+
+- **E2E generator published mode** — `cargo run -p kreuzberg-e2e-generator -- generate --mode published --version <V>` generates standalone test apps against published registry versions (PyPI, npm, Maven, NuGet, crates.io, Hex, RubyGems). All 12 language generators now also produce their project/dependency files (pyproject.toml, package.json, composer.json, etc.).
+
+### Changed
+
+- **Global model cache** (#641) — Models now download to platform-appropriate global cache (`~/.cache/kreuzberg/` on Linux, `~/Library/Caches/kreuzberg/` on macOS, `%LOCALAPPDATA%/kreuzberg/` on Windows) instead of per-directory `.kreuzberg/` folders. Override with `KREUZBERG_CACHE_DIR` env var. Consolidates 7 duplicate cache-dir resolution implementations into a single `cache_dir::resolve_cache_dir()` function.
+
 ### Fixed
 
+- **Leptonica DPI crash** (#606) — Images with resolution 0 DPI caused Leptonica preprocessing (background normalization, unsharp mask, grayscale conversion) to trigger a C++ exception that Rust cannot catch, aborting the process. Now validates and fixes DPI to 72 before preprocessing. Also disabled C++ exception handling on Windows MSVC builds (`/EHsc` removed).
+- **Node.js `ExtractionResult.children` missing at runtime** — The `children` field was declared in TypeScript definitions but missing from the runtime NAPI object in the published v4.7.1 binary, causing parity test failures.
+- **Layout detection fixture stale `preset` field** — E2E fixture `layout_detection.json` included removed `preset` field, causing Python test failures. Removed from fixture.
+- **Node.js `disable_ocr` config not respected** — Setting `disableOcr: true` in the Node.js binding still produced OCR content for images instead of returning empty content.
+- **C# `Serialization` class inaccessible** — Generated e2e tests referenced `Serialization` class with insufficient access level in the published NuGet package.
+- **Java `PdfAnnotation` missing getters** — `getContent()` and `getPageNumber()` methods were missing from the Java record, causing parity test failures. Added JavaBean-style getters to match `getAnnotationType()` and `getBoundingBox()`.
+- **Java `Table` missing getters** — `getCells()`, `getMarkdown()`, and `getPageNumber()` methods were missing from the Java record. Added JavaBean-style getters to match existing `getBoundingBox()`.
+- **Go test_app module conflict** — Generated Go test_apps used the same module name as e2e/go, causing workspace conflicts. Published mode now uses a distinct module path.
 - **PaddleOCR angle classification crash** (#643) — V2 angle classifier model (`PP-LCNet_x1_0_textline_ori`) expects `[N, 3, 80, 160]` input but preprocessing resized to `[N, 3, 48, 192]` (old mobile cls dimensions). Fixed input dimensions to match the v2 model.
 - **Centralized concurrency controls** — Fixed 5 places bypassing `resolve_thread_budget()`: embeddings ONNX session (no thread config at all), image OCR (hardcoded 8 tasks), batch extraction fallback (`num_cpus * 1.5`), doc orientation (`.min(4)` cap), PaddleOCR BaseNet (`inter_threads` set to `num_thread` instead of `1`).
 - **Chunk page numbers missing** (#636) — Chunks produced with `first_page: null, last_page: null` when chunking was configured without explicit `pages` config. Three fixes: (1) auto-enable page tracking when chunking is configured, so the PDF extractor always produces per-page boundaries; (2) improved page boundary recomputation with first-line fallback when exact content match fails due to rendering transformations; (3) allow zero-length boundaries for blank pages instead of failing validation.

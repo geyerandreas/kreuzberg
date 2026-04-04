@@ -292,9 +292,7 @@ impl KreuzbergMcp {
         use super::errors::map_kreuzberg_error_to_mcp;
         use crate::cache;
 
-        let cache_dir = std::env::current_dir()
-            .unwrap_or_else(|_| std::path::PathBuf::from("."))
-            .join(".kreuzberg");
+        let cache_dir = crate::cache_dir::resolve_cache_base();
 
         let stats = cache::get_cache_metadata(cache_dir.to_str().unwrap_or(".")).map_err(map_kreuzberg_error_to_mcp)?;
 
@@ -348,9 +346,7 @@ impl KreuzbergMcp {
         use super::errors::map_kreuzberg_error_to_mcp;
         use crate::cache;
 
-        let cache_dir = std::env::current_dir()
-            .unwrap_or_else(|_| std::path::PathBuf::from("."))
-            .join(".kreuzberg");
+        let cache_dir = crate::cache_dir::resolve_cache_base();
 
         let (removed_files, freed_mb) =
             cache::clear_cache_directory(cache_dir.to_str().unwrap_or(".")).map_err(map_kreuzberg_error_to_mcp)?;
@@ -588,12 +584,7 @@ impl KreuzbergMcp {
 
 /// Resolve the cache base directory.
 fn resolve_cache_base() -> std::path::PathBuf {
-    if let Ok(env_path) = std::env::var("KREUZBERG_CACHE_DIR") {
-        return std::path::PathBuf::from(env_path);
-    }
-    std::env::current_dir()
-        .unwrap_or_else(|_| std::path::PathBuf::from("."))
-        .join(".kreuzberg")
+    crate::cache_dir::resolve_cache_base()
 }
 
 /// Embed text implementation when embeddings feature is enabled.

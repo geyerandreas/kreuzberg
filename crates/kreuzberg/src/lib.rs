@@ -35,6 +35,7 @@
 #![deny(unsafe_code)]
 
 pub mod cache;
+pub(crate) mod cache_dir;
 pub mod core;
 pub mod error;
 pub mod extraction;

@@ -316,14 +316,7 @@ pub async fn formats_handler() -> Json<Vec<crate::SupportedFormat>> {
 )]
 #[cfg_attr(feature = "otel", tracing::instrument(name = "api.cache_stats"))]
 pub async fn cache_stats_handler() -> Result<Json<CacheStatsResponse>, ApiError> {
-    let cache_dir = std::env::current_dir()
-        .map_err(|e| {
-            ApiError::internal(crate::error::KreuzbergError::Other(format!(
-                "Failed to get current directory: {}",
-                e
-            )))
-        })?
-        .join(".kreuzberg");
+    let cache_dir = crate::cache_dir::resolve_cache_base();
 
     let cache_dir_str = cache_dir.to_str().ok_or_else(|| {
         ApiError::internal(crate::error::KreuzbergError::Other(format!(
@@ -365,14 +358,7 @@ pub async fn cache_stats_handler() -> Result<Json<CacheStatsResponse>, ApiError>
 )]
 #[cfg_attr(feature = "otel", tracing::instrument(name = "api.cache_clear"))]
 pub async fn cache_clear_handler() -> Result<Json<CacheClearResponse>, ApiError> {
-    let cache_dir = std::env::current_dir()
-        .map_err(|e| {
-            ApiError::internal(crate::error::KreuzbergError::Other(format!(
-                "Failed to get current directory: {}",
-                e
-            )))
-        })?
-        .join(".kreuzberg");
+    let cache_dir = crate::cache_dir::resolve_cache_base();
 
     let cache_dir_str = cache_dir.to_str().ok_or_else(|| {
         ApiError::internal(crate::error::KreuzbergError::Other(format!(
@@ -932,12 +918,7 @@ pub async fn cache_warm_handler(JsonApi(request): JsonApi<WarmRequest>) -> Resul
 
 /// Resolve the cache base directory.
 fn resolve_cache_base() -> std::path::PathBuf {
-    if let Ok(env_path) = std::env::var("KREUZBERG_CACHE_DIR") {
-        return std::path::PathBuf::from(env_path);
-    }
-    std::env::current_dir()
-        .unwrap_or_else(|_| std::path::PathBuf::from("."))
-        .join(".kreuzberg")
+    crate::cache_dir::resolve_cache_base()
 }
 
 #[cfg(test)]
