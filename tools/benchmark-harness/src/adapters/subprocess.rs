@@ -1010,6 +1010,53 @@ impl FrameworkAdapter for SubprocessAdapter {
             })
             .unwrap_or_else(|| vec![None; file_paths.len()]);
 
+        // Validate per-item success/error, mirroring single-file parse_output logic
+        let batch_validations: Vec<(bool, Option<String>, ErrorKind)> = parsed_batch
+            .as_ref()
+            .map(|results| {
+                results
+                    .iter()
+                    .map(|item| {
+                        // Check if the framework reported an error for this item
+                        if let Some(error_val) = item.get("error") {
+                            let error_msg = error_val.as_str().unwrap_or("unknown error");
+                            if !error_msg.is_empty() {
+                                let kind = if error_msg.contains("timed out") {
+                                    ErrorKind::Timeout
+                                } else {
+                                    ErrorKind::FrameworkError
+                                };
+                                return (false, Some(error_msg.to_string()), kind);
+                            }
+                        }
+                        // Check for missing or non-string content
+                        match item.get("content").and_then(|v| v.as_str()) {
+                            Some(s) if !s.trim().is_empty() => (true, None, ErrorKind::None),
+                            Some(_) => (
+                                false,
+                                Some("Framework returned empty content".to_string()),
+                                ErrorKind::EmptyContent,
+                            ),
+                            None => (
+                                false,
+                                Some("No content extracted (unsupported format or empty result)".to_string()),
+                                ErrorKind::EmptyContent,
+                            ),
+                        }
+                    })
+                    .collect()
+            })
+            .unwrap_or_else(|| {
+                vec![
+                    (
+                        false,
+                        Some("Failed to parse batch output".to_string()),
+                        ErrorKind::HarnessError
+                    );
+                    file_paths.len()
+                ]
+            });
+
         // Create one result per file instead of a single aggregated result
         // Since batch processing doesn't give us per-file timing, we use average duration
         let num_files = file_paths.len() as f64;
@@ -1051,13 +1098,19 @@ impl FrameworkAdapter for SubprocessAdapter {
                     1.0 / file_paths.len() as f64
                 };
 
+                let (item_success, item_error, item_error_kind) = batch_validations.get(idx).cloned().unwrap_or((
+                    false,
+                    Some("Missing validation for batch item".to_string()),
+                    ErrorKind::HarnessError,
+                ));
+
                 BenchmarkResult {
                     framework: self.name.clone(),
                     file_path: file_path.to_path_buf(),
                     file_size,
-                    success: true,
-                    error_message: None,
-                    error_kind: ErrorKind::None,
+                    success: item_success,
+                    error_message: item_error,
+                    error_kind: item_error_kind,
                     duration: avg_duration_per_file,
                     extraction_duration,
                     subprocess_overhead,

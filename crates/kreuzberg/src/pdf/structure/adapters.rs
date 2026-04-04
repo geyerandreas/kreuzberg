@@ -83,6 +83,7 @@ fn map_content_role(role: &ContentRole) -> (SemanticRole, Option<String>) {
 /// The resulting paragraphs feed into `apply_layout_overrides` and
 /// `assemble_internal_document`, matching the pdfium native text pipeline.
 #[cfg(feature = "ocr")]
+#[allow(dead_code)] // Called from extractors/pdf/ocr.rs only when layout-detection is also enabled
 pub(crate) fn ocr_doc_to_paragraphs(
     doc: &crate::types::internal::InternalDocument,
     page_height_px: u32,
