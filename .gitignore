@@ -73,9 +73,8 @@ packages/php/tests.xml
 *.cobertura.xml
 TestResults/
 
-# Go
-tests/test_apps/go/kreuzberg-test-suite
-tests/test_apps/go/main
+# Generated test apps (e2e-generator --mode published)
+test_apps/
 
 # R
 packages/r/src/.cargo/
@@ -156,13 +155,6 @@ tests/e2e/logs/
 tests/e2e/test_report.json
 temp-test-*
 packages/csharp/test_html_debug.cs
-
-# Test app lock files (installed from registry, not workspace)
-tests/test_apps/**/package-lock.json
-tests/test_apps/**/pnpm-lock.yaml
-tests/test_apps/**/Gemfile.lock
-tests/test_apps/**/composer.lock
-tests/test_apps/**/mix.lock
 
 # WASM build artifacts
 libpdfium.a

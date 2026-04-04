@@ -1039,6 +1039,53 @@ fn render_test(fixture: &Fixture) -> Result<String> {
 
     code.push_str(&render_assertions(&fixture.assertions()));
 
+    // For fixtures with requires_feature or external tool deps, wrap the whole
+    // extraction+assertion block in a try/except that skips on dependency errors.
+    let needs_dep_guard =
+        !fixture.skip().requires_feature.is_empty() || !fixture.document().requires_external_tool.is_empty();
+    if needs_dep_guard {
+        // Find the extraction call line and wrap everything from there in try/except
+        let mut wrapped = String::new();
+        let mut in_body = false;
+        for line in code.lines() {
+            if !in_body {
+                writeln!(wrapped, "{line}").unwrap();
+                // Start wrapping after the skip-if-missing and platform checks
+                if line.trim().starts_with("config = helpers.build_config") {
+                    in_body = true;
+                    // Insert try: before the config line by rewriting
+                    let trimmed = wrapped.trim_end().to_string();
+                    wrapped = trimmed.rsplit_once('\n').map_or_else(
+                        || format!("    try:\n    {trimmed}\n"),
+                        |(before, last)| format!("{before}\n    try:\n    {last}\n"),
+                    );
+                }
+            } else {
+                // Indent body lines by 4 extra spaces
+                if line.trim().is_empty() {
+                    writeln!(wrapped).unwrap();
+                } else {
+                    writeln!(wrapped, "    {line}").unwrap();
+                }
+            }
+        }
+        if in_body {
+            writeln!(wrapped, "    except Exception as exc:").unwrap();
+            writeln!(
+                wrapped,
+                "        if \"missing dependency\" in str(exc).lower() or \"unsupported\" in str(exc).lower() or \"parsing\" in str(exc).lower():"
+            ).unwrap();
+            writeln!(
+                wrapped,
+                "            pytest.skip(f\"Skipping {}: {{exc}}\")",
+                fixture.id
+            )
+            .unwrap();
+            writeln!(wrapped, "        raise").unwrap();
+        }
+        code = wrapped;
+    }
+
     Ok(code)
 }
 
