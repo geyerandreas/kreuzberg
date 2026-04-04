@@ -24,6 +24,21 @@ pub fn render_markdown(doc: &InternalDocument) -> String {
     let mut output = String::new();
     format_commonmark(root, &options, &mut output).expect("comrak formatting should not fail");
 
+    // Strip comrak-generated HTML comments (e.g. `<!-- end list -->`) that leak
+    // into markdown output when adjacent lists are rendered. Only page marker
+    // comments (`<!-- PAGE N -->`) should appear in output, and those are inserted
+    // by our own code, not by comrak.
+    if output.contains("<!--") {
+        output = output
+            .lines()
+            .filter(|line| {
+                let trimmed = line.trim();
+                !trimmed.starts_with("<!--") || !trimmed.ends_with("-->")
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+    }
+
     // Safety net: decode any HTML entities that slipped through from other code paths.
     // `&#10;` (newline) → space, `&#2;` (STX control char) → removed.
     if output.contains("&#") {
