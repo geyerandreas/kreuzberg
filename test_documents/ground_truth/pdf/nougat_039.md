@@ -1,6 +1,8 @@
-Scholarship Application
-Norton Moses Masonic Lodge, #336
-$1000 Scholarship Award
+## Scholarship Application
+
+## Norton Moses Masonic Lodge, #336
+
+## $1000 Scholarship Award
 
 |  Last Name | First Name | Middle Name (or Initial)  |
 | --- | --- | --- |
