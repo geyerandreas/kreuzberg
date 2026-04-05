@@ -127,27 +127,36 @@ fn ocr_flag(ocr_enabled: bool) -> String {
     }
 }
 
-/// Get the path to a script in the scripts directory
+/// Get the absolute path to a script in the scripts directory.
+///
+/// Returns a canonicalized (absolute) path so that it remains valid even when the
+/// subprocess working directory is changed via `set_working_dir`.
 fn get_script_path(script_name: &str) -> Result<PathBuf> {
     // Try CARGO_MANIFEST_DIR first (development builds)
     if let Ok(manifest_dir) = env::var("CARGO_MANIFEST_DIR") {
         let script_path = PathBuf::from(manifest_dir).join("scripts").join(script_name);
         if script_path.exists() {
-            return Ok(script_path);
+            return script_path
+                .canonicalize()
+                .map_err(|e| crate::Error::Config(format!("Failed to canonicalize {}: {e}", script_path.display())));
         }
     }
 
     // Try relative path from current directory (common case)
     let script_path = PathBuf::from("tools/benchmark-harness/scripts").join(script_name);
     if script_path.exists() {
-        return Ok(script_path);
+        return script_path
+            .canonicalize()
+            .map_err(|e| crate::Error::Config(format!("Failed to canonicalize {}: {e}", script_path.display())));
     }
 
     // Try using workspace_root() for absolute path resolution (CI/production builds)
     if let Ok(root) = workspace_root() {
         let script_path = root.join("tools/benchmark-harness/scripts").join(script_name);
         if script_path.exists() {
-            return Ok(script_path);
+            return script_path
+                .canonicalize()
+                .map_err(|e| crate::Error::Config(format!("Failed to canonicalize {}: {e}", script_path.display())));
         }
     }
 
