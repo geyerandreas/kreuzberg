@@ -3,7 +3,9 @@
 //! These tests require real API keys (loaded from `.env` at the workspace root).
 //! Tests skip gracefully when the required key is not set.
 //!
-//! Run with: `cargo test -p kreuzberg --features liter-llm -- llm_integration --nocapture`
+//! Run with: `cargo test -p kreuzberg --features "liter-llm,embeddings,pdf" --test llm_integration -- --nocapture --test-threads=1`
+//!
+//! Use `--test-threads=1` to avoid provider rate limiting when running all tests.
 
 #![cfg(feature = "liter-llm")]
 
@@ -104,18 +106,16 @@ async fn test_vlm_ocr_anthropic() {
 async fn test_vlm_ocr_gemini() {
     init();
     let api_key = require_env!("GEMINI_API_KEY");
-    let config = make_llm_config("gemini/gemini-2.0-flash", api_key);
+    let config = make_llm_config("gemini/gemini-2.5-flash", api_key);
     let image_bytes = std::fs::read("../../test_documents/images/test_hello_world.png").unwrap();
-    match kreuzberg::llm::vlm_ocr::vlm_ocr(&image_bytes, "image/png", "eng", &config).await {
-        Ok(result) => {
-            assert!(!result.is_empty(), "VLM OCR returned empty string");
-            assert!(
-                result.to_lowercase().contains("hello"),
-                "Expected 'hello' in OCR result, got: {result}"
-            );
-        }
-        Err(e) => eprintln!("NOTE: Gemini VLM OCR failed (provider-specific): {e}"),
-    }
+    let result = kreuzberg::llm::vlm_ocr::vlm_ocr(&image_bytes, "image/png", "eng", &config)
+        .await
+        .unwrap();
+    assert!(!result.is_empty(), "VLM OCR returned empty string");
+    assert!(
+        result.to_lowercase().contains("hello"),
+        "Expected 'hello' in OCR result, got: {result}"
+    );
 }
 
 // ---------------------------------------------------------------------------
@@ -207,15 +207,10 @@ async fn test_structured_extraction_anthropic() {
         prompt: None,
         llm: make_llm_config("anthropic/claude-sonnet-4-20250514", api_key),
     };
-    // Anthropic may not support response_format: json_schema natively,
-    // so we accept either a successful JSON response or a parse error
-    // (indicating the provider returned non-JSON).
-    match kreuzberg::llm::structured::extract_structured(&text, &config).await {
-        Ok(result) => assert!(result.is_object(), "Expected JSON object"),
-        Err(e) => {
-            eprintln!("NOTE: Anthropic structured extraction returned non-JSON (expected for some providers): {e}")
-        }
-    }
+    let result = kreuzberg::llm::structured::extract_structured(&text, &config)
+        .await
+        .unwrap();
+    assert!(result.is_object(), "Expected JSON object");
 }
 
 #[tokio::test]
@@ -223,19 +218,29 @@ async fn test_structured_extraction_gemini() {
     init();
     let api_key = require_env!("GEMINI_API_KEY");
     let text = extract_memo_text().await;
+    // Gemini doesn't support additionalProperties in response_schema —
+    // use a compatible schema without it.
+    let gemini_schema = json!({
+        "type": "object",
+        "properties": {
+            "title": { "type": "string" },
+            "date": { "type": "string" },
+            "summary": { "type": "string" }
+        },
+        "required": ["title", "date", "summary"]
+    });
     let config = StructuredExtractionConfig {
-        schema: memo_schema(),
+        schema: gemini_schema,
         schema_name: "memo_data".to_string(),
         schema_description: None,
         strict: false,
         prompt: None,
-        llm: make_llm_config("gemini/gemini-2.0-flash", api_key),
+        llm: make_llm_config("gemini/gemini-2.5-flash", api_key),
     };
-    // Gemini may handle json_schema response format differently
-    match kreuzberg::llm::structured::extract_structured(&text, &config).await {
-        Ok(result) => assert!(result.is_object(), "Expected JSON object"),
-        Err(e) => eprintln!("NOTE: Gemini structured extraction failed (provider-specific): {e}"),
-    }
+    let result = kreuzberg::llm::structured::extract_structured(&text, &config)
+        .await
+        .unwrap();
+    assert!(result.is_object(), "Expected JSON object");
 }
 
 #[tokio::test]
