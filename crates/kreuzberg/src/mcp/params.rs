@@ -102,6 +102,41 @@ pub struct EmbedTextParams {
     /// Embedding preset name (default: "balanced"). Available: "speed", "balanced", "quality"
     #[serde(skip_serializing_if = "Option::is_none")]
     pub preset: Option<String>,
+    /// LLM model for provider-hosted embeddings (e.g., "openai/text-embedding-3-small").
+    /// When set, overrides preset and uses liter-llm for embedding generation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
+    /// API key for the LLM provider (optional, falls back to env).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+}
+
+/// Default schema name for structured extraction.
+fn default_schema_name() -> String {
+    "extraction".to_string()
+}
+
+/// Request parameters for LLM-based structured extraction.
+#[derive(Debug, serde::Deserialize, serde::Serialize, schemars::JsonSchema)]
+pub struct ExtractStructuredParams {
+    /// File path to extract from
+    pub path: String,
+    /// JSON schema for structured output
+    pub schema: serde_json::Value,
+    /// LLM model (e.g., "openai/gpt-4o")
+    pub model: String,
+    /// Schema name (default: "extraction")
+    #[serde(default = "default_schema_name")]
+    pub schema_name: String,
+    /// Custom Jinja2 prompt template
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
+    /// API key (optional, falls back to env)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub api_key: Option<String>,
+    /// Enable strict mode
+    #[serde(default)]
+    pub strict: bool,
 }
 
 /// Request parameters for text chunking.

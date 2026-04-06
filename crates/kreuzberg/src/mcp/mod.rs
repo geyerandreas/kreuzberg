@@ -16,6 +16,7 @@
 //! - **get_version**: Get Kreuzberg version info
 //! - **chunk_text**: Split text into chunks
 //! - **embed_text**: Generate vector embeddings (requires `embeddings` feature)
+//! - **extract_structured**: Extract structured data via LLM with JSON schema (requires `liter-llm` feature)
 //!
 //! # Example
 //!
@@ -42,7 +43,7 @@ pub use server::{start_mcp_server_http, start_mcp_server_http_with_config};
 
 pub use params::{
     BatchExtractFilesParams, CacheWarmParams, ChunkTextParams, DetectMimeTypeParams, EmbedTextParams,
-    ExtractBytesParams, ExtractFileParams,
+    ExtractBytesParams, ExtractFileParams, ExtractStructuredParams,
 };
 
 #[doc(hidden)]

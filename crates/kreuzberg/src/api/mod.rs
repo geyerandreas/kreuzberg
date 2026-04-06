@@ -6,6 +6,7 @@
 //! # Endpoints
 //!
 //! - `POST /extract` - Extract text from uploaded files (multipart form data)
+//! - `POST /extract-structured` - Extract structured data via LLM with JSON schema (multipart form data)
 //! - `POST /detect` - Detect MIME type of an uploaded file (multipart form data)
 //! - `POST /embed` - Generate embeddings for text (JSON body with texts array)
 //! - `POST /chunk` - Chunk text into smaller pieces (JSON body with text and config)
@@ -108,5 +109,5 @@ pub use types::{
     ApiSizeLimits, ApiState, CacheClearResponse, CacheStatsResponse, ChunkRequest, ChunkResponse, DetectResponse,
     DoclingCompatDocument, DoclingCompatResponse, EmbedRequest, EmbedResponse, ErrorResponse, ExtractResponse,
     HealthResponse, InfoResponse, ManifestEntryResponse, ManifestResponse, OpenWebDocumentMetadata,
-    OpenWebDocumentResponse, VersionResponse, WarmRequest, WarmResponse,
+    OpenWebDocumentResponse, StructuredExtractionResponse, VersionResponse, WarmRequest, WarmResponse,
 };

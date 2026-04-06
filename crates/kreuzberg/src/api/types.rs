@@ -394,6 +394,19 @@ pub struct WarmResponse {
     pub already_cached: Vec<String>,
 }
 
+/// Response from structured extraction endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg_attr(feature = "api", derive(utoipa::ToSchema))]
+pub struct StructuredExtractionResponse {
+    /// Structured data conforming to the provided JSON schema
+    pub structured_output: serde_json::Value,
+    /// Extracted document text content
+    pub content: String,
+    /// Detected MIME type of the input file
+    #[cfg_attr(feature = "api", schema(example = "application/pdf"))]
+    pub mime_type: String,
+}
+
 // ---------------------------------------------------------------------------
 // OpenWebUI compatibility types
 // ---------------------------------------------------------------------------

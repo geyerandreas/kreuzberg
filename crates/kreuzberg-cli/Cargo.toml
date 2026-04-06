@@ -42,8 +42,17 @@ embeddings = ["kreuzberg/embeddings"]
 paddle-ocr = ["kreuzberg/paddle-ocr"]
 layout-detection = ["kreuzberg/layout-detection"]
 chunking-tokenizers = ["kreuzberg/chunking-tokenizers"]
+liter-llm = ["kreuzberg/liter-llm"]
 tree-sitter = ["kreuzberg/tree-sitter", "dep:tree-sitter-language-pack"]
-all = ["default", "api", "mcp", "mcp-http", "chunking-tokenizers", "tree-sitter"]
+all = [
+    "default",
+    "api",
+    "mcp",
+    "mcp-http",
+    "chunking-tokenizers",
+    "tree-sitter",
+    "liter-llm",
+]
 
 [dependencies]
 

@@ -33,6 +33,7 @@ use utoipa::OpenApi;
         crate::api::handlers::health_handler,
         crate::api::handlers::info_handler,
         crate::api::handlers::extract_handler,
+        crate::api::handlers::extract_structured_handler,
         crate::api::handlers::detect_handler,
         crate::api::handlers::formats_handler,
         crate::api::handlers::cache_stats_handler,
@@ -90,6 +91,7 @@ use utoipa::OpenApi;
             crate::api::types::OpenWebDocumentMetadata,
             crate::api::types::DoclingCompatResponse,
             crate::api::types::DoclingCompatDocument,
+            crate::api::types::StructuredExtractionResponse,
         )
     ),
     tags(

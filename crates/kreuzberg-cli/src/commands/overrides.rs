@@ -5,7 +5,9 @@
 //! `apply()` to layer these overrides onto an `ExtractionConfig`.
 
 use anyhow::{Result, bail};
-use kreuzberg::{ChunkingConfig, ExecutionProviderType, ExtractionConfig, LanguageDetectionConfig, OcrConfig};
+use kreuzberg::{
+    ChunkingConfig, ExecutionProviderType, ExtractionConfig, LanguageDetectionConfig, LlmConfig, OcrConfig,
+};
 
 use crate::ContentOutputFormatArg;
 
@@ -103,6 +105,19 @@ pub struct ExtractionOverrides {
     /// Enable automatic image rotation before OCR based on detected orientation.
     #[arg(long)]
     pub ocr_auto_rotate: Option<bool>,
+
+    /// VLM model for OCR (implies --ocr-backend vlm). Uses liter-llm routing format
+    /// (e.g., "openai/gpt-4o", "anthropic/claude-sonnet-4-20250514").
+    #[arg(long)]
+    pub vlm_model: Option<String>,
+
+    /// VLM API key for OCR
+    #[arg(long)]
+    pub vlm_api_key: Option<String>,
+
+    /// Custom VLM OCR prompt template (Jinja2)
+    #[arg(long)]
+    pub vlm_prompt: Option<String>,
 
     // ── Chunking ─────────────────────────────────────────────────────
     /// Enable or disable text chunking.
@@ -293,12 +308,20 @@ impl ExtractionOverrides {
 
         // OCR backend validation
         if let Some(ref backend) = self.ocr_backend
-            && !["tesseract", "paddle-ocr", "easyocr"].contains(&backend.as_str())
+            && !["tesseract", "paddle-ocr", "easyocr", "vlm"].contains(&backend.as_str())
         {
             bail!(
-                "Invalid OCR backend '{}'. Valid backends: tesseract, paddle-ocr, easyocr",
+                "Invalid OCR backend '{}'. Valid backends: tesseract, paddle-ocr, easyocr, vlm",
                 backend
             );
+        }
+
+        // VLM OCR validation
+        if self.vlm_api_key.is_some() && self.vlm_model.is_none() {
+            bail!("--vlm-api-key requires --vlm-model to be specified");
+        }
+        if self.vlm_prompt.is_some() && self.vlm_model.is_none() {
+            bail!("--vlm-prompt requires --vlm-model to be specified");
         }
 
         // Concurrency validation
@@ -318,6 +341,7 @@ impl ExtractionOverrides {
     /// effect; everything else is left untouched.
     pub fn apply(self, config: &mut ExtractionConfig) {
         self.apply_ocr(config);
+        self.apply_vlm_ocr(config);
         self.apply_chunking(config);
         self.apply_quality_and_detection(config);
         self.apply_output_format(config);
@@ -396,6 +420,42 @@ impl ExtractionOverrides {
         }
         if let Some(no_cache_flag) = self.no_cache {
             config.use_cache = !no_cache_flag;
+        }
+    }
+
+    fn apply_vlm_ocr(&self, config: &mut ExtractionConfig) {
+        if let Some(ref vlm_model) = self.vlm_model {
+            let vlm_llm_config = LlmConfig {
+                model: vlm_model.clone(),
+                api_key: self.vlm_api_key.clone(),
+                base_url: None,
+                timeout_secs: None,
+                max_retries: None,
+                temperature: None,
+                max_tokens: None,
+            };
+
+            // If OCR config already exists, update it; otherwise create a new one
+            let ocr = config.ocr.get_or_insert_with(|| OcrConfig {
+                backend: "vlm".to_string(),
+                language: "eng".to_string(),
+                tesseract_config: None,
+                output_format: None,
+                paddle_ocr_config: None,
+                element_config: None,
+                quality_thresholds: None,
+                pipeline: None,
+                auto_rotate: false,
+                vlm_config: None,
+                vlm_prompt: None,
+            });
+
+            ocr.backend = "vlm".to_string();
+            ocr.vlm_config = Some(vlm_llm_config);
+
+            if let Some(ref prompt) = self.vlm_prompt {
+                ocr.vlm_prompt = Some(prompt.clone());
+            }
         }
     }
 

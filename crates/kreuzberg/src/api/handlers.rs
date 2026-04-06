@@ -494,6 +494,227 @@ pub async fn embed_handler(JsonApi(_request): JsonApi<EmbedRequest>) -> Result<J
     )))
 }
 
+/// Structured extraction endpoint handler.
+///
+/// POST /extract-structured
+///
+/// Accepts multipart form data with a file and structured extraction configuration.
+/// Extracts document content then runs LLM-based structured extraction using a JSON schema.
+///
+/// # Fields
+///
+/// - `file`: The document file (required)
+/// - `config`: JSON extraction configuration (optional)
+/// - `schema`: JSON schema for structured output (required)
+/// - `schema_name`: Schema name (optional, default "extraction")
+/// - `model`: LLM model string e.g. "openai/gpt-4o" (required)
+/// - `api_key`: API key for the LLM provider (optional)
+/// - `prompt`: Custom Jinja2 prompt template (optional)
+/// - `strict`: "true"/"false" for strict mode (optional)
+#[utoipa::path(
+    post,
+    path = "/extract-structured",
+    tag = "extraction",
+    request_body(content_type = "multipart/form-data"),
+    responses(
+        (status = 200, description = "Structured extraction successful", body = crate::api::types::StructuredExtractionResponse),
+        (status = 400, description = "Bad request", body = crate::api::types::ErrorResponse),
+        (status = 413, description = "Payload too large", body = crate::api::types::ErrorResponse),
+        (status = 500, description = "Internal server error", body = crate::api::types::ErrorResponse),
+    )
+)]
+#[cfg(feature = "liter-llm")]
+#[cfg_attr(
+    feature = "otel",
+    tracing::instrument(name = "api.extract_structured", skip(state, multipart),)
+)]
+pub async fn extract_structured_handler(
+    State(state): State<ApiState>,
+    MultipartApi(mut multipart): MultipartApi,
+) -> Result<Json<super::types::StructuredExtractionResponse>, ApiError> {
+    let mut file_data: Option<(Vec<u8>, String, Option<String>)> = None;
+    let mut config: Option<crate::core::config::ExtractionConfig> = None;
+    let mut schema: Option<serde_json::Value> = None;
+    let mut schema_name = "extraction".to_string();
+    let mut model: Option<String> = None;
+    let mut api_key: Option<String> = None;
+    let mut prompt: Option<String> = None;
+    let mut strict = false;
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| ApiError::validation(crate::error::KreuzbergError::validation(e.to_string())))?
+    {
+        let field_name = field.name().unwrap_or("").to_string();
+
+        match field_name.as_str() {
+            "file" | "files" => {
+                let file_name = field.file_name().map(|s| s.to_string());
+                let content_type = field.content_type().map(|s| s.to_string());
+                let data = field
+                    .bytes()
+                    .await
+                    .map_err(|e| ApiError::validation(crate::error::KreuzbergError::validation(e.to_string())))?;
+
+                let mut mime_type = content_type.unwrap_or_else(|| "application/octet-stream".to_string());
+
+                if mime_type == "application/octet-stream"
+                    && let Some(ref name) = file_name
+                    && let Ok(detected) = crate::core::mime::detect_mime_type(name, false)
+                {
+                    mime_type = detected;
+                }
+
+                file_data = Some((data.to_vec(), mime_type, file_name));
+            }
+            "config" => {
+                let config_str = field
+                    .text()
+                    .await
+                    .map_err(|e| ApiError::validation(crate::error::KreuzbergError::validation(e.to_string())))?;
+                config = Some(serde_json::from_str(&config_str).map_err(|e| {
+                    ApiError::validation(crate::error::KreuzbergError::validation(format!(
+                        "Invalid extraction configuration: {}",
+                        e
+                    )))
+                })?);
+            }
+            "schema" => {
+                let schema_str = field
+                    .text()
+                    .await
+                    .map_err(|e| ApiError::validation(crate::error::KreuzbergError::validation(e.to_string())))?;
+                schema = Some(serde_json::from_str(&schema_str).map_err(|e| {
+                    ApiError::validation(crate::error::KreuzbergError::validation(format!(
+                        "Invalid JSON schema: {}",
+                        e
+                    )))
+                })?);
+            }
+            "schema_name" => {
+                schema_name = field
+                    .text()
+                    .await
+                    .map_err(|e| ApiError::validation(crate::error::KreuzbergError::validation(e.to_string())))?;
+            }
+            "model" => {
+                model = Some(
+                    field
+                        .text()
+                        .await
+                        .map_err(|e| ApiError::validation(crate::error::KreuzbergError::validation(e.to_string())))?,
+                );
+            }
+            "api_key" => {
+                api_key = Some(
+                    field
+                        .text()
+                        .await
+                        .map_err(|e| ApiError::validation(crate::error::KreuzbergError::validation(e.to_string())))?,
+                );
+            }
+            "prompt" => {
+                prompt = Some(
+                    field
+                        .text()
+                        .await
+                        .map_err(|e| ApiError::validation(crate::error::KreuzbergError::validation(e.to_string())))?,
+                );
+            }
+            "strict" => {
+                let val = field
+                    .text()
+                    .await
+                    .map_err(|e| ApiError::validation(crate::error::KreuzbergError::validation(e.to_string())))?;
+                strict = val.eq_ignore_ascii_case("true");
+            }
+            _ => {}
+        }
+    }
+
+    let (data, mime_type, _file_name) = file_data.ok_or_else(|| {
+        ApiError::validation(crate::error::KreuzbergError::validation(
+            "No file provided for extraction. Upload a file with field name 'file'.",
+        ))
+    })?;
+
+    let schema_val = schema.ok_or_else(|| {
+        ApiError::validation(crate::error::KreuzbergError::validation(
+            "Missing required field 'schema'. Provide a JSON schema string.",
+        ))
+    })?;
+
+    let model_str = model.ok_or_else(|| {
+        ApiError::validation(crate::error::KreuzbergError::validation(
+            "Missing required field 'model'. Provide an LLM model string (e.g., 'openai/gpt-4o').",
+        ))
+    })?;
+
+    // Extract document content
+    let final_config = config.as_ref().unwrap_or(&state.default_config);
+    let request = ExtractionRequest::bytes(data, &mime_type, final_config.clone());
+    let mut svc = state
+        .extraction_service
+        .lock()
+        .expect("extraction service lock poisoned")
+        .clone();
+    let result = svc.call(request).await?;
+
+    // Build structured extraction config
+    let structured_config = crate::core::config::llm::StructuredExtractionConfig {
+        schema: schema_val,
+        schema_name,
+        schema_description: None,
+        strict,
+        prompt,
+        llm: crate::core::config::llm::LlmConfig {
+            model: model_str,
+            api_key,
+            base_url: None,
+            timeout_secs: None,
+            max_retries: None,
+            temperature: None,
+            max_tokens: None,
+        },
+    };
+
+    // Run structured extraction on the extracted content
+    let structured_output = crate::llm::structured::extract_structured(&result.content, &structured_config)
+        .await
+        .map_err(ApiError::internal)?;
+
+    Ok(Json(super::types::StructuredExtractionResponse {
+        structured_output,
+        content: result.content,
+        mime_type,
+    }))
+}
+
+/// Structured extraction endpoint stub (when liter-llm feature is disabled).
+///
+/// POST /extract-structured
+#[utoipa::path(
+    post,
+    path = "/extract-structured",
+    tag = "extraction",
+    request_body(content_type = "multipart/form-data"),
+    responses(
+        (status = 200, description = "Structured extraction successful", body = crate::api::types::StructuredExtractionResponse),
+        (status = 500, description = "Internal server error", body = crate::api::types::ErrorResponse),
+    )
+)]
+#[cfg(not(feature = "liter-llm"))]
+pub async fn extract_structured_handler(
+    State(_state): State<ApiState>,
+    MultipartApi(_multipart): MultipartApi,
+) -> Result<Json<super::types::StructuredExtractionResponse>, ApiError> {
+    Err(ApiError::internal(crate::error::KreuzbergError::MissingDependency(
+        "Structured extraction requires the 'liter-llm' feature to be enabled. Rebuild with --features liter-llm"
+            .to_string(),
+    )))
+}
+
 /// Chunk text endpoint handler.
 ///
 /// POST /chunk

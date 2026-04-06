@@ -67,8 +67,8 @@ use commands::overrides::ExtractionOverrides;
 #[cfg(feature = "api")]
 use commands::serve_command;
 use commands::{
-    batch_command, chunk_command, clear_command, extract_command, load_config, manifest_command, stats_command,
-    warm_command,
+    batch_command, chunk_command, clear_command, extract_command, extract_structured_command, load_config,
+    manifest_command, stats_command, warm_command,
 };
 use kreuzberg::{OutputFormat as ContentOutputFormat, detect_mime_type};
 use serde_json::json;
@@ -124,6 +124,44 @@ enum Commands {
         /// Extraction configuration overrides
         #[command(flatten)]
         overrides: ExtractionOverrides,
+    },
+
+    /// Extract structured data from a document using an LLM
+    ExtractStructured {
+        /// Path to the document file
+        path: PathBuf,
+
+        /// Path to JSON schema file defining the output structure
+        #[arg(long)]
+        schema: PathBuf,
+
+        /// LLM model (e.g., "openai/gpt-4o")
+        #[arg(long)]
+        model: String,
+
+        /// API key for the LLM provider
+        #[arg(long)]
+        api_key: Option<String>,
+
+        /// Custom Jinja2 prompt template
+        #[arg(long)]
+        prompt: Option<String>,
+
+        /// Schema name
+        #[arg(long, default_value = "extraction")]
+        schema_name: Option<String>,
+
+        /// Enable strict mode
+        #[arg(long)]
+        strict: bool,
+
+        /// Config file path
+        #[arg(short, long)]
+        config: Option<PathBuf>,
+
+        /// Output format (text or json)
+        #[arg(short, long, default_value = "json")]
+        format: WireFormat,
     },
 
     /// Batch extract from multiple documents
@@ -247,17 +285,30 @@ enum Commands {
 
     /// Generate embeddings for text
     ///
-    /// Generates vector embeddings for one or more text inputs using a specified preset model.
-    /// Reads from --text flag or stdin if no text is provided.
+    /// Generates vector embeddings for one or more text inputs using a specified preset model
+    /// or an LLM provider. Reads from --text flag or stdin if no text is provided.
     #[cfg(feature = "embeddings")]
     Embed {
         /// Text to embed. Can be specified multiple times for batch embedding.
         #[arg(long)]
         text: Vec<String>,
 
-        /// Embedding preset (fast, balanced, quality, multilingual)
+        /// Embedding preset (fast, balanced, quality, multilingual). Used with --provider local.
         #[arg(long, default_value = "balanced")]
         preset: String,
+
+        /// Embedding provider: "local" (default, ONNX) or "llm" (liter-llm)
+        #[arg(long, default_value = "local")]
+        provider: String,
+
+        /// LLM model for provider-hosted embeddings (e.g., "openai/text-embedding-3-small").
+        /// Required when --provider is "llm".
+        #[arg(long)]
+        model: Option<String>,
+
+        /// API key for the LLM provider
+        #[arg(long)]
+        api_key: Option<String>,
 
         /// Output format (text or json)
         #[arg(short, long, default_value = "json")]
@@ -608,6 +659,32 @@ fn main() -> Result<()> {
             extract_command(path, config, mime_type, format)?;
         }
 
+        Commands::ExtractStructured {
+            path,
+            schema,
+            model,
+            api_key,
+            prompt,
+            schema_name,
+            strict,
+            config,
+            format,
+        } => {
+            validate_file_exists(&path)?;
+            validate_file_exists(&schema)?;
+            extract_structured_command(
+                path,
+                schema,
+                model,
+                api_key,
+                prompt,
+                schema_name,
+                strict,
+                config,
+                format,
+            )?;
+        }
+
         Commands::Batch {
             paths,
             config: config_path,
@@ -806,13 +883,20 @@ fn main() -> Result<()> {
         },
 
         #[cfg(feature = "embeddings")]
-        Commands::Embed { text, preset, format } => {
+        Commands::Embed {
+            text,
+            preset,
+            provider,
+            model,
+            api_key,
+            format,
+        } => {
             let texts = if text.is_empty() {
                 vec![commands::read_stdin()?]
             } else {
                 text
             };
-            embed_command(texts, &preset, format)?;
+            embed_command(texts, &preset, &provider, model, api_key, format)?;
         }
 
         Commands::Chunk {

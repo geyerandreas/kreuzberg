@@ -22,7 +22,8 @@ use crate::{ExtractionConfig, core::ServerConfig, service::ExtractionServiceBuil
 use super::{
     handlers::{
         cache_clear_handler, cache_manifest_handler, cache_stats_handler, cache_warm_handler, chunk_handler,
-        detect_handler, embed_handler, extract_handler, formats_handler, health_handler, info_handler, version_handler,
+        detect_handler, embed_handler, extract_handler, extract_structured_handler, formats_handler, health_handler,
+        info_handler, version_handler,
     },
     openweb::{openweb_docling_handler, openweb_external_handler},
     types::{ApiSizeLimits, ApiState},
@@ -163,6 +164,7 @@ pub fn create_router_with_limits_and_server_config(
 
     let mut router = Router::new()
         .route("/extract", post(extract_handler))
+        .route("/extract-structured", post(extract_structured_handler))
         .route("/detect", post(detect_handler))
         .route("/embed", post(embed_handler))
         .route("/chunk", post(chunk_handler))
