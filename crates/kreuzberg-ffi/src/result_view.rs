@@ -452,21 +452,7 @@ mod tests {
                     },
                 },
             ]),
-            images: None,
-            pages: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: vec![],
-            annotations: None,
-            children: None,
-            uris: None,
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         }
     }
 
@@ -725,25 +711,7 @@ mod tests {
         let result = ExtractionResult {
             content: "Minimal content".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: vec![],
-            annotations: None,
-            children: None,
-            uris: None,
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let result_ptr = &result as *const ExtractionResult;

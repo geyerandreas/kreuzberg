@@ -484,24 +484,9 @@ impl OcrBackend for PaddleOcrBackend {
             metadata,
             tables,
             detected_languages: Some(vec![config.language.clone()]),
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
             ocr_elements: ocr_elements_opt,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
             ocr_internal_document: Some(ocr_doc),
+            ..Default::default()
         })
     }
 

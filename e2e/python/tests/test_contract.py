@@ -858,6 +858,153 @@ def test_config_language_multi() -> None:
         raise
 
 
+def test_config_llm_embeddings() -> None:
+    """Tests VLM embeddings via liter-llm provider-hosted embedding model"""
+
+    document_path = helpers.resolve_document("pdf/fake_memo.pdf")
+    if not document_path.exists():
+        pytest.skip(f"Skipping config_llm_embeddings: missing document at {document_path}")
+
+    try:
+        config = helpers.build_config(
+            {
+                "chunking": {
+                    "max_chars": 500,
+                    "max_overlap": 50,
+                    "embedding": {
+                        "model": {"type": "llm", "llm": {"model": "openai/text-embedding-3-small"}},
+                        "normalize": True,
+                    },
+                }
+            }
+        )
+
+        result = extract_file_sync(document_path, None, config)
+
+        helpers.assert_expected_mime(result, ["application/pdf"])
+        helpers.assert_min_content_length(result, 10)
+        helpers.assert_chunks(result, min_count=1, each_has_content=True, each_has_embedding=True)
+    except Exception as exc:
+        if (
+            "missing dependency" in str(exc).lower()
+            or "unsupported" in str(exc).lower()
+            or "parsing" in str(exc).lower()
+        ):
+            pytest.skip(f"Skipping config_llm_embeddings: {exc}")
+        raise
+
+
+def test_config_llm_structured_extraction() -> None:
+    """Tests structured extraction via liter-llm with JSON schema"""
+
+    document_path = helpers.resolve_document("pdf/fake_memo.pdf")
+    if not document_path.exists():
+        pytest.skip(f"Skipping config_llm_structured_extraction: missing document at {document_path}")
+
+    try:
+        config = helpers.build_config(
+            {
+                "structured_extraction": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string"},
+                            "date": {"type": "string"},
+                            "summary": {"type": "string"},
+                        },
+                        "required": ["title"],
+                    },
+                    "schema_name": "memo_data",
+                    "llm": {"model": "openai/gpt-4o"},
+                }
+            }
+        )
+
+        result = extract_file_sync(document_path, None, config)
+
+        helpers.assert_expected_mime(result, ["application/pdf"])
+        helpers.assert_min_content_length(result, 10)
+        helpers.assert_structured_output(result, has_output=True, validates_schema=None, field_exists=None)
+    except Exception as exc:
+        if (
+            "missing dependency" in str(exc).lower()
+            or "unsupported" in str(exc).lower()
+            or "parsing" in str(exc).lower()
+        ):
+            pytest.skip(f"Skipping config_llm_structured_extraction: {exc}")
+        raise
+
+
+def test_config_llm_structured_extraction_with_prompt() -> None:
+    """Tests structured extraction with custom prompt"""
+
+    document_path = helpers.resolve_document("pdf/fake_memo.pdf")
+    if not document_path.exists():
+        pytest.skip(f"Skipping config_llm_structured_extraction_with_prompt: missing document at {document_path}")
+
+    try:
+        config = helpers.build_config(
+            {
+                "structured_extraction": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "sender": {"type": "string"},
+                            "recipient": {"type": "string"},
+                            "subject": {"type": "string"},
+                        },
+                        "required": ["sender", "recipient"],
+                    },
+                    "schema_name": "memo_parties",
+                    "prompt": "Extract the sender and recipient from this memo document. If not found, use 'unknown'.",
+                    "llm": {"model": "openai/gpt-4o"},
+                }
+            }
+        )
+
+        result = extract_file_sync(document_path, None, config)
+
+        helpers.assert_expected_mime(result, ["application/pdf"])
+        helpers.assert_min_content_length(result, 10)
+        helpers.assert_structured_output(
+            result, has_output=True, validates_schema=None, field_exists=["sender", "recipient"]
+        )
+    except Exception as exc:
+        if (
+            "missing dependency" in str(exc).lower()
+            or "unsupported" in str(exc).lower()
+            or "parsing" in str(exc).lower()
+        ):
+            pytest.skip(f"Skipping config_llm_structured_extraction_with_prompt: {exc}")
+        raise
+
+
+def test_config_llm_vlm_ocr() -> None:
+    """Tests VLM OCR backend via liter-llm vision model"""
+
+    document_path = helpers.resolve_document("images/test_hello_world.png")
+    if not document_path.exists():
+        pytest.skip(f"Skipping config_llm_vlm_ocr: missing document at {document_path}")
+
+    try:
+        config = helpers.build_config(
+            {"ocr": {"backend": "vlm", "language": "eng", "vlm_config": {"model": "openai/gpt-4o"}}}
+        )
+
+        result = extract_file_sync(document_path, None, config)
+
+        helpers.assert_min_content_length(result, 5)
+        helpers.assert_content_not_empty(result)
+    except Exception as exc:
+        if (
+            "missing dependency" in str(exc).lower()
+            or "unsupported" in str(exc).lower()
+            or "parsing" in str(exc).lower()
+        ):
+            pytest.skip(f"Skipping config_llm_vlm_ocr: {exc}")
+        raise
+
+
 def test_config_pages() -> None:
     """Tests page extraction and page marker configuration"""
 

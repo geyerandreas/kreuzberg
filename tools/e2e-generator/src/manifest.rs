@@ -440,6 +440,7 @@ fn sample_extraction_result() -> Value {
         formatted_content: None,
         code_intelligence: None,
         ocr_internal_document: None,
+        structured_output: None,
     };
 
     serde_json::to_value(&result).expect("ExtractionResult serialization")

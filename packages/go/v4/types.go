@@ -176,6 +176,9 @@ type ExtractionResult struct {
 	// Children contains nested extraction results (e.g., from archive entries).
 	Children []ExtractionResult `json:"children,omitempty"`
 
+	// StructuredOutput contains LLM-based structured extraction results when configured.
+	StructuredOutput interface{} `json:"structured_output,omitempty"`
+
 	// CodeIntelligence contains tree-sitter code analysis results when processing code files.
 	CodeIntelligence *CodeProcessResult `json:"code_intelligence,omitempty"`
 }

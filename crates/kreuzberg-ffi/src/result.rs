@@ -426,21 +426,7 @@ mod tests {
                     },
                 },
             ]),
-            images: None,
-            pages: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: vec![],
-            annotations: None,
-            children: None,
-            uris: None,
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         }
     }
 

@@ -476,6 +476,27 @@ module E2ERuby
       end
     end
 
+    def self.assert_structured_output(result, has_output: nil, validates_schema: nil, field_exists: nil)
+      output = result.structured_output
+      if has_output == true
+        expect(output).not_to be_nil
+      end
+      if has_output == false
+        expect(output).to be_nil
+      end
+      if validates_schema == true
+        expect(output).not_to be_nil
+        expect(output).to be_a(Hash).or be_a(Array)
+      end
+      if field_exists
+        expect(output).not_to be_nil
+        expect(output).to be_a(Hash)
+        field_exists.each do |field|
+          expect(output).to have_key(field)
+        end
+      end
+    end
+
     class << self
       private
 
@@ -1148,6 +1169,29 @@ fn render_assertions(assertions: &Assertions) -> String {
         if !args.is_empty() {
             buffer.push_str(&format!(
                 "      E2ERuby::Assertions.assert_annotations(result, {})\n",
+                args.join(", ")
+            ));
+        }
+    }
+
+    if let Some(structured) = assertions.structured_output.as_ref() {
+        let mut args = Vec::new();
+        if let Some(has_output) = structured.has_output {
+            args.push(format!("has_output: {}", if has_output { "true" } else { "false" }));
+        }
+        if let Some(validates_schema) = structured.validates_schema {
+            args.push(format!(
+                "validates_schema: {}",
+                if validates_schema { "true" } else { "false" }
+            ));
+        }
+        if let Some(ref fields) = structured.field_exists {
+            let parts = fields.iter().map(|f| format!("'{}'", f)).collect::<Vec<_>>().join(", ");
+            args.push(format!("field_exists: [{}]", parts));
+        }
+        if !args.is_empty() {
+            buffer.push_str(&format!(
+                "      E2ERuby::Assertions.assert_structured_output(result, {})\n",
                 args.join(", ")
             ));
         }

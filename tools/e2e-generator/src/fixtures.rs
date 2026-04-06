@@ -308,6 +308,9 @@ pub struct Assertions {
     /// Annotation extraction assertions
     #[serde(default)]
     pub annotations: Option<AnnotationAssertion>,
+    /// Structured extraction output assertions
+    #[serde(default)]
+    pub structured_output: Option<StructuredOutputAssertion>,
     /// PDF rendering assertions
     #[serde(default)]
     pub render: Option<RenderAssertions>,
@@ -484,6 +487,21 @@ pub struct AnnotationAssertion {
     /// Minimum number of annotations expected
     #[serde(default)]
     pub min_count: Option<usize>,
+}
+
+/// Structured extraction output assertions
+#[allow(dead_code)]
+#[derive(Debug, Clone, Deserialize)]
+pub struct StructuredOutputAssertion {
+    /// Assert structured_output field is present (Some)
+    #[serde(default)]
+    pub has_output: Option<bool>,
+    /// Assert structured_output is valid JSON (always true if has_output)
+    #[serde(default)]
+    pub validates_schema: Option<bool>,
+    /// Assert these JSON keys exist in the top-level structured_output object
+    #[serde(default)]
+    pub field_exists: Option<Vec<String>>,
 }
 
 #[allow(dead_code)]

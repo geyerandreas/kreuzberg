@@ -774,6 +774,29 @@ public final class E2EHelpers {
         assertTrue(data.length >= minLength,
                 String.format("Expected at least %d bytes, got %d", minLength, data.length));
     }
+
+    public static void assertStructuredOutput(ExtractionResult result, Boolean hasOutput, Boolean validatesSchema, String[] fieldExists) {
+        var output = result.getStructuredOutput().orElse(null);
+        if (hasOutput != null && hasOutput) {
+            assertNotNull(output, "Expected structured_output to be present");
+        }
+        if (hasOutput != null && !hasOutput) {
+            assertNull(output, "Expected structured_output to be absent");
+        }
+        if (validatesSchema != null && validatesSchema) {
+            assertNotNull(output, "structured_output required for validates_schema");
+        }
+        if (fieldExists != null) {
+            assertNotNull(output, "structured_output required for field_exists");
+            assertTrue(output instanceof java.util.Map, "structured_output must be a Map for field_exists");
+            @SuppressWarnings("unchecked")
+            var outputMap = (java.util.Map<String, Object>) output;
+            for (String field : fieldExists) {
+                assertTrue(outputMap.containsKey(field),
+                        String.format("Expected structured_output to contain '%s'", field));
+            }
+        }
+    }
 }
 "#;
 
@@ -1959,6 +1982,31 @@ fn render_assertions(assertions: &Assertions) -> String {
         buffer.push_str(&format!(
             "                E2EHelpers.Assertions.assertAnnotations(result, {}, {});\n",
             has_annotations, min_count
+        ));
+    }
+
+    if let Some(structured) = assertions.structured_output.as_ref() {
+        let has_output = structured
+            .has_output
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "null".to_string());
+        let validates_schema = structured
+            .validates_schema
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "null".to_string());
+        let field_exists = if let Some(ref fields) = structured.field_exists {
+            let parts = fields
+                .iter()
+                .map(|f| format!("\"{}\"", f))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("new String[]{{{}}}", parts)
+        } else {
+            "null".to_string()
+        };
+        buffer.push_str(&format!(
+            "                E2EHelpers.assertStructuredOutput(result, {}, {}, {});\n",
+            has_output, validates_schema, field_exists
         ));
     }
 

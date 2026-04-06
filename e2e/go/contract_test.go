@@ -438,6 +438,109 @@ func TestContractConfigLanguageMulti(t *testing.T) {
 	assertDetectedLanguages(t, result, []string{"eng"}, nil)
 }
 
+func TestContractConfigLlmEmbeddings(t *testing.T) {
+	skipIfFeatureUnavailable(t, "liter-llm")
+	result := runExtraction(t, "pdf/fake_memo.pdf", []byte(`{
+"chunking": {
+	"max_chars": 500,
+	"max_overlap": 50,
+	"embedding": {
+	"model": {
+		"type": "llm",
+		"llm": {
+		"model": "openai/text-embedding-3-small"
+		}
+	},
+	"normalize": true
+	}
+}
+}`))
+	assertExpectedMime(t, result, []string{"application/pdf"})
+	assertMinContentLength(t, result, 10)
+	assertChunks(t, result, intPtr(1), nil, boolPtr(true), boolPtr(true), nil, nil, nil)
+}
+
+func TestContractConfigLlmStructuredExtraction(t *testing.T) {
+	skipIfFeatureUnavailable(t, "liter-llm")
+	result := runExtraction(t, "pdf/fake_memo.pdf", []byte(`{
+"structured_extraction": {
+	"schema": {
+	"type": "object",
+	"properties": {
+		"title": {
+		"type": "string"
+		},
+		"date": {
+		"type": "string"
+		},
+		"summary": {
+		"type": "string"
+		}
+	},
+	"required": [
+		"title"
+	]
+	},
+	"schema_name": "memo_data",
+	"llm": {
+	"model": "openai/gpt-4o"
+	}
+}
+}`))
+	assertExpectedMime(t, result, []string{"application/pdf"})
+	assertMinContentLength(t, result, 10)
+	assertStructuredOutput(t, result, boolPtr(true), nil, nil)
+}
+
+func TestContractConfigLlmStructuredExtractionWithPrompt(t *testing.T) {
+	skipIfFeatureUnavailable(t, "liter-llm")
+	result := runExtraction(t, "pdf/fake_memo.pdf", []byte(`{
+"structured_extraction": {
+	"schema": {
+	"type": "object",
+	"properties": {
+		"sender": {
+		"type": "string"
+		},
+		"recipient": {
+		"type": "string"
+		},
+		"subject": {
+		"type": "string"
+		}
+	},
+	"required": [
+		"sender",
+		"recipient"
+	]
+	},
+	"schema_name": "memo_parties",
+	"prompt": "Extract the sender and recipient from this memo document. If not found, use 'unknown'.",
+	"llm": {
+	"model": "openai/gpt-4o"
+	}
+}
+}`))
+	assertExpectedMime(t, result, []string{"application/pdf"})
+	assertMinContentLength(t, result, 10)
+	assertStructuredOutput(t, result, boolPtr(true), nil, []string{"sender", "recipient"})
+}
+
+func TestContractConfigLlmVlmOcr(t *testing.T) {
+	skipIfFeatureUnavailable(t, "liter-llm")
+	result := runExtraction(t, "images/test_hello_world.png", []byte(`{
+"ocr": {
+	"backend": "vlm",
+	"language": "eng",
+	"vlm_config": {
+	"model": "openai/gpt-4o"
+	}
+}
+}`))
+	assertMinContentLength(t, result, 5)
+	assertContentNotEmpty(t, result)
+}
+
 func TestContractConfigPages(t *testing.T) {
 	skipIfFeatureUnavailable(t, "pdf")
 	result := runExtraction(t, "pdf/fake_memo.pdf", []byte(`{

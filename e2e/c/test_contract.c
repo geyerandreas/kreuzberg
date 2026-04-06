@@ -526,6 +526,45 @@ static void test_contract_config_language_multi(void) {
     kreuzberg_free_result(result);
 }
 
+static void test_contract_config_llm_embeddings(void) {
+    if (skip_if_feature_unavailable("liter-llm")) return;
+    CExtractionResult *result = run_extraction("pdf/fake_memo.pdf", "{\"chunking\":{\"max_chars\":500,\"max_overlap\":50,\"embedding\":{\"model\":{\"type\":\"llm\",\"llm\":{\"model\":\"openai/text-embedding-3-small\"}},\"normalize\":true}}}");
+    if (!result) return; /* skipped */
+    assert_expected_mime(result, (const char *[]){"application/pdf"}, 1);
+    assert_min_content_length(result, 10);
+    assert_chunks(result, 1, 1, 0, 0, 0);
+    kreuzberg_free_result(result);
+}
+
+static void test_contract_config_llm_structured_extraction(void) {
+    if (skip_if_feature_unavailable("liter-llm")) return;
+    CExtractionResult *result = run_extraction("pdf/fake_memo.pdf", "{\"structured_extraction\":{\"schema\":{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\"},\"date\":{\"type\":\"string\"},\"summary\":{\"type\":\"string\"}},\"required\":[\"title\"]},\"schema_name\":\"memo_data\",\"llm\":{\"model\":\"openai/gpt-4o\"}}}");
+    if (!result) return; /* skipped */
+    assert_expected_mime(result, (const char *[]){"application/pdf"}, 1);
+    assert_min_content_length(result, 10);
+    assert_structured_output(result, 1, 1, 0, 0, NULL, 0);
+    kreuzberg_free_result(result);
+}
+
+static void test_contract_config_llm_structured_extraction_with_prompt(void) {
+    if (skip_if_feature_unavailable("liter-llm")) return;
+    CExtractionResult *result = run_extraction("pdf/fake_memo.pdf", "{\"structured_extraction\":{\"schema\":{\"type\":\"object\",\"properties\":{\"sender\":{\"type\":\"string\"},\"recipient\":{\"type\":\"string\"},\"subject\":{\"type\":\"string\"}},\"required\":[\"sender\",\"recipient\"]},\"schema_name\":\"memo_parties\",\"prompt\":\"Extract the sender and recipient from this memo document. If not found, use 'unknown'.\",\"llm\":{\"model\":\"openai/gpt-4o\"}}}");
+    if (!result) return; /* skipped */
+    assert_expected_mime(result, (const char *[]){"application/pdf"}, 1);
+    assert_min_content_length(result, 10);
+    { const char *_so_fields[] = { "sender", "recipient" }; assert_structured_output(result, 1, 1, 0, 0, _so_fields, 2); }
+    kreuzberg_free_result(result);
+}
+
+static void test_contract_config_llm_vlm_ocr(void) {
+    if (skip_if_feature_unavailable("liter-llm")) return;
+    CExtractionResult *result = run_extraction("images/test_hello_world.png", "{\"ocr\":{\"backend\":\"vlm\",\"language\":\"eng\",\"vlm_config\":{\"model\":\"openai/gpt-4o\"}}}");
+    if (!result) return; /* skipped */
+    assert_min_content_length(result, 5);
+    assert_content_not_empty(result);
+    kreuzberg_free_result(result);
+}
+
 static void test_contract_config_pages(void) {
     if (skip_if_feature_unavailable("pdf")) return;
     CExtractionResult *result = run_extraction("pdf/fake_memo.pdf", "{\"pages\":{\"extract_pages\":true,\"insert_page_markers\":true}}");
@@ -788,6 +827,10 @@ int main(void) {
     test_contract_config_language_detection();
     test_contract_config_language_detection_multi();
     test_contract_config_language_multi();
+    test_contract_config_llm_embeddings();
+    test_contract_config_llm_structured_extraction();
+    test_contract_config_llm_structured_extraction_with_prompt();
+    test_contract_config_llm_vlm_ocr();
     test_contract_config_pages();
     test_contract_config_pages_exact_count();
     test_contract_config_pages_extract();

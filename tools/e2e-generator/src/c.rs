@@ -149,6 +149,11 @@ void assert_embed_result(const CEmbedResult *result,
                          int has_dimensions, size_t dimensions,
                          int no_nan, int no_inf, int non_zero);
 
+void assert_structured_output(const CExtractionResult *result,
+                              int check_has_output, int has_output,
+                              int check_validates_schema, int validates_schema,
+                              const char **field_exists, size_t field_count);
+
 void assert_is_png(const uint8_t *data, size_t len);
 void assert_min_byte_length(const uint8_t *data, size_t len, size_t min_length);
 "#;
@@ -867,6 +872,37 @@ void assert_embed_result(const CEmbedResult *result,
     }
 }
 
+void assert_structured_output(const CExtractionResult *result,
+                              int check_has_output, int has_output,
+                              int check_validates_schema, int validates_schema,
+                              const char **field_exists, size_t field_count) {
+    const char *json = result->structured_output_json;
+    int is_present = (json != NULL && strlen(json) > 2);
+    if (check_has_output && has_output && !is_present) {
+        fputs("FAIL: expected structured output but structured_output_json is empty\n", stderr);
+        exit(1);
+    }
+    if (check_has_output && !has_output && is_present) {
+        fputs("FAIL: expected no structured output but structured_output_json is present\n", stderr);
+        exit(1);
+    }
+    if (is_present && check_validates_schema && validates_schema) {
+        /* Basic validation: must start with '{' */
+        if (json[0] != '{') {
+            fputs("FAIL: structured output does not validate as JSON object\n", stderr);
+            exit(1);
+        }
+    }
+    if (is_present && field_exists != NULL) {
+        for (size_t i = 0; i < field_count; i++) {
+            if (!str_contains_ci(json, field_exists[i])) {
+                fprintf(stderr, "FAIL: structured output missing field '%s'\n", field_exists[i]);
+                exit(1);
+            }
+        }
+    }
+}
+
 void assert_is_png(const uint8_t *data, size_t len) {
     if (len < 4) {
         fprintf(stderr, "FAIL: data too short for PNG: %zu bytes\n", len);
@@ -1359,6 +1395,28 @@ fn render_assertions(assertions: &Assertions) -> String {
         let has_min = annotations.min_count.is_some() as u8;
         let min = annotations.min_count.unwrap_or(0);
         writeln!(buf, "    assert_annotations(result, {has_ann}, {has_min}, {min});").unwrap();
+    }
+    if let Some(structured_output) = assertions.structured_output.as_ref() {
+        let check_has_output = structured_output.has_output.is_some() as u8;
+        let has_output = structured_output.has_output.unwrap_or(false) as u8;
+        let check_validates = structured_output.validates_schema.is_some() as u8;
+        let validates = structured_output.validates_schema.unwrap_or(false) as u8;
+        if let Some(fields) = structured_output.field_exists.as_ref() {
+            let field_literals: Vec<String> = fields.iter().map(|f| c_string_literal(f)).collect();
+            let field_array = field_literals.join(", ");
+            writeln!(
+                buf,
+                "    {{ const char *_so_fields[] = {{ {} }}; assert_structured_output(result, {}, {}, {}, {}, _so_fields, {}); }}",
+                field_array, check_has_output, has_output, check_validates, validates, fields.len()
+            )
+            .unwrap();
+        } else {
+            writeln!(
+                buf,
+                "    assert_structured_output(result, {check_has_output}, {has_output}, {check_validates}, {validates}, NULL, 0);"
+            )
+            .unwrap();
+        }
     }
     // Metadata assertions – use simple JSON string-contains checks
     for (path, expectation) in &assertions.metadata {

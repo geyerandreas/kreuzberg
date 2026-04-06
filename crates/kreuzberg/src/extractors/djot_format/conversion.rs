@@ -153,12 +153,6 @@ mod tests {
         let result = ExtractionResult {
             content: "Test content".to_string(),
             mime_type: Cow::Borrowed("text/djot"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
             djot_content: Some(DjotContent {
                 plain_text: "Test content".to_string(),
                 blocks: vec![FormattedBlock {
@@ -182,20 +176,7 @@ mod tests {
                 footnotes: vec![],
                 attributes: Default::default(),
             }),
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let markup = extraction_result_to_djot(&result).expect("Should convert");
@@ -207,27 +188,7 @@ mod tests {
         let result = ExtractionResult {
             content: "Paragraph one\n\nParagraph two".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let markup = extraction_result_to_djot(&result).expect("Should convert");

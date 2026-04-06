@@ -85,7 +85,6 @@ impl PostProcessor for KeywordExtractor {
 mod tests {
     use super::*;
     use crate::keywords::KeywordConfig;
-    use crate::types::Metadata;
     use std::borrow::Cow;
 
     const TEST_TEXT: &str = r#"
@@ -106,27 +105,7 @@ machine learning that uses neural networks with multiple layers.
         let mut result = ExtractionResult {
             content: TEST_TEXT.to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            djot_content: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         processor.process(&mut result, &config).await.unwrap();
@@ -150,27 +129,7 @@ machine learning that uses neural networks with multiple layers.
         let mut result = ExtractionResult {
             content: TEST_TEXT.to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            djot_content: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         processor.process(&mut result, &config).await.unwrap();
@@ -190,27 +149,7 @@ machine learning that uses neural networks with multiple layers.
         let mut result = ExtractionResult {
             content: TEST_TEXT.to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            djot_content: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         processor.process(&mut result, &config).await.unwrap();
@@ -230,27 +169,7 @@ machine learning that uses neural networks with multiple layers.
         let mut result = ExtractionResult {
             content: "Short text".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            djot_content: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         processor.process(&mut result, &config).await.unwrap();
@@ -281,27 +200,7 @@ machine learning that uses neural networks with multiple layers.
         let result = ExtractionResult {
             content: TEST_TEXT.to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            djot_content: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let config_with_keywords = ExtractionConfig {
@@ -321,53 +220,13 @@ machine learning that uses neural networks with multiple layers.
         let short_result = ExtractionResult {
             content: "Short text with just a few words".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            djot_content: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let long_result = ExtractionResult {
             content: "word ".repeat(1000),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            djot_content: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let short_duration = processor.estimated_duration_ms(&short_result);

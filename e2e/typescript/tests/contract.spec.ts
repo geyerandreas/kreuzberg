@@ -1191,6 +1191,176 @@ describe("contract fixtures", () => {
 	);
 
 	it(
+		"config_llm_embeddings",
+		() => {
+			const documentPath = resolveDocument("pdf/fake_memo.pdf");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_llm_embeddings: missing document at", documentPath);
+				console.warn("Notes: Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var");
+				return;
+			}
+			const config = buildConfig({
+				chunking: {
+					max_chars: 500,
+					max_overlap: 50,
+					embedding: { model: { type: "llm", llm: { model: "openai/text-embedding-3-small" } }, normalize: true },
+				},
+			});
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (
+					shouldSkipFixture(
+						error,
+						"config_llm_embeddings",
+						["liter-llm"],
+						"Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var",
+					)
+				) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/pdf"]);
+			assertions.assertMinContentLength(result, 10);
+			chunkAssertions.assertChunks(result, 1, null, true, true, undefined, undefined, undefined);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		"config_llm_structured_extraction",
+		() => {
+			const documentPath = resolveDocument("pdf/fake_memo.pdf");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_llm_structured_extraction: missing document at", documentPath);
+				console.warn("Notes: Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var");
+				return;
+			}
+			const config = buildConfig({
+				structured_extraction: {
+					schema: {
+						type: "object",
+						properties: { title: { type: "string" }, date: { type: "string" }, summary: { type: "string" } },
+						required: ["title"],
+					},
+					schema_name: "memo_data",
+					llm: { model: "openai/gpt-4o" },
+				},
+			});
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (
+					shouldSkipFixture(
+						error,
+						"config_llm_structured_extraction",
+						["liter-llm"],
+						"Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var",
+					)
+				) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/pdf"]);
+			assertions.assertMinContentLength(result, 10);
+			assertions.assertStructuredOutput(result, true, null, null);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		"config_llm_structured_extraction_with_prompt",
+		() => {
+			const documentPath = resolveDocument("pdf/fake_memo.pdf");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_llm_structured_extraction_with_prompt: missing document at", documentPath);
+				console.warn("Notes: Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var");
+				return;
+			}
+			const config = buildConfig({
+				structured_extraction: {
+					schema: {
+						type: "object",
+						properties: { sender: { type: "string" }, recipient: { type: "string" }, subject: { type: "string" } },
+						required: ["sender", "recipient"],
+					},
+					schema_name: "memo_parties",
+					prompt: "Extract the sender and recipient from this memo document. If not found, use 'unknown'.",
+					llm: { model: "openai/gpt-4o" },
+				},
+			});
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (
+					shouldSkipFixture(
+						error,
+						"config_llm_structured_extraction_with_prompt",
+						["liter-llm"],
+						"Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var",
+					)
+				) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertExpectedMime(result, ["application/pdf"]);
+			assertions.assertMinContentLength(result, 10);
+			assertions.assertStructuredOutput(result, true, null, ["sender", "recipient"]);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
+		"config_llm_vlm_ocr",
+		() => {
+			const documentPath = resolveDocument("images/test_hello_world.png");
+			if (!existsSync(documentPath)) {
+				console.warn("Skipping config_llm_vlm_ocr: missing document at", documentPath);
+				console.warn("Notes: Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var");
+				return;
+			}
+			const config = buildConfig({ ocr: { backend: "vlm", language: "eng", vlm_config: { model: "openai/gpt-4o" } } });
+			let result: ExtractionResult | null = null;
+			try {
+				result = extractFileSync(documentPath, null, config);
+			} catch (error) {
+				if (
+					shouldSkipFixture(
+						error,
+						"config_llm_vlm_ocr",
+						["liter-llm"],
+						"Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var",
+					)
+				) {
+					return;
+				}
+				throw error;
+			}
+			if (result === null) {
+				return;
+			}
+			assertions.assertMinContentLength(result, 5);
+			assertions.assertContentNotEmpty(result);
+		},
+		TEST_TIMEOUT_MS,
+	);
+
+	it(
 		"config_pages",
 		() => {
 			const documentPath = resolveDocument("pdf/fake_memo.pdf");

@@ -477,23 +477,7 @@ fn dict_to_extraction_result(_py: Python<'_>, dict: &Bound<'_, PyAny>) -> Result
             ..Default::default()
         },
         tables,
-        detected_languages: None,
-        chunks: None,
-        images: None,
-        pages: None,
-        elements: None,
-        document: None,
-        djot_content: None,
-        ocr_elements: None,
-        extracted_keywords: None,
-        quality_score: None,
-        processing_warnings: vec![],
-        annotations: None,
-        children: None,
-        uris: None,
-        code_intelligence: None,
-        formatted_content: None,
-        ocr_internal_document: None,
+        ..Default::default()
     })
 }
 

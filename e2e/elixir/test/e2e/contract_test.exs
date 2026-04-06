@@ -972,6 +972,124 @@ defmodule E2E.ContractTest do
       end
     end
 
+    test "config_llm_embeddings" do
+      case E2E.Helpers.run_fixture(
+             "config_llm_embeddings",
+             "pdf/fake_memo.pdf",
+             %{
+               chunking: %{
+                 max_chars: 500,
+                 max_overlap: 50,
+                 embedding: %{model: %{type: "llm", llm: %{model: "openai/text-embedding-3-small"}}, normalize: true}
+               }
+             },
+             requirements: ["liter-llm"],
+             notes: "Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var",
+             skip_if_missing: true
+           ) do
+        {:ok, result} ->
+          result
+          |> E2E.Helpers.assert_expected_mime(["application/pdf"])
+          |> E2E.Helpers.assert_min_content_length(10)
+          |> E2E.Helpers.assert_chunks(min_count: 1, each_has_content: true, each_has_embedding: true)
+
+        {:skipped, reason} ->
+          IO.puts("SKIPPED: #{reason}")
+
+        {:error, reason} ->
+          flunk("Extraction failed: #{inspect(reason)}")
+      end
+    end
+
+    test "config_llm_structured_extraction" do
+      case E2E.Helpers.run_fixture(
+             "config_llm_structured_extraction",
+             "pdf/fake_memo.pdf",
+             %{
+               structured_extraction: %{
+                 schema: %{
+                   type: "object",
+                   properties: %{title: %{type: "string"}, date: %{type: "string"}, summary: %{type: "string"}},
+                   required: ["title"]
+                 },
+                 schema_name: "memo_data",
+                 llm: %{model: "openai/gpt-4o"}
+               }
+             },
+             requirements: ["liter-llm"],
+             notes: "Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var",
+             skip_if_missing: true
+           ) do
+        {:ok, result} ->
+          result
+          |> E2E.Helpers.assert_expected_mime(["application/pdf"])
+          |> E2E.Helpers.assert_min_content_length(10)
+          |> E2E.Helpers.assert_structured_output(has_output: true)
+
+        {:skipped, reason} ->
+          IO.puts("SKIPPED: #{reason}")
+
+        {:error, reason} ->
+          flunk("Extraction failed: #{inspect(reason)}")
+      end
+    end
+
+    test "config_llm_structured_extraction_with_prompt" do
+      case E2E.Helpers.run_fixture(
+             "config_llm_structured_extraction_with_prompt",
+             "pdf/fake_memo.pdf",
+             %{
+               structured_extraction: %{
+                 schema: %{
+                   type: "object",
+                   properties: %{sender: %{type: "string"}, recipient: %{type: "string"}, subject: %{type: "string"}},
+                   required: ["sender", "recipient"]
+                 },
+                 schema_name: "memo_parties",
+                 prompt: "Extract the sender and recipient from this memo document. If not found, use 'unknown'.",
+                 llm: %{model: "openai/gpt-4o"}
+               }
+             },
+             requirements: ["liter-llm"],
+             notes: "Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var",
+             skip_if_missing: true
+           ) do
+        {:ok, result} ->
+          result
+          |> E2E.Helpers.assert_expected_mime(["application/pdf"])
+          |> E2E.Helpers.assert_min_content_length(10)
+          |> E2E.Helpers.assert_structured_output(has_output: true, field_exists: ["sender", "recipient"])
+
+        {:skipped, reason} ->
+          IO.puts("SKIPPED: #{reason}")
+
+        {:error, reason} ->
+          flunk("Extraction failed: #{inspect(reason)}")
+      end
+    end
+
+    test "config_llm_vlm_ocr" do
+      case E2E.Helpers.run_fixture(
+             "config_llm_vlm_ocr",
+             "images/test_hello_world.png",
+             %{ocr: %{backend: "vlm", language: "eng", vlm_config: %{model: "openai/gpt-4o"}}},
+             requirements: ["liter-llm"],
+             notes: "Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var",
+             skip_if_missing: true
+           ) do
+        {:ok, result} ->
+          result
+          |> E2E.Helpers.assert_min_content_length(5)
+          |> E2E.Helpers.assert_content_not_empty()
+
+        {:skipped, reason} ->
+          IO.puts("SKIPPED: #{reason}")
+
+        {:error, reason} ->
+          flunk("Extraction failed: #{inspect(reason)}")
+      end
+    end
+
     test "config_pages" do
       case E2E.Helpers.run_fixture(
              "config_pages",

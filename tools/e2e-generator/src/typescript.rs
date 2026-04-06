@@ -713,6 +713,32 @@ export const assertions = {
     assertMinByteLength(data: Buffer, minLength: number): void {
         expect(data.length).toBeGreaterThanOrEqual(minLength);
     },
+
+    assertStructuredOutput(
+        result: ExtractionResult,
+        hasOutput?: boolean | null,
+        validatesSchema?: boolean | null,
+        fieldExists?: string[] | null,
+    ): void {
+        const output = (result as unknown as PlainRecord).structured_output ?? (result as unknown as PlainRecord).structuredOutput;
+        if (hasOutput === true) {
+            expect(output).toBeDefined();
+            expect(output).not.toBeNull();
+        }
+        if (hasOutput === false) {
+            expect(output).toBeUndefined();
+        }
+        if (validatesSchema === true) {
+            expect(output).toBeDefined();
+            expect(typeof output).toBe("object");
+        }
+        if (fieldExists != null) {
+            expect(output).toBeDefined();
+            for (const field of fieldExists) {
+                expect(output).toHaveProperty(field);
+            }
+        }
+    },
 };
 
 function lookupMetadataPath(metadata: PlainRecord, path: string): unknown {
@@ -1633,6 +1659,30 @@ fn render_assertions(assertions: &Assertions) -> String {
             .unwrap_or_else(|| "null".into());
         buffer.push_str(&format!(
             "    assertions.assertAnnotations(result, {has_annotations}, {min_count});\n"
+        ));
+    }
+
+    if let Some(structured) = assertions.structured_output.as_ref() {
+        let has_output = structured
+            .has_output
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "undefined".into());
+        let validates_schema = structured
+            .validates_schema
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "null".into());
+        let field_exists = if let Some(ref fields) = structured.field_exists {
+            let parts = fields
+                .iter()
+                .map(|f| format!("\"{}\"", f))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("[{}]", parts)
+        } else {
+            "null".into()
+        };
+        buffer.push_str(&format!(
+            "    assertions.assertStructuredOutput(result, {has_output}, {validates_schema}, {field_exists});\n"
         ));
     }
 

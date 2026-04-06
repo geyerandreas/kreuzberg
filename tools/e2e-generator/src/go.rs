@@ -739,6 +739,40 @@ func assertEmbedResult(t *testing.T, result [][]float32, count *int, dims *int, 
 		}
 	}
 }
+
+func assertStructuredOutput(t *testing.T, result *kreuzberg.ExtractionResult, hasOutput *bool, validatesSchema *bool, fieldExists []string) {
+	t.Helper()
+	output := result.StructuredOutput
+	if hasOutput != nil && *hasOutput {
+		if output == nil {
+			t.Fatalf("expected structured_output to be present")
+		}
+	}
+	if hasOutput != nil && !*hasOutput {
+		if output != nil {
+			t.Fatalf("expected structured_output to be absent")
+		}
+	}
+	if validatesSchema != nil && *validatesSchema {
+		if output == nil {
+			t.Fatalf("structured_output required for validates_schema")
+		}
+	}
+	if fieldExists != nil {
+		if output == nil {
+			t.Fatalf("structured_output required for field_exists")
+		}
+		outputMap, ok := output.(map[string]interface{})
+		if !ok {
+			t.Fatalf("structured_output must be a map for field_exists")
+		}
+		for _, field := range fieldExists {
+			if _, exists := outputMap[field]; !exists {
+				t.Fatalf("expected structured_output to contain '%s'", field)
+			}
+		}
+	}
+}
 "##;
 
 pub fn generate(fixtures: &[Fixture], output_root: &Utf8Path, mode: &GenerationMode) -> Result<()> {
@@ -1300,6 +1334,34 @@ fn render_assertions(assertions: &Assertions) -> String {
         )
         .unwrap();
     }
+
+    if let Some(structured) = assertions.structured_output.as_ref() {
+        let has_output = structured
+            .has_output
+            .map(|v| format!("boolPtr({v})"))
+            .unwrap_or_else(|| "nil".to_string());
+        let validates_schema = structured
+            .validates_schema
+            .map(|v| format!("boolPtr({v})"))
+            .unwrap_or_else(|| "nil".to_string());
+        let field_exists = if let Some(ref fields) = structured.field_exists {
+            let parts = fields
+                .iter()
+                .map(|f| format!("\"{}\"", f))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("[]string{{{}}}", parts)
+        } else {
+            "nil".to_string()
+        };
+        writeln!(
+            buffer,
+            "    assertStructuredOutput(t, result, {}, {}, {})",
+            has_output, validates_schema, field_exists
+        )
+        .unwrap();
+    }
+
     buffer
 }
 

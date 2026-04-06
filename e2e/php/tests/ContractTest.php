@@ -868,6 +868,93 @@ class ContractTest extends TestCase
     }
 
     /**
+     * Tests VLM embeddings via liter-llm provider-hosted embedding model
+     */
+    public function test_config_llm_embeddings(): void
+    {
+        $documentPath = Helpers::resolveDocument('pdf/fake_memo.pdf');
+        if (!file_exists($documentPath)) {
+            $this->markTestSkipped('Skipping config_llm_embeddings: missing document at ' . $documentPath);
+        }
+
+        Helpers::skipIfFeatureUnavailable('liter-llm');
+
+        $config = Helpers::buildConfig(['chunking' => ['max_chars' => 500, 'max_overlap' => 50, 'embedding' => ['model' => ['type' => 'llm', 'llm' => ['model' => 'openai/text-embedding-3-small']], 'normalize' => true]]]);
+
+        $kreuzberg = new Kreuzberg($config);
+        $result = $kreuzberg->extractFile($documentPath);
+
+        Helpers::assertExpectedMime($result, ['application/pdf']);
+        Helpers::assertMinContentLength($result, 10);
+        Helpers::assertChunks($result, 1, null, true, true, null, null);
+    }
+
+    /**
+     * Tests structured extraction via liter-llm with JSON schema
+     */
+    public function test_config_llm_structured_extraction(): void
+    {
+        $documentPath = Helpers::resolveDocument('pdf/fake_memo.pdf');
+        if (!file_exists($documentPath)) {
+            $this->markTestSkipped('Skipping config_llm_structured_extraction: missing document at ' . $documentPath);
+        }
+
+        Helpers::skipIfFeatureUnavailable('liter-llm');
+
+        $config = Helpers::buildConfig(['structured_extraction' => ['schema' => ['type' => 'object', 'properties' => ['title' => ['type' => 'string'], 'date' => ['type' => 'string'], 'summary' => ['type' => 'string']], 'required' => ['title']], 'schema_name' => 'memo_data', 'llm' => ['model' => 'openai/gpt-4o']]]);
+
+        $kreuzberg = new Kreuzberg($config);
+        $result = $kreuzberg->extractFile($documentPath);
+
+        Helpers::assertExpectedMime($result, ['application/pdf']);
+        Helpers::assertMinContentLength($result, 10);
+        Helpers::assertStructuredOutput($result, true, null, null);
+    }
+
+    /**
+     * Tests structured extraction with custom prompt
+     */
+    public function test_config_llm_structured_extraction_with_prompt(): void
+    {
+        $documentPath = Helpers::resolveDocument('pdf/fake_memo.pdf');
+        if (!file_exists($documentPath)) {
+            $this->markTestSkipped('Skipping config_llm_structured_extraction_with_prompt: missing document at ' . $documentPath);
+        }
+
+        Helpers::skipIfFeatureUnavailable('liter-llm');
+
+        $config = Helpers::buildConfig(['structured_extraction' => ['schema' => ['type' => 'object', 'properties' => ['sender' => ['type' => 'string'], 'recipient' => ['type' => 'string'], 'subject' => ['type' => 'string']], 'required' => ['sender', 'recipient']], 'schema_name' => 'memo_parties', 'prompt' => 'Extract the sender and recipient from this memo document. If not found, use \'unknown\'.', 'llm' => ['model' => 'openai/gpt-4o']]]);
+
+        $kreuzberg = new Kreuzberg($config);
+        $result = $kreuzberg->extractFile($documentPath);
+
+        Helpers::assertExpectedMime($result, ['application/pdf']);
+        Helpers::assertMinContentLength($result, 10);
+        Helpers::assertStructuredOutput($result, true, null, ['sender', 'recipient']);
+    }
+
+    /**
+     * Tests VLM OCR backend via liter-llm vision model
+     */
+    public function test_config_llm_vlm_ocr(): void
+    {
+        $documentPath = Helpers::resolveDocument('images/test_hello_world.png');
+        if (!file_exists($documentPath)) {
+            $this->markTestSkipped('Skipping config_llm_vlm_ocr: missing document at ' . $documentPath);
+        }
+
+        Helpers::skipIfFeatureUnavailable('liter-llm');
+
+        $config = Helpers::buildConfig(['ocr' => ['backend' => 'vlm', 'language' => 'eng', 'vlm_config' => ['model' => 'openai/gpt-4o']]]);
+
+        $kreuzberg = new Kreuzberg($config);
+        $result = $kreuzberg->extractFile($documentPath);
+
+        Helpers::assertMinContentLength($result, 5);
+        Helpers::assertContentNotEmpty($result);
+    }
+
+    /**
      * Tests page extraction and page marker configuration
      */
     public function test_config_pages(): void

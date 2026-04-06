@@ -162,6 +162,15 @@ pub struct ExtractionResult {
     #[serde(default)]
     pub uris: Option<Vec<super::uri::Uri>>,
 
+    /// Structured extraction output from LLM-based JSON schema extraction.
+    ///
+    /// When `structured_extraction` is configured in `ExtractionConfig`, the
+    /// extracted document content is sent to a VLM with the provided JSON schema.
+    /// The response is parsed and stored here as a JSON value matching the schema.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub structured_output: Option<serde_json::Value>,
+
     /// Code intelligence results from tree-sitter analysis.
     ///
     /// Populated when extracting source code files with the `tree-sitter` feature.

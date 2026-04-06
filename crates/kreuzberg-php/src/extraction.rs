@@ -171,23 +171,7 @@ pub fn kreuzberg_extract_bytes(
                         mime_type: std::borrow::Cow::Owned(mime_type.clone()),
                         metadata,
                         tables,
-                        detected_languages: None,
-                        chunks: None,
-                        images: None,
-                        pages: None,
-                        elements: None,
-                        djot_content: None,
-                        ocr_elements: None,
-                        document: None,
-                        extracted_keywords: None,
-                        quality_score: None,
-                        processing_warnings: vec![],
-                        annotations: None,
-                        children: None,
-                        uris: None,
-                        formatted_content: None,
-                        code_intelligence: None,
-                        ocr_internal_document: None,
+                        ..Default::default()
                     };
 
                     return ExtractionResult::from_rust(rust_result);

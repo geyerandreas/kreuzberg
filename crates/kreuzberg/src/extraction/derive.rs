@@ -663,17 +663,10 @@ pub fn derive_extraction_result(
         mime_type,
         metadata: doc.metadata,
         tables: doc.tables,
-        detected_languages: None,
-        chunks: None,
         images,
         pages,
-        elements: None,
-        djot_content: None,
         ocr_elements,
         document,
-        #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-        extracted_keywords: None,
-        quality_score: None,
         processing_warnings: std::mem::take(&mut doc.processing_warnings),
         annotations: std::mem::take(&mut doc.annotations),
         children: std::mem::take(&mut doc.children),
@@ -681,7 +674,7 @@ pub fn derive_extraction_result(
         #[cfg(feature = "tree-sitter")]
         code_intelligence,
         formatted_content,
-        ocr_internal_document: None,
+        ..Default::default()
     }
 }
 

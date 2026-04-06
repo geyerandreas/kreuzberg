@@ -110,11 +110,9 @@ pub fn to_c_extraction_result(result: ExtractionResult) -> std::result::Result<*
         quality_score,
         processing_warnings,
         annotations,
-        formatted_content: _,
         children,
         uris,
-        code_intelligence: _,
-        ocr_internal_document: _,
+        ..
     } = result;
 
     let sanitized_content = if content.contains('\0') {
@@ -511,25 +509,7 @@ mod tests {
         let result = ExtractionResult {
             content: "Test content".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: vec![],
-            annotations: None,
-            children: None,
-            uris: None,
-            formatted_content: None,
-            code_intelligence: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let c_result = to_c_extraction_result(result);
@@ -561,25 +541,7 @@ mod tests {
         let result = ExtractionResult {
             content: "Test\0content with null".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: vec![],
-            annotations: None,
-            children: None,
-            uris: None,
-            formatted_content: None,
-            code_intelligence: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let c_result = to_c_extraction_result(result);
@@ -622,24 +584,8 @@ mod tests {
             content: "Test content".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
             metadata,
-            tables: vec![],
             detected_languages: Some(vec!["en".to_string(), "de".to_string()]),
-            chunks: None,
-            images: None,
-            pages: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: vec![],
-            annotations: None,
-            children: None,
-            uris: None,
-            formatted_content: None,
-            code_intelligence: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let c_result = to_c_extraction_result(result);
@@ -717,25 +663,9 @@ mod tests {
         let result = ExtractionResult {
             content: "Test content".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
             tables: vec![table],
-            detected_languages: None,
             chunks: Some(vec![chunk]),
-            images: None,
-            pages: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: vec![],
-            annotations: None,
-            children: None,
-            uris: None,
-            formatted_content: None,
-            code_intelligence: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let c_result = to_c_extraction_result(result);

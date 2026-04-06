@@ -823,6 +823,41 @@ class Helpers
         }
     }
 
+    public static function assertStructuredOutput(
+        ExtractionResult $result,
+        ?bool $hasOutput = null,
+        ?bool $validatesSchema = null,
+        ?array $fieldExists = null
+    ): void {
+        $output = $result->structured_output ?? null;
+
+        if ($hasOutput === true) {
+            Assert::assertNotNull($output, 'Expected structured output to be present');
+        } elseif ($hasOutput === false) {
+            Assert::assertNull($output, 'Expected structured output to be absent');
+        }
+
+        if ($output !== null && $validatesSchema === true) {
+            Assert::assertTrue(
+                is_array($output) || is_object($output),
+                'Expected structured output to validate schema'
+            );
+        }
+
+        if ($output !== null && $fieldExists !== null) {
+            foreach ($fieldExists as $field) {
+                if (is_array($output)) {
+                    Assert::assertArrayHasKey($field, $output, sprintf('Expected structured output to contain field "%s"', $field));
+                } else {
+                    Assert::assertTrue(
+                        property_exists($output, $field),
+                        sprintf('Expected structured output to contain field "%s"', $field)
+                    );
+                }
+            }
+        }
+    }
+
     public static function skipIfFeatureUnavailable(string $feature): void
     {
         $envVar = 'KREUZBERG_' . strtoupper(str_replace('-', '_', $feature)) . '_AVAILABLE';

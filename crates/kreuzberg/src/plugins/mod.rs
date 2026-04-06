@@ -39,47 +39,11 @@
 //! # impl DocumentExtractor for MyExtractor {
 //! #     async fn extract_bytes(&self, _: &[u8], _: &str, _: &kreuzberg::ExtractionConfig)
 //! #         -> kreuzberg::Result<ExtractionResult> {
-//! #         Ok(ExtractionResult {
-//! #             content: String::new(),
-//! #             mime_type: std::borrow::Cow::Borrowed("text/plain"),
-//! #             metadata: Metadata::default(),
-//! #             tables: vec![],
-//! #             detected_languages: None,
-//! #             chunks: None,
-//! #             images: None,
-//! #             pages: None,
-//! #             djot_content: None,
-//! #             elements: None,
-//! #             ocr_elements: None,
-//! #             document: None,
-//! #             #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-//! #             extracted_keywords: None,
-//! #             quality_score: None,
-//! #             processing_warnings: vec![],
-//! #             annotations: None,
-//! #         })
+//! #         Ok(ExtractionResult::default())
 //! #     }
 //! #     async fn extract_file(&self, _: &std::path::Path, _: &str, _: &kreuzberg::ExtractionConfig)
 //! #         -> kreuzberg::Result<ExtractionResult> {
-//! #         Ok(ExtractionResult {
-//! #             content: String::new(),
-//! #             mime_type: String::new().into(),
-//! #             metadata: Metadata::default(),
-//! #             tables: vec![],
-//! #             detected_languages: None,
-//! #             chunks: None,
-//! #             images: None,
-//! #             pages: None,
-//! #             djot_content: None,
-//! #             elements: None,
-//! #             ocr_elements: None,
-//! #             document: None,
-//! #             #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-//! #             extracted_keywords: None,
-//! #             quality_score: None,
-//! #             processing_warnings: vec![],
-//! #             annotations: None,
-//! #         })
+//! #         Ok(ExtractionResult::default())
 //! #     }
 //! #     fn supported_mime_types(&self) -> &[&str] { &[] }
 //! #     fn priority(&self) -> i32 { 50 }
@@ -136,20 +100,7 @@
 //!             content: extracted_text,
 //!             mime_type: std::borrow::Cow::Borrowed("application/json"),
 //!             metadata,
-//!             tables: vec![],
-//!             detected_languages: None,
-//!             chunks: None,
-//!             images: None,
-//!             djot_content: None,
-//!             pages: None,
-//!             elements: None,
-//!             ocr_elements: None,
-//!             document: None,
-//!             #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-//!             extracted_keywords: None,
-//!             quality_score: None,
-//!             processing_warnings: vec![],
-//!             annotations: None,
+//!             ..Default::default()
 //!         })
 //!     }
 //!

@@ -598,6 +598,65 @@ namespace Kreuzberg.E2E.Contract
         }
 
         [SkippableFact]
+        public void ConfigLlmEmbeddings()
+        {
+            TestHelpers.SkipIfFeatureUnavailable("liter-llm");
+            TestHelpers.SkipIfLegacyOfficeDisabled("pdf/fake_memo.pdf");
+            TestHelpers.SkipIfOfficeTestOnWindows("pdf/fake_memo.pdf");
+            var documentPath = TestHelpers.EnsureDocument("pdf/fake_memo.pdf", true);
+            var config = TestHelpers.BuildConfig("{\"chunking\":{\"max_chars\":500,\"max_overlap\":50,\"embedding\":{\"model\":{\"type\":\"llm\",\"llm\":{\"model\":\"openai/text-embedding-3-small\"}},\"normalize\":true}}}");
+
+            var result = KreuzbergClient.ExtractFileSync(documentPath, config);
+            TestHelpers.AssertExpectedMime(result, new[] { "application/pdf" });
+            TestHelpers.AssertMinContentLength(result, 10);
+            TestHelpers.AssertChunks(result, 1, null, true, true, null, null, null);
+        }
+
+        [SkippableFact]
+        public void ConfigLlmStructuredExtraction()
+        {
+            TestHelpers.SkipIfFeatureUnavailable("liter-llm");
+            TestHelpers.SkipIfLegacyOfficeDisabled("pdf/fake_memo.pdf");
+            TestHelpers.SkipIfOfficeTestOnWindows("pdf/fake_memo.pdf");
+            var documentPath = TestHelpers.EnsureDocument("pdf/fake_memo.pdf", true);
+            var config = TestHelpers.BuildConfig("{\"structured_extraction\":{\"schema\":{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\"},\"date\":{\"type\":\"string\"},\"summary\":{\"type\":\"string\"}},\"required\":[\"title\"]},\"schema_name\":\"memo_data\",\"llm\":{\"model\":\"openai/gpt-4o\"}}}");
+
+            var result = KreuzbergClient.ExtractFileSync(documentPath, config);
+            TestHelpers.AssertExpectedMime(result, new[] { "application/pdf" });
+            TestHelpers.AssertMinContentLength(result, 10);
+            TestHelpers.AssertStructuredOutput(result, true, null, null);
+        }
+
+        [SkippableFact]
+        public void ConfigLlmStructuredExtractionWithPrompt()
+        {
+            TestHelpers.SkipIfFeatureUnavailable("liter-llm");
+            TestHelpers.SkipIfLegacyOfficeDisabled("pdf/fake_memo.pdf");
+            TestHelpers.SkipIfOfficeTestOnWindows("pdf/fake_memo.pdf");
+            var documentPath = TestHelpers.EnsureDocument("pdf/fake_memo.pdf", true);
+            var config = TestHelpers.BuildConfig("{\"structured_extraction\":{\"schema\":{\"type\":\"object\",\"properties\":{\"sender\":{\"type\":\"string\"},\"recipient\":{\"type\":\"string\"},\"subject\":{\"type\":\"string\"}},\"required\":[\"sender\",\"recipient\"]},\"schema_name\":\"memo_parties\",\"prompt\":\"Extract the sender and recipient from this memo document. If not found, use 'unknown'.\",\"llm\":{\"model\":\"openai/gpt-4o\"}}}");
+
+            var result = KreuzbergClient.ExtractFileSync(documentPath, config);
+            TestHelpers.AssertExpectedMime(result, new[] { "application/pdf" });
+            TestHelpers.AssertMinContentLength(result, 10);
+            TestHelpers.AssertStructuredOutput(result, true, null, new[] { "sender", "recipient" });
+        }
+
+        [SkippableFact]
+        public void ConfigLlmVlmOcr()
+        {
+            TestHelpers.SkipIfFeatureUnavailable("liter-llm");
+            TestHelpers.SkipIfLegacyOfficeDisabled("images/test_hello_world.png");
+            TestHelpers.SkipIfOfficeTestOnWindows("images/test_hello_world.png");
+            var documentPath = TestHelpers.EnsureDocument("images/test_hello_world.png", true);
+            var config = TestHelpers.BuildConfig("{\"ocr\":{\"backend\":\"vlm\",\"language\":\"eng\",\"vlm_config\":{\"model\":\"openai/gpt-4o\"}}}");
+
+            var result = KreuzbergClient.ExtractFileSync(documentPath, config);
+            TestHelpers.AssertMinContentLength(result, 5);
+            TestHelpers.AssertContentNotEmpty(result);
+        }
+
+        [SkippableFact]
         public void ConfigPages()
         {
             TestHelpers.SkipIfFeatureUnavailable("pdf");

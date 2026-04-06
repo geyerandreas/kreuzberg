@@ -86,7 +86,6 @@ impl PostProcessor for LanguageDetector {
 mod tests {
     use super::*;
     use crate::core::config::LanguageDetectionConfig;
-    use crate::types::Metadata;
     use std::borrow::Cow;
 
     #[tokio::test]
@@ -104,27 +103,7 @@ mod tests {
         let mut result = ExtractionResult {
             content: "Hello world! This is a test of the language detection system.".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         processor.process(&mut result, &config).await.unwrap();
@@ -143,27 +122,7 @@ mod tests {
         let mut result = ExtractionResult {
             content: "Hello world!".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         processor.process(&mut result, &config).await.unwrap();
@@ -193,27 +152,7 @@ mod tests {
         let result = ExtractionResult {
             content: "Sample text".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let config_with_lang = ExtractionConfig {
@@ -237,53 +176,13 @@ mod tests {
         let short_result = ExtractionResult {
             content: "Short".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let long_result = ExtractionResult {
             content: "a".repeat(10000),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let short_duration = processor.estimated_duration_ms(&short_result);

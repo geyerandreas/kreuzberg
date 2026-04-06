@@ -793,28 +793,13 @@ mod tests {
             let rust_result = kreuzberg::ExtractionResult {
                 content: "hello".to_string(),
                 mime_type: Cow::Borrowed("text/plain"),
-                metadata: kreuzberg::Metadata::default(),
-                tables: Vec::new(),
                 detected_languages: Some(vec!["en".to_string()]),
-                chunks: None,
-                images: None,
-                pages: None,
-                elements: None,
-                document: None,
-                djot_content: None,
-                ocr_elements: None,
-                extracted_keywords: None,
                 quality_score: Some(0.85),
                 processing_warnings: vec![kreuzberg::ProcessingWarning {
                     source: std::borrow::Cow::Borrowed("test"),
                     message: std::borrow::Cow::Borrowed("test warning"),
                 }],
-                annotations: None,
-                children: None,
-                uris: None,
-                formatted_content: None,
-                code_intelligence: None,
-                ocr_internal_document: None,
+                ..Default::default()
             };
 
             let py_result =

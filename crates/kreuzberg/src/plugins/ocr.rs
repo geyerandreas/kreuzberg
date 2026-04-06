@@ -63,22 +63,7 @@ pub enum OcrBackendType {
 ///         Ok(ExtractionResult {
 ///             content: "Extracted text".to_string(),
 ///             mime_type: Cow::Borrowed("text/plain"),
-///             metadata: Metadata::default(),
-///             tables: vec![],
-///             detected_languages: None,
-///             chunks: None,
-///             images: None,
-///             djot_content: None,
-///             pages: None,
-///             elements: None,
-///             ocr_elements: None,
-///             document: None,
-///             #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-///             extracted_keywords: None,
-///             quality_score: None,
-///             processing_warnings: vec![],
-///             annotations: None,
-///             children: None,
+///             ..Default::default()
 ///         })
 ///     }
 ///
@@ -153,22 +138,7 @@ pub trait OcrBackend: Plugin {
     ///     Ok(ExtractionResult {
     ///         content: text,
     ///         mime_type: Cow::Borrowed("text/plain"),
-    ///         metadata: Metadata::default(),
-    ///         tables: vec![],
-    ///         detected_languages: None,
-    ///         chunks: None,
-    ///         images: None,
-    ///         djot_content: None,
-    ///         pages: None,
-    ///         elements: None,
-    ///         ocr_elements: None,
-    ///         document: None,
-    ///         #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-    ///         extracted_keywords: None,
-    ///         quality_score: None,
-    ///         processing_warnings: vec![],
-    ///         annotations: None,
-    ///         children: None,
+    ///         ..Default::default()
     ///     })
     /// }
     /// # }
@@ -356,22 +326,7 @@ pub trait OcrBackend: Plugin {
 ///         Ok(ExtractionResult {
 ///             content: "text".to_string(),
 ///             mime_type: Cow::Borrowed("text/plain"),
-///             metadata: Metadata::default(),
-///             tables: vec![],
-///             detected_languages: None,
-///             chunks: None,
-///             images: None,
-///             djot_content: None,
-///             pages: None,
-///             elements: None,
-///             ocr_elements: None,
-///             document: None,
-///             #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-///             extracted_keywords: None,
-///             quality_score: None,
-///             processing_warnings: vec![],
-///             annotations: None,
-///             children: None,
+///             ..Default::default()
 ///         })
 ///     }
 ///     fn supports_language(&self, _: &str) -> bool { true }
@@ -516,27 +471,7 @@ mod tests {
             Ok(ExtractionResult {
                 content: "Mocked OCR text".to_string(),
                 mime_type: Cow::Borrowed("text/plain"),
-                metadata: crate::types::Metadata::default(),
-                tables: vec![],
-                detected_languages: None,
-                chunks: None,
-                images: None,
-                djot_content: None,
-                pages: None,
-                elements: None,
-                ocr_elements: None,
-                document: None,
-                #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-                extracted_keywords: None,
-                quality_score: None,
-                processing_warnings: Vec::new(),
-                annotations: None,
-                children: None,
-                uris: None,
-                #[cfg(feature = "tree-sitter")]
-                code_intelligence: None,
-                formatted_content: None,
-                ocr_internal_document: None,
+                ..Default::default()
             })
         }
 

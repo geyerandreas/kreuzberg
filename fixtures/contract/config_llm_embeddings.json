@@ -1,0 +1,40 @@
+{
+	"id": "config_llm_embeddings",
+	"description": "Tests VLM embeddings via liter-llm provider-hosted embedding model",
+	"tags": ["contract", "config", "liter-llm", "embeddings"],
+	"document": {
+		"path": "pdf/fake_memo.pdf"
+	},
+	"extraction": {
+		"method": "sync",
+		"input_type": "file",
+		"config": {
+			"chunking": {
+				"max_chars": 500,
+				"max_overlap": 50,
+				"embedding": {
+					"model": {
+						"type": "llm",
+						"llm": {
+							"model": "openai/text-embedding-3-small"
+						}
+					},
+					"normalize": true
+				}
+			}
+		}
+	},
+	"assertions": {
+		"expected_mime": "application/pdf",
+		"min_content_length": 10,
+		"chunks": {
+			"min_count": 1,
+			"each_has_content": true,
+			"each_has_embedding": true
+		}
+	},
+	"skip": {
+		"requires_feature": ["liter-llm"],
+		"notes": "Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var"
+	}
+}

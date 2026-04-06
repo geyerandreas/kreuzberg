@@ -902,6 +902,30 @@ public static class TestHelpers
         }
     }
 
+    public static void AssertStructuredOutput(ExtractionResult result, bool? hasOutput, bool? validatesSchema, string[]? fieldExists)
+    {
+        var output = result.StructuredOutput;
+        if (hasOutput == true)
+        {
+            Assert.NotNull(output);
+        }
+        else if (hasOutput == false)
+        {
+            Assert.Null(output);
+        }
+        if (output is not null && validatesSchema == true)
+        {
+            Assert.True(output.ValidatesSchema, "Expected structured output to validate schema");
+        }
+        if (output is not null && fieldExists is not null)
+        {
+            foreach (var field in fieldExists)
+            {
+                Assert.True(output.ContainsKey(field), $"Expected structured output to contain field '{field}'");
+            }
+        }
+    }
+
     public static void AssertIsPng(byte[] data)
     {
         Assert.NotNull(data);

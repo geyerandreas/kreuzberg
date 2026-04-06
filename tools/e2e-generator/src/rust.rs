@@ -657,6 +657,30 @@ fn render_assertions(assertions: &Assertions) -> String {
         ));
     }
 
+    if let Some(structured) = assertions.structured_output.as_ref() {
+        let has_output = structured
+            .has_output
+            .map(|v| format!("Some({v})"))
+            .unwrap_or_else(|| "None".into());
+        let validates_schema = structured
+            .validates_schema
+            .map(|v| format!("Some({v})"))
+            .unwrap_or_else(|| "None".into());
+        let field_exists = if let Some(ref fields) = structured.field_exists {
+            let parts = fields
+                .iter()
+                .map(|f| format!("\"{}\"", f))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("Some(&[{}])", parts)
+        } else {
+            "None".into()
+        };
+        buffer.push_str(&format!(
+            "    assertions::assert_structured_output(&result, {has_output}, {validates_schema}, {field_exists});\n"
+        ));
+    }
+
     buffer
 }
 

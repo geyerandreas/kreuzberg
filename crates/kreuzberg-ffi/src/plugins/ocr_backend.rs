@@ -161,25 +161,7 @@ impl OcrBackend for FfiOcrBackend {
         Ok(ExtractionResult {
             content: result_text,
             mime_type: std::borrow::Cow::Borrowed("text/plain"),
-            metadata: kreuzberg::types::Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: vec![],
-            annotations: None,
-            uris: None,
-            code_intelligence: None,
-            formatted_content: None,
-            children: None,
-            ocr_internal_document: None,
+            ..Default::default()
         })
     }
 

@@ -1525,6 +1525,262 @@ fn test_config_language_multi() {
 }
 
 #[test]
+fn test_config_llm_embeddings() {
+    // Tests VLM embeddings via liter-llm provider-hosted embedding model
+
+    let document_path = resolve_document("pdf/fake_memo.pdf");
+    if !document_path.exists() {
+        println!(
+            "Skipping config_llm_embeddings: missing document at {}",
+            document_path.display()
+        );
+        return;
+    }
+    let config: ExtractionConfig = serde_json::from_str(
+        r#"{
+  "chunking": {
+    "max_chars": 500,
+    "max_overlap": 50,
+    "embedding": {
+      "model": {
+        "type": "llm",
+        "llm": {
+          "model": "openai/text-embedding-3-small"
+        }
+      },
+      "normalize": true
+    }
+  }
+}"#,
+    )
+    .expect("Fixture config should deserialize");
+
+    let result = match kreuzberg::extract_file_sync(&document_path, None, &config) {
+        Err(KreuzbergError::MissingDependency(dep)) => {
+            println!("Skipping config_llm_embeddings: missing dependency {dep}", dep = dep);
+            return;
+        }
+        Err(KreuzbergError::UnsupportedFormat(fmt)) => {
+            println!(
+                "Skipping config_llm_embeddings: unsupported format {fmt} (requires optional tool)",
+                fmt = fmt
+            );
+            return;
+        }
+        Err(KreuzbergError::Parsing { message: ref msg, .. }) => {
+            println!("Skipping config_llm_embeddings: parsing dependency unavailable: {msg}");
+            return;
+        }
+        Err(err) => panic!("Extraction failed for config_llm_embeddings: {err:?}"),
+        Ok(result) => result,
+    };
+
+    assertions::assert_expected_mime(&result, &["application/pdf"]);
+    assertions::assert_min_content_length(&result, 10);
+    assertions::assert_chunks(
+        &result,
+        &assertions::ChunkAssertions {
+            min_count: Some(1),
+            max_count: None,
+            each_has_content: Some(true),
+            each_has_embedding: Some(true),
+            each_has_heading_context: None,
+            each_has_chunk_type: None,
+            content_starts_with_heading: None,
+        },
+    );
+}
+
+#[test]
+fn test_config_llm_structured_extraction() {
+    // Tests structured extraction via liter-llm with JSON schema
+
+    let document_path = resolve_document("pdf/fake_memo.pdf");
+    if !document_path.exists() {
+        println!(
+            "Skipping config_llm_structured_extraction: missing document at {}",
+            document_path.display()
+        );
+        return;
+    }
+    let config: ExtractionConfig = serde_json::from_str(
+        r#"{
+  "structured_extraction": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string"
+        },
+        "date": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title"
+      ]
+    },
+    "schema_name": "memo_data",
+    "llm": {
+      "model": "openai/gpt-4o"
+    }
+  }
+}"#,
+    )
+    .expect("Fixture config should deserialize");
+
+    let result = match kreuzberg::extract_file_sync(&document_path, None, &config) {
+        Err(KreuzbergError::MissingDependency(dep)) => {
+            println!(
+                "Skipping config_llm_structured_extraction: missing dependency {dep}",
+                dep = dep
+            );
+            return;
+        }
+        Err(KreuzbergError::UnsupportedFormat(fmt)) => {
+            println!(
+                "Skipping config_llm_structured_extraction: unsupported format {fmt} (requires optional tool)",
+                fmt = fmt
+            );
+            return;
+        }
+        Err(KreuzbergError::Parsing { message: ref msg, .. }) => {
+            println!("Skipping config_llm_structured_extraction: parsing dependency unavailable: {msg}");
+            return;
+        }
+        Err(err) => panic!("Extraction failed for config_llm_structured_extraction: {err:?}"),
+        Ok(result) => result,
+    };
+
+    assertions::assert_expected_mime(&result, &["application/pdf"]);
+    assertions::assert_min_content_length(&result, 10);
+    assertions::assert_structured_output(&result, Some(true), None, None);
+}
+
+#[test]
+fn test_config_llm_structured_extraction_with_prompt() {
+    // Tests structured extraction with custom prompt
+
+    let document_path = resolve_document("pdf/fake_memo.pdf");
+    if !document_path.exists() {
+        println!(
+            "Skipping config_llm_structured_extraction_with_prompt: missing document at {}",
+            document_path.display()
+        );
+        return;
+    }
+    let config: ExtractionConfig = serde_json::from_str(
+        r#"{
+  "structured_extraction": {
+    "schema": {
+      "type": "object",
+      "properties": {
+        "sender": {
+          "type": "string"
+        },
+        "recipient": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "sender",
+        "recipient"
+      ]
+    },
+    "schema_name": "memo_parties",
+    "prompt": "Extract the sender and recipient from this memo document. If not found, use 'unknown'.",
+    "llm": {
+      "model": "openai/gpt-4o"
+    }
+  }
+}"#,
+    )
+    .expect("Fixture config should deserialize");
+
+    let result = match kreuzberg::extract_file_sync(&document_path, None, &config) {
+        Err(KreuzbergError::MissingDependency(dep)) => {
+            println!(
+                "Skipping config_llm_structured_extraction_with_prompt: missing dependency {dep}",
+                dep = dep
+            );
+            return;
+        }
+        Err(KreuzbergError::UnsupportedFormat(fmt)) => {
+            println!(
+                "Skipping config_llm_structured_extraction_with_prompt: unsupported format {fmt} (requires optional tool)",
+                fmt = fmt
+            );
+            return;
+        }
+        Err(KreuzbergError::Parsing { message: ref msg, .. }) => {
+            println!("Skipping config_llm_structured_extraction_with_prompt: parsing dependency unavailable: {msg}");
+            return;
+        }
+        Err(err) => panic!("Extraction failed for config_llm_structured_extraction_with_prompt: {err:?}"),
+        Ok(result) => result,
+    };
+
+    assertions::assert_expected_mime(&result, &["application/pdf"]);
+    assertions::assert_min_content_length(&result, 10);
+    assertions::assert_structured_output(&result, Some(true), None, Some(&["sender", "recipient"]));
+}
+
+#[test]
+fn test_config_llm_vlm_ocr() {
+    // Tests VLM OCR backend via liter-llm vision model
+
+    let document_path = resolve_document("images/test_hello_world.png");
+    if !document_path.exists() {
+        println!(
+            "Skipping config_llm_vlm_ocr: missing document at {}",
+            document_path.display()
+        );
+        return;
+    }
+    let config: ExtractionConfig = serde_json::from_str(
+        r#"{
+  "ocr": {
+    "backend": "vlm",
+    "language": "eng",
+    "vlm_config": {
+      "model": "openai/gpt-4o"
+    }
+  }
+}"#,
+    )
+    .expect("Fixture config should deserialize");
+
+    let result = match kreuzberg::extract_file_sync(&document_path, None, &config) {
+        Err(KreuzbergError::MissingDependency(dep)) => {
+            println!("Skipping config_llm_vlm_ocr: missing dependency {dep}", dep = dep);
+            return;
+        }
+        Err(KreuzbergError::UnsupportedFormat(fmt)) => {
+            println!(
+                "Skipping config_llm_vlm_ocr: unsupported format {fmt} (requires optional tool)",
+                fmt = fmt
+            );
+            return;
+        }
+        Err(KreuzbergError::Parsing { message: ref msg, .. }) => {
+            println!("Skipping config_llm_vlm_ocr: parsing dependency unavailable: {msg}");
+            return;
+        }
+        Err(err) => panic!("Extraction failed for config_llm_vlm_ocr: {err:?}"),
+        Ok(result) => result,
+    };
+
+    assertions::assert_min_content_length(&result, 5);
+    assertions::assert_content_not_empty(&result);
+}
+
+#[test]
 fn test_config_pages() {
     // Tests page extraction and page marker configuration
 

@@ -1,0 +1,42 @@
+{
+	"id": "config_llm_structured_extraction_with_prompt",
+	"description": "Tests structured extraction with custom prompt",
+	"tags": ["contract", "config", "liter-llm", "structured-extraction"],
+	"document": {
+		"path": "pdf/fake_memo.pdf"
+	},
+	"extraction": {
+		"method": "sync",
+		"input_type": "file",
+		"config": {
+			"structured_extraction": {
+				"schema": {
+					"type": "object",
+					"properties": {
+						"sender": { "type": "string" },
+						"recipient": { "type": "string" },
+						"subject": { "type": "string" }
+					},
+					"required": ["sender", "recipient"]
+				},
+				"schema_name": "memo_parties",
+				"prompt": "Extract the sender and recipient from this memo document. If not found, use 'unknown'.",
+				"llm": {
+					"model": "openai/gpt-4o"
+				}
+			}
+		}
+	},
+	"assertions": {
+		"expected_mime": "application/pdf",
+		"min_content_length": 10,
+		"structured_output": {
+			"has_output": true,
+			"field_exists": ["sender", "recipient"]
+		}
+	},
+	"skip": {
+		"requires_feature": ["liter-llm"],
+		"notes": "Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var"
+	}
+}

@@ -810,6 +810,24 @@ export const assertions = {
             }
         }
     },
+
+    assertStructuredOutput(result: ExtractionResult, hasOutput?: boolean | null, validatesSchema?: boolean | null, fieldExists?: string[] | null): void {
+        const output = (result as unknown as PlainRecord).structuredOutput as PlainRecord | undefined;
+        if (hasOutput === true) {
+            expect(output).toBeDefined();
+            expect(output).not.toBeNull();
+        } else if (hasOutput === false) {
+            expect(output === undefined || output === null).toBe(true);
+        }
+        if (output !== undefined && output !== null && validatesSchema === true) {
+            expect(typeof output === "object").toBe(true);
+        }
+        if (output !== undefined && output !== null && fieldExists !== null && fieldExists !== undefined) {
+            for (const field of fieldExists) {
+                expect(field in output).toBe(true);
+            }
+        }
+    },
 };
 
 function lookupMetadataPath(metadata: PlainRecord, path: string): unknown {
@@ -1063,7 +1081,7 @@ fn render_test(fixture: &Fixture) -> Result<String> {
     let requirements = collect_requirements(fixture);
 
     // Emit it.skip for fixtures requiring features unavailable in WASM
-    let wasm_skip_features = ["layout-detection", "embeddings", "paddle-ocr", "keywords"];
+    let wasm_skip_features = ["layout-detection", "embeddings", "paddle-ocr", "keywords", "liter-llm"];
     let needs_skip = fixture
         .skip()
         .requires_feature
@@ -1439,6 +1457,32 @@ fn render_assertions(assertions: &Assertions, _requirements: &[String]) -> Strin
             .unwrap_or_else(|| "null".into());
         buffer.push_str(&format!(
             "    assertions.assertAnnotations(result, {has_annotations}, {min_count});\n"
+        ));
+    }
+
+    if let Some(structured_output) = assertions.structured_output.as_ref() {
+        let has_output = structured_output
+            .has_output
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "null".into());
+        let validates_schema = structured_output
+            .validates_schema
+            .map(|v| v.to_string())
+            .unwrap_or_else(|| "null".into());
+        let field_exists = structured_output
+            .field_exists
+            .as_ref()
+            .map(|fields| {
+                let items = fields
+                    .iter()
+                    .map(|f| format!("\"{}\"", escape_ts_string(f)))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("[{}]", items)
+            })
+            .unwrap_or_else(|| "null".into());
+        buffer.push_str(&format!(
+            "    assertions.assertStructuredOutput(result, {has_output}, {validates_schema}, {field_exists});\n"
         ));
     }
 

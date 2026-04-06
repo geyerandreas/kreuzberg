@@ -83,8 +83,6 @@ mod tests {
         let mut result = ExtractionResult {
             content: "plain text".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
             formatted_content: Some("# Heading\n\nFormatted markdown".to_string()),
             ..Default::default()
         };
@@ -101,8 +99,6 @@ mod tests {
         let mut result = ExtractionResult {
             content: "plain text".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
             formatted_content: Some("<p>Hello World</p>".to_string()),
             ..Default::default()
         };
@@ -118,8 +114,6 @@ mod tests {
         let mut result = ExtractionResult {
             content: "plain text".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
             formatted_content: Some("# Djot heading".to_string()),
             ..Default::default()
         };

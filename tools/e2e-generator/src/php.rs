@@ -833,6 +833,41 @@ class Helpers
         }
     }
 
+    public static function assertStructuredOutput(
+        ExtractionResult $result,
+        ?bool $hasOutput = null,
+        ?bool $validatesSchema = null,
+        ?array $fieldExists = null
+    ): void {
+        $output = $result->structured_output ?? null;
+
+        if ($hasOutput === true) {
+            Assert::assertNotNull($output, 'Expected structured output to be present');
+        } elseif ($hasOutput === false) {
+            Assert::assertNull($output, 'Expected structured output to be absent');
+        }
+
+        if ($output !== null && $validatesSchema === true) {
+            Assert::assertTrue(
+                is_array($output) || is_object($output),
+                'Expected structured output to validate schema'
+            );
+        }
+
+        if ($output !== null && $fieldExists !== null) {
+            foreach ($fieldExists as $field) {
+                if (is_array($output)) {
+                    Assert::assertArrayHasKey($field, $output, sprintf('Expected structured output to contain field "%s"', $field));
+                } else {
+                    Assert::assertTrue(
+                        property_exists($output, $field),
+                        sprintf('Expected structured output to contain field "%s"', $field)
+                    );
+                }
+            }
+        }
+    }
+
     public static function skipIfFeatureUnavailable(string $feature): void
     {
         $envVar = 'KREUZBERG_' . strtoupper(str_replace('-', '_', $feature)) . '_AVAILABLE';
@@ -1503,6 +1538,35 @@ fn render_assertions(assertions: &Assertions) -> String {
             buffer,
             "        Helpers::assertAnnotations($result, {}, {});",
             has_annotations, min_count
+        )
+        .unwrap();
+    }
+
+    if let Some(structured_output) = assertions.structured_output.as_ref() {
+        let has_output = structured_output
+            .has_output
+            .map(|v| if v { "true" } else { "false" })
+            .unwrap_or("null");
+        let validates_schema = structured_output
+            .validates_schema
+            .map(|v| if v { "true" } else { "false" })
+            .unwrap_or("null");
+        let field_exists = structured_output
+            .field_exists
+            .as_ref()
+            .map(|fields| {
+                let items = fields
+                    .iter()
+                    .map(|f| format!("'{}'", escape_php_string(f)))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("[{}]", items)
+            })
+            .unwrap_or_else(|| "null".to_string());
+        writeln!(
+            buffer,
+            "        Helpers::assertStructuredOutput($result, {}, {}, {});",
+            has_output, validates_schema, field_exists
         )
         .unwrap();
     }

@@ -261,7 +261,6 @@ impl OcrBackend for TesseractBackend {
             content: ocr_result.content,
             mime_type: ocr_result.mime_type.into(),
             metadata,
-            pages: None,
             tables: ocr_result
                 .tables
                 .into_iter()
@@ -280,24 +279,9 @@ impl OcrBackend for TesseractBackend {
                     }
                 })
                 .collect(),
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            elements: None,
             ocr_elements: ocr_result.ocr_elements,
-            djot_content: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
             ocr_internal_document: ocr_result.internal_document,
+            ..Default::default()
         })
     }
 
@@ -373,7 +357,6 @@ impl OcrBackend for TesseractBackend {
             content: ocr_result.content,
             mime_type: ocr_result.mime_type.into(),
             metadata,
-            pages: None,
             tables: ocr_result
                 .tables
                 .into_iter()
@@ -392,24 +375,8 @@ impl OcrBackend for TesseractBackend {
                     }
                 })
                 .collect(),
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            elements: None,
-            ocr_elements: None,
-            djot_content: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
             ocr_internal_document: ocr_result.internal_document,
+            ..Default::default()
         })
     }
 

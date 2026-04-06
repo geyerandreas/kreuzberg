@@ -18,7 +18,7 @@
 
 #[cfg(all(feature = "ocr", feature = "tokio-runtime"))]
 use crate::ocr::OcrProcessor;
-use crate::types::{ExtractedImage, ExtractionResult, Metadata};
+use crate::types::{ExtractedImage, ExtractionResult};
 
 /// Process extracted images with OCR if configured.
 ///
@@ -120,27 +120,8 @@ pub async fn process_images_with_ocr(
                 let extraction_result = ExtractionResult {
                     content: ocr_extraction.content,
                     mime_type: ocr_extraction.mime_type.into(),
-                    metadata: Metadata::default(),
-                    tables: vec![],
-                    detected_languages: None,
-                    chunks: None,
-                    images: None,
-                    djot_content: None,
-                    pages: None,
-                    elements: None,
                     ocr_elements: ocr_extraction.ocr_elements,
-                    document: None,
-                    #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-                    extracted_keywords: None,
-                    quality_score: None,
-                    processing_warnings: Vec::new(),
-                    annotations: None,
-                    children: None,
-                    uris: None,
-                    #[cfg(feature = "tree-sitter")]
-                    code_intelligence: None,
-                    formatted_content: None,
-                    ocr_internal_document: None,
+                    ..Default::default()
                 };
                 images[idx].ocr_result = Some(Box::new(extraction_result));
             }

@@ -250,26 +250,7 @@ mod tests {
     fn test_metadata(title: Option<String>) -> crate::types::Metadata {
         crate::types::Metadata {
             title,
-            subject: None,
-            authors: None,
-            keywords: None,
-            language: None,
-            created_at: None,
-            modified_at: None,
-            created_by: None,
-            modified_by: None,
-            pages: None,
-            format: None,
-            image_preprocessing: None,
-            json_schema: None,
-            error: None,
-            extraction_duration_ms: None,
-            category: None,
-            tags: None,
-            document_version: None,
-            abstract_text: None,
-            output_format: None,
-            additional: Default::default(),
+            ..Default::default()
         }
     }
 
@@ -283,11 +264,6 @@ mod tests {
             content: "Full document content".to_string(),
             mime_type: Cow::Borrowed("application/pdf"),
             metadata: test_metadata(Some("Test Document".to_string())),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
             pages: Some(vec![
                 PageContent {
                     page_number: 1,
@@ -322,20 +298,7 @@ mod tests {
                     is_blank: None,
                 },
             ]),
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let elements = transform_extraction_result_to_elements(&result);
@@ -412,11 +375,6 @@ mod tests {
             content: "Test content".to_string(),
             mime_type: Cow::Borrowed("application/pdf"),
             metadata: test_metadata(Some("Test".to_string())),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
             pages: Some(vec![PageContent {
                 page_number: 1,
                 content: "Some text".to_string(),
@@ -425,20 +383,7 @@ mod tests {
                 hierarchy: None,
                 is_blank: None,
             }]),
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let elements = transform_extraction_result_to_elements(&result);
@@ -474,26 +419,7 @@ mod tests {
             content: "Simple text content\n\nSecond paragraph".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
             metadata: test_metadata(Some("Simple Doc".to_string())),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let elements = transform_extraction_result_to_elements(&result);
@@ -604,26 +530,7 @@ mod tests {
             content: "First paragraph.\n\nSecond paragraph.\n\nThird paragraph.".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
             metadata: test_metadata(None),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let elements = transform_extraction_result_to_elements(&result);
@@ -650,11 +557,6 @@ mod tests {
             content: "Some body text here.".to_string(),
             mime_type: Cow::Borrowed("application/pdf"),
             metadata: test_metadata(Some("Doc".to_string())),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
             pages: Some(vec![PageContent {
                 page_number: 1,
                 content: "Some body text here.".to_string(),
@@ -679,20 +581,7 @@ mod tests {
                 }),
                 is_blank: None,
             }]),
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let elements = transform_extraction_result_to_elements(&result);
@@ -739,11 +628,6 @@ mod tests {
             content: "Paragraph one.\n\nParagraph two.".to_string(),
             mime_type: Cow::Borrowed("application/pdf"),
             metadata: test_metadata(None),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
             pages: Some(vec![PageContent {
                 page_number: 1,
                 content: "Paragraph one.\n\nParagraph two.".to_string(),
@@ -760,20 +644,7 @@ mod tests {
                 }),
                 is_blank: None,
             }]),
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let elements = transform_extraction_result_to_elements(&result);

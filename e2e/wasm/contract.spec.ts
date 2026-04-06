@@ -963,6 +963,14 @@ describe("contract fixtures", () => {
 		TEST_TIMEOUT_MS,
 	);
 
+	it.skip("config_llm_embeddings", async () => {}, TEST_TIMEOUT_MS);
+
+	it.skip("config_llm_structured_extraction", async () => {}, TEST_TIMEOUT_MS);
+
+	it.skip("config_llm_structured_extraction_with_prompt", async () => {}, TEST_TIMEOUT_MS);
+
+	it.skip("config_llm_vlm_ocr", async () => {}, TEST_TIMEOUT_MS);
+
 	it(
 		"config_pages",
 		async () => {

@@ -51,22 +51,7 @@ use std::sync::Arc;
 ///         Ok(ExtractionResult {
 ///             content: String::from_utf8_lossy(content).to_string(),
 ///             mime_type: mime_type.to_string().into(),
-///             metadata: Metadata::default(),
-///             tables: vec![],
-///             detected_languages: None,
-///             chunks: None,
-///             images: None,
-///             djot_content: None,
-///             pages: None,
-///             elements: None,
-///             ocr_elements: None,
-///             document: None,
-///             #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-///             extracted_keywords: None,
-///             quality_score: None,
-///             processing_warnings: vec![],
-///             annotations: None,
-///             children: None,
+///             ..Default::default()
 ///         })
 ///     }
 ///

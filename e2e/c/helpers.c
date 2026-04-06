@@ -650,58 +650,31 @@ void assert_annotations(const CExtractionResult *result,
     }
 }
 
-void assert_embed_result(const CEmbedResult *result,
-                         int has_count, size_t count,
-                         int has_dimensions, size_t dimensions,
-                         int no_nan, int no_inf, int non_zero) {
-    if (!result) {
-        fputs("FAIL: embed result is NULL\n", stderr);
+void assert_structured_output(const CExtractionResult *result,
+                              int check_has_output, int has_output,
+                              int check_validates_schema, int validates_schema,
+                              const char **field_exists, size_t field_count) {
+    const char *json = result->structured_output_json;
+    int is_present = (json != NULL && strlen(json) > 2);
+    if (check_has_output && has_output && !is_present) {
+        fputs("FAIL: expected structured output but structured_output_json is empty\n", stderr);
         exit(1);
     }
-    if (!result->success) {
-        fprintf(stderr, "FAIL: embedding failed: %s\n",
-                result->error ? result->error : "(unknown error)");
+    if (check_has_output && !has_output && is_present) {
+        fputs("FAIL: expected no structured output but structured_output_json is present\n", stderr);
         exit(1);
     }
-
-    size_t actual_count = result->vector_count;
-    if (has_count && actual_count != count) {
-        fprintf(stderr, "FAIL: expected %zu vectors, got %zu\n", count, actual_count);
-        exit(1);
+    if (is_present && check_validates_schema && validates_schema) {
+        /* Basic validation: must start with '{' */
+        if (json[0] != '{') {
+            fputs("FAIL: structured output does not validate as JSON object\n", stderr);
+            exit(1);
+        }
     }
-
-    if (actual_count > 0 && result->vectors) {
-        for (size_t i = 0; i < actual_count; i++) {
-            const CEmbeddingVector *vec = &result->vectors[i];
-            if (has_dimensions && vec->size != dimensions) {
-                fprintf(stderr, "FAIL: vector %zu expected size %zu, got %zu\n",
-                        i, dimensions, vec->size);
-                exit(1);
-            }
-
-            int found_non_zero = 0;
-            for (size_t j = 0; j < vec->size; j++) {
-                float v = vec->data[j];
-#ifdef _MSC_VER
-                if (no_nan && _isnan(v)) {
-#else
-                if (no_nan && isnan(v)) {
-#endif
-                    fprintf(stderr, "FAIL: vector %zu element %zu is NaN\n", i, j);
-                    exit(1);
-                }
-#ifdef _MSC_VER
-                if (no_inf && !_finite(v)) {
-#else
-                if (no_inf && isinf(v)) {
-#endif
-                    fprintf(stderr, "FAIL: vector %zu element %zu is Inf\n", i, j);
-                    exit(1);
-                }
-                if (v != 0.0f) found_non_zero = 1;
-            }
-            if (non_zero && !found_non_zero) {
-                fprintf(stderr, "FAIL: vector %zu is all zeros\n", i);
+    if (is_present && field_exists != NULL) {
+        for (size_t i = 0; i < field_count; i++) {
+            if (!str_contains_ci(json, field_exists[i])) {
+                fprintf(stderr, "FAIL: structured output missing field '%s'\n", field_exists[i]);
                 exit(1);
             }
         }

@@ -1,0 +1,40 @@
+{
+	"id": "config_llm_structured_extraction",
+	"description": "Tests structured extraction via liter-llm with JSON schema",
+	"tags": ["contract", "config", "liter-llm", "structured-extraction"],
+	"document": {
+		"path": "pdf/fake_memo.pdf"
+	},
+	"extraction": {
+		"method": "sync",
+		"input_type": "file",
+		"config": {
+			"structured_extraction": {
+				"schema": {
+					"type": "object",
+					"properties": {
+						"title": { "type": "string" },
+						"date": { "type": "string" },
+						"summary": { "type": "string" }
+					},
+					"required": ["title"]
+				},
+				"schema_name": "memo_data",
+				"llm": {
+					"model": "openai/gpt-4o"
+				}
+			}
+		}
+	},
+	"assertions": {
+		"expected_mime": "application/pdf",
+		"min_content_length": 10,
+		"structured_output": {
+			"has_output": true
+		}
+	},
+	"skip": {
+		"requires_feature": ["liter-llm"],
+		"notes": "Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var"
+	}
+}

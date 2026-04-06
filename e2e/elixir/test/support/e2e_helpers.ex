@@ -752,6 +752,31 @@ defmodule E2E.Helpers do
     result
   end
 
+  def assert_structured_output(result, opts) do
+    output = Map.get(result, :structured_output) || Map.get(result, "structured_output")
+
+    if opts[:has_output] == true do
+      assert output != nil, "Expected structured output to be present"
+    end
+
+    if opts[:has_output] == false do
+      assert output == nil, "Expected structured output to be absent"
+    end
+
+    if output != nil and opts[:validates_schema] == true do
+      assert is_map(output), "Expected structured output to validate schema"
+    end
+
+    if output != nil and opts[:field_exists] do
+      for field <- opts[:field_exists] do
+        assert Map.has_key?(output, field) or Map.has_key?(output, String.to_atom(field)),
+               "Expected structured output to contain field '#{field}'"
+      end
+    end
+
+    result
+  end
+
   # Private helpers
 
   defp fetch_metadata_value(metadata, path) do

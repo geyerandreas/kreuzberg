@@ -63,27 +63,7 @@ mod tests {
         let result = ExtractionResult {
             content: "test content".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: crate::types::Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let config = ExtractionConfig::default();
@@ -97,27 +77,7 @@ mod tests {
         let result = ExtractionResult {
             content: "test content".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: crate::types::Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let config = ExtractionConfig::default();
@@ -133,27 +93,7 @@ mod tests {
         let result = ExtractionResult {
             content: "test".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: crate::types::Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let config = ExtractionConfig::default();
@@ -182,29 +122,8 @@ mod tests {
         let validator = MockValidator { should_fail: false };
 
         let result = ExtractionResult {
-            content: String::new(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: crate::types::Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let config = ExtractionConfig::default();
@@ -247,53 +166,13 @@ mod tests {
         let pdf_result = ExtractionResult {
             content: "test".to_string(),
             mime_type: Cow::Borrowed("application/pdf"),
-            metadata: crate::types::Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let txt_result = ExtractionResult {
             content: "test".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: crate::types::Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         assert!(validator.should_validate(&pdf_result, &config));
@@ -372,27 +251,7 @@ mod tests {
         let result = ExtractionResult {
             content: "test".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: crate::types::Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let config = ExtractionConfig::default();
@@ -420,26 +279,7 @@ mod tests {
                 additional,
                 ..Default::default()
             },
-            pages: None,
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let config = ExtractionConfig::default();
@@ -462,27 +302,8 @@ mod tests {
         let result = ExtractionResult {
             content: "test".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: crate::types::Metadata::default(),
             tables: vec![table],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let config = ExtractionConfig::default();
@@ -506,27 +327,7 @@ mod tests {
             let result = ExtractionResult {
                 content: "test".to_string(),
                 mime_type: Cow::Borrowed(mime_type),
-                metadata: crate::types::Metadata::default(),
-                tables: vec![],
-                detected_languages: None,
-                chunks: None,
-                images: None,
-                djot_content: None,
-                pages: None,
-                elements: None,
-                ocr_elements: None,
-                document: None,
-                #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-                extracted_keywords: None,
-                quality_score: None,
-                processing_warnings: Vec::new(),
-                annotations: None,
-                children: None,
-                uris: None,
-                #[cfg(feature = "tree-sitter")]
-                code_intelligence: None,
-                formatted_content: None,
-                ocr_internal_document: None,
+                ..Default::default()
             };
 
             assert!(validator.validate(&result, &config).await.is_ok());
@@ -540,27 +341,7 @@ mod tests {
         let result = ExtractionResult {
             content: "test content ".repeat(10000),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: crate::types::Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            djot_content: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let config = ExtractionConfig::default();

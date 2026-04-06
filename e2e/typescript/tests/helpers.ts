@@ -732,6 +732,33 @@ export const assertions = {
 	assertMinByteLength(data: Buffer, minLength: number): void {
 		expect(data.length).toBeGreaterThanOrEqual(minLength);
 	},
+
+	assertStructuredOutput(
+		result: ExtractionResult,
+		hasOutput?: boolean | null,
+		validatesSchema?: boolean | null,
+		fieldExists?: string[] | null,
+	): void {
+		const output =
+			(result as unknown as PlainRecord).structured_output ?? (result as unknown as PlainRecord).structuredOutput;
+		if (hasOutput === true) {
+			expect(output).toBeDefined();
+			expect(output).not.toBeNull();
+		}
+		if (hasOutput === false) {
+			expect(output).toBeUndefined();
+		}
+		if (validatesSchema === true) {
+			expect(output).toBeDefined();
+			expect(typeof output).toBe("object");
+		}
+		if (fieldExists != null) {
+			expect(output).toBeDefined();
+			for (const field of fieldExists) {
+				expect(output).toHaveProperty(field);
+			}
+		}
+	},
 };
 
 function lookupMetadataPath(metadata: PlainRecord, path: string): unknown {

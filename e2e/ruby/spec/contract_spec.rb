@@ -750,6 +750,78 @@ RSpec.describe 'contract fixtures' do
     end
   end
 
+  it 'config_llm_embeddings' do
+    E2ERuby.skip_if_feature_unavailable('liter-llm')
+    E2ERuby.run_fixture(
+      'config_llm_embeddings',
+      'pdf/fake_memo.pdf',
+      { chunking: { max_chars: 500, max_overlap: 50, embedding: { model: { type: 'llm', llm: { model: 'openai/text-embedding-3-small' } }, normalize: true } } },
+      requirements: %w[liter-llm],
+      notes: 'Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var',
+      skip_if_missing: true
+    ) do |result|
+      E2ERuby::Assertions.assert_expected_mime(
+        result,
+        ['application/pdf']
+      )
+      E2ERuby::Assertions.assert_min_content_length(result, 10)
+      E2ERuby::Assertions.assert_chunks(result, min_count: 1, each_has_content: true, each_has_embedding: true)
+    end
+  end
+
+  it 'config_llm_structured_extraction' do
+    E2ERuby.skip_if_feature_unavailable('liter-llm')
+    E2ERuby.run_fixture(
+      'config_llm_structured_extraction',
+      'pdf/fake_memo.pdf',
+      { structured_extraction: { schema: { type: 'object', properties: { title: { type: 'string' }, date: { type: 'string' }, summary: { type: 'string' } }, required: ['title'] }, schema_name: 'memo_data', llm: { model: 'openai/gpt-4o' } } },
+      requirements: %w[liter-llm],
+      notes: 'Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var',
+      skip_if_missing: true
+    ) do |result|
+      E2ERuby::Assertions.assert_expected_mime(
+        result,
+        ['application/pdf']
+      )
+      E2ERuby::Assertions.assert_min_content_length(result, 10)
+      E2ERuby::Assertions.assert_structured_output(result, has_output: true)
+    end
+  end
+
+  it 'config_llm_structured_extraction_with_prompt' do
+    E2ERuby.skip_if_feature_unavailable('liter-llm')
+    E2ERuby.run_fixture(
+      'config_llm_structured_extraction_with_prompt',
+      'pdf/fake_memo.pdf',
+      { structured_extraction: { schema: { type: 'object', properties: { sender: { type: 'string' }, recipient: { type: 'string' }, subject: { type: 'string' } }, required: %w[sender recipient] }, schema_name: 'memo_parties', prompt: "Extract the sender and recipient from this memo document. If not found, use 'unknown'.", llm: { model: 'openai/gpt-4o' } } },
+      requirements: %w[liter-llm],
+      notes: 'Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var',
+      skip_if_missing: true
+    ) do |result|
+      E2ERuby::Assertions.assert_expected_mime(
+        result,
+        ['application/pdf']
+      )
+      E2ERuby::Assertions.assert_min_content_length(result, 10)
+      E2ERuby::Assertions.assert_structured_output(result, has_output: true, field_exists: %w[sender recipient])
+    end
+  end
+
+  it 'config_llm_vlm_ocr' do
+    E2ERuby.skip_if_feature_unavailable('liter-llm')
+    E2ERuby.run_fixture(
+      'config_llm_vlm_ocr',
+      'images/test_hello_world.png',
+      { ocr: { backend: 'vlm', language: 'eng', vlm_config: { model: 'openai/gpt-4o' } } },
+      requirements: %w[liter-llm],
+      notes: 'Requires liter-llm feature and KREUZBERG_LLM_API_KEY env var',
+      skip_if_missing: true
+    ) do |result|
+      E2ERuby::Assertions.assert_min_content_length(result, 5)
+      E2ERuby::Assertions.assert_content_not_empty(result)
+    end
+  end
+
   it 'config_pages' do
     E2ERuby.skip_if_feature_unavailable('pdf')
     E2ERuby.run_fixture(

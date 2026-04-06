@@ -257,27 +257,7 @@ mod tests {
         let result = KreuzbergResult {
             content: "Sample extracted text".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: crate::Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            djot_content: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let formatted = format_extraction_result(&result);
@@ -293,7 +273,6 @@ mod tests {
         let result = KreuzbergResult {
             content: "Document with tables".to_string(),
             mime_type: Cow::Borrowed("application/pdf"),
-            metadata: crate::Metadata::default(),
             tables: vec![crate::Table {
                 cells: vec![
                     vec!["Col1".to_string(), "Col2".to_string()],
@@ -303,25 +282,7 @@ mod tests {
                 markdown: "| Col1 | Col2 |\n|------|------|\n| A    | B    |".to_string(),
                 bounding_box: None,
             }],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            djot_content: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let formatted = format_extraction_result(&result);
@@ -336,9 +297,6 @@ mod tests {
         let result = KreuzbergResult {
             content: "Chunked text".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: crate::Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
             chunks: Some(vec![crate::Chunk {
                 content: "Chunk 1".to_string(),
                 chunk_type: Default::default(),
@@ -354,23 +312,7 @@ mod tests {
                     heading_context: None,
                 },
             }]),
-            images: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            djot_content: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let formatted = format_extraction_result(&result);
@@ -385,27 +327,7 @@ mod tests {
         let result = KreuzbergResult {
             content: "Simple text".to_string(),
             mime_type: Cow::Borrowed("text/plain"),
-            metadata: crate::Metadata::default(),
-            tables: vec![],
-            detected_languages: None,
-            chunks: None,
-            images: None,
-            pages: None,
-            elements: None,
-            ocr_elements: None,
-            djot_content: None,
-            document: None,
-            #[cfg(any(feature = "keywords-yake", feature = "keywords-rake"))]
-            extracted_keywords: None,
-            quality_score: None,
-            processing_warnings: Vec::new(),
-            annotations: None,
-            children: None,
-            uris: None,
-            #[cfg(feature = "tree-sitter")]
-            code_intelligence: None,
-            formatted_content: None,
-            ocr_internal_document: None,
+            ..Default::default()
         };
 
         let formatted = format_extraction_result(&result);

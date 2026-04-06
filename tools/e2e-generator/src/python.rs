@@ -759,6 +759,24 @@ def assert_embed_result(
         if normalized:
             norm = math.sqrt(sum(v * v for v in vec))
             assert abs(norm - 1.0) < 1e-4, f"Embedding {i} L2 norm {norm:.6f} != 1.0 (not normalized)"
+
+
+def assert_structured_output(result: Any, has_output: bool | None = None, validates_schema: bool | None = None, field_exists: list[str] | None = None) -> None:
+    output = getattr(result, "structured_output", None)
+    if isinstance(result, dict):
+        output = result.get("structured_output")
+    if has_output is True:
+        assert output is not None, "Expected structured_output to be present"
+    if has_output is False:
+        assert output is None, "Expected structured_output to be absent"
+    if validates_schema is True:
+        assert output is not None, "structured_output required for validates_schema"
+        assert isinstance(output, (dict, list)), "Expected structured_output to be a dict or list"
+    if field_exists is not None:
+        assert output is not None, "structured_output required for field_exists"
+        assert isinstance(output, dict), "structured_output must be a dict for field_exists"
+        for field in field_exists:
+            assert field in output, f"Expected structured_output to contain '{field}', keys: {list(output.keys())}"
 "#;
 
 pub fn generate(fixtures: &[Fixture], output_root: &Utf8Path, mode: &GenerationMode) -> Result<()> {
@@ -1430,6 +1448,32 @@ fn render_assertions(assertions: &Assertions) -> String {
             args.push(format!("min_count={min_count}"));
         }
         writeln!(buffer, "    helpers.assert_annotations(result, {})", args.join(", ")).unwrap();
+    }
+
+    if let Some(structured) = assertions.structured_output.as_ref() {
+        let has_output = structured
+            .has_output
+            .map(|v| if v { "True" } else { "False" })
+            .unwrap_or("None");
+        let validates_schema = structured
+            .validates_schema
+            .map(|v| if v { "True" } else { "False" })
+            .unwrap_or("None");
+        let field_exists = if let Some(ref fields) = structured.field_exists {
+            let parts = fields
+                .iter()
+                .map(|f| format!("\"{}\"", f))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("[{}]", parts)
+        } else {
+            "None".into()
+        };
+        writeln!(
+            buffer,
+            "    helpers.assert_structured_output(result, has_output={has_output}, validates_schema={validates_schema}, field_exists={field_exists})"
+        )
+        .unwrap();
     }
 
     if !buffer.ends_with('\n') {

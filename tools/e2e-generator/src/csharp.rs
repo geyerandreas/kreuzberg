@@ -950,6 +950,30 @@ public static class TestHelpers
         }
     }
 
+    public static void AssertStructuredOutput(ExtractionResult result, bool? hasOutput, bool? validatesSchema, string[]? fieldExists)
+    {
+        var output = result.StructuredOutput;
+        if (hasOutput == true)
+        {
+            Assert.NotNull(output);
+        }
+        else if (hasOutput == false)
+        {
+            Assert.Null(output);
+        }
+        if (output is not null && validatesSchema == true)
+        {
+            Assert.True(output.ValidatesSchema, "Expected structured output to validate schema");
+        }
+        if (output is not null && fieldExists is not null)
+        {
+            foreach (var field in fieldExists)
+            {
+                Assert.True(output.ContainsKey(field), $"Expected structured output to contain field '{field}'");
+            }
+        }
+    }
+
     public static void AssertIsPng(byte[] data)
     {
         Assert.NotNull(data);
@@ -1600,6 +1624,34 @@ fn render_assertions(buffer: &mut String, assertions: &Assertions) -> Result<()>
             buffer,
             "            TestHelpers.AssertAnnotations(result, {}, {});",
             has_annotations, min_count
+        )?;
+    }
+
+    if let Some(structured_output) = assertions.structured_output.as_ref() {
+        let has_output = structured_output
+            .has_output
+            .map(|v| if v { "true" } else { "false" })
+            .unwrap_or("null");
+        let validates_schema = structured_output
+            .validates_schema
+            .map(|v| if v { "true" } else { "false" })
+            .unwrap_or("null");
+        let field_exists = structured_output
+            .field_exists
+            .as_ref()
+            .map(|fields| {
+                let items = fields
+                    .iter()
+                    .map(|f| format!("\"{}\"", escape_csharp_string(f)))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("new[] {{ {} }}", items)
+            })
+            .unwrap_or_else(|| "null".to_string());
+        writeln!(
+            buffer,
+            "            TestHelpers.AssertStructuredOutput(result, {}, {}, {});",
+            has_output, validates_schema, field_exists
         )?;
     }
 

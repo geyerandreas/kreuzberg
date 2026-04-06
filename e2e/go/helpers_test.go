@@ -4,14 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"unicode"
 
-	"github.com/kreuzberg-dev/kreuzberg/packages/go/v4"
+	kreuzberg "github.com/kreuzberg-dev/kreuzberg/packages/go/v4"
 )
 
 var (
@@ -149,14 +148,14 @@ func assertContentContainsAll(t *testing.T, result *kreuzberg.ExtractionResult, 
 	}
 }
 
-func assertTableCount(t *testing.T, result *kreuzberg.ExtractionResult, minVal, maxVal *int) {
+func assertTableCount(t *testing.T, result *kreuzberg.ExtractionResult, min, max *int) {
 	t.Helper()
 	count := len(result.Tables)
-	if minVal != nil && count < *minVal {
-		t.Fatalf("expected at least %d tables, found %d", *minVal, count)
+	if min != nil && count < *min {
+		t.Fatalf("expected at least %d tables, found %d", *min, count)
 	}
-	if maxVal != nil && count > *maxVal {
-		t.Fatalf("expected at most %d tables, found %d", *maxVal, count)
+	if max != nil && count > *max {
+		t.Fatalf("expected at most %d tables, found %d", *max, count)
 	}
 }
 
@@ -683,49 +682,35 @@ func assertMinByteLength(t *testing.T, data []byte, minLen int) {
 	}
 }
 
-func assertEmbedResult(t *testing.T, result [][]float32, count *int, dims *int, noNan, noInf, nonZero, normalized bool) {
+func assertStructuredOutput(t *testing.T, result *kreuzberg.ExtractionResult, hasOutput *bool, validatesSchema *bool, fieldExists []string) {
 	t.Helper()
-	if count != nil && len(result) != *count {
-		t.Fatalf("expected %d embeddings, got %d", *count, len(result))
+	output := result.StructuredOutput
+	if hasOutput != nil && *hasOutput {
+		if output == nil {
+			t.Fatalf("expected structured_output to be present")
+		}
 	}
-	for i, vec := range result {
-		if dims != nil && len(vec) != *dims {
-			t.Fatalf("embedding %d: expected %d dims, got %d", i, *dims, len(vec))
+	if hasOutput != nil && !*hasOutput {
+		if output != nil {
+			t.Fatalf("expected structured_output to be absent")
 		}
-		if noNan {
-			for _, v := range vec {
-				if v != v { // NaN check
-					t.Fatalf("embedding %d contains NaN", i)
-				}
-			}
+	}
+	if validatesSchema != nil && *validatesSchema {
+		if output == nil {
+			t.Fatalf("structured_output required for validates_schema")
 		}
-		if noInf {
-			for _, v := range vec {
-				if math.IsInf(float64(v), 0) {
-					t.Fatalf("embedding %d contains Inf", i)
-				}
-			}
+	}
+	if fieldExists != nil {
+		if output == nil {
+			t.Fatalf("structured_output required for field_exists")
 		}
-		if nonZero {
-			hasNonZero := false
-			for _, v := range vec {
-				if v != 0 {
-					hasNonZero = true
-					break
-				}
-			}
-			if !hasNonZero {
-				t.Fatalf("embedding %d is all zeros", i)
-			}
+		outputMap, ok := output.(map[string]interface{})
+		if !ok {
+			t.Fatalf("structured_output must be a map for field_exists")
 		}
-		if normalized {
-			var sqSum float64
-			for _, v := range vec {
-				sqSum += float64(v * v)
-			}
-			// Approximate sqrt by checking bounds of sqSum
-			if sqSum < 0.999 || sqSum > 1.001 {
-				t.Fatalf("embedding %d squared sum is %f (not normalized)", i, sqSum)
+		for _, field := range fieldExists {
+			if _, exists := outputMap[field]; !exists {
+				t.Fatalf("expected structured_output to contain '%s'", field)
 			}
 		}
 	}

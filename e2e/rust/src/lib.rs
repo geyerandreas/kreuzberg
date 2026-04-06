@@ -700,6 +700,49 @@ pub mod assertions {
         }
     }
 
+    /// Assert structured extraction output presence and field existence.
+    pub fn assert_structured_output(
+        result: &ExtractionResult,
+        has_output: Option<bool>,
+        validates_schema: Option<bool>,
+        field_exists: Option<&[&str]>,
+    ) {
+        let output = result.structured_output.as_ref();
+        if let Some(true) = has_output {
+            assert!(
+                output.is_some(),
+                "Expected structured_output to be present but it was None"
+            );
+        }
+        if let Some(false) = has_output {
+            assert!(
+                output.is_none(),
+                "Expected structured_output to be absent but it was Some"
+            );
+        }
+        if let Some(true) = validates_schema {
+            let val = output.expect("structured_output required for validates_schema assertion");
+            assert!(
+                val.is_object() || val.is_array(),
+                "Expected structured_output to be a JSON object or array"
+            );
+        }
+        if let Some(fields) = field_exists {
+            let val = output.expect("structured_output required for field_exists assertion");
+            let obj = val
+                .as_object()
+                .expect("structured_output must be a JSON object for field_exists");
+            for field in fields {
+                assert!(
+                    obj.contains_key(*field),
+                    "Expected structured_output to contain field '{}', keys: {:?}",
+                    field,
+                    obj.keys().collect::<Vec<_>>()
+                );
+            }
+        }
+    }
+
     fn lookup_path<'a>(value: &'a Value, path: &str) -> Option<&'a Value> {
         if let Some(found) = lookup_path_inner(value, path) {
             return Some(found);
