@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **New CLI command**: `kreuzberg extract-structured` for schema-guided LLM extraction
 - **New API endpoint**: `POST /extract-structured` with multipart file upload
 - **New MCP tool**: `extract_structured` for AI assistant integration
-- **Minijinja template engine** for customizable LLM prompts with `{{ content }}`, `{{ schema }}`, `{{ language }}` variables
+- **Minijinja template engine** for customizable LLM prompts — structured extraction supports `{{ content }}`, `{{ schema }}`, `{{ schema_name }}`, `{{ schema_description }}`; VLM OCR supports `{{ language }}`
 - **5 new environment variables**: `KREUZBERG_LLM_MODEL`, `KREUZBERG_LLM_API_KEY`, `KREUZBERG_LLM_BASE_URL`, `KREUZBERG_VLM_OCR_MODEL`, `KREUZBERG_VLM_EMBEDDING_MODEL`
 - `LlmConfig` and `StructuredExtractionConfig` types exposed in Python, Node.js, and PHP bindings
 - `structured_output` field on `ExtractionResult` across all languages

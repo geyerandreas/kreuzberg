@@ -244,7 +244,7 @@ Use provider-hosted embedding models (e.g., `openai/text-embedding-3-small`, `mi
 <details>
 <summary><strong>Custom Jinja2 Prompts</strong> -- Minijinja template engine for LLM prompts</summary>
 
-Customize the prompts sent to LLMs with Minijinja templates. Available variables include `{{ content }}` (extracted text), `{{ schema }}` (JSON schema), and `{{ language }}` (detected language). Override the default prompt per-request or in configuration.
+Customize the prompts sent to LLMs with Minijinja templates. Available variables for structured extraction: `{{ content }}`, `{{ schema }}`, `{{ schema_name }}`, `{{ schema_description }}`. For VLM OCR prompts: `{{ language }}`. Override the default prompt per-request or in configuration.
 
 </details>
 
