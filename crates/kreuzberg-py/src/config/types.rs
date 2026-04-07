@@ -792,6 +792,14 @@ impl EmbeddingModelType {
         }
     }
 
+    /// Create an LLM provider-hosted embedding model type.
+    #[staticmethod]
+    fn llm(config: PyLlmConfig) -> Self {
+        Self {
+            inner: kreuzberg::EmbeddingModelType::Llm { llm: config.inner },
+        }
+    }
+
     fn __repr__(&self) -> String {
         match &self.inner {
             kreuzberg::EmbeddingModelType::Preset { name } => format!("EmbeddingModelType.preset('{}')", name),
