@@ -33,6 +33,7 @@ bench-pypdf = [ "pypdf>=4.0.0" ]
 bench-unstructured = [ "unstructured[all-docs]>=0.18.21" ]
 doc = [
   "mkdocstrings>=1.0.3",
+  "mkdocstrings-python>=2.0.3",
   "zensical",
 ]
 
